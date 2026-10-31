@@ -109,6 +109,27 @@ impl Mesh {
                 bit[i] += tdir;
             }
         }
+        // Vertices split only by a UV seam (same position and normal, same UV
+        // handedness) must share one tangent frame, or normal-mapped shading
+        // shows a line along the seam. Sum their accumulators.
+        {
+            let (_, r) = self.bounding_sphere();
+            let q = 1e5 / r.max(1e-6);
+            let mut groups: std::collections::HashMap<([i64; 3], [i32; 3], bool), Vec<usize>> = Default::default();
+            for (i, v) in self.vertices.iter().enumerate() {
+                let nrm = Vec3::from(v.normal);
+                let right_handed = nrm.cross(tan[i]).dot(bit[i]) <= 0.0;
+                let key = (v.position.map(|c| (c * q).round() as i64), v.normal.map(|c| (c * 1000.0).round() as i32), right_handed);
+                groups.entry(key).or_default().push(i);
+            }
+            for members in groups.values().filter(|m| m.len() > 1) {
+                let (t, b) = members.iter().fold((Vec3::ZERO, Vec3::ZERO), |(t, b), &i| (t + tan[i], b + bit[i]));
+                for &i in members {
+                    tan[i] = t;
+                    bit[i] = b;
+                }
+            }
+        }
         for i in 0..n {
             let nrm = Vec3::from(self.vertices[i].normal);
             let t = (tan[i] - nrm * nrm.dot(tan[i])).try_normalize().unwrap_or_else(|| nrm.any_orthonormal_vector());
@@ -355,6 +376,18 @@ f 1/1 2/2 3/3 4/4
         assert_eq!(lo, Vec3::new(2.0, 0.0, 0.0));
         assert_eq!(hi, Vec3::new(3.0, 1.0, 0.0));
         assert!((Vec3::from(m.vertices[0].normal) - Vec3::Z).length() < 1e-5);
+    }
+
+    #[test]
+    fn tangents_match_across_uv_seams() {
+        let m = Mesh::torus(1.0, 0.25, 24, 12);
+        // vertex (i = 0, j) and (i = segments, j) are the same point on both sides of the u seam
+        for j in 0..=12usize {
+            let a = m.vertices[j];
+            let b = m.vertices[24 * 13 + j];
+            assert!((Vec3::from(a.position) - Vec3::from(b.position)).length() < 1e-5);
+            assert!((Vec4::from(a.tangent) - Vec4::from(b.tangent)).length() < 1e-5, "{:?} vs {:?}", a.tangent, b.tangent);
+        }
     }
 
     #[test]

@@ -153,6 +153,27 @@ fn height_at(t: vec2<i32>) -> f32 {
     return textureLoad(acc_rmh, src_texel(c), 0).z;
 }
 
+// Is texel t inside a UV island (rather than padding)?
+fn covered(t: vec2<i32>) -> bool {
+    let size = i32(sh.res.x);
+    if (any(t < vec2<i32>(0)) || any(t >= vec2<i32>(size))) { return false; }
+    let s = textureLoad(nearest, t, 0).xy;
+    return s.x != 65535u && all(vec2<i32>(s) == t);
+}
+
+// Height slope along `d`, central where both neighbours are on the island,
+// one-sided at island borders. Using padded values across a border would
+// read as a flat slope and draw a visible line along every UV seam.
+fn slope(s: vec2<i32>, d: vec2<i32>) -> f32 {
+    let p = covered(s + d);
+    let m = covered(s - d);
+    let h = height_at(s);
+    if (p && m) { return height_at(s + d) - height_at(s - d); }
+    if (p) { return 2.0 * (height_at(s + d) - h); }
+    if (m) { return 2.0 * (h - height_at(s - d)); }
+    return 0.0;
+}
+
 @fragment
 fn fs_finalize(f: FullOut) -> Material {
     let t = vec2<i32>(f.pos.xy);
@@ -164,8 +185,8 @@ fn fs_finalize(f: FullOut) -> Material {
 
     // central differences in texel space; texel rows go down (+v)
     let k = sh.res.y;
-    let hx = height_at(s + vec2<i32>(1, 0)) - height_at(s - vec2<i32>(1, 0));
-    let hy = height_at(s + vec2<i32>(0, 1)) - height_at(s - vec2<i32>(0, 1));
+    let hx = slope(s, vec2<i32>(1, 0));
+    let hy = slope(s, vec2<i32>(0, 1));
     // OpenGL convention: +y points up the image, i.e. towards -v
     let hn = normalize(vec3<f32>(-hx * k, hy * k, 1.0));
     let nrm = rnm(hn, detail);

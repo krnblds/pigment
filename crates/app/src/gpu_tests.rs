@@ -432,3 +432,28 @@ fn perf_viewport_breakdown() {
         }
     }
 }
+
+/// Paint across the torus's u = 0/1 UV seam (at +X) and render it close up,
+/// in a low-res texture set where any seam would be obvious.
+#[test]
+fn stroke_across_uv_seam_renders_without_a_line() {
+    let Some(mut s) = Scene::new() else { return };
+    // look straight at the +X side, where u wraps from 1 back to 0
+    s.camera.yaw = std::f32::consts::FRAC_PI_2;
+    s.camera.pitch = 0.2;
+    s.camera.distance = 1.6;
+    s.camera.target = glam::Vec3::new(1.0, 0.0, 0.0);
+    let (d, q) = (&s.g.device, &s.g.queue);
+    s.viewport.draw(d, q, &s.camera, &ViewSettings::default(), Some(&s.mg), &s.env, &s.ts);
+    let (_snap, tiles) = s.stroke(Vec2::new(150.0, 420.0), Vec2::new(650.0, 380.0));
+    // the stroke must touch tiles on both sides of the seam
+    assert!(tiles.contains(0, 0) || (0..GRID).any(|y| tiles.contains(0, y)), "no tiles at u≈0");
+    assert!((0..GRID).any(|y| tiles.contains(GRID - 1, y)), "no tiles at u≈1");
+    let (d, q) = (&s.g.device, &s.g.queue);
+    s.ts.composite(d, q, &s.doc, None);
+    s.viewport.draw(d, q, &s.camera, &ViewSettings::default(), Some(&s.mg), &s.env, &s.ts);
+    let img = crate::render::gpu::readback(d, q, s.viewport.color().unwrap());
+    let out = std::env::temp_dir().join("pig");
+    std::fs::create_dir_all(&out).ok();
+    image::save_buffer(out.join("seam_test.png"), &img, VIEW.x as u32, VIEW.y as u32, image::ExtendedColorType::Rgba8).unwrap();
+}
