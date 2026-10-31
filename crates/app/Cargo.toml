@@ -1,0 +1,15 @@
+[package]
+name = "pigment"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+pigment-core = { path = "../core" }
+glam.workspace = true
+bytemuck.workspace = true
+anyhow.workspace = true
+eframe = { version = "0.37", default-features = false, features = ["wgpu", "default_fonts", "x11", "wayland"] }
+rfd = "0.17"
+log = "0.4"
+env_logger = "0.11"

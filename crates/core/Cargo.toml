@@ -1,0 +1,14 @@
+[package]
+name = "pigment-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+glam.workspace = true
+bytemuck.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+anyhow.workspace = true
+tobj = "4"
+gltf = { version = "1.4", default-features = false, features = ["import", "utils"] }
