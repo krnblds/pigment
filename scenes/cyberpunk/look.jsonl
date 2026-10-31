@@ -1,0 +1,18 @@
+{"tool": "new_project", "args": {"mesh": "assets/vending_machine.glb", "resolution": 2048, "smart_material": "Worn violet paint metal"}}
+{"tool": "render", "args": {"yaw": 0, "pitch": 4, "width": 640, "height": 640, "path": "C:/Users/kiera/AppData/Local/Temp/pig/look_vending_machine_front.png"}}
+{"tool": "render", "args": {"yaw": 35, "pitch": 20, "width": 640, "height": 640, "path": "C:/Users/kiera/AppData/Local/Temp/pig/look_vending_machine_34.png"}}
+{"tool": "new_project", "args": {"mesh": "assets/ac_unit.glb", "resolution": 2048, "smart_material": "Tech panels"}}
+{"tool": "render", "args": {"yaw": 0, "pitch": 4, "width": 640, "height": 640, "path": "C:/Users/kiera/AppData/Local/Temp/pig/look_ac_unit_front.png"}}
+{"tool": "render", "args": {"yaw": 35, "pitch": 20, "width": 640, "height": 640, "path": "C:/Users/kiera/AppData/Local/Temp/pig/look_ac_unit_34.png"}}
+{"tool": "new_project", "args": {"mesh": "assets/barrel.glb", "resolution": 2048, "smart_material": "Hazard stripes"}}
+{"tool": "render", "args": {"yaw": 0, "pitch": 4, "width": 640, "height": 640, "path": "C:/Users/kiera/AppData/Local/Temp/pig/look_barrel_front.png"}}
+{"tool": "render", "args": {"yaw": 35, "pitch": 20, "width": 640, "height": 640, "path": "C:/Users/kiera/AppData/Local/Temp/pig/look_barrel_34.png"}}
+{"tool": "new_project", "args": {"mesh": "assets/neon_sign_frame.glb", "resolution": 2048, "smart_material": "Tech panels"}}
+{"tool": "render", "args": {"yaw": 0, "pitch": 4, "width": 640, "height": 640, "path": "C:/Users/kiera/AppData/Local/Temp/pig/look_neon_sign_frame_front.png"}}
+{"tool": "render", "args": {"yaw": 35, "pitch": 20, "width": 640, "height": 640, "path": "C:/Users/kiera/AppData/Local/Temp/pig/look_neon_sign_frame_34.png"}}
+{"tool": "new_project", "args": {"mesh": "assets/trash_dumpster.glb", "resolution": 2048, "smart_material": "Worn teal paint metal"}}
+{"tool": "render", "args": {"yaw": 0, "pitch": 4, "width": 640, "height": 640, "path": "C:/Users/kiera/AppData/Local/Temp/pig/look_trash_dumpster_front.png"}}
+{"tool": "render", "args": {"yaw": 35, "pitch": 20, "width": 640, "height": 640, "path": "C:/Users/kiera/AppData/Local/Temp/pig/look_trash_dumpster_34.png"}}
+{"tool": "new_project", "args": {"mesh": "assets/pipes_cluster.glb", "resolution": 2048, "smart_material": "Rusty steel"}}
+{"tool": "render", "args": {"yaw": 0, "pitch": 4, "width": 640, "height": 640, "path": "C:/Users/kiera/AppData/Local/Temp/pig/look_pipes_cluster_front.png"}}
+{"tool": "render", "args": {"yaw": 35, "pitch": 20, "width": 640, "height": 640, "path": "C:/Users/kiera/AppData/Local/Temp/pig/look_pipes_cluster_34.png"}}

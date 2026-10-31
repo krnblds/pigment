@@ -613,7 +613,8 @@ impl Document {
                 let mut rough = self.fill_with("Roughness breakup", "Dark iron", Some(g(Grunge).with(0.5, 6.0)));
                 only(&mut rough, &[Channel::Roughness]);
                 let seams = self.fill_with("Panel seams", "Panel seam", Some(g(PanelLines)));
-                let scratches = self.fill_with("Scratches", "Brushed steel", Some(g(Scratches)));
+                let mut scratches = self.fill_with("Scratches", "Brushed steel", Some(g(Scratches).with(0.1, 6.0)));
+                scratches.opacity = 0.4;
                 let mut wear = g(EdgeWear);
                 wear.amount = 0.55;
                 wear.noise_scale = 22.0;
