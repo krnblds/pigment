@@ -222,6 +222,13 @@ impl PigmentApp {
         log::info!("debug dump written to {}", dir.display());
     }
 
+    /// The one place selection changes. Fill layers are always painted through
+    /// their mask, so selecting one with a mask selects the mask too.
+    pub(super) fn select(&mut self, id: Option<LayerId>, want_mask: bool) {
+        self.selected = id;
+        self.paint_mask = id.and_then(|id| self.doc.layer(id)).is_some_and(|l| l.mask.is_some() && (want_mask || !l.is_paint()));
+    }
+
     fn set_status(&mut self, msg: impl Into<String>, err: bool) {
         let msg = msg.into();
         if err {
@@ -249,11 +256,11 @@ impl PigmentApp {
         self.ts = TexSet::new(d, q, doc.resolution);
         self.painter.resize(d, doc.resolution);
         self.committed = doc.clone();
-        self.selected = doc.layers.iter().rev().find(|l| l.is_paint()).or(doc.layers.last()).map(|l| l.id);
+        let sel = doc.layers.iter().rev().find(|l| l.is_paint()).or(doc.layers.last()).map(|l| l.id);
         self.doc = doc;
         self.composited = None;
         self.stroke = None;
-        self.paint_mask = false;
+        self.select(sel, false);
     }
 
     fn new_project(&mut self, rs: &RenderState, mesh: Mesh, source: Option<PathBuf>, mut doc: Document) {
@@ -297,21 +304,30 @@ impl PigmentApp {
     fn open_project(&mut self, rs: &RenderState, path: &Path) {
         let dir = if path.is_dir() { path.to_path_buf() } else { path.parent().map(Path::to_path_buf).unwrap_or_default() };
         let result = (|| -> anyhow::Result<()> {
+            // Read everything first: a corrupt file must not leave a half-loaded
+            // project that a later Save would write over the previous one.
             let doc = project::load_manifest(&dir)?;
             let mesh = Mesh::load(&dir.join(&doc.mesh))?;
-            self.reset_state(rs, doc);
-            let (d, q) = (&rs.device, &rs.queue);
-            let size = self.doc.resolution;
-            for l in self.doc.layers.clone() {
+            let size = doc.resolution;
+            let mut layer_px = Vec::new();
+            let mut mask_px = Vec::new();
+            for l in &doc.layers {
                 if let Some(r) = l.paint_res() {
-                    let px = project::read_layer(&dir, r, size)?;
-                    io::upload_layer(d, q, &mut self.ts, r, &px);
+                    layer_px.push((r, project::read_layer(&dir, r, size)?));
                 }
                 if let Some(m) = &l.mask {
-                    match project::read_mask(&dir, m.res, size)? {
-                        Some(px) => io::upload_mask(d, q, &mut self.ts, m.res, &px),
-                        None => self.ts.new_mask(d, q, m.res, true),
-                    }
+                    mask_px.push((m.res, project::read_mask(&dir, m.res, size)?));
+                }
+            }
+            self.reset_state(rs, doc);
+            let (d, q) = (&rs.device, &rs.queue);
+            for (r, px) in &layer_px {
+                io::upload_layer(d, q, &mut self.ts, *r, px);
+            }
+            for (r, px) in mask_px {
+                match px {
+                    Some(px) => io::upload_mask(d, q, &mut self.ts, r, &px),
+                    None => self.ts.new_mask(d, q, r, true),
                 }
             }
             self.ts.unsaved.clear();
@@ -429,8 +445,10 @@ impl PigmentApp {
         self.painter.resize(d, res);
         self.doc.resolution = res;
         self.committed.resolution = res;
-        // tile snapshots are resolution-specific
+        // tile snapshots are resolution-specific; textures only history used go too
         let _ = self.history.clear();
+        let live = self.live_resources();
+        self.ts.retain(&live);
         if let Some(mg) = &self.mesh_gpu {
             let (c, r) = self.mesh.bounding_sphere();
             self.ts.prepare_mesh(d, q, mg, c, r);
@@ -517,7 +535,11 @@ impl PigmentApp {
         let label = entry.label.clone();
         match &mut entry.data {
             Edit::Doc { before, after } => {
-                let d = if redo { (**after).clone() } else { (**before).clone() };
+                let mut d = if redo { (**after).clone() } else { (**before).clone() };
+                // Ids are never reused: an undone layer's pixels may still exist
+                // (the redo branch references them), so a re-minted id would
+                // silently pick them up.
+                d.next_id = d.next_id.max(self.doc.next_id).max(self.committed.next_id);
                 self.doc = d.clone();
                 self.committed = d;
             }
@@ -527,9 +549,8 @@ impl PigmentApp {
                 self.composited = None;
             }
         }
-        if self.selected.is_none_or(|id| self.doc.layer(id).is_none()) {
-            self.selected = self.doc.layers.last().map(|l| l.id);
-        }
+        let sel = self.selected.filter(|id| self.doc.layer(*id).is_some()).or_else(|| self.doc.layers.last().map(|l| l.id));
+        self.select(sel, self.paint_mask);
         self.modified = true;
         if !redo {
             self.counters.undos += 1;
@@ -544,9 +565,14 @@ impl PigmentApp {
     /// so the brush reveals the fill where you paint (like Substance).
     fn auto_mask_for_fill(&mut self, rs: &RenderState) {
         let Some(i) = self.selected.and_then(|id| self.doc.index_of(id)) else { return };
-        if self.doc.layers[i].is_paint() || self.doc.layers[i].mask.is_some() {
+        if self.doc.layers[i].is_paint() {
             return;
         }
+        if self.doc.layers[i].mask.is_some() {
+            self.paint_mask = true; // keep the UI on the tab the brush actually paints
+            return;
+        }
+        self.commit_doc_changes();
         let res = self.doc.mint();
         self.ts.new_mask(&rs.device, &rs.queue, res, false);
         self.doc.layers[i].mask = Some(Mask { res, generator: None, invert: false, enabled: true });
@@ -816,6 +842,56 @@ mod tests {
         out
     }
 
+    /// Review finding: undo rolled the id counter back, so a new layer could
+    /// reuse the id of an undone duplicate and show its pixels.
+    #[test]
+    fn ids_are_never_reused_after_undo() {
+        let Some(rs) = headless() else { return };
+        let mut app = PigmentApp::create(&rs, None);
+        app.change_resolution(&rs, 512);
+        paint(&mut app, &rs, Vec2::new(250.0, 450.0), Vec2::new(550.0, 420.0));
+        app.duplicate_selected(&rs);
+        app.commit_doc_changes();
+        let dup_res = app.doc.layer(app.selected.unwrap()).unwrap().paint_res().unwrap();
+        app.undo(&rs, false);
+        let l = app.doc.new_paint_layer("Fresh");
+        let fresh_res = l.paint_res().unwrap();
+        app.insert_layer(l);
+        app.commit_doc_changes();
+        assert_ne!(fresh_res, dup_res, "resource id reused");
+        app.ensure_composited(&rs);
+        let px = io::read_layer(&rs.device, &rs.queue, &app.ts, fresh_res).unwrap();
+        assert!(px.color.chunks_exact(4).all(|p| p[3] == 0), "new layer came with old pixels");
+    }
+
+    /// Review finding: a failed open must leave the current project untouched.
+    #[test]
+    fn failed_open_keeps_the_current_project() {
+        let Some(rs) = headless() else { return };
+        let tmp = std::env::temp_dir().join(format!("pigment-badopen-{}", std::process::id()));
+        std::fs::remove_dir_all(&tmp).ok();
+        let mut app = PigmentApp::create(&rs, None);
+        app.change_resolution(&rs, 512);
+        paint(&mut app, &rs, Vec2::new(250.0, 450.0), Vec2::new(550.0, 420.0));
+        // project B with a corrupt layer image
+        let b = tmp.join("b.pigment");
+        app.save_to(&rs, b.clone());
+        let bad = walk(&b).into_iter().find(|f| f.ends_with("base_color.png")).unwrap();
+        std::fs::write(&bad, b"not a png").unwrap();
+        // project A, the one we have open
+        let a = tmp.join("a.pigment");
+        let l = app.doc.new_fill_layer("Only in A");
+        app.insert_layer(l);
+        app.commit_doc_changes();
+        app.save_to(&rs, a.clone());
+        let doc_a = app.doc.clone();
+        app.open_project(&rs, &b);
+        assert!(app.status.as_ref().is_some_and(|(_, err)| *err), "corrupt project should fail to open");
+        assert_eq!(app.doc, doc_a, "document changed by a failed open");
+        assert_eq!(app.project_dir.as_deref(), Some(a.as_path()));
+        std::fs::remove_dir_all(&tmp).ok();
+    }
+
     /// The quick-start guide advances as the user does each step.
     #[test]
     fn quick_start_guide_follows_the_user() {
@@ -856,6 +932,57 @@ mod tests {
         app.tour_show_me();
         app.tour_update();
         assert_eq!(app.tour.step, 6, "finished");
+    }
+
+    /// Builds `examples/<name>.pigment` from a Blender-made GLB with the worn
+    /// paint smart material, and renders previews to %TEMP%/pig/showcase_*.png.
+    /// `PIGMENT_SHOWCASE=assets/ammo_box.glb cargo test -p pigment --release build_showcase -- --ignored`
+    #[test]
+    #[ignore]
+    fn build_showcase() {
+        let Some(rs) = headless() else { return };
+        let mesh_path = std::env::var("PIGMENT_SHOWCASE").unwrap_or_else(|_| "assets/ammo_box.glb".into());
+        let paint = std::env::var("PIGMENT_SHOWCASE_PAINT").unwrap_or_else(|_| "Olive drab".into());
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let mesh_path = root.join(mesh_path);
+        let mut app = PigmentApp::create(&rs, None);
+        app.open_mesh_as_new(&rs, &mesh_path);
+        assert!(app.status.as_ref().is_some_and(|(_, e)| !e), "{:?}", app.status);
+        let mut doc = Document { resolution: 2048, mesh: String::new(), ..Default::default() };
+        for l in doc.worn_paint_layers(&paint) {
+            doc.layers.push(l);
+        }
+        let top = doc.new_paint_layer("Paint");
+        doc.layers.push(top);
+        // small hard-surface parts are all edge: soften the curvature and the wear a little
+        doc.bake.curvature_strength = 0.6;
+        if let Some(g) = doc.layers.iter_mut().filter_map(|l| l.mask.as_mut()?.generator.as_mut()).find(|g| g.kind == GeneratorKind::EdgeWear) {
+            g.amount = 0.5;
+        }
+        app.doc = doc.clone();
+        app.committed = doc;
+        app.bake(&rs);
+        app.selected = app.doc.layers.last().map(|l| l.id);
+        app.ensure_composited(&rs);
+        let name = mesh_path.file_stem().unwrap().to_string_lossy().to_string();
+        let out = std::env::temp_dir().join("pig");
+        std::fs::create_dir_all(&out).ok();
+        app.viewport.ensure_targets(&rs.device, [1400, 1000]);
+        let base = app.camera.clone();
+        for (k, (yaw, pitch, zoom)) in [(0.65f32, 0.38f32, 0.78f32), (-2.3, 0.25, 0.85), (0.2, 0.05, 0.5)].iter().enumerate() {
+            app.camera.yaw = *yaw;
+            app.camera.pitch = *pitch;
+            app.camera.distance = base.distance * zoom;
+            app.viewport.draw(&rs.device, &rs.queue, &app.camera, &app.view, app.mesh_gpu.as_ref(), &app.env, &app.ts);
+            let img = crate::render::gpu::readback(&rs.device, &rs.queue, app.viewport.color().unwrap());
+            image::save_buffer(out.join(format!("showcase_{name}_{k}.png")), &img, 1400, 1000, image::ExtendedColorType::Rgba8).unwrap();
+        }
+        app.camera = base;
+        let dir = root.join("examples").join(format!("{name}.pigment"));
+        std::fs::remove_dir_all(&dir).ok();
+        app.save_to(&rs, dir.clone());
+        assert!(!app.modified, "{:?}", app.status);
+        eprintln!("saved {}", dir.display());
     }
 
     /// Render the startup state through the app's own code path.

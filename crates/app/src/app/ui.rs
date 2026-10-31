@@ -567,6 +567,17 @@ impl PigmentApp {
                         ui.close();
                     }
                     ui.separator();
+                    ui.label(RichText::new("Smart materials (several layers)").size(11.0).color(MUTED));
+                    for paint in ["Olive drab", "Teal paint", "Orange paint", "Red paint"] {
+                        if ui.button(format!("Worn {} metal", paint.to_lowercase().replace(" paint", ""))).on_hover_text("Paint worn to bare steel on edges, with grime in crevices").clicked() {
+                            let layers = self.doc.worn_paint_layers(paint);
+                            for l in layers {
+                                self.insert_layer(l);
+                            }
+                            ui.close();
+                        }
+                    }
+                    ui.separator();
                     ui.label(RichText::new("Smart layers").size(11.0).color(MUTED));
                     if ui.button("Edge wear: bare metal on edges").clicked() {
                         self.add_smart(rs, "Edge wear", "Steel", GeneratorKind::EdgeWear, 0.55);
@@ -676,10 +687,7 @@ impl PigmentApp {
             ui.add_space(2.0);
         }
         if let Some((id, mask)) = select {
-            self.selected = Some(id);
-            let (has_mask, is_paint) = self.doc.layer(id).map(|l| (l.mask.is_some(), l.is_paint())).unwrap_or((false, true));
-            // fill layers are painted through their mask
-            self.paint_mask = (mask || !is_paint) && has_mask;
+            self.select(Some(id), mask);
         }
 
         ui.horizontal(|ui| {
@@ -698,8 +706,8 @@ impl PigmentApp {
             if ui.add_enabled(sel.is_some(), egui::Button::new("Delete")).clicked() {
                 if let Some(i) = sel {
                     self.doc.layers.remove(i);
-                    self.selected = self.doc.layers.get(i.min(self.doc.layers.len().saturating_sub(1))).map(|l| l.id);
-                    self.paint_mask = false;
+                    let next = self.doc.layers.get(i.min(self.doc.layers.len().saturating_sub(1))).map(|l| l.id);
+                    self.select(next, false);
                 }
             }
         });
@@ -728,14 +736,14 @@ impl PigmentApp {
         self.insert_layer(l);
     }
 
-    fn insert_layer(&mut self, l: Layer) {
+    pub(super) fn insert_layer(&mut self, l: Layer) {
         let at = self.selected.and_then(|id| self.doc.index_of(id)).map(|i| i + 1).unwrap_or(self.doc.layers.len());
-        self.selected = Some(l.id);
-        self.paint_mask = false;
+        let id = l.id;
         self.doc.layers.insert(at, l);
+        self.select(Some(id), false);
     }
 
-    fn duplicate_selected(&mut self, rs: &RenderState) {
+    pub(super) fn duplicate_selected(&mut self, rs: &RenderState) {
         let Some(i) = self.selected.and_then(|id| self.doc.index_of(id)) else { return };
         let mut l = self.doc.layers[i].clone();
         l.id = self.doc.mint();
@@ -750,8 +758,9 @@ impl PigmentApp {
             self.ts.duplicate_mask(&rs.device, &rs.queue, m.res, new);
             m.res = new;
         }
-        self.selected = Some(l.id);
+        let id = l.id;
         self.doc.layers.insert(i + 1, l);
+        self.select(Some(id), false);
     }
 
     fn properties(&mut self, ui: &mut egui::Ui, rs: &RenderState) {

@@ -318,6 +318,7 @@ pub fn material_presets() -> Vec<(&'static str, MaterialValues)> {
         ("Copper", m([0.95, 0.64, 0.54], 0.3, 1.0, 0.0)),
         ("Teal paint", m([0.1, 0.32, 0.35], 0.45, 0.0, 0.0)),
         ("Orange paint", m([0.86, 0.36, 0.08], 0.4, 0.0, 0.0)),
+        ("Olive drab", m([0.29, 0.31, 0.18], 0.6, 0.0, 0.0)),
         ("Red paint", m([0.62, 0.07, 0.05], 0.4, 0.0, 0.0)),
         ("White plastic", m([0.85, 0.85, 0.83], 0.35, 0.0, 0.0)),
         ("Black rubber", m([0.04, 0.04, 0.04], 0.9, 0.0, 0.0)),
@@ -345,46 +346,51 @@ impl Document {
         d
     }
 
-    /// The demo stack: painted metal, worn to bare steel on edges (with
-    /// recessed chips), grime in the creases, and an empty paint layer on top.
+    /// The demo stack: teal painted metal worn to bare steel on edges, with
+    /// grime in the creases, and an empty paint layer on top.
     pub fn demo() -> Self {
         let mut d = Document::default();
-        let mut base = d.new_fill_layer("Painted metal");
-        base.kind = LayerKind::Fill { values: material_preset("Teal paint") };
-        d.layers.push(base);
+        for l in d.worn_paint_layers("Teal paint") {
+            d.layers.push(l);
+        }
+        let paint = d.new_paint_layer("Paint");
+        d.layers.push(paint);
+        d
+    }
 
-        let mut wear = d.new_fill_layer("Edge wear");
+    /// Smart material: paint (any preset) worn to bare steel on edges, with
+    /// recessed chips, plus grime in crevices. Three layers, bottom to top.
+    pub fn worn_paint_layers(&mut self, paint: &str) -> Vec<Layer> {
+        let mut base = self.new_fill_layer(&paint);
+        base.kind = LayerKind::Fill { values: material_preset(paint) };
+
+        let mut wear = self.new_fill_layer("Edge wear");
         let mut steel = material_preset("Steel");
         steel.height = -0.35;
         wear.kind = LayerKind::Fill { values: steel };
         wear.channels.normal.enabled = false;
-        let res = d.mint();
+        let res = self.mint();
         let mut g = Generator::new(GeneratorKind::EdgeWear);
         g.amount = 0.62;
         g.softness = 0.04;
         g.noise_scale = 22.0;
         g.noise_amount = 0.9;
         wear.mask = Some(Mask { res, generator: Some(g), invert: false, enabled: true });
-        d.layers.push(wear);
 
-        let mut dirt = d.new_fill_layer("Dirt");
+        let mut dirt = self.new_fill_layer("Dirt");
         dirt.kind = LayerKind::Fill { values: material_preset("Grime") };
         dirt.channels.metallic.enabled = false;
         dirt.channels.height.enabled = false;
         dirt.channels.normal.enabled = false;
         dirt.opacity = 0.85;
-        let res = d.mint();
+        let res = self.mint();
         let mut g = Generator::new(GeneratorKind::Dirt);
         g.amount = 0.55;
         g.softness = 0.2;
         g.noise_scale = 5.0;
         g.noise_amount = 0.7;
         dirt.mask = Some(Mask { res, generator: Some(g), invert: false, enabled: true });
-        d.layers.push(dirt);
-
-        let paint = d.new_paint_layer("Paint");
-        d.layers.push(paint);
-        d
+        vec![base, wear, dirt]
     }
 
     pub fn mint(&mut self) -> u64 {

@@ -300,6 +300,7 @@ impl TexSet {
                         drop(gpu::pass(&mut enc, "layer clear", &[&t.view], Some(wgpu::Color::TRANSPARENT)));
                     }
                     self.layers.insert(r, lt);
+                    self.unsaved.insert(r);
                 }
             }
             if let Some(m) = &l.mask {
@@ -307,6 +308,7 @@ impl TexSet {
                     let t = Tex::target(device, "mask", self.res, MASK_FORMAT);
                     drop(gpu::pass(&mut enc, "mask clear", &[&t.view], Some(wgpu::Color::WHITE)));
                     self.masks.insert(m.res, t);
+                    self.unsaved.insert(m.res);
                 }
             }
         }

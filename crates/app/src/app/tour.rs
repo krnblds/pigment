@@ -134,18 +134,16 @@ impl PigmentApp {
     pub(super) fn tour_show_me(&mut self) {
         match self.tour.step {
             1 => {
-                if let Some(l) = self.doc.layers.iter().rev().find(|l| l.is_paint()) {
-                    self.selected = Some(l.id);
-                }
-                self.paint_mask = false;
+                let top = self.doc.layers.iter().rev().find(|l| l.is_paint()).map(|l| l.id);
+                self.select(top, false);
                 self.brush.values = material_preset("Orange paint");
                 self.brush.channels = [true, true, true, false, false];
                 self.brush.erase = false;
             }
             3 | 4 => {
                 if let Some(i) = self.edge_wear_layer() {
-                    self.selected = Some(self.doc.layers[i].id);
-                    self.paint_mask = true;
+                    let id = self.doc.layers[i].id;
+                    self.select(Some(id), true);
                     if self.tour.step == 4 {
                         self.brush.mask_white = false;
                         self.brush.erase = false;
