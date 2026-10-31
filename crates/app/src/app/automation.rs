@@ -713,4 +713,23 @@ mod tests {
         assert!(pink_after < pink / 10, "undo left the decal ({pink_after})");
         std::fs::remove_dir_all(out).ok();
     }
+
+    /// Regression: sliver triangles (from the vending machine's vent cut-outs)
+    /// used to smear corner curvature across the flat side panel.
+    #[test]
+    fn flat_panels_stay_flat_next_to_sliver_triangles() {
+        let Ok(mut s) = Session::new() else { return };
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        s.new_project(&json!({ "mesh": root.join("assets/vending_machine.glb"), "resolution": 1024 })).unwrap();
+        let img = s.render(&json!({ "yaw": 90, "pitch": 0, "width": 640, "height": 640, "view": "curvature" })).unwrap();
+        let g = image::load_from_memory(&img.png).unwrap().to_luma8();
+        // the flat area between the two vents
+        let mut worst = 0i32;
+        for y in (240..440).step_by(4) {
+            for x in (260..380).step_by(4) {
+                worst = worst.max((g.get_pixel(x, y).0[0] as i32 - 128).abs());
+            }
+        }
+        assert!(worst < 20, "flat side panel reads as curved (max deviation {worst}/255)");
+    }
 }

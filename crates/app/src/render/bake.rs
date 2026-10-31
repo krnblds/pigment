@@ -42,6 +42,8 @@ struct CurvVertex {
     heights: [f32; 3],
     convexity: [f32; 3],
     vcurv: [f32; 3],
+    world: [f32; 3],
+    corners: [[f32; 3]; 3],
 }
 
 /// Evenly spread directions over the sphere (Fibonacci lattice).
@@ -107,7 +109,7 @@ impl Baker {
         );
 
         let curv_bgl = gpu::bgl(device, "curv", &[gpu::uniform_entry(0, false)]);
-        let curv_attrs = wgpu::vertex_attr_array![0 => Float32x2, 1 => Float32x3, 2 => Float32x3, 3 => Float32x3, 4 => Float32x3];
+        let curv_attrs = wgpu::vertex_attr_array![0 => Float32x2, 1 => Float32x3, 2 => Float32x3, 3 => Float32x3, 4 => Float32x3, 5 => Float32x3, 6 => Float32x3, 7 => Float32x3, 8 => Float32x3];
         let curv_pipe = gpu::pipeline(
             device,
             gpu::PipeDesc {
@@ -248,6 +250,8 @@ impl Baker {
                     heights: cd.heights[t],
                     convexity: cd.edge_convexity[t],
                     vcurv: [cd.vertex[tri[0] as usize], cd.vertex[tri[1] as usize], cd.vertex[tri[2] as usize]],
+                    world: mesh.vertices[tri[k] as usize].position,
+                    corners: [0, 1, 2].map(|c| mesh.vertices[tri[c] as usize].position),
                 });
             }
         }

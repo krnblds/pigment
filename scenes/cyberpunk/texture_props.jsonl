@@ -1,5 +1,8 @@
 {"tool": "new_project", "args": {"mesh": "assets/vending_machine.glb", "resolution": 2048, "smart_material": "Worn violet paint metal"}}
-{"tool": "project_decal", "args": {"image": "assets/decals/poster_yume.png", "rect": [0.336, 0.184, 0.59, 0.653], "yaw": 0, "pitch": 4, "emissive_strength": 2.5}}
+{"tool": "project_decal", "args": {"image": "assets/decals/vending_products.png", "rect": [0.341, 0.175, 0.581, 0.6375], "yaw": 0, "pitch": 0, "material": "White plastic", "emissive_strength": 1.6}}
+{"tool": "project_decal", "args": {"image": "assets/decals/poster_yume.png", "rect": [0.366, 0.33, 0.641, 0.72], "yaw": 90, "pitch": 0}}
+{"tool": "project_decal", "args": {"image": "assets/decals/poster_yume.png", "rect": [0.359, 0.33, 0.634, 0.72], "yaw": -90, "pitch": 0}}
+{"tool": "project_decal", "args": {"image": "assets/decals/logo_hoshikawa_dynamics.png", "rect": [0.36, 0.128, 0.6, 0.162], "yaw": 0, "pitch": 0, "tint": [0.9, 0.95, 1.0], "emissive_strength": 0.8}}
 {"tool": "render", "args": {"yaw": 0, "pitch": 4, "width": 640, "height": 640, "path": "C:/Users/kiera/AppData/Local/Temp/pig/tex_vending_machine_front.png", "exposure": -0.5}}
 {"tool": "render", "args": {"yaw": 35, "pitch": 20, "width": 640, "height": 640, "path": "C:/Users/kiera/AppData/Local/Temp/pig/tex_vending_machine_34.png", "exposure": -0.5}}
 {"tool": "export_textures", "args": {"dir": "scenes/cyberpunk/textures/vending_machine", "preset": "separate", "name": "vending_machine"}}
