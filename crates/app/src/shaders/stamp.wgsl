@@ -68,3 +68,43 @@ fn fs_stamp(i: StampOut) -> @location(0) vec4<f32> {
     return vec4<f32>(f, 0.0, 0.0, 1.0);
 }
 
+
+// ---------- decals ----------
+// Same projection and visibility as the brush, but coverage and colour come
+// from an image laid over a screen rectangle: a sticker shot from the camera.
+@group(1) @binding(0) var decal: texture_2d<f32>;
+@group(1) @binding(1) var decal_samp: sampler;
+struct Decal {
+    rect: vec4<f32>,     // x0, y0, x1, y1 in viewport pixels
+    params: vec4<f32>,   // opacity, mip level, alpha from luminance (0/1)
+};
+@group(1) @binding(2) var<uniform> dp: Decal;
+
+struct DecalOut {
+    @location(0) mask: vec4<f32>,
+    @location(1) color: vec4<f32>,
+};
+
+@fragment
+fn fs_decal(i: StampOut) -> DecalOut {
+    let clip = view.view_proj * vec4<f32>(i.world, 1.0);
+    if (clip.w <= 0.0) { discard; }
+    let ndc = clip.xyz / clip.w;
+    let px = vec2<f32>((ndc.x * 0.5 + 0.5) * view.viewport.x, (0.5 - ndc.y * 0.5) * view.viewport.y);
+    let uv = (px - dp.rect.xy) / max(dp.rect.zw - dp.rect.xy, vec2<f32>(1.0));
+    if (any(uv < vec2<f32>(0.0)) || any(uv > vec2<f32>(1.0))) { discard; }
+    if (px.x < 0.0 || px.y < 0.0 || px.x >= view.viewport.x || px.y >= view.viewport.y) { discard; }
+    let scene = textureLoad(depth, vec2<i32>(px), 0);
+    let near = view.viewport.z;
+    if (near / max(ndc.z, 1e-9) > (near / max(scene, 1e-9)) * 1.004 + near * 2.0) { discard; }
+    let facing = dot(normalize(i.normal), normalize(view.eye.xyz - i.world));
+    let c = textureSampleLevel(decal, decal_samp, uv, dp.params.y);
+    var a = c.a;
+    if (dp.params.z > 0.5) { a = a * dot(c.rgb, vec3<f32>(0.299, 0.587, 0.114)); }
+    let cov = a * dp.params.x * smoothstep(0.0, 0.25, facing);
+    if (cov <= 0.002) { discard; }
+    var o: DecalOut;
+    o.mask = vec4<f32>(cov, 0.0, 0.0, 1.0);
+    o.color = vec4<f32>(c.rgb, 1.0);
+    return o;
+}

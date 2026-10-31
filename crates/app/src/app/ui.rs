@@ -279,6 +279,9 @@ impl PigmentApp {
                 let (c, r) = self.mesh.bounding_sphere();
                 self.camera.frame(c, r);
             }
+            if i.key_pressed(Key::Escape) {
+                self.decal_tool = None;
+            }
             if i.key_pressed(Key::F12) {
                 self.dump_requested = true;
             }
@@ -396,11 +399,20 @@ impl PigmentApp {
                 let b = egui::Button::new(RichText::new(label).strong()).selected(on).min_size(egui::vec2(70.0, 26.0));
                 ui.add(b).on_hover_text(tip).clicked()
             };
-            if tool(ui, !self.brush.erase, "Brush", "Paint (B)") {
+            if tool(ui, !self.brush.erase && self.decal_tool.is_none(), "Brush", "Paint (B)") {
                 self.brush.erase = false;
+                self.decal_tool = None;
             }
-            if tool(ui, self.brush.erase, "Eraser", "Erase (E)") {
+            if tool(ui, self.brush.erase && self.decal_tool.is_none(), "Eraser", "Erase (E)") {
                 self.brush.erase = true;
+                self.decal_tool = None;
+            }
+            if tool(ui, self.decal_tool.is_some(), "Decal…", "Stick an image (sign, logo, label) onto the model: pick a PNG, then drag a box over the model") {
+                let start = std::env::current_dir().map(|d| d.join("assets").join("decals")).unwrap_or_default();
+                if let Some(p) = rfd::FileDialog::new().set_directory(start).add_filter("Images", &["png", "jpg", "jpeg"]).pick_file() {
+                    self.decal_tool = Some((p, None));
+                    self.brush.erase = false;
+                }
             }
             ui.separator();
             let slider = |ui: &mut egui::Ui, label: &str, v: &mut f32, r: std::ops::RangeInclusive<f32>, log: bool, pct: bool| {
@@ -1024,8 +1036,31 @@ impl PigmentApp {
         self.hover = response.hover_pos();
         let d = Vec2::new(delta.x, delta.y);
 
+        // decal tool: drag a box, release to stick the image there (stays active for more)
+        let decal_mode = self.decal_tool.is_some();
+        if let Some((path, start)) = self.decal_tool.clone() {
+            if pressed && response.hovered() && !alt {
+                self.decal_tool = Some((path.clone(), latest));
+            }
+            if let (Some(a), Some(b)) = (start, latest) {
+                let r = egui::Rect::from_two_pos(a, b);
+                ui.painter().rect_stroke(r, CornerRadius::ZERO, Stroke::new(1.5, ACCENT), egui::StrokeKind::Middle);
+                ui.painter().text(r.left_top() + egui::vec2(4.0, -4.0), egui::Align2::LEFT_BOTTOM, path.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default(), egui::FontId::proportional(12.0), ACCENT);
+                if released {
+                    if r.width() > 4.0 && r.height() > 4.0 {
+                        let (p0, p1) = (to_px(r.min), to_px(r.max));
+                        match self.project_decal(rs, &path, [p0.x, p0.y, p1.x, p1.y], viewport_px, false) {
+                            Ok(()) => self.set_status(format!("Decal placed: {} (Ctrl+Z to undo, Esc to stop placing)", path.display()), false),
+                            Err(e) => self.set_status(e, true),
+                        }
+                    }
+                    self.decal_tool = Some((path, None));
+                }
+            }
+        }
+
         // painting
-        if pressed && response.hovered() && !alt && self.stroke.is_none() {
+        if !decal_mode && pressed && response.hovered() && !alt && self.stroke.is_none() {
             if let Some(p) = latest {
                 self.begin_stroke(rs, to_px(p), viewport_px);
             }

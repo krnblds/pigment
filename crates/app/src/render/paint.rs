@@ -73,6 +73,13 @@ impl Snapshot {
 
 const MAX_STAMPS: usize = 256;
 
+#[repr(C)]
+#[derive(Clone, Copy, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct DecalGpu {
+    pub rect: [f32; 4],   // x0, y0, x1, y1 in viewport pixels
+    pub params: [f32; 4], // opacity, mip level, alpha from luminance
+}
+
 pub struct Painter {
     res: u32,
     stamp_pipe: wgpu::RenderPipeline,
@@ -84,6 +91,12 @@ pub struct Painter {
     stamp_buf: wgpu::Buffer,
     brush_buf: wgpu::Buffer,
     stroke_mask: Tex,
+    /// Per-texel colour written by a decal projection.
+    decal_color: Tex,
+    decal_pipe: wgpu::RenderPipeline,
+    decal_bgl: wgpu::BindGroupLayout,
+    decal_buf: wgpu::Buffer,
+    decal_sampler: wgpu::Sampler,
     before: [Tex; 6],
     before_mask: Tex,
     active: Option<Target>,
@@ -98,7 +111,7 @@ impl Painter {
         let apply_bgl = gpu::bgl(
             device,
             "apply",
-            &[gpu::ntex(0), gpu::ntex(1), gpu::ntex(2), gpu::ntex(3), gpu::ntex(4), gpu::ntex(5), gpu::ntex(6), gpu::uniform_entry(7, false)],
+            &[gpu::ntex(0), gpu::ntex(1), gpu::ntex(2), gpu::ntex(3), gpu::ntex(4), gpu::ntex(5), gpu::ntex(6), gpu::uniform_entry(7, false), gpu::ntex(8)],
         );
         let attrs = wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3, 2 => Float32x2, 3 => Float32x4];
         let mesh_layout = [Some(wgpu::VertexBufferLayout {
@@ -122,6 +135,29 @@ impl Painter {
                 cull: None,
             },
         );
+        let decal_bgl = gpu::bgl(device, "decal", &[gpu::ftex(0), gpu::sampler_entry(1, wgpu::SamplerBindingType::Filtering), gpu::uniform_entry(2, false)]);
+        let decal_pipe = gpu::pipeline(
+            device,
+            gpu::PipeDesc {
+                label: "decal",
+                module: &sm,
+                vs: "vs_stamp",
+                fs: Some("fs_decal"),
+                layout: &gpu::layout(device, "decal", &[&stamp_bgl, &decal_bgl]),
+                buffers: &mesh_layout,
+                targets: &[gpu::target(wgpu::TextureFormat::R16Float, Some(gpu::MAX_BLEND)), gpu::target(wgpu::TextureFormat::Rgba16Float, None)],
+                depth: None,
+                samples: 1,
+                cull: None,
+            },
+        );
+        let decal_buf = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("decal"),
+            size: std::mem::size_of::<DecalGpu>() as u64,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        let decal_sampler = gpu::linear_sampler(device, 8);
         let apply_layout = gpu::layout(device, "apply", &[&apply_bgl]);
         let layer_targets: Vec<_> = LAYER_FORMATS.iter().map(|f| gpu::target(*f, None)).collect();
         let apply_pipe = gpu::fullscreen(device, "apply", &am, "fs_apply", &apply_layout, &layer_targets);
@@ -143,6 +179,7 @@ impl Painter {
             mapped_at_creation: false,
         });
         let (stroke_mask, before, before_mask) = Self::scratch(device, res);
+        let decal_color = Tex::target(device, "decal colour", res, wgpu::TextureFormat::Rgba16Float);
         Self {
             res,
             stamp_pipe,
@@ -154,6 +191,11 @@ impl Painter {
             stamp_buf,
             brush_buf,
             stroke_mask,
+            decal_color,
+            decal_pipe,
+            decal_bgl,
+            decal_buf,
+            decal_sampler,
             before,
             before_mask,
             active: None,
@@ -172,6 +214,7 @@ impl Painter {
         if res != self.res {
             self.res = res;
             (self.stroke_mask, self.before, self.before_mask) = Self::scratch(device, res);
+            self.decal_color = Tex::target(device, "decal colour", res, wgpu::TextureFormat::Rgba16Float);
         }
     }
 
@@ -185,7 +228,7 @@ impl Painter {
     pub fn begin(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, ts: &TexSet, target: Target) -> bool {
         let Some(live) = Self::target_textures(ts, target) else { return false };
         let mut enc = device.create_command_encoder(&Default::default());
-        drop(gpu::pass(&mut enc, "stroke mask clear", &[&self.stroke_mask.view], Some(wgpu::Color::TRANSPARENT)));
+        drop(gpu::pass(&mut enc, "stroke mask clear", &[&self.stroke_mask.view, &self.decal_color.view], Some(wgpu::Color::TRANSPARENT)));
         let scratch: Vec<&Tex> = match target {
             Target::Layer(_) => self.before.iter().collect(),
             Target::Mask(_) => vec![&self.before_mask],
@@ -237,7 +280,58 @@ impl Painter {
             }
             queue.submit([enc.finish()]);
         }
+        self.apply(device, queue, target, &live, rect);
+    }
 
+    /// Project an image onto the target from the camera (`view`), over the
+    /// viewport rectangle in `decal.rect`, then re-apply inside `rect` (texels).
+    /// `brush.enabled3[1]` must be 1 so the apply pass takes colour from the image.
+    #[allow(clippy::too_many_arguments)]
+    pub fn decal(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        ts: &TexSet,
+        mesh: &MeshGpu,
+        depth: &wgpu::TextureView,
+        view: ViewGpu,
+        image: &Tex,
+        decal: DecalGpu,
+        brush: &BrushGpu,
+        rect: [u32; 4],
+    ) {
+        let Some(target) = self.active else { return };
+        let Some(live) = Self::target_textures(ts, target) else { return };
+        queue.write_buffer(&self.brush_buf, 0, bytemuck::bytes_of(brush));
+        queue.write_buffer(&self.view_buf, 0, bytemuck::bytes_of(&view));
+        queue.write_buffer(&self.decal_buf, 0, bytemuck::bytes_of(&decal));
+        let stamp_bg = gpu::bind_group(
+            device,
+            "stamp",
+            &self.stamp_bgl,
+            &[self.view_buf.as_entire_binding(), wgpu::BindingResource::TextureView(depth), self.stamp_buf.as_entire_binding()],
+        );
+        let decal_bg = gpu::bind_group(
+            device,
+            "decal",
+            &self.decal_bgl,
+            &[wgpu::BindingResource::TextureView(&image.view), wgpu::BindingResource::Sampler(&self.decal_sampler), self.decal_buf.as_entire_binding()],
+        );
+        let mut enc = device.create_command_encoder(&Default::default());
+        {
+            let mut pass = gpu::pass(&mut enc, "decal", &[&self.stroke_mask.view, &self.decal_color.view], None);
+            pass.set_pipeline(&self.decal_pipe);
+            pass.set_bind_group(0, &stamp_bg, &[]);
+            pass.set_bind_group(1, &decal_bg, &[]);
+            pass.set_vertex_buffer(0, mesh.vertices.slice(..));
+            pass.set_index_buffer(mesh.indices.slice(..), wgpu::IndexFormat::Uint32);
+            pass.draw_indexed(0..mesh.index_count, 0, 0..1);
+        }
+        queue.submit([enc.finish()]);
+        self.apply(device, queue, target, &live, rect);
+    }
+
+    fn apply(&self, device: &wgpu::Device, queue: &wgpu::Queue, target: Target, live: &[&Tex], rect: [u32; 4]) {
         let mut enc = device.create_command_encoder(&Default::default());
         let (pipe, before): (&wgpu::RenderPipeline, Vec<&Tex>) = match target {
             Target::Layer(_) => (&self.apply_pipe, self.before.iter().collect()),
@@ -247,6 +341,7 @@ impl Painter {
         let mut res = vec![tv(&self.stroke_mask)];
         res.extend(before.iter().map(|t| tv(t)));
         res.push(self.brush_buf.as_entire_binding());
+        res.push(tv(&self.decal_color));
         let bg = gpu::bind_group(device, "apply", &self.apply_bgl, &res);
         {
             let views: Vec<&wgpu::TextureView> = live.iter().map(|t| &t.view).collect();

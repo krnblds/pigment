@@ -532,6 +532,67 @@ impl Session {
         Ok(json!({ "painted_on": self.app.doc.layers[i].name, "mask": on_mask }))
     }
 
+    /// Project an image (decal) onto the model from a camera view, over a
+    /// viewport rectangle `rect` = [x0, y0, x1, y1] in 0..1.
+    pub fn project_decal(&mut self, a: &Value) -> Res<Value> {
+        let image = PathBuf::from(req(a, "image")?);
+        let rect: Vec<f32> = a.get("rect").and_then(Value::as_array).ok_or("missing `rect`: [x0, y0, x1, y1] in 0..1")?.iter().filter_map(|v| v.as_f64().map(|x| x as f32)).collect();
+        if rect.len() != 4 {
+            return Err("`rect` needs 4 numbers".into());
+        }
+        self.set_camera(a);
+        let i = match a.get("layer") {
+            Some(r) => self.find_layer(r)?,
+            None => match self.app.doc.layers.iter().rposition(|l| l.is_paint()) {
+                Some(i) => i,
+                None => {
+                    let l = self.app.doc.new_paint_layer("Decals");
+                    self.app.doc.layers.push(l);
+                    self.app.doc.layers.len() - 1
+                }
+            },
+        };
+        let id = self.app.doc.layers[i].id;
+        self.app.select(Some(id), a.get("mask").and_then(Value::as_bool).unwrap_or(false));
+        self.settle();
+        let b = &mut self.app.brush;
+        b.values = match s(a, "material") {
+            Some(m) => material_preset(m),
+            None => MaterialValues { base_color: [1.0; 3], roughness: 0.4, ..Default::default() },
+        };
+        if let Some(t) = a.get("tint").and_then(Value::as_array) {
+            for (k, x) in t.iter().take(3).enumerate() {
+                b.values.base_color[k] = x.as_f64().unwrap_or(1.0) as f32;
+            }
+        }
+        b.channels = [true, true, true, false, false, false];
+        if let Some(e) = f(a, "emissive_strength") {
+            b.values.emissive = b.values.base_color;
+            b.values.emissive_strength = e;
+            b.channels[5] = e > 0.0;
+        }
+        if let Some(h) = f(a, "height") {
+            b.values.height = h;
+            b.channels[3] = true;
+        }
+        if let Some(chs) = a.get("channels").and_then(Value::as_array) {
+            b.channels = [false; 6];
+            for c in chs.iter().filter_map(Value::as_str) {
+                b.channels[channel(c)?.index()] = true;
+            }
+        }
+        b.opacity = f(a, "opacity").unwrap_or(1.0);
+        b.erase = false;
+        b.mask_white = s(a, "mask_value").unwrap_or("white") != "black";
+        self.draw();
+        let px = Vec2::new(self.size[0] as f32, self.size[1] as f32);
+        let r = [rect[0] * px.x, rect[1] * px.y, rect[2] * px.x, rect[3] * px.y];
+        let lum = a.get("alpha_from_luminance").and_then(Value::as_bool).unwrap_or(false);
+        self.app.project_decal(&self.rs, &image, r, px, lum)?;
+        self.settle();
+        Ok(json!({ "decal": image, "on": self.app.doc.layers[i].name }))
+    }
+
     pub fn render(&mut self, a: &Value) -> Res<Image> {
         self.settle();
         self.set_camera(a);
@@ -637,6 +698,19 @@ mod tests {
         // bright neon: the core blows out towards white, the rim is cyan
         let cyan = rgba.pixels().filter(|p| p.0[2] > 180 && p.0[1] > 180).count();
         assert!(cyan > 100, "{cyan} glowing pixels");
+        // decal: a neon sign image projected onto the box, glowing pink
+        s.add_layer(&json!({ "kind": "paint", "name": "Signs" })).unwrap();
+        let d = s.project_decal(&json!({ "image": root.join("assets/decals/neon_open.png"), "rect": [0.25, 0.3, 0.75, 0.6], "tint": [1.0, 0.2, 0.7], "emissive_strength": 5.0 })).unwrap();
+        assert_eq!(d["on"], "Signs");
+        let img = s.render(&json!({ "view": "emission", "width": 320, "height": 240, "path": std::env::temp_dir().join("pig/decal_view.png") })).unwrap();
+        let rgba = image::load_from_memory(&img.png).unwrap().to_rgba8();
+        let pink = rgba.pixels().filter(|p| p.0[0] > 180 && p.0[2] > 120 && p.0[1] < 200).count();
+        assert!(pink > 200, "{pink} pink decal pixels");
+        s.undo(false).unwrap();
+        let img = s.render(&json!({ "view": "emission", "width": 320, "height": 240 })).unwrap();
+        let rgba = image::load_from_memory(&img.png).unwrap().to_rgba8();
+        let pink_after = rgba.pixels().filter(|p| p.0[0] > 180 && p.0[2] > 120 && p.0[1] < 200).count();
+        assert!(pink_after < pink / 10, "undo left the decal ({pink_after})");
         std::fs::remove_dir_all(out).ok();
     }
 }

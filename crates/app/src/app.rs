@@ -8,7 +8,7 @@
 
 use crate::render::bake::Baker;
 use crate::render::env::Environment;
-use crate::render::paint::{BrushGpu, Painter, Snapshot, StampGpu, Target, ViewGpu};
+use crate::render::paint::{BrushGpu, DecalGpu, Painter, Snapshot, StampGpu, Target, ViewGpu};
 use crate::render::texset::TexSet;
 use crate::render::viewport::{ViewMode, ViewSettings, Viewport};
 use crate::render::{io, MeshGpu};
@@ -124,6 +124,10 @@ pub struct PigmentApp {
     dump_requested: bool,
     /// Brightness multiplier of the last exported emissive map.
     last_emissive_scale: f32,
+    /// Decal images loaded on the GPU, by path.
+    decals: std::collections::HashMap<PathBuf, crate::render::gpu::Tex>,
+    /// Decal tool: the image, and where the drag started.
+    decal_tool: Option<(PathBuf, Option<egui::Pos2>)>,
     tour: tour::Tour,
     counters: Counters,
     /// Screen rects of UI elements the guide can point at, rebuilt every frame.
@@ -177,6 +181,8 @@ impl PigmentApp {
             ppp: 1.0,
             dump_requested: false,
             last_emissive_scale: 1.0,
+            decals: Default::default(),
+            decal_tool: None,
             tour: Default::default(),
             counters: Counters::default(),
             anchors: Default::default(),
@@ -678,6 +684,75 @@ impl PigmentApp {
         self.painter.stamps(&rs.device, &rs.queue, &self.ts, mg, depth, view, &stamps, &brush, rect);
         self.ts.composite(&rs.device, &rs.queue, &self.doc, Some(rect));
         self.last_stamp_ms = t0.elapsed().as_secs_f32() * 1000.0 / stamps.len() as f32;
+    }
+
+    fn decal_texture(&mut self, rs: &RenderState, path: &Path) -> Result<(), String> {
+        if self.decals.contains_key(path) {
+            return Ok(());
+        }
+        let img = image::open(path).map_err(|e| format!("couldn't read {}: {e}", path.display()))?.to_rgba8();
+        let (w, h) = img.dimensions();
+        let t = crate::render::gpu::Tex::new(
+            &rs.device,
+            "decal",
+            w,
+            h,
+            eframe::egui_wgpu::wgpu::TextureFormat::Rgba8UnormSrgb,
+            crate::render::gpu::rw_usage(),
+            crate::render::gpu::mip_count(w.max(h)),
+        );
+        crate::render::gpu::upload(&rs.queue, &t, img.as_raw());
+        let mut enc = rs.device.create_command_encoder(&Default::default());
+        self.ts.mip_gen().generate(&rs.device, &mut enc, &t, None);
+        rs.queue.submit([enc.finish()]);
+        self.decals.insert(path.to_path_buf(), t);
+        Ok(())
+    }
+
+    /// Project an image onto the selected layer (or its mask) from the
+    /// current camera, over `rect` = [x0, y0, x1, y1] viewport pixels. Colour
+    /// comes from the image tinted by the brush colour; the brush's other
+    /// enabled channels (roughness, metallic, height, emission) are painted
+    /// wherever the image is opaque. One undo step.
+    pub(super) fn project_decal(&mut self, rs: &RenderState, image: &Path, rect: [f32; 4], viewport_px: Vec2, luminance_alpha: bool) -> Result<(), String> {
+        if self.stroke.is_some() {
+            return Err("finish the current stroke first".into());
+        }
+        self.decal_texture(rs, image)?;
+        self.auto_mask_for_fill(rs);
+        let target = self.paint_target().map_err(String::from)?;
+        let (Some(depth), Some(mg)) = (self.viewport.paint_depth(), self.mesh_gpu.as_ref()) else { return Err("no viewport yet".into()) };
+        let _ = (depth, mg);
+        self.ensure_composited(rs);
+        if !self.painter.begin(&rs.device, &rs.queue, &self.ts, target) {
+            return Err("nothing to paint on".into());
+        }
+        let aspect = viewport_px.x / viewport_px.y.max(1.0);
+        let vp = self.camera.view_proj(aspect);
+        let eye = self.camera.eye();
+        let view = ViewGpu { view_proj: vp.to_cols_array_2d(), eye: [eye.x, eye.y, eye.z, 1.0], viewport: [viewport_px.x, viewport_px.y, self.camera.near(), 0.0] };
+        let bins = ScreenBins::build(&self.mesh, vp, viewport_px, Some(eye));
+        let mut tiles = TileSet::default();
+        let c = Vec2::new((rect[0] + rect[2]) * 0.5, (rect[1] + rect[3]) * 0.5);
+        let half = Vec2::new((rect[2] - rect[0]).abs(), (rect[3] - rect[1]).abs()) * 0.5;
+        bins.mark_stamp(c, half.length(), &mut tiles);
+        let tex = &self.decals[image];
+        let lod = ((tex.size as f32 / (rect[2] - rect[0]).abs().max(1.0)).log2()).max(0.0);
+        let mut brush = self.brush_gpu();
+        brush.enabled3[1] = 1.0;
+        let decal = DecalGpu { rect, params: [self.brush.opacity, lod, luminance_alpha as u32 as f32, 0.0] };
+        if let Some(texels) = tiles.texel_bounds(self.ts.res) {
+            let (depth, mg) = (self.viewport.paint_depth().unwrap(), self.mesh_gpu.as_ref().unwrap());
+            self.painter.decal(&rs.device, &rs.queue, &self.ts, mg, depth, view, tex, decal, &brush, texels);
+        }
+        if let Some(snap) = self.painter.end(&rs.device, &rs.queue, &tiles) {
+            self.ts.unsaved.insert(target.res());
+            let name = image.file_stem().map(|s| s.to_string_lossy().to_string()).unwrap_or_default();
+            self.counters.strokes += 1;
+            self.push_history(format!("Decal {name}"), Edit::Stroke(snap));
+        }
+        self.composited = None;
+        Ok(())
     }
 
     fn end_stroke(&mut self, rs: &RenderState) {

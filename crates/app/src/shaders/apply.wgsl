@@ -13,9 +13,10 @@ struct Brush {
     enabled: vec4<f32>,     // color, rough, metal, height (1/0)
     enabled2: vec4<f32>,    // normal, erase(1/0), mask value
     emissive: vec4<f32>,    // linear rgb x strength
-    enabled3: vec4<f32>,    // emissive
+    enabled3: vec4<f32>,    // emissive, decal mode (1/0)
 };
 @group(0) @binding(7) var<uniform> brush: Brush;
+@group(0) @binding(8) var decal_col: texture_2d<f32>;   // decal colour per texel (decal mode)
 
 struct LayerOut {
     @location(0) color: vec4<f32>,
@@ -49,7 +50,15 @@ fn fs_apply(f: FullOut) -> LayerOut {
     let bh = textureLoad(b_height, t, 0);
     let bn = textureLoad(b_normal, t, 0);
     var o: LayerOut;
-    o.color = apply1(brush.enabled.x, bc, bc.a, brush.color, m);
+    // decal mode: colour (and emission) come from the image, tinted by the brush
+    var paint_col = brush.color;
+    var emit = brush.emissive.rgb;
+    if (brush.enabled3.y > 0.5) {
+        let d = textureLoad(decal_col, t, 0).rgb;
+        paint_col = vec4<f32>(d * brush.color.rgb, 1.0);
+        emit = d * brush.emissive.rgb;
+    }
+    o.color = apply1(brush.enabled.x, bc, bc.a, paint_col, m);
     let r = apply1(brush.enabled.y, vec4<f32>(br.r), br.g, vec4<f32>(brush.rmh.x), m);
     o.rough = vec4<f32>(r.x, r.w, 0.0, 1.0);
     let mm = apply1(brush.enabled.z, vec4<f32>(bm.r), bm.g, vec4<f32>(brush.rmh.y), m);
@@ -58,7 +67,7 @@ fn fs_apply(f: FullOut) -> LayerOut {
     o.height = vec4<f32>(h.x, h.w, 0.0, 1.0);
     o.normal = apply1(brush.enabled2.x, bn, bn.a, vec4<f32>(brush.normal.xyz * 0.5 + 0.5, 1.0), m);
     let be = textureLoad(b_emissive, t, 0);
-    o.emissive = apply1(brush.enabled3.x, be, be.a, vec4<f32>(brush.emissive.rgb, 1.0), m);
+    o.emissive = apply1(brush.enabled3.x, be, be.a, vec4<f32>(emit, 1.0), m);
     return o;
 }
 
