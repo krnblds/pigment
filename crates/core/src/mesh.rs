@@ -112,7 +112,9 @@ impl Mesh {
         for i in 0..n {
             let nrm = Vec3::from(self.vertices[i].normal);
             let t = (tan[i] - nrm * nrm.dot(tan[i])).try_normalize().unwrap_or_else(|| nrm.any_orthonormal_vector());
-            let w = if nrm.cross(t).dot(bit[i]) < 0.0 { -1.0 } else { 1.0 };
+            // Bitangent = cross(N, T) * w must point *up* the image (towards
+            // decreasing v in our v-down UVs), matching OpenGL-style normal maps.
+            let w = if nrm.cross(t).dot(bit[i]) > 0.0 { -1.0 } else { 1.0 };
             self.vertices[i].tangent = Vec4::from((t, w)).into();
         }
     }
@@ -282,9 +284,10 @@ f 1/1 2/2 3/3 4/4
         for v in &m.vertices {
             assert!((Vec3::from(v.normal) - Vec3::Z).length() < 1e-5);
         }
-        // tangent follows +u, which is +X here
+        // tangent follows +u (+X here); bitangent points up the image (+Y here)
         for v in &m.vertices {
             assert!((Vec3::from_slice(&v.tangent[..3]) - Vec3::X).length() < 1e-4, "{:?}", v.tangent);
+            assert_eq!(v.tangent[3], 1.0);
         }
     }
 
