@@ -224,10 +224,22 @@ pub enum GeneratorKind {
     PanelLines,
     /// Rises from the bottom of the model: grime, splash and rust near the ground.
     Gradient,
+    /// Drip streaks that start under protruding features (sills, AC units,
+    /// ledges) and run down the wall below them (drip bake + AO + normal).
+    Leaks,
+    /// Standing water on up-facing, rain-exposed surfaces: cavities, gutters
+    /// and the low spots of a micro-relief. Drive low roughness + darker colour.
+    Puddles,
+    /// Moss / grime build-up on up-facing ledges and in occluded crevices.
+    Moss,
+    /// Bricks, square tiles or hexagons with per-cell jitter (variant picks).
+    Tiles,
+    /// A regular grid of windows on walls, a random fraction of them lit.
+    WindowGrid,
 }
 
 impl GeneratorKind {
-    pub const ALL: [GeneratorKind; 9] = [
+    pub const ALL: [GeneratorKind; 14] = [
         GeneratorKind::EdgeWear,
         GeneratorKind::Dirt,
         GeneratorKind::Grunge,
@@ -237,6 +249,11 @@ impl GeneratorKind {
         GeneratorKind::Scratches,
         GeneratorKind::PanelLines,
         GeneratorKind::Gradient,
+        GeneratorKind::Leaks,
+        GeneratorKind::Puddles,
+        GeneratorKind::Moss,
+        GeneratorKind::Tiles,
+        GeneratorKind::WindowGrid,
     ];
     pub fn label(self) -> &'static str {
         match self {
@@ -249,6 +266,11 @@ impl GeneratorKind {
             GeneratorKind::Scratches => "Scratches",
             GeneratorKind::PanelLines => "Panel lines",
             GeneratorKind::Gradient => "Ground gradient",
+            GeneratorKind::Leaks => "Leaks",
+            GeneratorKind::Puddles => "Puddles",
+            GeneratorKind::Moss => "Moss",
+            GeneratorKind::Tiles => "Tiles",
+            GeneratorKind::WindowGrid => "Window grid",
         }
     }
     pub fn id(self) -> &'static str {
@@ -262,15 +284,32 @@ impl GeneratorKind {
             GeneratorKind::Scratches => "scratches",
             GeneratorKind::PanelLines => "panel_lines",
             GeneratorKind::Gradient => "gradient",
+            GeneratorKind::Leaks => "leaks",
+            GeneratorKind::Puddles => "puddles",
+            GeneratorKind::Moss => "moss",
+            GeneratorKind::Tiles => "tiles",
+            GeneratorKind::WindowGrid => "window_grid",
         }
     }
     pub fn from_id(s: &str) -> Option<GeneratorKind> {
         let s = s.to_ascii_lowercase().replace([' ', '-'], "_");
-        Self::ALL.into_iter().find(|k| k.id() == s || k.label().to_ascii_lowercase().replace(' ', "_") == s)
+        Self::ALL.into_iter().find(|k| k.id() == s || k.label().to_ascii_lowercase().replace(' ', "_") == s).or(match s.as_str() {
+            "drips" | "leak" => Some(GeneratorKind::Leaks),
+            "wetness" | "wet" | "puddle" => Some(GeneratorKind::Puddles),
+            "grime_accumulation" | "lichen" => Some(GeneratorKind::Moss),
+            "bricks" | "brick" | "tile" | "hex" => Some(GeneratorKind::Tiles),
+            "windows" | "window_lights" => Some(GeneratorKind::WindowGrid),
+            _ => None,
+        })
     }
+    /// Tile pattern variant names (`Generator::variant` for `Tiles`).
+    pub const TILE_VARIANTS: [&'static str; 3] = ["bricks", "square", "hex"];
     /// Uses the curvature / AO bakes (vs. a pure world-space pattern).
     pub fn uses_bakes(self) -> bool {
-        matches!(self, GeneratorKind::EdgeWear | GeneratorKind::Dirt | GeneratorKind::Streaks | GeneratorKind::Grunge | GeneratorKind::Spots)
+        matches!(
+            self,
+            GeneratorKind::EdgeWear | GeneratorKind::Dirt | GeneratorKind::Streaks | GeneratorKind::Grunge | GeneratorKind::Spots | GeneratorKind::Leaks | GeneratorKind::Puddles | GeneratorKind::Moss
+        )
     }
 }
 
@@ -292,6 +331,13 @@ pub struct Generator {
     /// How strongly curvature counts (0 = noise/AO only).
     #[serde(default = "one")]
     pub curvature_weight: f32,
+    /// Pattern variant (Tiles: 0 bricks, 1 square, 2 hex). Unused elsewhere.
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub variant: u32,
+}
+
+fn is_zero(v: &u32) -> bool {
+    *v == 0
 }
 
 fn half() -> f32 {
@@ -315,8 +361,24 @@ impl Generator {
             GeneratorKind::Scratches => (0.2, 0.03, 5.0, 0.0, 0.0),
             GeneratorKind::PanelLines => (0.06, 0.01, 2.5, 0.0, 0.0),
             GeneratorKind::Gradient => (0.2, 0.15, 6.0, 0.25, 0.0),
+            // scale = streaks per metre across the wall
+            GeneratorKind::Leaks => (0.5, 0.12, 3.0, 0.5, 0.3),
+            // scale = puddles per metre (micro-relief frequency)
+            GeneratorKind::Puddles => (0.4, 0.06, 0.6, 0.3, 0.5),
+            GeneratorKind::Moss => (0.45, 0.1, 3.0, 0.6, 0.8),
+            // scale = brick rows per metre; ao_influence slot = mortar width
+            GeneratorKind::Tiles => (1.0, 0.01, 13.0, 0.3, 0.08),
+            // scale = cell (storey) height in metres; ao_influence slot = frame width
+            GeneratorKind::WindowGrid => (0.35, 0.01, 3.2, 0.3, 0.18),
         };
-        Self { kind, amount, softness, noise_scale, noise_amount, seed: 1, ao_influence, curvature_weight: 1.0 }
+        // curvature_weight doubles as a shape parameter on the new generators
+        let curvature_weight = match kind {
+            GeneratorKind::Leaks => 2.5,       // drip length below the feature, metres
+            GeneratorKind::Tiles => 2.0,       // cell width / height (brick aspect)
+            GeneratorKind::WindowGrid => 0.55, // cell width / height
+            _ => 1.0,
+        };
+        Self { kind, amount, softness, noise_scale, noise_amount, seed: 1, ao_influence, curvature_weight, variant: 0 }
     }
     pub fn gpu_id(&self) -> u32 {
         match self.kind {
@@ -329,6 +391,11 @@ impl Generator {
             GeneratorKind::Scratches => 7,
             GeneratorKind::PanelLines => 8,
             GeneratorKind::Gradient => 9,
+            GeneratorKind::Leaks => 10,
+            GeneratorKind::Puddles => 11,
+            GeneratorKind::Moss => 12,
+            GeneratorKind::Tiles => 13,
+            GeneratorKind::WindowGrid => 14,
         }
     }
     pub fn with(mut self, amount: f32, noise_scale: f32) -> Self {

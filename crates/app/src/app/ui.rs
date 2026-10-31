@@ -949,7 +949,13 @@ impl PigmentApp {
                                 GeneratorKind::Scratches => "Thin sharp lines: scratches and scuffs.",
                                 GeneratorKind::PanelLines => "A grid of seams on every face. Use with a dark, negative-height fill for engraved panels.",
                                 GeneratorKind::Gradient => "Rises from the bottom of the model: grime, splash and rust near the ground. Amount = how high.",
+                                GeneratorKind::Leaks => "Drip streaks running down walls from under sills, AC units and ledges (drip bake). Needs a bake.",
+                                GeneratorKind::Puddles => "Standing water on flat, rain-exposed ground: gutters, cavities and low spots. Use low roughness + darker colour.",
+                                GeneratorKind::Moss => "Moss and grime build-up on up-facing ledges and in occluded crevices.",
+                                GeneratorKind::Tiles => "Bricks, square tiles or hexagons with per-cell jitter. Amount = fraction of cells; invert for mortar.",
+                                GeneratorKind::WindowGrid => "A regular grid of windows on walls; Amount = fraction lit. Use with an emissive fill.",
                             };
+                            let (scale_label, aux_label, aux_range, shape_label, shape_range) = weather_slider_labels(g.kind);
                             let pattern = !matches!(g.kind, GeneratorKind::EdgeWear | GeneratorKind::Dirt);
                             ui.label(RichText::new(what).size(11.5).color(MUTED));
                             egui::Grid::new("generator").num_columns(2).spacing([10.0, 6.0]).show(ui, |ui| {
@@ -962,18 +968,37 @@ impl PigmentApp {
                                     g.softness = (1.0 - sharp) * 0.5;
                                 }
                                 ui.end_row();
-                                ui.label(if pattern { "Scale (per metre)" } else { "Breakup scale" });
+                                ui.label(scale_label.unwrap_or(if pattern { "Scale (per metre)" } else { "Breakup scale" }));
                                 ui.add(egui::Slider::new(&mut g.noise_scale, 0.2..=64.0).logarithmic(true));
                                 ui.end_row();
+                                if let Some(label) = shape_label {
+                                    ui.label(label);
+                                    ui.add(egui::Slider::new(&mut g.curvature_weight, shape_range));
+                                    ui.end_row();
+                                }
+                                if let Some(label) = aux_label {
+                                    ui.label(label);
+                                    ui.add(egui::Slider::new(&mut g.ao_influence, aux_range));
+                                    ui.end_row();
+                                }
+                                if g.kind == GeneratorKind::Tiles {
+                                    ui.label("Pattern");
+                                    egui::ComboBox::from_id_salt("tile variant").selected_text(GeneratorKind::TILE_VARIANTS[(g.variant as usize).min(2)]).show_ui(ui, |ui| {
+                                        for (i, v) in GeneratorKind::TILE_VARIANTS.iter().enumerate() {
+                                            ui.selectable_value(&mut g.variant, i as u32, *v);
+                                        }
+                                    });
+                                    ui.end_row();
+                                }
                                 ui.label("Breakup amount");
                                 ui.add(egui::Slider::new(&mut g.noise_amount, 0.0..=1.5));
                                 ui.end_row();
-                                if !pattern {
+                                if !pattern && shape_label.is_none() {
                                     ui.label("Curvature weight");
                                     ui.add(egui::Slider::new(&mut g.curvature_weight, 0.0..=2.0));
                                     ui.end_row();
                                 }
-                                if g.kind.uses_bakes() {
+                                if g.kind.uses_bakes() && aux_label.is_none() {
                                     ui.label("AO influence");
                                     ui.add(egui::Slider::new(&mut g.ao_influence, 0.0..=1.5));
                                     ui.end_row();
@@ -1332,5 +1357,20 @@ impl PigmentApp {
             });
             self.show_export = open;
         }
+    }
+}
+
+/// Slider labels for the weathering / pattern generators that reuse the
+/// generic parameter slots: (scale, ao_influence slot, its range,
+/// curvature_weight slot, its range). `None` = the generic meaning.
+type SliderLabels = (Option<&'static str>, Option<&'static str>, std::ops::RangeInclusive<f32>, Option<&'static str>, std::ops::RangeInclusive<f32>);
+fn weather_slider_labels(kind: GeneratorKind) -> SliderLabels {
+    match kind {
+        GeneratorKind::Leaks => (Some("Streaks per metre"), Some("Damp under overhangs"), 0.0..=1.5, Some("Drip length (m)"), 0.1..=8.0),
+        GeneratorKind::Puddles => (Some("Puddles per metre"), Some("Pooling in corners (AO)"), 0.0..=1.5, Some("Pooling in cavities"), 0.0..=2.0),
+        GeneratorKind::Moss => (Some("Clump scale"), Some("Growth in crevices (AO)"), 0.0..=1.5, Some("Growth in cavities"), 0.0..=2.0),
+        GeneratorKind::Tiles => (Some("Rows per metre"), Some("Mortar width"), 0.0..=0.5, Some("Cell aspect (w/h)"), 0.25..=6.0),
+        GeneratorKind::WindowGrid => (Some("Cell height (m)"), Some("Frame width"), 0.0..=0.45, Some("Cell aspect (w/h)"), 0.1..=4.0),
+        _ => (None, None, 0.0..=1.5, None, 0.0..=2.0),
     }
 }

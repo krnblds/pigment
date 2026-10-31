@@ -25,7 +25,7 @@ fn tools() -> Value {
         "visible": { "type": "boolean" },
         "channels": { "type": "object", "description": "e.g. {\"height\": false, \"roughness\": true}" },
         "blend": { "type": "object", "description": "per channel, e.g. {\"base_color\": \"multiply\", \"height\": \"add\"}" },
-        "mask": { "description": "\"white\" | \"black\" | null (remove) | {generator: edge_wear|dirt|grunge|streaks|stripes|spots|scratches|panel_lines|gradient, amount, softness, scale, breakup, seed, ao_influence, curvature_weight, invert, parts: [part ids from list_parts / pick_parts: limit the layer to those mesh pieces], effects: [{generator, op: multiply|add|subtract|max|min, amount, scale, breakup, ...}] (max 2)}" }
+        "mask": { "description": "\"white\" | \"black\" | null (remove) | {generator: edge_wear|dirt|grunge|streaks|stripes|spots|scratches|panel_lines|gradient|leaks|puddles|moss|tiles|window_grid, amount, softness, scale, breakup, seed, ao_influence, curvature_weight, invert, (leaks: drip_length m; tiles: variant bricks|square|hex, mortar, aspect; window_grid: cell_size m, fill 0..1 lit fraction, frame, aspect; puddles/moss: bake first), parts: [part ids from list_parts / pick_parts: limit the layer to those mesh pieces], effects: [{generator, op: multiply|add|subtract|max|min, amount, scale, breakup, ...}] (max 2)}" }
     });
     let camera = json!({
         "yaw": { "type": "number", "description": "degrees around the model (default 35)" },

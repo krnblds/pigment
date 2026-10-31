@@ -124,11 +124,11 @@ fn layer_params(l: &Layer) -> LayerParams {
         if let Some(g) = &m.generator {
             p.flags[2] = g.gpu_id();
             p.gp = [g.amount, g.softness, g.noise_scale, g.noise_amount];
-            p.gp2 = [g.seed as f32, g.ao_influence, g.curvature_weight, 0.0];
+            p.gp2 = [g.seed as f32, g.ao_influence, g.curvature_weight, g.variant as f32];
             for (k, e) in m.effects.iter().take(pigment_core::MAX_MASK_EFFECTS).enumerate() {
                 let g = &e.generator;
                 let a = [g.amount, g.softness, g.noise_scale, g.noise_amount];
-                let b = [g.seed as f32, g.ao_influence, g.curvature_weight, 0.0];
+                let b = [g.seed as f32, g.ao_influence, g.curvature_weight, g.variant as f32];
                 p.eff[2 * k] = g.gpu_id();
                 p.eff[2 * k + 1] = e.op.gpu_id();
                 if k == 0 {
