@@ -98,10 +98,10 @@ box("billboard_panel", (PW, 0.08, PH), (bx, by, bz0 + PH / 2), bevel=0.004)
 holed("billboard_frame", (PW + 0.44, 0.26, PH + 0.44), [(0, 0, PW - 0.04, PH - 0.04)], (bx, by + 0.04, bz0 + PH / 2), bevel=0.02)
 for k in (-1, 0, 1):
     px = bx + k * 3.2
-    box("billboard_post", (0.22, 0.22, bz0 + PH + 0.1 - ROOF), (px, by + 0.4, (bz0 + PH + 0.1 + ROOF) / 2 - 0.02), bevel=0.012)
-    rod("billboard_brace", (px, by + 2.6, ROOF + 0.02), (px, by + 0.48, bz0 + 1.6), 0.06, verts=10)
+    box("billboard_post", (0.22, 0.22, bz0 + PH + 0.1 - ROOF), (px, by + 0.27, (bz0 + PH + 0.1 + ROOF) / 2 - 0.02), bevel=0.012)
+    rod("billboard_brace", (px, by + 2.6, ROOF + 0.02), (px, by + 0.36, bz0 + 1.6), 0.06, verts=10)
 for z in (bz0 + 0.6, bz0 + PH - 0.6):
-    box("billboard_beam", (PW + 0.2, 0.16, 0.16), (bx, by + 0.6, z), bevel=0.01)
+    box("billboard_beam", (PW + 0.2, 0.16, 0.16), (bx, by + 0.45, z), bevel=0.01)
 # catwalk with a railing and flood lamps on short arms
 box("catwalk", (PW + 0.4, 0.9, 0.08), (bx, by - 0.55, bz0 - 0.35), bevel=0.01)
 n = 30
@@ -130,4 +130,4 @@ box("hut_door", (0.9, 0.05, 2.0), (5.8, 3.8 - 1.5 - 0.02, ROOF + 1.0), bevel=0.0
 for x in (-7.6, 7.6):
     cyl("downpipe", 0.07, ROOF + 0.2, (x, D / 2 + 0.1, (ROOF + 0.2) / 2 + 0.05), verts=16)
 
-export("BuildingB", close=[("close", (-3.9, -6.0, 2.4), 4.2, (-0.5, -1.5, 0.3)), ("roof", (2.2, -3.0, ROOF + 3.0), 6.0, (1.0, 1.2, 0.5))])
+export("BuildingB", centre_xy=False, close=[("close", (-3.9, -6.0, 2.4), 4.2, (-0.5, -1.5, 0.3)), ("roof", (2.2, -3.0, ROOF + 3.0), 6.0, (1.0, 1.2, 0.5))])

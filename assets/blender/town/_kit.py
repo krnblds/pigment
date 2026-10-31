@@ -43,7 +43,10 @@ def finish(o, bevel, segments=2, angle=35):
     bpy.ops.object.transform_apply(location=False, rotation=True, scale=True)
     if o.data.has_custom_normals:
         bpy.ops.mesh.customdata_custom_splitnormals_clear()
-    bpy.ops.object.shade_smooth()
+    if bevel > 0:
+        bpy.ops.object.shade_smooth()
+    else:
+        bpy.ops.object.shade_smooth_by_angle(angle=math.radians(35))
     if bevel > 0:
         m = o.modifiers.new("bevel", "BEVEL")
         m.width = bevel
@@ -409,7 +412,7 @@ def preview(obj, vcomp, nparts, view=(-1.0, -1.45, 0.75), res=(1000, 1000), clos
     sh.show_cavity = True
     sh.cavity_type = "BOTH"
     sh.show_object_outline = True
-    sh.show_shadows = True
+    sh.show_shadows = os.environ.get("PIG_SHADOWS", "1") == "1"
     sc.display.shadow_shift = 0.1
     sc.render.resolution_x, sc.render.resolution_y = res
     sc.render.film_transparent = False

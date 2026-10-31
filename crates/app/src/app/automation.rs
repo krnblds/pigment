@@ -486,6 +486,59 @@ impl Session {
         }
     }
 
+    /// Point the camera straight at a part's outward-facing broad face (its
+    /// thinnest axis, on the side away from the model's centre) and return the
+    /// viewport rect (0..1) covering it, shrunk to the image's aspect for
+    /// `fit = "contain"` or stretched for `"fill"`.
+    fn aim_at_part(&mut self, part: u32, image: &Path, fit: &str, margin: f32) -> Res<Vec<f32>> {
+        let info = *self.app.parts.info.get(part as usize).ok_or_else(|| format!("no part {part}"))?;
+        let (lo, hi) = (glam::Vec3::from(info.min), glam::Vec3::from(info.max));
+        let c = (lo + hi) * 0.5;
+        let size = hi - lo;
+        let axis = if size.x <= size.y && size.x <= size.z { 0 } else if size.y <= size.z { 1 } else { 2 };
+        let (mc, _) = self.app.mesh.bounding_sphere();
+        let outward = if c[axis] >= mc[axis] { 1.0 } else { -1.0 };
+        let cam = &mut self.app.camera;
+        cam.target = c;
+        // OrbitCamera: eye = target + (sin yaw cos p, sin p, cos yaw cos p) * d
+        (cam.yaw, cam.pitch) = match (axis, outward > 0.0) {
+            (0, true) => (std::f32::consts::FRAC_PI_2, 0.0),
+            (0, false) => (-std::f32::consts::FRAC_PI_2, 0.0),
+            (2, true) => (0.0, 0.0),
+            (2, false) => (std::f32::consts::PI, 0.0),
+            (_, true) => (0.0, 1.5),
+            (_, false) => (0.0, -1.5),
+        };
+        let extent = size.length().max(0.05);
+        cam.distance = extent / (cam.fov_y * 0.5).tan() * 0.75;
+        self.size = [1024, 1024];
+        let vp = cam.view_proj(1.0);
+        let (mut x0, mut y0, mut x1, mut y1) = (f32::MAX, f32::MAX, f32::MIN, f32::MIN);
+        for k in 0..8 {
+            let p = glam::Vec3::new(if k & 1 == 0 { lo.x } else { hi.x }, if k & 2 == 0 { lo.y } else { hi.y }, if k & 4 == 0 { lo.z } else { hi.z });
+            let q = vp.project_point3(p);
+            let (u, v) = (q.x * 0.5 + 0.5, 0.5 - q.y * 0.5);
+            x0 = x0.min(u);
+            y0 = y0.min(v);
+            x1 = x1.max(u);
+            y1 = y1.max(v);
+        }
+        let (w, h) = ((x1 - x0) * (1.0 - 2.0 * margin), (y1 - y0) * (1.0 - 2.0 * margin));
+        let (cx, cy) = ((x0 + x1) * 0.5, (y0 + y1) * 0.5);
+        let (mut w, mut h) = (w, h);
+        if fit == "contain" {
+            if let Ok((iw, ih)) = image::image_dimensions(image) {
+                let ar = iw as f32 / ih as f32;
+                if w / h > ar {
+                    w = h * ar;
+                } else {
+                    h = w / ar;
+                }
+            }
+        }
+        Ok(vec![cx - w * 0.5, cy - h * 0.5, cx + w * 0.5, cy + h * 0.5])
+    }
+
     fn draw(&mut self) {
         self.app.viewport.ensure_targets(&self.rs.device, self.size);
         self.app.viewport.draw(&self.rs.device, &self.rs.queue, &self.app.camera, &self.app.view, self.app.mesh_gpu.as_ref(), &self.app.env, &self.app.ts);
@@ -570,11 +623,18 @@ impl Session {
     /// viewport rectangle `rect` = [x0, y0, x1, y1] in 0..1.
     pub fn project_decal(&mut self, a: &Value) -> Res<Value> {
         let image = PathBuf::from(req(a, "image")?);
-        let rect: Vec<f32> = a.get("rect").and_then(Value::as_array).ok_or("missing `rect`: [x0, y0, x1, y1] in 0..1")?.iter().filter_map(|v| v.as_f64().map(|x| x as f32)).collect();
-        if rect.len() != 4 {
-            return Err("`rect` needs 4 numbers".into());
-        }
-        self.set_camera(a);
+        let rect: Vec<f32> = match a.get("part").and_then(Value::as_u64) {
+            // aim at a mesh part's outward face and fit the image to it
+            Some(part) => self.aim_at_part(part as u32, &image, s(a, "fit").unwrap_or("contain"), f(a, "margin").unwrap_or(0.05))?,
+            None => {
+                let r: Vec<f32> = a.get("rect").and_then(Value::as_array).ok_or("missing `rect` ([x0, y0, x1, y1] in 0..1) or `part`")?.iter().filter_map(|v| v.as_f64().map(|x| x as f32)).collect();
+                if r.len() != 4 {
+                    return Err("`rect` needs 4 numbers".into());
+                }
+                self.set_camera(a);
+                r
+            }
+        };
         let i = match a.get("layer") {
             Some(r) => self.find_layer(r)?,
             None => match self.app.doc.layers.iter().rposition(|l| l.is_paint()) {
