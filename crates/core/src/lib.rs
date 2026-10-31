@@ -11,6 +11,7 @@ pub mod envmath;
 pub mod export;
 pub mod mesh;
 pub mod project;
+pub mod sheet;
 pub mod stroke;
 pub mod tiles;
 pub mod undo;

@@ -70,6 +70,98 @@ impl EnvImage {
         EnvImage { width, height, data }
     }
 
+    /// Built-in lighting by name: `studio`, `night` (night city) or `overcast`.
+    pub fn preset(name: &str, width: u32) -> Option<EnvImage> {
+        match preset_id(name)? {
+            "studio" => Some(Self::studio(width)),
+            "night" => Some(Self::night_city(width)),
+            "overcast" => Some(Self::overcast(width)),
+            _ => None,
+        }
+    }
+
+    /// A rainy cyberpunk street at night: a dark blue sky with a magenta and
+    /// sodium light-pollution glow at the horizon, a skyline of lit windows,
+    /// wet dark ground, a cyan and a magenta neon rim light behind the model
+    /// (camera-default view) and a dim sodium street lamp as a key light.
+    pub fn night_city(width: u32) -> EnvImage {
+        let height = width / 2;
+        // direction, angular half-size (u, v), intensity, tint
+        let lights = [
+            (Vec3::new(-0.75, 0.22, -0.62).normalize(), Vec2::new(0.06, 0.45), 9.0, Vec3::new(0.15, 0.75, 1.0)),
+            (Vec3::new(0.78, 0.28, -0.56).normalize(), Vec2::new(0.06, 0.45), 9.0, Vec3::new(1.0, 0.12, 0.62)),
+            (Vec3::new(0.45, 0.75, 0.48).normalize(), Vec2::new(0.07, 0.07), 6.0, Vec3::new(1.0, 0.62, 0.3)),
+        ];
+        let mut data = Vec::with_capacity((width * height) as usize);
+        for y in 0..height {
+            for x in 0..width {
+                let uv = Vec2::new((x as f32 + 0.5) / width as f32, (y as f32 + 0.5) / height as f32);
+                let d = dir_from_uv(uv);
+                let zenith = Vec3::new(0.004, 0.007, 0.022);
+                let glow = Vec3::new(0.06, 0.03, 0.065);
+                let mut c = if d.y >= 0.0 {
+                    let mut sky = zenith.lerp(glow, (1.0 - d.y).powf(6.0));
+                    // skyline: blocky building silhouettes with lit windows
+                    let col = (uv.x * 96.0).floor();
+                    let top = 0.03 + 0.17 * hash(col, 3.0).powf(1.6);
+                    if d.y < top {
+                        sky = Vec3::new(0.006, 0.006, 0.012);
+                        let wy = (d.y * 140.0).floor();
+                        let wx = (uv.x * 96.0 * 6.0).floor();
+                        let lit = hash(wx, wy);
+                        if lit > 0.78 && (d.y * 140.0).fract() > 0.35 && (uv.x * 576.0).fract() > 0.3 {
+                            let warm = Vec3::new(1.0, 0.7, 0.4);
+                            let cool = Vec3::new(0.4, 0.8, 1.0);
+                            let pink = Vec3::new(1.0, 0.3, 0.7);
+                            let tint = if lit > 0.95 { pink } else if lit > 0.88 { cool } else { warm };
+                            sky += tint * 0.6;
+                        }
+                    }
+                    sky
+                } else {
+                    // wet asphalt: dark, picks up a little of the horizon glow
+                    Vec3::new(0.004, 0.004, 0.007).lerp(glow * 0.35, (1.0 + d.y).powf(10.0))
+                };
+                for (dir, half, intensity, tint) in lights {
+                    c += tint * intensity * soft_rect(d, dir, half);
+                }
+                data.push(c.into());
+            }
+        }
+        EnvImage { width, height, data }
+    }
+
+    /// A uniformly overcast day (CIE overcast sky: the zenith is three times
+    /// brighter than the horizon) over a mid-grey ground. Soft, shadowless,
+    /// neutral: good for judging albedo and roughness.
+    pub fn overcast(width: u32) -> EnvImage {
+        let height = width / 2;
+        let mut data = Vec::with_capacity((width * height) as usize);
+        let sky = Vec3::new(0.95, 0.98, 1.04) * 1.6;
+        let ground = Vec3::new(0.2, 0.19, 0.18);
+        for y in 0..height {
+            for x in 0..width {
+                let uv = Vec2::new((x as f32 + 0.5) / width as f32, (y as f32 + 0.5) / height as f32);
+                let d = dir_from_uv(uv);
+                let horizon = sky / 3.0;
+                let c = if d.y >= 0.0 { sky * (1.0 + 2.0 * d.y) / 3.0 } else { ground.lerp(horizon, (1.0 + d.y).powf(24.0)) };
+                data.push(c.into());
+            }
+        }
+        EnvImage { width, height, data }
+    }
+
+    /// Write as a Radiance .hdr (e.g. to light a Blender world identically).
+    pub fn write_hdr(&self, path: &std::path::Path) -> anyhow::Result<()> {
+        let px: Vec<image::Rgb<f32>> = self.data.iter().map(|c| image::Rgb(*c)).collect();
+        if let Some(dir) = path.parent() {
+            std::fs::create_dir_all(dir)?;
+        }
+        let f = std::io::BufWriter::new(std::fs::File::create(path)?);
+        image::codecs::hdr::HdrEncoder::new(f).encode(&px, self.width as usize, self.height as usize)?;
+        Ok(())
+    }
+
     pub fn from_rgb32f(width: u32, height: u32, rgb: &[f32]) -> EnvImage {
         let data = rgb.chunks_exact(3).map(|c| [c[0].max(0.0), c[1].max(0.0), c[2].max(0.0)]).collect();
         EnvImage { width, height, data }
@@ -105,6 +197,32 @@ impl EnvImage {
         }
         out
     }
+}
+
+/// Built-in lighting presets: (id, display name).
+pub const PRESETS: [(&str, &str); 3] = [("studio", "Studio"), ("night", "Night city"), ("overcast", "Overcast")];
+
+/// Canonical preset id for a user-facing name (`night city`, `Night`, `night_city` → `night`).
+pub fn preset_id(name: &str) -> Option<&'static str> {
+    let n = name.trim().to_ascii_lowercase().replace([' ', '-', '_'], "");
+    PRESETS.iter().find(|(id, label)| n == *id || n == label.to_ascii_lowercase().replace(' ', "")).map(|(id, _)| *id)
+}
+
+/// Soft-edged rectangular light around `dir` (angular half-size `half`), 0..1.
+fn soft_rect(d: Vec3, dir: Vec3, half: Vec2) -> f32 {
+    let along = d.dot(dir);
+    if along <= 0.0 {
+        return 0.0;
+    }
+    let right = dir.cross(Vec3::Y).normalize_or(Vec3::X);
+    let up = right.cross(dir);
+    let p = Vec2::new(d.dot(right), d.dot(up)) / along;
+    let q = (p.abs() / half).max_element();
+    (1.0 - ((q - 0.85) / 0.3).clamp(0.0, 1.0)).powf(2.0)
+}
+
+fn hash(x: f32, y: f32) -> f32 {
+    ((x * 12.9898 + y * 78.233).sin() * 43_758.547).fract().abs()
 }
 
 pub fn sh_basis(d: Vec3) -> [f32; 9] {
@@ -200,6 +318,41 @@ mod tests {
         let env = EnvImage::studio(128);
         let sh = env.irradiance_sh9();
         assert!(eval_sh9(&sh, Vec3::Y).x > eval_sh9(&sh, -Vec3::Y).x);
+    }
+
+    #[test]
+    fn lighting_presets_resolve_and_differ() {
+        assert_eq!(preset_id("Night city"), Some("night"));
+        assert_eq!(preset_id("night_city"), Some("night"));
+        assert_eq!(preset_id("OVERCAST"), Some("overcast"));
+        assert_eq!(preset_id("disco"), None);
+        let mean = |e: &EnvImage| e.data.iter().map(|c| Vec3::from(*c)).sum::<Vec3>() / e.data.len() as f32;
+        let night = EnvImage::preset("night", 256).unwrap();
+        let overcast = EnvImage::preset("overcast", 256).unwrap();
+        let (mn, mo) = (mean(&night), mean(&overcast));
+        // night is dark on average; overcast is bright and near-neutral
+        assert!(mn.length() < 0.25 * mo.length(), "{mn} vs {mo}");
+        assert!((mo.x - mo.z).abs() < 0.15 * mo.z, "{mo}");
+        // night has strongly coloured rim lights: some texels are bright cyan, some magenta
+        assert!(night.data.iter().any(|c| c[2] > 5.0 && c[0] < 2.0));
+        assert!(night.data.iter().any(|c| c[0] > 5.0 && c[1] < 2.0));
+        // overcast: brighter overhead than at the horizon
+        let sh = overcast.irradiance_sh9();
+        assert!(eval_sh9(&sh, Vec3::Y).y > eval_sh9(&sh, Vec3::X).y);
+    }
+
+    #[test]
+    fn environment_round_trips_through_hdr() {
+        let env = EnvImage::night_city(64);
+        let p = std::env::temp_dir().join(format!("pigment-env-{}.hdr", std::process::id()));
+        env.write_hdr(&p).unwrap();
+        let back = image::open(&p).unwrap().to_rgb32f();
+        assert_eq!((back.width(), back.height()), (64, 32));
+        let a = Vec3::from(env.data[100]);
+        let r = &back.as_raw()[300..303];
+        let b = Vec3::new(r[0], r[1], r[2]);
+        assert!((a - b).length() <= 0.02 * a.length() + 1e-3, "{a} vs {b}");
+        std::fs::remove_file(p).ok();
     }
 
     #[test]
