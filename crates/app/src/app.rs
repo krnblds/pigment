@@ -119,6 +119,11 @@ impl PigmentApp {
         let info = rs.adapter.get_info();
         log::info!("GPU: {} ({:?})", info.name, info.backend);
         cc.egui_ctx.set_visuals(egui::Visuals::dark());
+        Ok(Self::create(rs, startup))
+    }
+
+    /// Build the app on an existing GPU device (also used by headless tests).
+    pub fn create(rs: &RenderState, startup: Option<PathBuf>) -> Self {
         let (d, q) = (&rs.device, &rs.queue);
         let doc = Document::new_default();
         let mut app = Self {
@@ -162,7 +167,7 @@ impl PigmentApp {
         if let Ok(dir) = std::env::var("PIGMENT_DEBUG_DUMP") {
             app.debug_dump(rs, Path::new(&dir));
         }
-        Ok(app)
+        app
     }
 
     fn pending_for_path(p: &Path) -> Pending {
@@ -322,6 +327,10 @@ impl PigmentApp {
                 p
             }
         };
+        self.save_to(rs, dir);
+    }
+
+    fn save_to(&mut self, rs: &RenderState, dir: PathBuf) {
         let fresh = self.project_dir.as_deref() != Some(dir.as_path());
         let t0 = Instant::now();
         let result = (|| -> anyhow::Result<usize> {
@@ -631,6 +640,128 @@ fn format_count(n: usize) -> String {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use eframe::egui_wgpu::wgpu;
+
+    fn headless() -> Option<RenderState> {
+        let instance = wgpu::Instance::default();
+        let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions::default())).ok()?;
+        let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor::default())).ok()?;
+        let format = wgpu::TextureFormat::Rgba8UnormSrgb;
+        let renderer = eframe::egui_wgpu::Renderer::new(&device, format, Default::default());
+        Some(RenderState {
+            available_adapters: vec![adapter.clone()],
+            adapter,
+            instance,
+            device,
+            queue,
+            target_format: format,
+            renderer: std::sync::Arc::new(egui::mutex::RwLock::new(renderer)),
+        })
+    }
+
+    fn draw(app: &mut PigmentApp, rs: &RenderState) {
+        app.ensure_composited(rs);
+        app.viewport.ensure_targets(&rs.device, [800, 800]);
+        app.viewport.draw(&rs.device, &rs.queue, &app.camera, &app.view, app.mesh_gpu.as_ref(), &app.env, &app.ts);
+    }
+
+    fn paint(app: &mut PigmentApp, rs: &RenderState, from: Vec2, to: Vec2) {
+        draw(app, rs);
+        app.begin_stroke(rs, from, Vec2::new(800.0, 800.0));
+        for i in 1..=6 {
+            let pts = app.stroke.as_mut().unwrap().sampler.move_to(from.lerp(to, i as f32 / 6.0), 6.0);
+            app.apply_stamps(rs, pts);
+        }
+        app.end_stroke(rs);
+    }
+
+    /// The whole app flow without a window: paint, edit layers, undo/redo,
+    /// save, reopen, export.
+    #[test]
+    fn paint_edit_undo_save_reopen_export() {
+        let Some(rs) = headless() else {
+            eprintln!("no GPU adapter: skipping");
+            return;
+        };
+        let mut app = PigmentApp::create(&rs, None);
+        app.change_resolution(&rs, 512);
+        let res = app.doc.layers.iter().find_map(|l| l.paint_res()).unwrap();
+
+        paint(&mut app, &rs, Vec2::new(250.0, 450.0), Vec2::new(550.0, 420.0));
+        assert!(app.history.can_undo(), "stroke recorded");
+        let painted = io::read_layer(&rs.device, &rs.queue, &app.ts, res).unwrap();
+        assert!(painted.color.chunks_exact(4).any(|p| p[3] > 0), "stroke left no pixels");
+
+        // a layer edit, committed the way the UI does it
+        let mut fill = app.doc.new_fill_layer("Rust");
+        fill.opacity = 0.5;
+        app.doc.layers.push(fill);
+        app.commit_doc_changes();
+        assert_eq!(app.history.undo_label(), Some("Add layer Rust"));
+        app.undo(&rs, false);
+        assert_eq!(app.doc.layers.len(), 2);
+        app.undo(&rs, false); // the stroke
+        let blank = io::read_layer(&rs.device, &rs.queue, &app.ts, res).unwrap();
+        assert!(blank.color.chunks_exact(4).all(|p| p[3] == 0), "undo left pixels behind");
+        app.undo(&rs, true);
+        app.undo(&rs, true);
+        assert_eq!(app.doc.layers.len(), 3);
+        assert_eq!(io::read_layer(&rs.device, &rs.queue, &app.ts, res).unwrap(), painted);
+
+        // mask with a generator, painted on
+        let i = app.doc.layers.len() - 1;
+        let mres = app.doc.mint();
+        app.ts.new_mask(&rs.device, &rs.queue, mres, true);
+        app.doc.layers[i].mask = Some(Mask { res: mres, generator: Some(Generator::new(GeneratorKind::Dirt)), invert: false, enabled: true });
+        app.selected = Some(app.doc.layers[i].id);
+        app.paint_mask = true;
+        app.brush.mask_white = false;
+        paint(&mut app, &rs, Vec2::new(300.0, 300.0), Vec2::new(500.0, 320.0));
+        app.commit_doc_changes();
+
+        // save, reopen, compare
+        let dir = std::env::temp_dir().join(format!("pigment-app-test-{}.pigment", std::process::id()));
+        std::fs::remove_dir_all(&dir).ok();
+        app.save_to(&rs, dir.clone());
+        assert!(!app.modified, "save failed: {:?}", app.status);
+        assert!(dir.join("project.json").exists());
+        assert!(dir.join("mesh/mesh.obj").exists());
+        let mask_before = io::read_mask(&rs.device, &rs.queue, &app.ts, mres).unwrap();
+        let doc_before = app.doc.clone();
+
+        let files = walk(&dir);
+        assert!(files.iter().any(|f| f.ends_with("base_color.png")), "{files:?}");
+        let mut app2 = PigmentApp::create(&rs, None);
+        app2.open_project(&rs, &dir);
+        assert_eq!(app2.doc, doc_before, "status: {:?}", app2.status);
+        assert!(io::read_layer(&rs.device, &rs.queue, &app2.ts, res).unwrap() == painted, "layer pixels differ after reopen");
+        assert_eq!(io::read_mask(&rs.device, &rs.queue, &app2.ts, mres).unwrap(), mask_before);
+        assert!(mask_before.iter().any(|&v| v < 128), "mask stroke didn't paint black");
+
+        // export
+        let out = dir.join("export");
+        app2.export_dir = Some(out.clone());
+        app2.export_name = "Torus".into();
+        app2.export(&rs);
+        for f in ["Torus_BaseColor.png", "Torus_Normal.png", "Torus_OcclusionRoughnessMetallic.png", "Torus_Height.png"] {
+            assert!(out.join(f).exists(), "missing {f}: {:?}", app2.status);
+        }
+        std::fs::remove_dir_all(dir).ok();
+    }
+
+    fn walk(d: &Path) -> Vec<PathBuf> {
+        let mut out = Vec::new();
+        for e in std::fs::read_dir(d).into_iter().flatten().flatten() {
+            if e.path().is_dir() {
+                out.extend(walk(&e.path()));
+            } else {
+                out.push(e.path());
+            }
+        }
+        out
+    }
+
     #[test]
     fn counts_are_grouped() {
         assert_eq!(super::format_count(0), "0");

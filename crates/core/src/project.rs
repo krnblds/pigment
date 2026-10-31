@@ -38,7 +38,10 @@ pub struct LayerPixels {
 impl LayerPixels {
     pub fn empty(size: u32) -> Self {
         let n = (size * size) as usize;
-        Self { size, color: vec![0; n * 4], roughness: vec![0; n * 2], metallic: vec![0; n * 2], height: vec![0; n * 2], normal: vec![0; n * 4] }
+        // height value slots hold the neutral code (32768 = 0.0) so an empty layer
+        // round-trips exactly through the GPU's float format
+        let height = (0..n).flat_map(|_| [32768u16, 0]).collect();
+        Self { size, color: vec![0; n * 4], roughness: vec![0; n * 2], metallic: vec![0; n * 2], height, normal: vec![0; n * 4] }
     }
 }
 
@@ -247,6 +250,7 @@ mod tests {
         px.color[0..4].copy_from_slice(&[255, 10, 20, 200]);
         px.height[0] = 50000;
         px.height[1] = 65535;
+        assert_eq!(LayerPixels::empty(1).height, vec![32768, 0]);
         write_layer(&dir, 7, &px).unwrap();
         assert!(layer_dir(&dir, 7).join("base_color.png").exists());
         assert!(layer_dir(&dir, 7).join("height.png").exists());
