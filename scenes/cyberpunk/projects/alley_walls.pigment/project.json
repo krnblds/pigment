@@ -1,0 +1,506 @@
+{
+  "format": 1,
+  "resolution": 4096,
+  "mesh": "mesh/alley_walls.glb",
+  "layers": [
+    {
+      "id": 4,
+      "name": "Base",
+      "visible": true,
+      "opacity": 1.0,
+      "kind": {
+        "type": "fill",
+        "values": {
+          "base_color": [
+            0.55,
+            0.54,
+            0.52
+          ],
+          "roughness": 0.9,
+          "metallic": 0.0,
+          "height": 0.0,
+          "normal": [
+            0.0,
+            0.0
+          ],
+          "emissive": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "emissive_strength": 0.0
+        }
+      },
+      "channels": {
+        "base_color": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "roughness": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "metallic": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "height": {
+          "enabled": false,
+          "blend": "add",
+          "opacity": 1.0
+        },
+        "normal": {
+          "enabled": false,
+          "blend": "normal_combine",
+          "opacity": 1.0
+        },
+        "emissive": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        }
+      }
+    },
+    {
+      "id": 7,
+      "name": "Damp patches",
+      "visible": true,
+      "opacity": 0.65,
+      "kind": {
+        "type": "fill",
+        "values": {
+          "base_color": [
+            0.32,
+            0.32,
+            0.33
+          ],
+          "roughness": 0.25,
+          "metallic": 0.0,
+          "height": 0.0,
+          "normal": [
+            0.0,
+            0.0
+          ],
+          "emissive": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "emissive_strength": 0.0
+        }
+      },
+      "channels": {
+        "base_color": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "roughness": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "metallic": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "height": {
+          "enabled": false,
+          "blend": "add",
+          "opacity": 1.0
+        },
+        "normal": {
+          "enabled": false,
+          "blend": "normal_combine",
+          "opacity": 1.0
+        },
+        "emissive": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        }
+      },
+      "mask": {
+        "res": 8,
+        "generator": {
+          "kind": "grunge",
+          "amount": 0.45,
+          "softness": 0.2,
+          "noise_scale": 0.8,
+          "noise_amount": 0.0,
+          "seed": 1,
+          "ao_influence": 0.2,
+          "curvature_weight": 1.0
+        },
+        "invert": false,
+        "enabled": true
+      }
+    },
+    {
+      "id": 9,
+      "name": "Slab joints",
+      "visible": true,
+      "opacity": 1.0,
+      "kind": {
+        "type": "fill",
+        "values": {
+          "base_color": [
+            0.05,
+            0.05,
+            0.05
+          ],
+          "roughness": 0.6,
+          "metallic": 0.5,
+          "height": -0.5,
+          "normal": [
+            0.0,
+            0.0
+          ],
+          "emissive": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "emissive_strength": 0.0
+        }
+      },
+      "channels": {
+        "base_color": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "roughness": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "metallic": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "height": {
+          "enabled": true,
+          "blend": "add",
+          "opacity": 1.0
+        },
+        "normal": {
+          "enabled": false,
+          "blend": "normal_combine",
+          "opacity": 1.0
+        },
+        "emissive": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        }
+      },
+      "mask": {
+        "res": 10,
+        "generator": {
+          "kind": "panel_lines",
+          "amount": 0.015,
+          "softness": 0.005,
+          "noise_scale": 0.4,
+          "noise_amount": 0.0,
+          "seed": 1,
+          "ao_influence": 0.0,
+          "curvature_weight": 1.0
+        },
+        "invert": false,
+        "enabled": true
+      }
+    },
+    {
+      "id": 11,
+      "name": "Leaks",
+      "visible": true,
+      "opacity": 0.45,
+      "kind": {
+        "type": "fill",
+        "values": {
+          "base_color": [
+            0.13,
+            0.1,
+            0.07
+          ],
+          "roughness": 0.95,
+          "metallic": 0.0,
+          "height": 0.0,
+          "normal": [
+            0.0,
+            0.0
+          ],
+          "emissive": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "emissive_strength": 0.0
+        }
+      },
+      "channels": {
+        "base_color": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "roughness": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "metallic": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "height": {
+          "enabled": false,
+          "blend": "add",
+          "opacity": 1.0
+        },
+        "normal": {
+          "enabled": false,
+          "blend": "normal_combine",
+          "opacity": 1.0
+        },
+        "emissive": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        }
+      },
+      "mask": {
+        "res": 12,
+        "generator": {
+          "kind": "streaks",
+          "amount": 0.32,
+          "softness": 0.15,
+          "noise_scale": 2.5,
+          "noise_amount": 0.2,
+          "seed": 1,
+          "ao_influence": 0.4,
+          "curvature_weight": 1.0
+        },
+        "invert": false,
+        "enabled": true
+      }
+    },
+    {
+      "id": 13,
+      "name": "Corner grime",
+      "visible": true,
+      "opacity": 0.8,
+      "kind": {
+        "type": "fill",
+        "values": {
+          "base_color": [
+            0.13,
+            0.1,
+            0.07
+          ],
+          "roughness": 0.95,
+          "metallic": 0.0,
+          "height": 0.0,
+          "normal": [
+            0.0,
+            0.0
+          ],
+          "emissive": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "emissive_strength": 0.0
+        }
+      },
+      "channels": {
+        "base_color": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "roughness": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "metallic": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "height": {
+          "enabled": false,
+          "blend": "add",
+          "opacity": 1.0
+        },
+        "normal": {
+          "enabled": false,
+          "blend": "normal_combine",
+          "opacity": 1.0
+        },
+        "emissive": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        }
+      },
+      "mask": {
+        "res": 14,
+        "generator": {
+          "kind": "dirt",
+          "amount": 0.45,
+          "softness": 0.2,
+          "noise_scale": 3.0,
+          "noise_amount": 0.6,
+          "seed": 1,
+          "ao_influence": 1.0,
+          "curvature_weight": 1.0
+        },
+        "invert": false,
+        "enabled": true
+      }
+    },
+    {
+      "id": 5,
+      "name": "Paint",
+      "visible": true,
+      "opacity": 1.0,
+      "kind": {
+        "type": "paint",
+        "res": 6
+      },
+      "channels": {
+        "base_color": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "roughness": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "metallic": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "height": {
+          "enabled": true,
+          "blend": "add",
+          "opacity": 1.0
+        },
+        "normal": {
+          "enabled": true,
+          "blend": "normal_combine",
+          "opacity": 1.0
+        },
+        "emissive": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        }
+      }
+    },
+    {
+      "id": 15,
+      "name": "Street art",
+      "visible": true,
+      "opacity": 1.0,
+      "kind": {
+        "type": "paint",
+        "res": 16
+      },
+      "channels": {
+        "base_color": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "roughness": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "metallic": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "height": {
+          "enabled": true,
+          "blend": "add",
+          "opacity": 1.0
+        },
+        "normal": {
+          "enabled": true,
+          "blend": "normal_combine",
+          "opacity": 1.0
+        },
+        "emissive": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        }
+      }
+    },
+    {
+      "id": 17,
+      "name": "Neon",
+      "visible": true,
+      "opacity": 1.0,
+      "kind": {
+        "type": "paint",
+        "res": 18
+      },
+      "channels": {
+        "base_color": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "roughness": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "metallic": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "height": {
+          "enabled": true,
+          "blend": "add",
+          "opacity": 1.0
+        },
+        "normal": {
+          "enabled": true,
+          "blend": "normal_combine",
+          "opacity": 1.0
+        },
+        "emissive": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        }
+      }
+    }
+  ],
+  "bake": {
+    "ao_samples": 128,
+    "curvature_radius": 0.004,
+    "curvature_strength": 0.6,
+    "ao_distance": 0.15
+  },
+  "export_preset": "separate",
+  "next_id": 19
+}

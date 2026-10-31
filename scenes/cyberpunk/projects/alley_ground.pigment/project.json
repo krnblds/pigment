@@ -1,0 +1,346 @@
+{
+  "format": 1,
+  "resolution": 4096,
+  "mesh": "mesh/alley_ground.glb",
+  "layers": [
+    {
+      "id": 4,
+      "name": "Base",
+      "visible": true,
+      "opacity": 1.0,
+      "kind": {
+        "type": "fill",
+        "values": {
+          "base_color": [
+            0.09,
+            0.09,
+            0.09
+          ],
+          "roughness": 0.8,
+          "metallic": 0.0,
+          "height": 0.0,
+          "normal": [
+            0.0,
+            0.0
+          ],
+          "emissive": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "emissive_strength": 0.0
+        }
+      },
+      "channels": {
+        "base_color": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "roughness": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "metallic": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "height": {
+          "enabled": false,
+          "blend": "add",
+          "opacity": 1.0
+        },
+        "normal": {
+          "enabled": false,
+          "blend": "normal_combine",
+          "opacity": 1.0
+        },
+        "emissive": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        }
+      }
+    },
+    {
+      "id": 7,
+      "name": "Cracks",
+      "visible": true,
+      "opacity": 0.8,
+      "kind": {
+        "type": "fill",
+        "values": {
+          "base_color": [
+            0.13,
+            0.1,
+            0.07
+          ],
+          "roughness": 0.95,
+          "metallic": 0.0,
+          "height": 0.0,
+          "normal": [
+            0.0,
+            0.0
+          ],
+          "emissive": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "emissive_strength": 0.0
+        }
+      },
+      "channels": {
+        "base_color": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "roughness": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "metallic": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "height": {
+          "enabled": false,
+          "blend": "add",
+          "opacity": 1.0
+        },
+        "normal": {
+          "enabled": false,
+          "blend": "normal_combine",
+          "opacity": 1.0
+        },
+        "emissive": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        }
+      },
+      "mask": {
+        "res": 8,
+        "generator": {
+          "kind": "scratches",
+          "amount": 0.12,
+          "softness": 0.03,
+          "noise_scale": 1.2,
+          "noise_amount": 0.0,
+          "seed": 1,
+          "ao_influence": 0.0,
+          "curvature_weight": 1.0
+        },
+        "invert": false,
+        "enabled": true
+      }
+    },
+    {
+      "id": 9,
+      "name": "Puddles",
+      "visible": true,
+      "opacity": 1.0,
+      "kind": {
+        "type": "fill",
+        "values": {
+          "base_color": [
+            0.03,
+            0.03,
+            0.035
+          ],
+          "roughness": 0.03,
+          "metallic": 0.0,
+          "height": -0.08,
+          "normal": [
+            0.0,
+            0.0
+          ],
+          "emissive": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "emissive_strength": 0.0
+        }
+      },
+      "channels": {
+        "base_color": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "roughness": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "metallic": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "height": {
+          "enabled": true,
+          "blend": "add",
+          "opacity": 1.0
+        },
+        "normal": {
+          "enabled": false,
+          "blend": "normal_combine",
+          "opacity": 1.0
+        },
+        "emissive": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        }
+      },
+      "mask": {
+        "res": 10,
+        "generator": {
+          "kind": "grunge",
+          "amount": 0.38,
+          "softness": 0.06,
+          "noise_scale": 0.35,
+          "noise_amount": 0.0,
+          "seed": 1,
+          "ao_influence": 0.2,
+          "curvature_weight": 1.0
+        },
+        "invert": false,
+        "enabled": true
+      }
+    },
+    {
+      "id": 11,
+      "name": "Grime",
+      "visible": true,
+      "opacity": 0.7,
+      "kind": {
+        "type": "fill",
+        "values": {
+          "base_color": [
+            0.13,
+            0.1,
+            0.07
+          ],
+          "roughness": 0.95,
+          "metallic": 0.0,
+          "height": 0.0,
+          "normal": [
+            0.0,
+            0.0
+          ],
+          "emissive": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "emissive_strength": 0.0
+        }
+      },
+      "channels": {
+        "base_color": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "roughness": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "metallic": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "height": {
+          "enabled": false,
+          "blend": "add",
+          "opacity": 1.0
+        },
+        "normal": {
+          "enabled": false,
+          "blend": "normal_combine",
+          "opacity": 1.0
+        },
+        "emissive": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        }
+      },
+      "mask": {
+        "res": 12,
+        "generator": {
+          "kind": "grunge",
+          "amount": 0.4,
+          "softness": 0.25,
+          "noise_scale": 1.5,
+          "noise_amount": 0.0,
+          "seed": 1,
+          "ao_influence": 0.2,
+          "curvature_weight": 1.0
+        },
+        "invert": false,
+        "enabled": true
+      }
+    },
+    {
+      "id": 5,
+      "name": "Paint",
+      "visible": true,
+      "opacity": 1.0,
+      "kind": {
+        "type": "paint",
+        "res": 6
+      },
+      "channels": {
+        "base_color": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "roughness": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "metallic": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "height": {
+          "enabled": true,
+          "blend": "add",
+          "opacity": 1.0
+        },
+        "normal": {
+          "enabled": true,
+          "blend": "normal_combine",
+          "opacity": 1.0
+        },
+        "emissive": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        }
+      }
+    }
+  ],
+  "bake": {
+    "ao_samples": 128,
+    "curvature_radius": 0.004,
+    "curvature_strength": 1.0,
+    "ao_distance": 0.15
+  },
+  "export_preset": "separate",
+  "next_id": 13
+}
