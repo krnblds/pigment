@@ -53,6 +53,8 @@ pub struct BrushGpu {
     pub normal: [f32; 4],
     pub enabled: [f32; 4],
     pub enabled2: [f32; 4], // normal, erase, mask value
+    pub emissive: [f32; 4], // linear rgb x strength
+    pub enabled3: [f32; 4], // emissive
 }
 
 /// Pixels of the dirty tiles of one target, packed into atlases.
@@ -82,7 +84,7 @@ pub struct Painter {
     stamp_buf: wgpu::Buffer,
     brush_buf: wgpu::Buffer,
     stroke_mask: Tex,
-    before: [Tex; 5],
+    before: [Tex; 6],
     before_mask: Tex,
     active: Option<Target>,
 }
@@ -96,7 +98,7 @@ impl Painter {
         let apply_bgl = gpu::bgl(
             device,
             "apply",
-            &[gpu::ntex(0), gpu::ntex(1), gpu::ntex(2), gpu::ntex(3), gpu::ntex(4), gpu::ntex(5), gpu::uniform_entry(6, false)],
+            &[gpu::ntex(0), gpu::ntex(1), gpu::ntex(2), gpu::ntex(3), gpu::ntex(4), gpu::ntex(5), gpu::ntex(6), gpu::uniform_entry(7, false)],
         );
         let attrs = wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3, 2 => Float32x2, 3 => Float32x4];
         let mesh_layout = [Some(wgpu::VertexBufferLayout {
@@ -158,10 +160,10 @@ impl Painter {
         }
     }
 
-    fn scratch(device: &wgpu::Device, res: u32) -> (Tex, [Tex; 5], Tex) {
+    fn scratch(device: &wgpu::Device, res: u32) -> (Tex, [Tex; 6], Tex) {
         (
             Tex::target(device, "stroke mask", res, wgpu::TextureFormat::R16Float),
-            [0, 1, 2, 3, 4].map(|i| Tex::target(device, "before", res, LAYER_FORMATS[i])),
+            [0, 1, 2, 3, 4, 5].map(|i| Tex::target(device, "before", res, LAYER_FORMATS[i])),
             Tex::target(device, "before mask", res, MASK_FORMAT),
         )
     }
@@ -240,7 +242,7 @@ impl Painter {
         let (pipe, before): (&wgpu::RenderPipeline, Vec<&Tex>) = match target {
             Target::Layer(_) => (&self.apply_pipe, self.before.iter().collect()),
             // mask apply reads the before-mask in slot 1; other slots are unused fillers
-            Target::Mask(_) => (&self.apply_mask_pipe, vec![&self.before_mask, &self.before[1], &self.before[2], &self.before[3], &self.before[4]]),
+            Target::Mask(_) => (&self.apply_mask_pipe, vec![&self.before_mask, &self.before[1], &self.before[2], &self.before[3], &self.before[4], &self.before[5]]),
         };
         let mut res = vec![tv(&self.stroke_mask)];
         res.extend(before.iter().map(|t| tv(t)));

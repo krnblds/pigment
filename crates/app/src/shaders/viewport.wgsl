@@ -6,7 +6,7 @@ struct Globals {
     inv_view_proj: mat4x4<f32>,
     eye: vec4<f32>,
     params: vec4<f32>,   // x view mode, y exposure (EV), z env rotation (rad), w env mips
-    params2: vec4<f32>,  // x show env background (0/1), y background blur lod, z bake ready
+    params2: vec4<f32>,  // x show env background (0/1), y background blur lod, z bake ready, w emission scale
     sh: array<vec4<f32>, 9>,
 };
 @group(0) @binding(0) var<uniform> g: Globals;
@@ -21,7 +21,8 @@ struct Globals {
 @group(2) @binding(3) var m_height: texture_2d<f32>;
 @group(2) @binding(4) var m_bakes: texture_2d<f32>;
 @group(2) @binding(5) var m_wnormal: texture_2d<f32>;
-@group(2) @binding(6) var m_samp: sampler;
+@group(2) @binding(6) var m_emissive: texture_2d<f32>;
+@group(2) @binding(7) var m_samp: sampler;
 
 struct VsOut {
     @builtin(position) clip: vec4<f32>,
@@ -129,6 +130,7 @@ fn fs_mesh(i: VsOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f3
         case 6: { return vec4<f32>(srgb_to_linear(vec3<f32>(textureSample(m_bakes, m_samp, i.uv).r)), 1.0); }
         case 7: { return vec4<f32>(srgb_to_linear(vec3<f32>(textureSample(m_bakes, m_samp, i.uv).g)), 1.0); }
         case 8: { return vec4<f32>(srgb_to_linear(textureSample(m_wnormal, m_samp, i.uv).xyz * 0.5 + 0.5), 1.0); }
+        case 10: { return vec4<f32>(tonemap(textureSample(m_emissive, m_samp, i.uv).rgb), 1.0); }
         case 9: {
             let l = max(dot(ng, normalize(g.eye.xyz - i.world)), 0.0);
             return vec4<f32>(checker(i.uv) * (0.25 + 0.75 * l), 1.0);
@@ -153,7 +155,7 @@ fn fs_mesh(i: VsOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f3
     let diffuse = (1.0 - fr) * (1.0 - metal) * albedo * sh_irradiance(n);
     // specular occlusion approximation (Lagarde)
     let so = clamp(pow(nv + ao, exp2(-16.0 * rough - 1.0)) - 1.0 + ao, 0.0, 1.0);
-    var color = diffuse * ao + spec * so;
+    var color = diffuse * ao + spec * so + textureSample(m_emissive, m_samp, i.uv).rgb * g.params2.w;
     if (!front) { color *= vec3<f32>(0.5, 0.25, 0.25); }
     return vec4<f32>(tonemap(color), 1.0);
 }

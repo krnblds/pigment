@@ -25,7 +25,11 @@ pub fn read_layer(device: &wgpu::Device, queue: &wgpu::Queue, ts: &TexSet, res: 
         .enumerate()
         .map(|(i, v)| if i % 2 == 0 { unorm16(v * 0.5 + 0.5) } else { unorm16(v) })
         .collect();
-    Some(LayerPixels { size: ts.res, color: rb(0), roughness: rb(1), metallic: rb(2), height, normal: rb(4) })
+    let emissive: Vec<u16> = f16_bytes_to_f32(&rb(5))
+        .enumerate()
+        .map(|(i, v)| if i % 4 == 3 { unorm16(v) } else { unorm16(v / 16.0) })
+        .collect();
+    Some(LayerPixels { size: ts.res, color: rb(0), roughness: rb(1), metallic: rb(2), height, normal: rb(4), emissive })
 }
 
 pub fn upload_layer(device: &wgpu::Device, queue: &wgpu::Queue, ts: &mut TexSet, res: ResId, px: &LayerPixels) {
@@ -44,6 +48,16 @@ pub fn upload_layer(device: &wgpu::Device, queue: &wgpu::Queue, ts: &mut TexSet,
         .collect();
     gpu::upload(queue, &l.ch[3], bytemuck::cast_slice(&h));
     gpu::upload(queue, &l.ch[4], &px.normal);
+    let e: Vec<u16> = px
+        .emissive
+        .iter()
+        .enumerate()
+        .map(|(i, &v)| {
+            let x = v as f32 / 65535.0;
+            f16::from_f32(if i % 4 == 3 { x } else { x * 16.0 }).to_bits()
+        })
+        .collect();
+    gpu::upload(queue, &l.ch[5], bytemuck::cast_slice(&e));
     ts.layers.insert(res, l);
 }
 
@@ -60,12 +74,25 @@ pub fn upload_mask(device: &wgpu::Device, queue: &wgpu::Queue, ts: &mut TexSet, 
 /// The final, seam-padded material, for export.
 pub fn read_material(device: &wgpu::Device, queue: &wgpu::Queue, ts: &TexSet) -> MaterialImages {
     let h = gpu::readback(device, queue, &ts.material[3]);
+    // emission is HDR: normalise so the brightest texel is 1, report the scale
+    let e: Vec<f32> = f16_bytes_to_f32(&gpu::readback(device, queue, &ts.emissive)).collect();
+    let peak = e.chunks_exact(4).map(|p| p[0].max(p[1]).max(p[2])).fold(0.0f32, f32::max);
+    let scale = if peak > 1.0 { peak } else { 1.0 };
+    let emissive = e
+        .chunks_exact(4)
+        .flat_map(|p| {
+            let c = [p[0], p[1], p[2]].map(|v| (pigment_core::blend::linear_to_srgb((v / scale).clamp(0.0, 1.0)) * 255.0).round() as u8);
+            [c[0], c[1], c[2], 255]
+        })
+        .collect();
     MaterialImages {
         size: ts.res,
         color: gpu::readback(device, queue, &ts.material[0]),
         orm: gpu::readback(device, queue, &ts.material[1]),
         normal: gpu::readback(device, queue, &ts.material[2]),
         height: f16_bytes_to_f32(&h).map(|v| unorm16(v * 0.5 + 0.5)).collect(),
+        emissive,
+        emissive_scale: scale,
     }
 }
 

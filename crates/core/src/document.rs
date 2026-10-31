@@ -22,10 +22,12 @@ pub enum Channel {
     Metallic,
     Height,
     Normal,
+    /// Light the surface gives off: neon, screens, LEDs. HDR (colour x strength).
+    Emissive,
 }
 
 impl Channel {
-    pub const ALL: [Channel; 5] = [Channel::BaseColor, Channel::Roughness, Channel::Metallic, Channel::Height, Channel::Normal];
+    pub const ALL: [Channel; 6] = [Channel::BaseColor, Channel::Roughness, Channel::Metallic, Channel::Height, Channel::Normal, Channel::Emissive];
     pub fn index(self) -> usize {
         self as usize
     }
@@ -36,6 +38,7 @@ impl Channel {
             Channel::Metallic => "Metallic",
             Channel::Height => "Height",
             Channel::Normal => "Normal",
+            Channel::Emissive => "Emission",
         }
     }
     pub fn file_stem(self) -> &'static str {
@@ -45,6 +48,7 @@ impl Channel {
             Channel::Metallic => "metallic",
             Channel::Height => "height",
             Channel::Normal => "normal",
+            Channel::Emissive => "emissive",
         }
     }
     /// Blend modes that make sense for this channel.
@@ -52,6 +56,7 @@ impl Channel {
         use BlendMode::*;
         match self {
             Channel::Normal => &[Normal, NormalCombine],
+            Channel::Emissive => &[Normal, Add, Screen, Lighten, Multiply, Replace],
             Channel::Height => &[Normal, Add, Subtract, Multiply, Darken, Lighten, Replace],
             _ => &[Normal, Multiply, Screen, Overlay, Add, Subtract, Darken, Lighten, Replace],
         }
@@ -68,14 +73,18 @@ impl Channel {
     }
 }
 
-/// Five values, one per channel, serialised with readable keys.
+/// One value per channel, serialised with readable keys.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(bound(deserialize = "T: Deserialize<'de> + Default"))]
 pub struct Channels<T> {
     pub base_color: T,
     pub roughness: T,
     pub metallic: T,
     pub height: T,
     pub normal: T,
+    /// Added in format 1 later: older projects load it as default (off).
+    #[serde(default)]
+    pub emissive: T,
 }
 
 impl<T> Channels<T> {
@@ -86,6 +95,7 @@ impl<T> Channels<T> {
             metallic: f(Channel::Metallic),
             height: f(Channel::Height),
             normal: f(Channel::Normal),
+            emissive: f(Channel::Emissive),
         }
     }
     pub fn get(&self, c: Channel) -> &T {
@@ -95,6 +105,7 @@ impl<T> Channels<T> {
             Channel::Metallic => &self.metallic,
             Channel::Height => &self.height,
             Channel::Normal => &self.normal,
+            Channel::Emissive => &self.emissive,
         }
     }
     pub fn get_mut(&mut self, c: Channel) -> &mut T {
@@ -104,6 +115,7 @@ impl<T> Channels<T> {
             Channel::Metallic => &mut self.metallic,
             Channel::Height => &mut self.height,
             Channel::Normal => &mut self.normal,
+            Channel::Emissive => &mut self.emissive,
         }
     }
 }
@@ -153,6 +165,12 @@ pub struct ChannelSettings {
     pub opacity: f32,
 }
 
+impl Default for ChannelSettings {
+    fn default() -> Self {
+        Self { enabled: false, blend: BlendMode::Normal, opacity: 1.0 }
+    }
+}
+
 /// Constant channel values for a fill layer (also the brush's paint values).
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct MaterialValues {
@@ -164,11 +182,17 @@ pub struct MaterialValues {
     pub height: f32,
     /// Tangent-space tilt (x, y); z is derived. (0,0) = flat.
     pub normal: [f32; 2],
+    /// Emitted light colour (sRGB) and strength (0 = none, 1 = as bright as
+    /// white paint under the studio light, neon ~4-8).
+    #[serde(default)]
+    pub emissive: [f32; 3],
+    #[serde(default)]
+    pub emissive_strength: f32,
 }
 
 impl Default for MaterialValues {
     fn default() -> Self {
-        Self { base_color: [0.8, 0.8, 0.8], roughness: 0.5, metallic: 0.0, height: 0.0, normal: [0.0, 0.0] }
+        Self { base_color: [0.8, 0.8, 0.8], roughness: 0.5, metallic: 0.0, height: 0.0, normal: [0.0, 0.0], emissive: [0.0; 3], emissive_strength: 0.0 }
     }
 }
 
@@ -419,7 +443,8 @@ pub fn smart_material_names() -> Vec<String> {
 
 /// Ready-made materials for the brush and for fill layers.
 pub fn material_presets() -> Vec<(&'static str, MaterialValues)> {
-    let m = |c: [f32; 3], r: f32, mt: f32, h: f32| MaterialValues { base_color: c, roughness: r, metallic: mt, height: h, normal: [0.0, 0.0] };
+    let m = |c: [f32; 3], r: f32, mt: f32, h: f32| MaterialValues { base_color: c, roughness: r, metallic: mt, height: h, ..Default::default() };
+    let neon = |c: [f32; 3], strength: f32| MaterialValues { base_color: c, roughness: 0.2, emissive: c, emissive_strength: strength, ..Default::default() };
     vec![
         ("Steel", m([0.56, 0.57, 0.58], 0.3, 1.0, 0.0)),
         ("Dark iron", m([0.33, 0.33, 0.34], 0.55, 1.0, 0.0)),
@@ -443,6 +468,13 @@ pub fn material_presets() -> Vec<(&'static str, MaterialValues)> {
         ("Verdigris", m([0.32, 0.6, 0.5], 0.8, 0.0, 0.05)),
         ("Oxidized iron", m([0.2, 0.1, 0.06], 0.9, 0.3, 0.1)),
         ("Panel seam", m([0.05, 0.05, 0.05], 0.6, 0.5, -0.5)),
+        ("Neon pink", neon([1.0, 0.12, 0.6], 6.0)),
+        ("Neon cyan", neon([0.05, 0.9, 1.0], 6.0)),
+        ("Neon amber", neon([1.0, 0.55, 0.08], 6.0)),
+        ("Neon green", neon([0.3, 1.0, 0.25], 6.0)),
+        ("Neon violet", neon([0.6, 0.2, 1.0], 6.0)),
+        ("LED white", neon([0.95, 0.97, 1.0], 4.0)),
+        ("Screen blue", MaterialValues { base_color: [0.02, 0.04, 0.08], roughness: 0.1, emissive: [0.25, 0.55, 1.0], emissive_strength: 2.0, ..Default::default() }),
         ("Red paint", m([0.62, 0.07, 0.05], 0.4, 0.0, 0.0)),
         ("White plastic", m([0.85, 0.85, 0.83], 0.35, 0.0, 0.0)),
         ("Black rubber", m([0.04, 0.04, 0.04], 0.9, 0.0, 0.0)),
@@ -524,6 +556,7 @@ impl Document {
         let values = material_preset(preset);
         l.channels.height.enabled = values.height.abs() > 1e-3;
         l.channels.normal.enabled = false;
+        l.channels.emissive.enabled = values.emissive_strength > 0.0;
         l.kind = LayerKind::Fill { values };
         if let Some(g) = generator {
             let res = self.mint();
@@ -640,13 +673,15 @@ impl Document {
 
     pub fn new_fill_layer(&mut self, name: &str) -> Layer {
         let id = self.mint();
+        let mut channels = Self::channels_default();
+        channels.emissive.enabled = false; // a fill without emission must not black out glow below it
         Layer {
             id,
             name: name.into(),
             visible: true,
             opacity: 1.0,
             kind: LayerKind::Fill { values: MaterialValues::default() },
-            channels: Self::channels_default(),
+            channels,
             mask: None,
         }
     }
@@ -761,6 +796,25 @@ mod tests {
             assert_eq!(GeneratorKind::from_id(k.id()), Some(k));
             assert_eq!(GeneratorKind::from_id(k.label()), Some(k));
         }
+    }
+
+    #[test]
+    fn emission_is_off_on_plain_fills_and_old_projects_load() {
+        let mut d = Document::default();
+        assert!(!d.new_fill_layer("f").channels.emissive.enabled);
+        assert!(d.new_paint_layer("p").channels.emissive.enabled);
+        assert!(d.fill_with("n", "Neon pink", None).channels.emissive.enabled);
+        // a document saved before the emissive channel existed
+        let mut v = serde_json::to_value(Document::new_default()).unwrap();
+        for l in v["layers"].as_array_mut().unwrap() {
+            l["channels"].as_object_mut().unwrap().remove("emissive");
+            if let Some(vals) = l["kind"].get_mut("values") {
+                vals.as_object_mut().unwrap().remove("emissive");
+                vals.as_object_mut().unwrap().remove("emissive_strength");
+            }
+        }
+        let old: Document = serde_json::from_value(v).unwrap();
+        assert!(!old.layers[0].channels.emissive.enabled);
     }
 
     #[test]

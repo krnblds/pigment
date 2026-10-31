@@ -162,7 +162,8 @@ impl Session {
     pub fn library(&self) -> Value {
         json!({
             "materials": material_presets().into_iter().map(|(n, v)| json!({
-                "name": n, "base_color": v.base_color, "roughness": v.roughness, "metallic": v.metallic, "height": v.height
+                "name": n, "base_color": v.base_color, "roughness": v.roughness, "metallic": v.metallic, "height": v.height,
+                "emissive": v.emissive, "emissive_strength": v.emissive_strength
             })).collect::<Vec<_>>(),
             "smart_materials": smart_material_names(),
             "generators": GeneratorKind::ALL.iter().map(|k| json!({ "id": k.id(), "label": k.label(), "uses_bakes": k.uses_bakes() })).collect::<Vec<_>>(),
@@ -245,9 +246,12 @@ impl Session {
             if values.height.abs() > 1e-3 {
                 l.channels.height.enabled = true;
             }
+            l.channels.emissive.enabled = values.emissive_strength > 0.0;
         }
         if let Some(vals) = a.get("values") {
-            let LayerKind::Fill { values: v } = &mut app.doc.layers[i].kind else { return Err("`values` apply to fill layers".into()) };
+            let l = &mut app.doc.layers[i];
+            let LayerKind::Fill { values: v } = &mut l.kind else { return Err("`values` apply to fill layers".into()) };
+            let mut height_set = false;
             if let Some(c) = vals.get("base_color").and_then(Value::as_array) {
                 for (k, x) in c.iter().take(3).enumerate() {
                     v.base_color[k] = x.as_f64().unwrap_or(0.0).clamp(0.0, 1.0) as f32;
@@ -261,7 +265,20 @@ impl Session {
             }
             if let Some(x) = f(vals, "height") {
                 v.height = x.clamp(-1.0, 1.0);
-                app.doc.layers[i].channels.height.enabled = true;
+                height_set = true;
+            }
+            if let Some(c) = vals.get("emissive").and_then(Value::as_array) {
+                for (k, x) in c.iter().take(3).enumerate() {
+                    v.emissive[k] = x.as_f64().unwrap_or(0.0).clamp(0.0, 1.0) as f32;
+                }
+            }
+            if let Some(x) = f(vals, "emissive_strength") {
+                v.emissive_strength = x.max(0.0);
+            }
+            let glows = v.emissive_strength > 0.0;
+            l.channels.emissive.enabled = glows;
+            if height_set {
+                l.channels.height.enabled = true;
             }
         }
         if let Some(chs) = a.get("channels").and_then(Value::as_object) {
@@ -479,10 +496,10 @@ impl Session {
                 return Err(format!("unknown material `{name}`"));
             }
             b.values = material_preset(name);
-            b.channels = [true, true, true, b.values.height.abs() > 1e-3, false];
+            b.channels = [true, true, true, b.values.height.abs() > 1e-3, false, b.values.emissive_strength > 0.0];
         }
         if let Some(chs) = a.get("channels").and_then(Value::as_array) {
-            b.channels = [false; 5];
+            b.channels = [false; 6];
             for c in chs.iter().filter_map(Value::as_str) {
                 b.channels[channel(c)?.index()] = true;
             }
@@ -559,13 +576,14 @@ impl Session {
         self.app.status = None;
         self.app.export(&self.rs);
         let msg = self.status()?;
+        let scale = self.app.last_emissive_scale;
         let files: Vec<String> = export::preset(preset)
             .unwrap()
             .outputs
             .iter()
             .map(|o| dir.join(format!("{}_{}.png", self.app.export_name, o.suffix)).to_string_lossy().to_string())
             .collect();
-        Ok(json!({ "status": msg, "files": files }))
+        Ok(json!({ "status": msg, "files": files, "emissive_scale": scale }))
     }
 }
 
@@ -597,6 +615,28 @@ mod tests {
         s.undo(false).unwrap();
         let saved = s.save_project(&json!({ "path": out.join("box.pigment") })).unwrap();
         assert!(out.join("box.pigment/project.json").exists(), "{saved}");
+        std::fs::remove_dir_all(out).ok();
+    }
+
+    #[test]
+    fn neon_glows_in_material_export_and_brush() {
+        let Ok(mut s) = Session::new() else { return };
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        s.new_project(&json!({ "mesh": root.join("assets/neon_tubes.glb"), "resolution": 512, "material": "Neon pink" })).unwrap();
+        let out = std::env::temp_dir().join(format!("pigment-neon-{}", std::process::id()));
+        let e = s.export_textures(&json!({ "dir": out, "preset": "separate", "name": "Tube" })).unwrap();
+        assert!((e["emissive_scale"].as_f64().unwrap() - 6.0).abs() < 0.5, "{e}");
+        let em = image::open(out.join("Tube_Emissive.png")).unwrap().to_rgb8();
+        let px = em.get_pixel(256, 256).0;
+        assert!(px[0] > 200 && px[1] < 140 && px[2] > 120, "emissive texel {px:?}");
+        // brush paints emission on a plain material
+        s.new_project(&json!({ "mesh": root.join("assets/ammo_box.glb"), "resolution": 512, "material": "Matte black" })).unwrap();
+        s.paint_stroke(&json!({ "points": [[0.3, 0.5], [0.7, 0.5]], "material": "Neon cyan", "size": 60 })).unwrap();
+        let img = s.render(&json!({ "view": "emission", "width": 320, "height": 240, "path": std::env::temp_dir().join("pig/emis_view.png") })).unwrap();
+        let rgba = image::load_from_memory(&img.png).unwrap().to_rgba8();
+        // bright neon: the core blows out towards white, the rim is cyan
+        let cyan = rgba.pixels().filter(|p| p.0[2] > 180 && p.0[1] > 180).count();
+        assert!(cyan > 100, "{cyan} glowing pixels");
         std::fs::remove_dir_all(out).ok();
     }
 }

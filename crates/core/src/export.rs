@@ -18,6 +18,10 @@ pub struct MaterialImages {
     pub normal: Vec<u8>,
     /// 16-bit height, 32768 = neutral.
     pub height: Vec<u16>,
+    /// RGBA8, sRGB-encoded emission, normalised so the brightest texel is 1.
+    pub emissive: Vec<u8>,
+    /// Multiply the emissive map by this in the engine to get the painted brightness.
+    pub emissive_scale: f32,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -36,6 +40,9 @@ pub enum Source {
     /// DirectX convention (Unreal): green flipped.
     NormalYFlipped,
     NormalZ,
+    EmissiveR,
+    EmissiveG,
+    EmissiveB,
     One,
 }
 
@@ -84,6 +91,7 @@ pub fn presets() -> Vec<Preset> {
                 o("Normal", Rgb8, &[NormalX, NormalYFlipped, NormalZ]),
                 o("OcclusionRoughnessMetallic", Rgb8, &[Ao, Roughness, Metallic]),
                 o("Height", L16, &[Height]),
+                o("Emissive", Rgb8, &[EmissiveR, EmissiveG, EmissiveB]),
             ],
         },
         Preset {
@@ -95,6 +103,7 @@ pub fn presets() -> Vec<Preset> {
                 o("MetallicSmoothness", Rgba8, &[Metallic, Metallic, Metallic, Smoothness]),
                 o("Occlusion", L8, &[Ao]),
                 o("Height", L16, &[Height]),
+                o("Emission", Rgb8, &[EmissiveR, EmissiveG, EmissiveB]),
             ],
         },
         Preset {
@@ -105,6 +114,7 @@ pub fn presets() -> Vec<Preset> {
                 o("normal", Rgb8, &[NormalX, NormalY, NormalZ]),
                 o("orm", Rgb8, &[Ao, Roughness, Metallic]),
                 o("height", L16, &[Height]),
+                o("emission", Rgb8, &[EmissiveR, EmissiveG, EmissiveB]),
             ],
         },
         Preset {
@@ -117,6 +127,7 @@ pub fn presets() -> Vec<Preset> {
                 o("AO", L8, &[Ao]),
                 o("Normal_OpenGL", Rgb8, &[NormalX, NormalY, NormalZ]),
                 o("Height", L16, &[Height]),
+                o("Emissive", Rgb8, &[EmissiveR, EmissiveG, EmissiveB]),
             ],
         },
     ]
@@ -142,6 +153,9 @@ fn sample(m: &MaterialImages, src: Source, i: usize) -> u16 {
         Source::NormalYFlipped => b(255 - m.normal[4 * i + 1]),
         Source::NormalZ => b(m.normal[4 * i + 2]),
         Source::Height => m.height[i],
+        Source::EmissiveR => b(m.emissive[4 * i]),
+        Source::EmissiveG => b(m.emissive[4 * i + 1]),
+        Source::EmissiveB => b(m.emissive[4 * i + 2]),
         Source::One => 65535,
     }
 }
@@ -206,6 +220,8 @@ mod tests {
             orm: vec![200, 100, 50, 255, 255, 128, 0, 255, 255, 128, 0, 255, 255, 128, 0, 255],
             normal: vec![128, 200, 255, 255, 128, 128, 255, 255, 128, 128, 255, 255, 128, 128, 255, 255],
             height: vec![40000, 32768, 32768, 32768],
+            emissive: vec![255, 0, 128, 255, 0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0, 255],
+            emissive_scale: 6.0,
         }
     }
 
@@ -244,7 +260,9 @@ mod tests {
     fn export_writes_readable_pngs() {
         let dir = std::env::temp_dir().join(format!("pigment-export-{}", std::process::id()));
         let files = export(&dir, "Crate", &preset("unreal").unwrap(), &tiny()).unwrap();
-        assert_eq!(files.len(), 4);
+        assert_eq!(files.len(), 5);
+        let em = image::open(dir.join("Crate_Emissive.png")).unwrap().to_rgb8();
+        assert_eq!(em.get_pixel(0, 0).0, [255, 0, 128]);
         let img = image::open(dir.join("Crate_OcclusionRoughnessMetallic.png")).unwrap().to_rgb8();
         assert_eq!(img.get_pixel(0, 0).0, [200, 100, 50]);
         let h = image::open(dir.join("Crate_Height.png")).unwrap().to_luma16();

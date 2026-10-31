@@ -33,6 +33,8 @@ pub struct LayerPixels {
     pub height: Vec<u16>,
     /// RGBA8: encoded tangent normal + coverage.
     pub normal: Vec<u8>,
+    /// RGBA16: linear emission / 16 (so 0..16 fits), + coverage.
+    pub emissive: Vec<u16>,
 }
 
 impl LayerPixels {
@@ -41,7 +43,7 @@ impl LayerPixels {
         // height value slots hold the neutral code (32768 = 0.0) so an empty layer
         // round-trips exactly through the GPU's float format
         let height = (0..n).flat_map(|_| [32768u16, 0]).collect();
-        Self { size, color: vec![0; n * 4], roughness: vec![0; n * 2], metallic: vec![0; n * 2], height, normal: vec![0; n * 4] }
+        Self { size, color: vec![0; n * 4], roughness: vec![0; n * 2], metallic: vec![0; n * 2], height, normal: vec![0; n * 4], emissive: vec![0; n * 4] }
     }
 }
 
@@ -98,6 +100,7 @@ pub fn write_layer(dir: &Path, res: ResId, px: &LayerPixels) -> Result<()> {
     put("metallic.png", any_coverage_rg8(&px.metallic), &px.metallic, C::La8)?;
     put("height.png", px.height.chunks_exact(2).any(|p| p[1] != 0), bytemuck::cast_slice(&px.height), C::La16)?;
     put("normal.png", px.normal.chunks_exact(4).any(|p| p[3] != 0), &px.normal, C::Rgba8)?;
+    put("emissive.png", px.emissive.chunks_exact(4).any(|p| p[3] != 0), bytemuck::cast_slice(&px.emissive), C::Rgba16)?;
     Ok(())
 }
 
@@ -132,6 +135,9 @@ pub fn read_layer(dir: &Path, res: ResId, size: u32) -> Result<LayerPixels> {
     }
     if let Some(i) = open_resized(&d.join("normal.png"), size)? {
         px.normal = i.to_rgba8().into_raw();
+    }
+    if let Some(i) = open_resized(&d.join("emissive.png"), size)? {
+        px.emissive = i.to_rgba16().into_raw();
     }
     Ok(px)
 }

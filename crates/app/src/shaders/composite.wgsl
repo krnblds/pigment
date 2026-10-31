@@ -5,6 +5,7 @@
 //   acc_color.rgb  linear base colour
 //   acc_rmh        roughness, metallic, height
 //   acc_normal.xyz tangent-space detail normal (painted / filled normals)
+//   acc_emissive   linear HDR emission
 
 // ---- group 0: mesh-derived data shared by every layer ----
 @group(0) @binding(0) var bakes: texture_2d<f32>;      // r = AO, g = curvature (0.5 neutral)
@@ -21,6 +22,7 @@ struct Shared {
 @group(1) @binding(0) var acc_color: texture_2d<f32>;
 @group(1) @binding(1) var acc_rmh: texture_2d<f32>;
 @group(1) @binding(2) var acc_normal: texture_2d<f32>;
+@group(1) @binding(3) var acc_emissive: texture_2d<f32>;
 
 // ---- group 2: the layer ----
 @group(2) @binding(0) var l_color: texture_2d<f32>;    // srgb view: rgb linear, a coverage
@@ -28,7 +30,8 @@ struct Shared {
 @group(2) @binding(2) var l_metal: texture_2d<f32>;
 @group(2) @binding(3) var l_height: texture_2d<f32>;   // r value (-1..1), g coverage
 @group(2) @binding(4) var l_normal: texture_2d<f32>;   // rgb encoded normal, a coverage
-@group(2) @binding(5) var l_mask: texture_2d<f32>;
+@group(2) @binding(5) var l_emissive: texture_2d<f32>;  // linear HDR rgb, a coverage (channel order)
+@group(2) @binding(6) var l_mask: texture_2d<f32>;
 struct LayerParams {
     flags: vec4<u32>,       // kind (0 paint, 1 fill), has mask, generator id, invert
     blend: vec4<u32>,       // color, rough, metal, height
@@ -40,13 +43,15 @@ struct LayerParams {
     fill_normal: vec4<f32>,
     gen: vec4<f32>,         // amount, softness, noise scale, noise amount
     gen2: vec4<f32>,        // seed, AO influence, curvature weight
+    fill_emissive: vec4<f32>, // linear rgb x strength
 };
-@group(2) @binding(6) var<uniform> lp: LayerParams;
+@group(2) @binding(7) var<uniform> lp: LayerParams;
 
 struct Acc {
     @location(0) color: vec4<f32>,
     @location(1) rmh: vec4<f32>,
     @location(2) normal: vec4<f32>,
+    @location(3) emissive: vec4<f32>,
 };
 
 // Ridged fbm: 1 at the noise's zero crossings, falling off around them.
@@ -129,7 +134,9 @@ fn fs_layer(f: FullOut) -> Acc {
     let dc = textureLoad(acc_color, t, 0);
     let dr = textureLoad(acc_rmh, t, 0);
     let dn = textureLoad(acc_normal, t, 0).xyz;
+    let de = textureLoad(acc_emissive, t, 0).rgb;
 
+    var e = vec4<f32>(lp.fill_emissive.rgb, 1.0);
     var c = vec4<f32>(lp.fill_color.rgb, 1.0);
     var r = vec2<f32>(lp.fill_rmh.x, 1.0);
     var m = vec2<f32>(lp.fill_rmh.y, 1.0);
@@ -142,6 +149,7 @@ fn fs_layer(f: FullOut) -> Acc {
         h = textureLoad(l_height, t, 0).rg;
         let ln = textureLoad(l_normal, t, 0);
         n = vec4<f32>(normalize(ln.xyz * 2.0 - 1.0 + vec3<f32>(0.0, 0.0, 1e-4)), ln.a);
+        e = textureLoad(l_emissive, t, 0);
     }
 
     var mask = 1.0;
@@ -159,6 +167,7 @@ fn fs_layer(f: FullOut) -> Acc {
         select(h.y, 1.0, lp.blend.w == 8u));
     let a = cov * lp.opacity * mask;
     let an = n.a * lp.opacity2.x * mask;
+    let ae = select(e.a, 1.0, lp.blend2.y == 8u) * lp.opacity2.y * mask;
 
     var o: Acc;
     o.color = vec4<f32>(max(blend_rgb(lp.blend.x, dc.rgb, c.rgb, a.x), vec3<f32>(0.0)), 1.0);
@@ -169,6 +178,7 @@ fn fs_layer(f: FullOut) -> Acc {
         clamp(blend_scalar(lp.blend.w, dr.z, h.x, a.w), -8.0, 8.0),
         1.0);
     o.normal = vec4<f32>(blend_normal(lp.blend2.x, dn, n.xyz, an), 1.0);
+    o.emissive = vec4<f32>(max(blend_rgb(lp.blend2.y, de, e.rgb, ae), vec3<f32>(0.0)), 1.0);
     return o;
 }
 
@@ -179,6 +189,7 @@ fn fs_clear(f: FullOut) -> Acc {
     o.color = vec4<f32>(srgb_to_linear(vec3<f32>(0.5)), 1.0);
     o.rmh = vec4<f32>(0.5, 0.0, 0.0, 1.0);
     o.normal = vec4<f32>(0.0, 0.0, 1.0, 1.0);
+    o.emissive = vec4<f32>(0.0, 0.0, 0.0, 1.0);
     return o;
 }
 
@@ -252,4 +263,11 @@ fn fs_finalize(f: FullOut) -> Material {
     o.normal = vec4<f32>(nrm * 0.5 + 0.5, 1.0);
     o.height = vec4<f32>(rmh.z, 0.0, 0.0, 1.0);
     return o;
+}
+
+// Emission, seam padded like the rest of the material.
+@fragment
+fn fs_finalize_emissive(f: FullOut) -> @location(0) vec4<f32> {
+    let s = src_texel(vec2<i32>(f.pos.xy));
+    return vec4<f32>(textureLoad(acc_emissive, s, 0).rgb, 1.0);
 }

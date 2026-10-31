@@ -49,7 +49,7 @@ struct Brush {
     hardness: f32,
     spacing: f32, // fraction of diameter
     values: MaterialValues,
-    channels: [bool; 5],
+    channels: [bool; 6],
     erase: bool,
     mask_white: bool,
 }
@@ -62,7 +62,7 @@ impl Default for Brush {
             hardness: 0.6,
             spacing: 0.1,
             values: material_preset("Orange paint"),
-            channels: [true, true, true, false, false],
+            channels: [true, true, true, false, false, false],
             erase: false,
             mask_white: true,
         }
@@ -122,6 +122,8 @@ pub struct PigmentApp {
     last_stamp_ms: f32,
     ppp: f32,
     dump_requested: bool,
+    /// Brightness multiplier of the last exported emissive map.
+    last_emissive_scale: f32,
     tour: tour::Tour,
     counters: Counters,
     /// Screen rects of UI elements the guide can point at, rebuilt every frame.
@@ -174,6 +176,7 @@ impl PigmentApp {
             last_stamp_ms: 0.0,
             ppp: 1.0,
             dump_requested: false,
+            last_emissive_scale: 1.0,
             tour: Default::default(),
             counters: Counters::default(),
             anchors: Default::default(),
@@ -426,6 +429,7 @@ impl PigmentApp {
         self.ensure_composited(rs);
         let t0 = Instant::now();
         let m = io::read_material(&rs.device, &rs.queue, &self.ts);
+        self.last_emissive_scale = m.emissive_scale;
         match export::export(&dir, &self.export_name, &preset, &m) {
             Ok(files) => self.set_status(
                 format!("Exported {} maps ({}x{}) to {} in {:.0} ms", files.len(), m.size, m.size, dir.display(), t0.elapsed().as_secs_f64() * 1000.0),
@@ -609,6 +613,12 @@ impl PigmentApp {
             normal: [n.x, n.y, n.z, 0.0],
             enabled: [on(0), on(1), on(2), on(3)],
             enabled2: [on(4), if b.erase { 1.0 } else { 0.0 }, mask_value, 0.0],
+            emissive: {
+                let e = b.values.emissive.map(srgb_to_linear);
+                let k = b.values.emissive_strength.max(0.0);
+                [e[0] * k, e[1] * k, e[2] * k, 1.0]
+            },
+            enabled3: [on(5), 0.0, 0.0, 0.0],
         }
     }
 

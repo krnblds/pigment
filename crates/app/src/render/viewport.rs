@@ -26,10 +26,11 @@ pub enum ViewMode {
     Curvature = 7,
     WorldNormal = 8,
     UvChecker = 9,
+    Emissive = 10,
 }
 
 impl ViewMode {
-    pub const ALL: [ViewMode; 10] = [
+    pub const ALL: [ViewMode; 11] = [
         ViewMode::Material,
         ViewMode::BaseColor,
         ViewMode::Roughness,
@@ -40,6 +41,7 @@ impl ViewMode {
         ViewMode::Curvature,
         ViewMode::WorldNormal,
         ViewMode::UvChecker,
+        ViewMode::Emissive,
     ];
     pub fn label(self) -> &'static str {
         match self {
@@ -53,6 +55,7 @@ impl ViewMode {
             ViewMode::Curvature => "Curvature (bake)",
             ViewMode::WorldNormal => "World normal (bake)",
             ViewMode::UvChecker => "UV checker",
+            ViewMode::Emissive => "Emission",
         }
     }
 }
@@ -85,11 +88,13 @@ pub struct ViewSettings {
     pub exposure: f32,
     pub env_rotation: f32,
     pub show_env: bool,
+    /// Multiplier on painted emission in the viewport.
+    pub emission: f32,
 }
 
 impl Default for ViewSettings {
     fn default() -> Self {
-        Self { mode: ViewMode::Material, exposure: 0.0, env_rotation: 0.0, show_env: true }
+        Self { mode: ViewMode::Material, exposure: 0.0, env_rotation: 0.0, show_env: true, emission: 1.0 }
     }
 }
 
@@ -114,7 +119,7 @@ impl Viewport {
         let mat_bgl = gpu::bgl(
             device,
             "viewport material",
-            &[gpu::ftex(0), gpu::ftex(1), gpu::ftex(2), gpu::ftex(3), gpu::ftex(4), gpu::ftex(5), gpu::sampler_entry(6, wgpu::SamplerBindingType::Filtering)],
+            &[gpu::ftex(0), gpu::ftex(1), gpu::ftex(2), gpu::ftex(3), gpu::ftex(4), gpu::ftex(5), gpu::ftex(6), gpu::sampler_entry(7, wgpu::SamplerBindingType::Filtering)],
         );
         let layout = gpu::layout(device, "viewport", &[&g_bgl, &env_bgl, &mat_bgl]);
         let depth_layout = gpu::layout(device, "viewport depth", &[&g_bgl]);
@@ -285,7 +290,7 @@ impl Viewport {
             inv_view_proj: vp.inverse().to_cols_array_2d(),
             eye: [eye.x, eye.y, eye.z, 1.0],
             params: [settings.mode as u32 as f32, settings.exposure, settings.env_rotation, ENV_MIPS as f32],
-            params2: [settings.show_env as u32 as f32, 2.5, ts.baked as u32 as f32, 0.0],
+            params2: [settings.show_env as u32 as f32, 2.5, ts.baked as u32 as f32, settings.emission],
             sh,
         };
         queue.write_buffer(&self.globals, 0, bytemuck::bytes_of(&globals));
@@ -311,6 +316,7 @@ impl Viewport {
                 wgpu::BindingResource::TextureView(&ts.material[3].view),
                 wgpu::BindingResource::TextureView(&ts.bakes.view),
                 wgpu::BindingResource::TextureView(&ts.wnormal.view),
+                wgpu::BindingResource::TextureView(&ts.emissive.view),
                 wgpu::BindingResource::Sampler(&self.sampler),
             ],
         );

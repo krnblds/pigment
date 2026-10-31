@@ -5,14 +5,17 @@
 @group(0) @binding(3) var b_metal: texture_2d<f32>;
 @group(0) @binding(4) var b_height: texture_2d<f32>;
 @group(0) @binding(5) var b_normal: texture_2d<f32>;
+@group(0) @binding(6) var b_emissive: texture_2d<f32>;
 struct Brush {
     color: vec4<f32>,       // linear rgb
     rmh: vec4<f32>,         // roughness, metallic, height
     normal: vec4<f32>,      // unit tangent normal
     enabled: vec4<f32>,     // color, rough, metal, height (1/0)
     enabled2: vec4<f32>,    // normal, erase(1/0), mask value
+    emissive: vec4<f32>,    // linear rgb x strength
+    enabled3: vec4<f32>,    // emissive
 };
-@group(0) @binding(6) var<uniform> brush: Brush;
+@group(0) @binding(7) var<uniform> brush: Brush;
 
 struct LayerOut {
     @location(0) color: vec4<f32>,
@@ -20,6 +23,7 @@ struct LayerOut {
     @location(2) metal: vec4<f32>,
     @location(3) height: vec4<f32>,
     @location(4) normal: vec4<f32>,
+    @location(5) emissive: vec4<f32>,
 };
 
 // "Over" for straight alpha: paint value v with alpha m over (bv, ba).
@@ -53,6 +57,8 @@ fn fs_apply(f: FullOut) -> LayerOut {
     let h = apply1(brush.enabled.w, vec4<f32>(bh.r), bh.g, vec4<f32>(brush.rmh.z), m);
     o.height = vec4<f32>(h.x, h.w, 0.0, 1.0);
     o.normal = apply1(brush.enabled2.x, bn, bn.a, vec4<f32>(brush.normal.xyz * 0.5 + 0.5, 1.0), m);
+    let be = textureLoad(b_emissive, t, 0);
+    o.emissive = apply1(brush.enabled3.x, be, be.a, vec4<f32>(brush.emissive.rgb, 1.0), m);
     return o;
 }
 

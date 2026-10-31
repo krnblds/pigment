@@ -117,8 +117,8 @@ fn tilt_edit(ui: &mut egui::Ui, n: &mut [f32; 2]) {
 }
 
 /// Editable material values in a two-column grid, optionally with per-channel toggles.
-fn material_grid(ui: &mut egui::Ui, id: &str, v: &mut MaterialValues, enabled: Option<&mut [bool; 5]>) {
-    let mut dummy = [true; 5];
+fn material_grid(ui: &mut egui::Ui, id: &str, v: &mut MaterialValues, enabled: Option<&mut [bool; 6]>) {
+    let mut dummy = [true; 6];
     let has_toggles = enabled.is_some();
     let en = enabled.unwrap_or(&mut dummy);
     egui::Grid::new(id).num_columns(2).spacing([10.0, 6.0]).show(ui, |ui| {
@@ -143,6 +143,12 @@ fn material_grid(ui: &mut egui::Ui, id: &str, v: &mut MaterialValues, enabled: O
         ui.end_row();
         row(ui, &mut en[4], "Normal tilt");
         tilt_edit(ui, &mut v.normal);
+        ui.end_row();
+        row(ui, &mut en[5], "Emission");
+        ui.horizontal(|ui| {
+            srgb_edit(ui, &mut v.emissive);
+            ui.add(egui::DragValue::new(&mut v.emissive_strength).range(0.0..=50.0).speed(0.05).prefix("× "));
+        });
         ui.end_row();
     });
 }
@@ -498,7 +504,7 @@ impl PigmentApp {
                         .inner;
                     if r.clicked() {
                         self.brush.values = v.clone();
-                        self.brush.channels = [true, true, true, v.height.abs() > 0.01, false];
+                        self.brush.channels = [true, true, true, v.height.abs() > 0.01, false, v.emissive_strength > 0.0];
                         self.brush.erase = false;
                     }
                     if k % 2 == 1 {
@@ -1105,6 +1111,7 @@ impl PigmentApp {
                         (ViewMode::Normal, "Normal"),
                         (ViewMode::Ao, "AO"),
                         (ViewMode::Curvature, "Curvature"),
+                        (ViewMode::Emissive, "Glow"),
                         (ViewMode::UvChecker, "UVs"),
                     ] {
                         ui.selectable_value(&mut self.view.mode, m, RichText::new(short).size(12.0)).on_hover_text(m.label());

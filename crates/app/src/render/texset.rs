@@ -13,13 +13,15 @@ use std::collections::{HashMap, HashSet};
 use wgpu::util::DeviceExt;
 
 /// Paint layer channel formats, indexed by `Channel`.
-pub const LAYER_FORMATS: [wgpu::TextureFormat; 5] = [
+pub const LAYER_FORMATS: [wgpu::TextureFormat; 6] = [
     wgpu::TextureFormat::Rgba8UnormSrgb, // base colour + coverage
     wgpu::TextureFormat::Rg8Unorm,       // roughness + coverage
     wgpu::TextureFormat::Rg8Unorm,       // metallic + coverage
     wgpu::TextureFormat::Rg16Float,      // height (-1..1) + coverage
     wgpu::TextureFormat::Rgba8Unorm,     // encoded normal + coverage
+    wgpu::TextureFormat::Rgba16Float,    // emission (linear HDR) + coverage
 ];
+pub const EMISSIVE: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
 pub const MASK_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::R8Unorm;
 const ACC: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
 pub const MATERIAL_FORMATS: [wgpu::TextureFormat; 4] = [
@@ -35,7 +37,7 @@ pub const BAKES: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
 const LAYER_UNIFORM_STRIDE: u64 = 256;
 
 pub struct LayerTex {
-    pub ch: [Tex; 5],
+    pub ch: [Tex; 6],
 }
 
 impl LayerTex {
@@ -60,6 +62,7 @@ struct LayerParams {
     fill_normal: [f32; 4],
     gp: [f32; 4],
     gp2: [f32; 4],
+    fill_emissive: [f32; 4],
 }
 
 fn layer_params(l: &Layer) -> LayerParams {
@@ -72,17 +75,19 @@ fn layer_params(l: &Layer) -> LayerParams {
     let (om, bm) = ch(Channel::Metallic);
     let (oh, bh) = ch(Channel::Height);
     let (on, bn) = ch(Channel::Normal);
+    let (oe, be) = ch(Channel::Emissive);
     let mut p = LayerParams {
         flags: [0, 0, 0, 0],
         blend: [bc, br, bm, bh],
-        blend2: [bn, 0, 0, 0],
+        blend2: [bn, be, 0, 0],
         opacity: [oc, or, om, oh],
-        opacity2: [on, 0.0, 0.0, 0.0],
+        opacity2: [on, oe, 0.0, 0.0],
         fill_color: [0.0; 4],
         fill_rmh: [0.0; 4],
         fill_normal: [0.0, 0.0, 1.0, 0.0],
         gp: [0.0; 4],
         gp2: [0.0; 4],
+        fill_emissive: [0.0; 4],
     };
     if let LayerKind::Fill { values } = &l.kind {
         p.flags[0] = 1;
@@ -91,6 +96,9 @@ fn layer_params(l: &Layer) -> LayerParams {
         p.fill_rmh = [values.roughness, values.metallic, values.height, 0.0];
         let n = normal_from_tilt(Vec2::from(values.normal));
         p.fill_normal = [n.x, n.y, n.z, 0.0];
+        let e = values.emissive.map(srgb_to_linear);
+        let k = values.emissive_strength.max(0.0);
+        p.fill_emissive = [e[0] * k, e[1] * k, e[2] * k, 1.0];
     }
     if let Some(m) = l.mask.as_ref().filter(|m| m.enabled) {
         p.flags[1] = 1;
@@ -105,7 +113,7 @@ fn layer_params(l: &Layer) -> LayerParams {
 }
 
 struct AccSet {
-    t: [Tex; 3],
+    t: [Tex; 4],
     bg: wgpu::BindGroup,
 }
 
@@ -117,6 +125,8 @@ pub struct TexSet {
     pub unsaved: HashSet<ResId>,
     acc: [AccSet; 3], // ping, pong, final
     pub material: [Tex; 4],
+    /// Final emission (linear HDR), mipmapped like the material.
+    pub emissive: Tex,
     pub position: Tex,
     pub wnormal: Tex,
     pub nearest: Tex,
@@ -141,6 +151,7 @@ struct Pipes {
     clear: wgpu::RenderPipeline,
     layer: wgpu::RenderPipeline,
     finalize: wgpu::RenderPipeline,
+    finalize_emissive: wgpu::RenderPipeline,
     uv: wgpu::RenderPipeline,
     jfa_init: wgpu::RenderPipeline,
     jfa_step: wgpu::RenderPipeline,
@@ -152,16 +163,16 @@ impl Pipes {
         let comp = gpu::shader(device, "composite.wgsl", &[common, include_str!("../shaders/composite.wgsl")].concat());
         let ts = gpu::shader(device, "texspace.wgsl", &[common, include_str!("../shaders/texspace.wgsl")].concat());
         let shared_bgl = gpu::bgl(device, "shared", &[gpu::ntex(0), gpu::ntex(1), gpu::utex(2), gpu::uniform_entry(3, false), gpu::ntex(4)]);
-        let acc_bgl = gpu::bgl(device, "acc", &[gpu::ntex(0), gpu::ntex(1), gpu::ntex(2)]);
+        let acc_bgl = gpu::bgl(device, "acc", &[gpu::ntex(0), gpu::ntex(1), gpu::ntex(2), gpu::ntex(3)]);
         let layer_bgl = gpu::bgl(
             device,
             "layer",
-            &[gpu::ntex(0), gpu::ntex(1), gpu::ntex(2), gpu::ntex(3), gpu::ntex(4), gpu::ntex(5), gpu::uniform_entry(6, true)],
+            &[gpu::ntex(0), gpu::ntex(1), gpu::ntex(2), gpu::ntex(3), gpu::ntex(4), gpu::ntex(5), gpu::ntex(6), gpu::uniform_entry(7, true)],
         );
         let full_layout = gpu::layout(device, "composite", &[&shared_bgl, &acc_bgl, &layer_bgl]);
         let fin_layout = gpu::layout(device, "finalize", &[&shared_bgl, &acc_bgl]);
         let empty_layout = gpu::layout(device, "empty", &[]);
-        let acc_targets = [gpu::target(ACC, None), gpu::target(ACC, None), gpu::target(ACC, None)];
+        let acc_targets = [gpu::target(ACC, None), gpu::target(ACC, None), gpu::target(ACC, None), gpu::target(ACC, None)];
         let mat_targets: Vec<_> = MATERIAL_FORMATS.iter().map(|f| gpu::target(*f, None)).collect();
         let jfa_bgl = gpu::bgl(device, "jfa", &[gpu::utex(0), gpu::ntex(1), gpu::uniform_entry(2, false)]);
         let jfa_layout = gpu::layout(device, "jfa", &[&jfa_bgl]);
@@ -175,6 +186,7 @@ impl Pipes {
             clear: gpu::fullscreen(device, "acc clear", &comp, "fs_clear", &empty_layout, &acc_targets),
             layer: gpu::fullscreen(device, "composite layer", &comp, "fs_layer", &full_layout, &acc_targets),
             finalize: gpu::fullscreen(device, "finalize", &comp, "fs_finalize", &fin_layout, &mat_targets),
+            finalize_emissive: gpu::fullscreen(device, "finalize emissive", &comp, "fs_finalize_emissive", &fin_layout, &[gpu::target(EMISSIVE, None)]),
             uv: gpu::pipeline(
                 device,
                 gpu::PipeDesc {
@@ -200,12 +212,12 @@ impl Pipes {
     }
 }
 
-fn acc_views(s: &AccSet) -> [&wgpu::TextureView; 3] {
-    [&s.t[0].view, &s.t[1].view, &s.t[2].view]
+fn acc_views(s: &AccSet) -> [&wgpu::TextureView; 4] {
+    [&s.t[0].view, &s.t[1].view, &s.t[2].view, &s.t[3].view]
 }
 
 fn acc_set(device: &wgpu::Device, p: &Pipes, res: u32, name: &str) -> AccSet {
-    let t = [0, 1, 2].map(|i| Tex::target(device, &format!("{name} {i}"), res, ACC));
+    let t = [0, 1, 2, 3].map(|i| Tex::target(device, &format!("{name} {i}"), res, ACC));
     let bg = gpu::bind_group(
         device,
         name,
@@ -214,6 +226,7 @@ fn acc_set(device: &wgpu::Device, p: &Pipes, res: u32, name: &str) -> AccSet {
             wgpu::BindingResource::TextureView(&t[0].view),
             wgpu::BindingResource::TextureView(&t[1].view),
             wgpu::BindingResource::TextureView(&t[2].view),
+            wgpu::BindingResource::TextureView(&t[3].view),
         ],
     );
     AccSet { t, bg }
@@ -224,6 +237,7 @@ impl TexSet {
         let p = Pipes::new(device);
         let mip = gpu::mip_count(res);
         let material = [0, 1, 2, 3].map(|i| Tex::new(device, "material", res, res, MATERIAL_FORMATS[i], gpu::rw_usage(), mip));
+        let emissive = Tex::new(device, "material emissive", res, res, EMISSIVE, gpu::rw_usage(), mip);
         let position = Tex::target(device, "position map", res, POSITION);
         let wnormal = Tex::target(device, "world normal map", res, WNORMAL);
         let nearest = Tex::target(device, "nearest map", res, NEAREST);
@@ -263,6 +277,7 @@ impl TexSet {
             unsaved: HashSet::new(),
             acc,
             material,
+            emissive,
             position,
             wnormal,
             nearest,
@@ -504,7 +519,17 @@ impl TexSet {
             pass.set_bind_group(1, &self.acc[2].bg, &[]);
             pass.draw(0..3, 0..1);
         }
-        for t in &self.material {
+        {
+            // separate pass: the main finalize is at the 32-byte-per-pixel attachment limit
+            let e0 = self.emissive.mip_view(0);
+            let mut pass = gpu::pass(&mut enc, "finalize emissive", &[&e0], None);
+            scissor(&mut pass, frect);
+            pass.set_pipeline(&self.p.finalize_emissive);
+            pass.set_bind_group(0, &self.shared_bg, &[]);
+            pass.set_bind_group(1, &self.acc[2].bg, &[]);
+            pass.draw(0..3, 0..1);
+        }
+        for t in self.material.iter().chain(std::iter::once(&self.emissive)) {
             self.mipgen.generate(device, &mut enc, t, frect);
         }
         queue.submit([enc.finish()]);
