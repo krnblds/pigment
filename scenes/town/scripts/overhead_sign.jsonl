@@ -1,0 +1,9 @@
+{"tool": "new_project", "args": {"mesh": "assets/town/overhead_sign.glb", "resolution": 1024, "material": "Gunmetal"}}
+{"tool": "add_layer", "args": {"kind": "paint", "name": "Sign faces"}}
+{"tool": "project_decal", "args": {"layer": "Sign faces", "image": "assets/decals/neon_bar.png", "part": 9, "fit": "contain", "tint": [0.2, 0.9, 1.0], "emissive_strength": 6.0}}
+{"tool": "project_decal", "args": {"layer": "Sign faces", "image": "assets/decals/neon_open.png", "part": 10, "fit": "contain", "tint": [1.0, 0.25, 0.6], "emissive_strength": 6.0}}
+{"tool": "add_layer", "args": {"name": "Grime", "material": "Grime", "mask": {"generator": "dirt", "amount": 0.5, "softness": 0.25, "effects": [{"generator": "gradient", "op": "max", "amount": 0.15}]}, "opacity": 0.7}}
+{"tool": "render", "args": {"yaw": 25, "pitch": 12, "width": 640, "height": 800, "exposure": -0.3, "path": "C:/Users/kiera/AppData/Local/Temp/pig/town_tex_overhead_sign_a.png"}}
+{"tool": "render", "args": {"yaw": -50, "pitch": 18, "width": 640, "height": 800, "exposure": -0.3, "path": "C:/Users/kiera/AppData/Local/Temp/pig/town_tex_overhead_sign_b.png"}}
+{"tool": "export_textures", "args": {"dir": "scenes/town/textures/overhead_sign", "preset": "separate", "name": "overhead_sign"}}
+{"tool": "save_project", "args": {"path": "scenes/town/projects/overhead_sign.pigment"}}

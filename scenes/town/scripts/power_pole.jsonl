@@ -1,0 +1,7 @@
+{"tool": "new_project", "args": {"mesh": "assets/town/power_pole.glb", "resolution": 1024, "material": "Concrete"}}
+{"tool": "add_layer", "args": {"name": "Insulators", "material": "White plastic", "mask": {"parts": [5, 6, 7, 8, 12, 13, 16, 17, 19, 20, 21, 22, 23, 24, 25, 26]}}}
+{"tool": "add_layer", "args": {"name": "Grime", "material": "Grime", "mask": {"generator": "dirt", "amount": 0.5, "softness": 0.25, "effects": [{"generator": "gradient", "op": "max", "amount": 0.15}]}, "opacity": 0.7}}
+{"tool": "render", "args": {"yaw": 25, "pitch": 12, "width": 640, "height": 800, "exposure": -0.3, "path": "C:/Users/kiera/AppData/Local/Temp/pig/town_tex_power_pole_a.png"}}
+{"tool": "render", "args": {"yaw": -50, "pitch": 18, "width": 640, "height": 800, "exposure": -0.3, "path": "C:/Users/kiera/AppData/Local/Temp/pig/town_tex_power_pole_b.png"}}
+{"tool": "export_textures", "args": {"dir": "scenes/town/textures/power_pole", "preset": "separate", "name": "power_pole"}}
+{"tool": "save_project", "args": {"path": "scenes/town/projects/power_pole.pigment"}}
