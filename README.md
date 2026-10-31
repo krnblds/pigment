@@ -22,6 +22,37 @@ Two Blender-made examples ship in `examples/` (built headless by
 |---|---|
 | ![ammo box](docs/ammo_box.png) | ![jerry can](docs/jerry_can.png) |
 
+### Cyberpunk alley (Pigment + Blender over MCP)
+
+![cyberpunk alley](docs/cyberpunk_alley.png)
+
+Props textured in Pigment through its MCP server (smart materials, generators,
+projected neon / graffiti decals, emission), assembled and rendered in Blender.
+See [scenes/cyberpunk](scenes/cyberpunk/README.md).
+
+## MCP server
+
+`pigment-mcp` exposes Pigment to AI agents and scripts over the Model Context
+Protocol (stdio): `new_project`, `open_project`, `save_project`, `list_library`,
+`list_layers`, `add_smart_material`, `add_layer`, `update_layer`,
+`delete_layer`, `bake`, `paint_stroke`, `project_decal`, `render` (which returns
+the image), `export_textures`, `undo` and `redo`.
+It's registered in `.mcp.json`. Build it with
+`cargo build -p pigment --release --bin pigment-mcp`.
+It also runs without a client: `pigment-mcp --script calls.jsonl`.
+
+## Library
+
+- **Materials (37 presets):** metals, paints, plastics, concrete, asphalt,
+  rust, verdigris and **neon / LED / screen** materials that glow.
+- **Generators:** edge wear, dirt, grunge, rain streaks, hazard stripes,
+  spots, scratches and panel lines. Pattern generators work in world space, in
+  units per metre.
+- **Smart materials (16):** worn painted metal in 7 colours, rusty steel, hazard
+  stripes, grimy concrete, tech panels, grimy chrome, and scuffed plastics.
+- **Decals:** `assets/decals/` has neon kanji and English signs, warning labels,
+  graffiti, a logo, a poster and a barcode tag.
+
 See [docs/DESIGN.md](docs/DESIGN.md) for the architecture, project format and the graphics techniques.
 
 ## Run
