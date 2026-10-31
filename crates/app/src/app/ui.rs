@@ -174,6 +174,7 @@ impl eframe::App for PigmentApp {
             }
         }
 
+        self.anchors.clear();
         self.shortcuts(ui, &rs);
         if std::mem::take(&mut self.dump_requested) {
             self.debug_dump(&rs, &std::env::temp_dir().join("pig").join("dump"));
@@ -192,6 +193,10 @@ impl eframe::App for PigmentApp {
         egui::CentralPanel::default().frame(egui::Frame::NONE).show(ui, |ui| self.viewport_ui(ui, &rs));
 
         self.dialogs(ui.ctx(), &rs);
+        self.tour_update();
+        if let Some(v) = self.anchors.get("viewport").copied() {
+            self.tour_ui(ui.ctx(), v);
+        }
 
         // Record finished edits (not mid-drag, so a slider drag is one undo step).
         let busy = ui.input(|i| i.pointer.any_down()) || self.stroke.is_some();
@@ -286,7 +291,7 @@ impl PigmentApp {
         egui::MenuBar::new().ui(ui, |ui| {
             ui.label(RichText::new("Pigment").strong().color(ACCENT));
             ui.add_space(6.0);
-            ui.menu_button("File", |ui| {
+            let file = ui.menu_button("File", |ui| {
                 if ui.button("New project from mesh…").clicked() {
                     if let Some(p) = rfd::FileDialog::new().add_filter("Meshes", &["obj", "gltf", "glb"]).pick_file() {
                         self.request(rs, Pending::NewFromMesh(p));
@@ -313,7 +318,8 @@ impl PigmentApp {
                     self.show_export = true;
                 }
             });
-            ui.menu_button("Edit", |ui| {
+            self.anchors.insert("file_menu", file.response.rect);
+            let edit = ui.menu_button("Edit", |ui| {
                 let ul = self.history.undo_label().map(|s| format!("Undo: {s}")).unwrap_or_else(|| "Undo".into());
                 if ui.add_enabled(self.history.can_undo() || self.doc != self.committed, egui::Button::new(ul).shortcut_text("Ctrl+Z")).clicked() {
                     self.undo(rs, false);
@@ -334,6 +340,7 @@ impl PigmentApp {
                     }
                 });
             });
+            self.anchors.insert("edit_menu", edit.response.rect);
             ui.menu_button("View", |ui| {
                 if ui.add(egui::Button::new("Frame model").shortcut_text("F")).clicked() {
                     let (c, r) = self.mesh.bounding_sphere();
@@ -345,6 +352,11 @@ impl PigmentApp {
                 }
             });
             ui.menu_button("Help", |ui| {
+                if ui.button(RichText::new("Quick start guide").strong()).clicked() {
+                    self.tour_start(true);
+                    ui.close();
+                }
+                ui.separator();
                 ui.label(RichText::new("Controls").strong());
                 for (k, v) in [
                     ("Left-drag", "paint"),
@@ -475,7 +487,7 @@ impl PigmentApp {
             });
             section(ui, "Presets");
             let presets = material_presets();
-            egui::Grid::new("presets").num_columns(2).spacing([6.0, 6.0]).show(ui, |ui| {
+            let grid = egui::Grid::new("presets").num_columns(2).spacing([6.0, 6.0]).show(ui, |ui| {
                 for (k, (name, v)) in presets.iter().enumerate() {
                     let r = ui
                         .horizontal(|ui| {
@@ -494,6 +506,7 @@ impl PigmentApp {
                     }
                 }
             });
+            self.anchors.insert("presets", grid.response.rect);
             section(ui, "Channels this brush paints");
             material_grid(ui, "brush values", &mut self.brush.values, Some(&mut self.brush.channels));
         });
@@ -654,6 +667,9 @@ impl PigmentApp {
                         });
                     });
                 });
+            if self.doc.layers[i].mask.as_ref().and_then(|m| m.generator.as_ref()).is_some_and(|g| g.kind == GeneratorKind::EdgeWear) {
+                self.anchors.entry("edge_wear_row").or_insert(row.response.rect);
+            }
             if select.is_none() && row.response.interact(egui::Sense::click()).clicked() {
                 select = Some((id, false));
             }
@@ -868,6 +884,7 @@ impl PigmentApp {
                     ui.label(RichText::new("The brush now paints this mask: white reveals, black hides (X swaps).").size(11.5).color(MUTED));
                 });
                 section(ui, "Generator");
+                let top = ui.cursor().min;
                 card(ui, CARD, |ui| {
                     let mut kind = m.generator.as_ref().map(|g| g.kind);
                     ui.horizontal(|ui| {
@@ -920,6 +937,10 @@ impl PigmentApp {
                         }
                     }
                 });
+                let gen_rect = egui::Rect::from_min_max(top, egui::pos2(ui.max_rect().right(), ui.cursor().min.y));
+                if gen_rect.height() > 10.0 {
+                    self.anchors.insert("generator", gen_rect);
+                }
                 ui.add_space(4.0);
                 if ui.button("Remove mask").clicked() {
                     removed = true;
@@ -943,6 +964,7 @@ impl PigmentApp {
     fn viewport_ui(&mut self, ui: &mut egui::Ui, rs: &RenderState) {
         let rect = ui.available_rect_before_wrap();
         let response = ui.allocate_rect(rect, egui::Sense::click_and_drag());
+        self.anchors.insert("viewport", rect);
         let ppp = self.ppp;
         let viewport_px = Vec2::new((rect.width() * ppp).round(), (rect.height() * ppp).round());
         let to_px = |p: egui::Pos2| Vec2::new((p.x - rect.min.x) * ppp, (p.y - rect.min.y) * ppp);

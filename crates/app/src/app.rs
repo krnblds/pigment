@@ -24,7 +24,16 @@ use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
+mod tour;
 mod ui;
+
+/// Things the quick-start guide watches for.
+#[derive(Default)]
+struct Counters {
+    strokes: u32,
+    mask_strokes: u32,
+    undos: u32,
+}
 
 const UNDO_BUDGET_BYTES: u64 = 1536 << 20;
 
@@ -112,6 +121,10 @@ pub struct PigmentApp {
     last_stamp_ms: f32,
     ppp: f32,
     dump_requested: bool,
+    tour: tour::Tour,
+    counters: Counters,
+    /// Screen rects of UI elements the guide can point at, rebuilt every frame.
+    anchors: std::collections::HashMap<&'static str, egui::Rect>,
 }
 
 impl PigmentApp {
@@ -160,12 +173,16 @@ impl PigmentApp {
             last_stamp_ms: 0.0,
             ppp: 1.0,
             dump_requested: false,
+            tour: Default::default(),
+            counters: Counters::default(),
+            anchors: Default::default(),
         };
         app.new_project(rs, Mesh::demo_crate(96), None, Document::demo());
         app.export_name = "DemoCrate".into();
         if let Some(p) = startup {
             app.run_pending(rs, Self::pending_for_path(&p));
         }
+        app.tour_start(false);
         if let Ok(dir) = std::env::var("PIGMENT_DEBUG_DUMP") {
             app.debug_dump(rs, Path::new(&dir));
         }
@@ -514,6 +531,9 @@ impl PigmentApp {
             self.selected = self.doc.layers.last().map(|l| l.id);
         }
         self.modified = true;
+        if !redo {
+            self.counters.undos += 1;
+        }
         self.set_status(format!("{} {label}", if redo { "Redo:" } else { "Undo:" }), false);
         log::info!("history: {:?}", self.history.history());
     }
@@ -628,8 +648,14 @@ impl PigmentApp {
         if let Some(snap) = self.painter.end(&rs.device, &rs.queue, &stroke.tiles) {
             self.ts.unsaved.insert(stroke.target.res());
             let what = match stroke.target {
-                Target::Layer(_) => "Paint",
-                Target::Mask(_) => "Paint mask",
+                Target::Layer(_) => {
+                    self.counters.strokes += 1;
+                    "Paint"
+                }
+                Target::Mask(_) => {
+                    self.counters.mask_strokes += 1;
+                    "Paint mask"
+                }
             };
             let layer = self.selected.and_then(|id| self.doc.layer(id)).map(|l| l.name.clone()).unwrap_or_default();
             log::info!("stroke recorded: {} tiles, {:.1} MB snapshot", stroke.tiles.count(), snap.bytes() as f64 / 1048576.0);
@@ -788,6 +814,48 @@ mod tests {
             }
         }
         out
+    }
+
+    /// The quick-start guide advances as the user does each step.
+    #[test]
+    fn quick_start_guide_follows_the_user() {
+        let Some(rs) = headless() else { return };
+        let mut app = PigmentApp::create(&rs, None);
+        app.change_resolution(&rs, 512);
+        app.tour_start(true);
+        assert_eq!(app.tour.step, 0);
+        app.tour_update();
+        assert_eq!(app.tour.step, 0, "advanced without doing anything");
+        // 1: look around
+        app.camera.orbit(Vec2::new(80.0, 0.0));
+        app.tour_update();
+        assert_eq!(app.tour.step, 1);
+        // 2: paint
+        app.tour_show_me();
+        paint(&mut app, &rs, Vec2::new(250.0, 450.0), Vec2::new(550.0, 420.0));
+        app.tour_update();
+        assert_eq!(app.tour.step, 2);
+        // 3: undo
+        app.undo(&rs, false);
+        app.tour_update();
+        assert_eq!(app.tour.step, 3);
+        // 4: change the edge wear amount
+        app.tour_show_me();
+        assert!(app.paint_mask, "show-me opens the mask");
+        let i = app.edge_wear_layer().unwrap();
+        app.doc.layers[i].mask.as_mut().unwrap().generator.as_mut().unwrap().amount = 0.3;
+        app.tour_update();
+        assert_eq!(app.tour.step, 4);
+        // 5: protect an area by painting the mask black
+        app.tour_show_me();
+        assert!(!app.brush.mask_white);
+        paint(&mut app, &rs, Vec2::new(300.0, 300.0), Vec2::new(500.0, 320.0));
+        app.tour_update();
+        assert_eq!(app.tour.step, 5);
+        // 6: export
+        app.tour_show_me();
+        app.tour_update();
+        assert_eq!(app.tour.step, 6, "finished");
     }
 
     /// Render the startup state through the app's own code path.
