@@ -40,7 +40,7 @@ cargo run -p pigment --release -- my.pigment    # open a project folder
 | Save / save as / open | Ctrl+S / Ctrl+Shift+S / Ctrl+O |
 | Export textures | Ctrl+Shift+E |
 | New project from a mesh | File menu, or drop an `.obj` / `.gltf` / `.glb` on the window |
-| Load an HDRI | Display panel, or drop a `.hdr` / `.exr` on the window |
+| Load an HDRI | Lighting button on the viewport, or drop a `.hdr` / `.exr` on the window |
 
 **Layout**: tool bar on top (brush/eraser, size, opacity, hardness, spacing, and what
 you're painting on); brush material and presets on the left; layer stack and
@@ -54,7 +54,7 @@ paints. Painting on a fill layer without a mask gives it a black mask, so the br
 reveals the fill where you paint. Generators read the baked AO and curvature;
 paint black on a generator mask to protect areas.
 
-**Texture set** (left panel): resolution (512 to 4096) and the AO / curvature bake.
+**Texture set & baking** (bottom of the left panel): resolution (512 to 4096) and the AO / curvature bake.
 
 ## Tests
 
