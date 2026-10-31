@@ -7,6 +7,7 @@ pub mod blend;
 pub mod camera;
 pub mod curvature;
 pub mod document;
+pub mod envmath;
 pub mod export;
 pub mod mesh;
 pub mod project;

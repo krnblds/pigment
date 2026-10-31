@@ -2,6 +2,10 @@
 
 mod app;
 mod render;
+#[cfg(test)]
+mod shader_tests;
+#[cfg(test)]
+mod gpu_tests;
 
 fn main() -> eframe::Result {
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("warn,wgpu_hal=error,pigment=info")).init();

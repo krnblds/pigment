@@ -188,6 +188,52 @@ mod tests {
     }
 
     #[test]
+    fn small_stamp_on_torus_marks_few_tiles() {
+        let m = Mesh::torus(1.0, 0.38, 192, 64);
+        let mut cam = crate::OrbitCamera::default();
+        let (c, r) = m.bounding_sphere();
+        cam.frame(c, r);
+        let size = Vec2::new(860.0, 840.0);
+        let bins = ScreenBins::build(&m, cam.view_proj(size.x / size.y), size);
+        let mut t = TileSet::default();
+        bins.mark_stamp(Vec2::new(300.0, 500.0), 30.0, &mut t);
+        eprintln!("tiles marked: {}", t.count());
+        assert!(t.count() < 40, "{} tiles", t.count());
+    }
+
+    #[test]
+    fn marking_covers_every_surface_point_under_the_brush() {
+        let m = Mesh::torus(1.0, 0.38, 192, 64);
+        let mut cam = crate::OrbitCamera::default();
+        let (c, r) = m.bounding_sphere();
+        cam.frame(c, r);
+        let size = Vec2::new(860.0, 840.0);
+        let vp = cam.view_proj(size.x / size.y);
+        let bins = ScreenBins::build(&m, vp, size);
+        for center in [Vec2::new(300.0, 500.0), Vec2::new(430.0, 300.0), Vec2::new(600.0, 420.0), Vec2::new(200.0, 450.0)] {
+            let mut t = TileSet::default();
+            bins.mark_stamp(center, 30.0, &mut t);
+            // brute force: sample points inside every triangle
+            for tri in m.indices.chunks_exact(3) {
+                let v = [0, 1, 2].map(|k| m.vertices[tri[k] as usize]);
+                for (a, b) in [(0.33, 0.33), (0.1, 0.1), (0.8, 0.1), (0.1, 0.8), (0.0, 0.0), (1.0, 0.0), (0.0, 1.0)] {
+                    let w = [1.0 - a - b, a, b];
+                    let p = (0..3).fold(glam::Vec3::ZERO, |acc, k| acc + glam::Vec3::from(v[k].position) * w[k]);
+                    let uv = (0..3).fold(Vec2::ZERO, |acc, k| acc + Vec2::from(v[k].uv) * w[k]);
+                    let clip = vp * p.extend(1.0);
+                    let ndc = clip.truncate().truncate() / clip.w;
+                    let px = Vec2::new((ndc.x * 0.5 + 0.5) * size.x, (0.5 - ndc.y * 0.5) * size.y);
+                    if (px - center).length() < 30.0 {
+                        let tx = ((uv.x * GRID as f32) as u32).min(GRID - 1);
+                        let ty = ((uv.y * GRID as f32) as u32).min(GRID - 1);
+                        assert!(t.contains(tx, ty), "stamp {center}: point at uv {uv} (tile {tx},{ty}) not marked");
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
     fn uv_rect_marking_and_bounds() {
         let mut t = TileSet::default();
         t.mark_uv_rect(Vec2::new(0.0, 0.0), Vec2::new(0.1, 0.05));

@@ -153,6 +153,30 @@ impl Mesh {
         m
     }
 
+    /// Write as Wavefront OBJ (positions, UVs flipped back to OBJ's bottom-left
+    /// origin, normals). Used to store generated meshes in a project.
+    pub fn write_obj(&self, path: &Path) -> Result<()> {
+        use std::fmt::Write as _;
+        let mut s = String::with_capacity(self.vertices.len() * 64);
+        writeln!(s, "# written by Pigment
+o {}", self.name)?;
+        for v in &self.vertices {
+            writeln!(s, "v {} {} {}", v.position[0], v.position[1], v.position[2])?;
+        }
+        for v in &self.vertices {
+            writeln!(s, "vt {} {}", v.uv[0], 1.0 - v.uv[1])?;
+        }
+        for v in &self.vertices {
+            writeln!(s, "vn {} {} {}", v.normal[0], v.normal[1], v.normal[2])?;
+        }
+        for t in self.indices.chunks_exact(3) {
+            let [a, b, c] = [t[0] + 1, t[1] + 1, t[2] + 1];
+            writeln!(s, "f {a}/{a}/{a} {b}/{b}/{b} {c}/{c}/{c}")?;
+        }
+        std::fs::write(path, s)?;
+        Ok(())
+    }
+
     fn finish(mut self, had_normals: bool) -> Mesh {
         if !had_normals {
             self.compute_normals();
@@ -341,6 +365,24 @@ f 1/1 2/2 3/3 4/4
         assert!(c.length() < 1e-4);
         assert!((r - 1.25).abs() < 1e-3);
         assert!(m.indices.iter().all(|&i| (i as usize) < m.vertices.len()));
+    }
+
+    #[test]
+    fn obj_write_round_trip() {
+        let m = Mesh::torus(1.0, 0.3, 8, 6);
+        let dir = std::env::temp_dir().join(format!("pigment-objrt-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let p = dir.join("t.obj");
+        m.write_obj(&p).unwrap();
+        let back = Mesh::load(&p).unwrap();
+        assert_eq!(back.triangle_count(), m.triangle_count());
+        // the loader may reorder vertices, so compare triangle corners
+        for (ia, ib) in back.indices.iter().zip(&m.indices) {
+            let (a, b) = (back.vertices[*ia as usize], m.vertices[*ib as usize]);
+            assert!((Vec2::from(a.uv) - Vec2::from(b.uv)).length() < 1e-5);
+            assert!((Vec3::from(a.position) - Vec3::from(b.position)).length() < 1e-5);
+        }
+        std::fs::remove_dir_all(dir).ok();
     }
 
     fn base64_encode(data: &[u8]) -> String {

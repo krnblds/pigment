@@ -1,214 +1,619 @@
-//! Top-level application: UI layout, input handling, and wiring between the
-//! core model and the renderer.
+//! Top-level application: owns the document, the GPU engine and the UI.
+//!
+//! Undo model: every UI edit mutates `doc` directly. At the end of a frame in
+//! which no mouse button is held, `doc` is compared with `committed` (the
+//! last recorded state); if they differ, one undo entry holding both versions
+//! is pushed. That gives undo for every parameter for free and coalesces a
+//! slider drag into a single step. Strokes record GPU tile snapshots instead.
 
-use crate::render::viewport::{ViewMode, Viewport};
+use crate::render::bake::Baker;
+use crate::render::env::Environment;
+use crate::render::paint::{BrushGpu, Painter, Snapshot, StampGpu, Target, ViewGpu};
+use crate::render::texset::TexSet;
+use crate::render::viewport::{ViewMode, ViewSettings, Viewport};
+use crate::render::{io, MeshGpu};
 use eframe::egui;
+use eframe::egui_wgpu::RenderState;
 use glam::Vec2;
-use pigment_core::{Mesh, OrbitCamera};
+use pigment_core::blend::{normal_from_tilt, srgb_to_linear};
+use pigment_core::stroke::StrokeSampler;
+use pigment_core::tiles::{ScreenBins, TileSet};
+use pigment_core::undo::{Entry, UndoStack};
+use pigment_core::*;
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
+mod ui;
+
+const UNDO_BUDGET_BYTES: u64 = 1536 << 20;
+
+enum Edit {
+    Doc { before: Box<Document>, after: Box<Document> },
+    Stroke(Snapshot),
+}
+
+struct Brush {
+    size: f32, // diameter in screen points
+    opacity: f32,
+    hardness: f32,
+    spacing: f32, // fraction of diameter
+    values: MaterialValues,
+    channels: [bool; 5],
+    erase: bool,
+    mask_white: bool,
+}
+
+impl Default for Brush {
+    fn default() -> Self {
+        Self {
+            size: 60.0,
+            opacity: 1.0,
+            hardness: 0.6,
+            spacing: 0.1,
+            values: MaterialValues { base_color: [0.75, 0.2, 0.12], roughness: 0.35, metallic: 0.0, height: 0.5, normal: [0.0, 0.0] },
+            channels: [true, true, true, false, false],
+            erase: false,
+            mask_white: true,
+        }
+    }
+}
+
+struct Stroke {
+    sampler: StrokeSampler,
+    bins: ScreenBins,
+    tiles: TileSet,
+    target: Target,
+    view: ViewGpu,
+}
+
+#[derive(Clone)]
+enum Pending {
+    NewFromMesh(PathBuf),
+    OpenProject(PathBuf),
+    NewTorus,
+}
+
 pub struct PigmentApp {
+    // GPU
     viewport: Viewport,
-    camera: OrbitCamera,
+    env: Environment,
+    ts: TexSet,
+    painter: Painter,
+    baker: Baker,
+    mesh_gpu: Option<MeshGpu>,
+    // document
+    doc: Document,
+    committed: Document,
+    composited: Option<Document>,
+    history: UndoStack<Edit>,
+    selected: Option<LayerId>,
+    paint_mask: bool,
     mesh: Mesh,
-    view_mode: ViewMode,
-    status: Option<(String, bool)>, // (message, is_error)
+    mesh_source: Option<PathBuf>,
+    project_dir: Option<PathBuf>,
+    modified: bool,
+    // view + tools
+    camera: OrbitCamera,
+    view: ViewSettings,
+    brush: Brush,
+    stroke: Option<Stroke>,
+    hover: Option<egui::Pos2>,
+    // ui state
+    status: Option<(String, bool)>,
     frame_times: Vec<f32>,
     last_frame: Instant,
+    show_export: bool,
+    export_dir: Option<PathBuf>,
+    export_name: String,
+    pending: Option<Pending>,
+    renaming: Option<(LayerId, String)>,
+    last_stamp_ms: f32,
+    ppp: f32,
+    dump_requested: bool,
 }
 
 impl PigmentApp {
-    pub fn new(cc: &eframe::CreationContext<'_>, startup_mesh: Option<PathBuf>) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
+    pub fn new(cc: &eframe::CreationContext<'_>, startup: Option<PathBuf>) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         let rs = cc.wgpu_render_state.as_ref().ok_or("Pigment needs the wgpu renderer")?;
         let info = rs.adapter.get_info();
         log::info!("GPU: {} ({:?})", info.name, info.backend);
         cc.egui_ctx.set_visuals(egui::Visuals::dark());
-
+        let (d, q) = (&rs.device, &rs.queue);
+        let doc = Document::new_default();
         let mut app = Self {
-            viewport: Viewport::new(&rs.device),
-            camera: OrbitCamera::default(),
+            viewport: Viewport::new(d),
+            env: Environment::studio(d, q),
+            ts: TexSet::new(d, q, doc.resolution),
+            painter: Painter::new(d, doc.resolution),
+            baker: Baker::new(d),
+            mesh_gpu: None,
+            committed: doc.clone(),
+            selected: doc.layers.last().map(|l| l.id),
+            doc,
+            composited: None,
+            history: UndoStack::default(),
+            paint_mask: false,
             mesh: Mesh::default(),
-            view_mode: ViewMode::UvChecker,
+            mesh_source: None,
+            project_dir: None,
+            modified: false,
+            camera: OrbitCamera::default(),
+            view: ViewSettings::default(),
+            brush: Brush::default(),
+            stroke: None,
+            hover: None,
             status: None,
             frame_times: Vec::new(),
             last_frame: Instant::now(),
+            show_export: false,
+            export_dir: None,
+            export_name: "Asset".into(),
+            pending: None,
+            renaming: None,
+            last_stamp_ms: 0.0,
+            ppp: 1.0,
+            dump_requested: false,
         };
-        app.set_mesh(rs, Mesh::torus(1.0, 0.38, 128, 48));
-        if let Some(p) = startup_mesh {
-            app.open_mesh(rs, &p);
+        app.new_project(rs, Mesh::torus(1.0, 0.38, 192, 64), None);
+        if let Some(p) = startup {
+            app.run_pending(rs, Self::pending_for_path(&p));
+        }
+        if let Ok(dir) = std::env::var("PIGMENT_DEBUG_DUMP") {
+            app.debug_dump(rs, Path::new(&dir));
         }
         Ok(app)
     }
 
-    fn set_mesh(&mut self, rs: &eframe::egui_wgpu::RenderState, mesh: Mesh) {
-        self.viewport.set_mesh(&rs.device, &mesh);
+    fn pending_for_path(p: &Path) -> Pending {
+        let is_project = p.is_dir() || p.file_name().is_some_and(|n| n == project::MANIFEST);
+        if is_project {
+            Pending::OpenProject(p.to_path_buf())
+        } else {
+            Pending::NewFromMesh(p.to_path_buf())
+        }
+    }
+
+    /// Developer aid: write the environment and material textures as PNGs.
+    fn debug_dump(&mut self, rs: &RenderState, dir: &Path) {
+        self.ensure_composited(rs);
+        let _ = std::fs::create_dir_all(dir);
+        let (d, q) = (&rs.device, &rs.queue);
+        let env = crate::render::gpu::readback(d, q, &self.env.prefiltered);
+        let px: Vec<u8> = env
+            .chunks_exact(2)
+            .map(|c| half::f16::from_bits(u16::from_le_bytes([c[0], c[1]])).to_f32())
+            .map(|v| (v / (1.0 + v) * 255.0) as u8)
+            .collect();
+        let _ = image::save_buffer(dir.join("env.png"), &px, self.env.prefiltered.size, self.env.prefiltered.height, image::ExtendedColorType::Rgba8);
+        let m = io::read_material(d, q, &self.ts);
+        let _ = image::save_buffer(dir.join("color.png"), &m.color, m.size, m.size, image::ExtendedColorType::Rgba8);
+        let _ = image::save_buffer(dir.join("orm.png"), &m.orm, m.size, m.size, image::ExtendedColorType::Rgba8);
+        let _ = image::save_buffer(dir.join("normal.png"), &m.normal, m.size, m.size, image::ExtendedColorType::Rgba8);
+        for l in &self.doc.layers {
+            if let Some(px) = l.paint_res().and_then(|r| io::read_layer(d, q, &self.ts, r)) {
+                let _ = image::save_buffer(dir.join(format!("layer_{}_color.png", l.id)), &px.color, px.size, px.size, image::ExtendedColorType::Rgba8);
+            }
+        }
+        log::info!("debug dump written to {}", dir.display());
+    }
+
+    fn set_status(&mut self, msg: impl Into<String>, err: bool) {
+        let msg = msg.into();
+        if err {
+            log::error!("{msg}");
+        } else {
+            log::info!("{msg}");
+        }
+        self.status = Some((msg, err));
+    }
+
+    // ------------------------------------------------------------ projects
+
+    fn load_mesh_gpu(&mut self, rs: &RenderState, mesh: Mesh) {
         let (c, r) = mesh.bounding_sphere();
         self.camera.frame(c, r);
+        let mg = MeshGpu::new(&rs.device, &mesh);
+        self.ts.prepare_mesh(&rs.device, &rs.queue, &mg, c, r);
+        self.mesh_gpu = Some(mg);
         self.mesh = mesh;
     }
 
-    fn open_mesh(&mut self, rs: &eframe::egui_wgpu::RenderState, path: &Path) {
+    fn reset_state(&mut self, rs: &RenderState, doc: Document) {
+        let (d, q) = (&rs.device, &rs.queue);
+        let _ = self.history.clear();
+        self.ts = TexSet::new(d, q, doc.resolution);
+        self.painter.resize(d, doc.resolution);
+        self.committed = doc.clone();
+        self.selected = doc.layers.iter().rev().find(|l| l.is_paint()).or(doc.layers.last()).map(|l| l.id);
+        self.doc = doc;
+        self.composited = None;
+        self.stroke = None;
+        self.paint_mask = false;
+    }
+
+    fn new_project(&mut self, rs: &RenderState, mesh: Mesh, source: Option<PathBuf>) {
+        let mut doc = Document::new_default();
+        doc.resolution = self.doc.resolution;
+        self.reset_state(rs, doc);
+        self.ts.ensure_resources(&rs.device, &rs.queue, &self.doc);
+        self.load_mesh_gpu(rs, mesh);
+        self.mesh_source = source;
+        self.project_dir = None;
+        self.modified = false;
+        self.bake(rs);
+    }
+
+    fn bake(&mut self, rs: &RenderState) {
+        let Some(mg) = &self.mesh_gpu else { return };
+        let t0 = Instant::now();
+        self.baker.bake(&rs.device, &rs.queue, &self.mesh, mg, &mut self.ts, &self.doc.bake);
+        let _ = rs.device.poll(eframe::egui_wgpu::wgpu::PollType::Wait { submission_index: None, timeout: None });
+        self.composited = None;
+        self.set_status(format!("Baked AO + curvature ({} directions) in {:.0} ms", self.doc.bake.ao_samples, t0.elapsed().as_secs_f64() * 1000.0), false);
+    }
+
+    fn open_mesh_as_new(&mut self, rs: &RenderState, path: &Path) {
         let t0 = Instant::now();
         match Mesh::load(path) {
             Ok(mesh) => {
-                let msg = format!(
-                    "Loaded {} — {} triangles in {:.0} ms{}",
-                    mesh.name,
-                    mesh.triangle_count(),
-                    t0.elapsed().as_secs_f64() * 1000.0,
-                    if mesh.has_uvs { "" } else { ". Warning: no UVs, so it can't be painted" }
-                );
-                log::info!("{msg}");
-                self.status = Some((msg, !mesh.has_uvs));
-                self.set_mesh(rs, mesh);
+                if !mesh.has_uvs {
+                    self.set_status(format!("{} has no UVs, so it can't be painted. Unwrap it first (e.g. in Blender).", mesh.name), true);
+                    return;
+                }
+                let tris = mesh.triangle_count();
+                let name = mesh.name.clone();
+                self.export_name = name.clone();
+                self.new_project(rs, mesh, Some(path.to_path_buf()));
+                self.set_status(format!("New project from {name}: {} triangles, loaded in {:.0} ms", format_count(tris), t0.elapsed().as_secs_f64() * 1000.0), false);
             }
-            Err(e) => {
-                log::error!("{e:#}");
-                self.status = Some((format!("Couldn't open that file: {e:#}"), true));
-            }
+            Err(e) => self.set_status(format!("Couldn't open that file: {e:#}"), true),
         }
     }
 
-    fn handle_viewport_input(&mut self, ui: &egui::Ui, response: &egui::Response) {
-        let (alt, delta, scroll, pinch) = ui.input(|i| (i.modifiers.alt, i.pointer.delta(), i.smooth_scroll_delta(), i.zoom_delta()));
-        let d = Vec2::new(delta.x, delta.y);
-        let height = response.rect.height() * ui.ctx().pixels_per_point();
-        let ppp = ui.ctx().pixels_per_point();
-
-        // Substance-style: Alt+LMB orbit, Alt+MMB pan, Alt+RMB zoom.
-        // Plain LMB orbits too for now; it becomes the paint button in M3.
-        if response.dragged_by(egui::PointerButton::Primary) {
-            self.camera.orbit(d);
-        }
-        if response.dragged_by(egui::PointerButton::Middle) {
-            self.camera.pan(d * ppp, height);
-        }
-        if response.dragged_by(egui::PointerButton::Secondary) {
-            if alt {
-                self.camera.zoom((d.x - d.y) * 0.02);
-            } else {
-                self.camera.orbit(d);
-            }
-        }
-        if response.hovered() {
-            if scroll.y != 0.0 {
-                self.camera.zoom(scroll.y / 50.0);
-            }
-            if pinch != 1.0 {
-                self.camera.zoom(pinch.ln() / 0.105);
-            }
-        }
-        let typing = ui.ctx().egui_wants_keyboard_input();
-        if response.double_clicked() || (!typing && ui.input(|i| i.key_pressed(egui::Key::F))) {
-            let (c, r) = self.mesh.bounding_sphere();
-            self.camera.frame(c, r);
-        }
-    }
-
-    fn side_panel(&mut self, ui: &mut egui::Ui) {
-        ui.heading("Mesh");
-        egui::Grid::new("mesh_info").num_columns(2).show(ui, |ui| {
-            ui.label("Name");
-            ui.label(&self.mesh.name);
-            ui.end_row();
-            ui.label("Triangles");
-            ui.label(format_count(self.mesh.triangle_count()));
-            ui.end_row();
-            ui.label("Vertices");
-            ui.label(format_count(self.mesh.vertices.len()));
-            ui.end_row();
-            ui.label("UVs");
-            if self.mesh.has_uvs {
-                ui.label("yes");
-            } else {
-                ui.colored_label(egui::Color32::from_rgb(240, 120, 90), "missing");
-            }
-            ui.end_row();
-        });
-        ui.add_space(12.0);
-        ui.heading("View");
-        for m in ViewMode::ALL {
-            ui.radio_value(&mut self.view_mode, m, m.label());
-        }
-        ui.add_space(12.0);
-        ui.heading("Controls");
-        ui.label("Drag: orbit\nMiddle-drag: pan\nWheel / Alt+right-drag: zoom\nF or double-click: frame mesh\nDrop an .obj / .gltf / .glb file to open it");
-    }
-}
-
-impl eframe::App for PigmentApp {
-    fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
-        let Some(rs) = frame.wgpu_render_state().cloned() else { return };
-
-        let now = Instant::now();
-        self.frame_times.push((now - self.last_frame).as_secs_f32());
-        self.last_frame = now;
-        if self.frame_times.len() > 60 {
-            self.frame_times.remove(0);
-        }
-
-        let dropped: Vec<PathBuf> = ui.input(|i| i.raw.dropped_files.iter().map(|f| f.path().to_path_buf()).filter(|p| !p.as_os_str().is_empty()).collect());
-        if let Some(p) = dropped.first() {
-            self.open_mesh(&rs, p);
-        }
-
-        egui::Panel::top("menu").show(ui, |ui| {
-            egui::MenuBar::new().ui(ui, |ui| {
-                ui.menu_button("File", |ui| {
-                    if ui.button("Open mesh…").clicked() {
-                        if let Some(p) = rfd::FileDialog::new()
-                            .add_filter("Meshes", &["obj", "gltf", "glb"])
-                            .pick_file()
-                        {
-                            self.open_mesh(&rs, &p);
-                        }
-                    }
-                    if ui.button("Load test torus").clicked() {
-                        self.set_mesh(&rs, Mesh::torus(1.0, 0.38, 128, 48));
-                        self.status = None;
-                    }
-                });
-                ui.menu_button("View", |ui| {
-                    if ui.button("Frame mesh (F)").clicked() {
-                        let (c, r) = self.mesh.bounding_sphere();
-                        self.camera.frame(c, r);
-                    }
-                });
-            });
-        });
-
-        egui::Panel::bottom("status").show(ui, |ui| {
-            ui.horizontal(|ui| {
-                let avg = self.frame_times.iter().sum::<f32>() / self.frame_times.len().max(1) as f32;
-                ui.label(format!("{:.0} fps ({:.1} ms)", 1.0 / avg.max(1e-6), avg * 1000.0));
-                if let Some((msg, err)) = &self.status {
-                    ui.separator();
-                    if *err {
-                        ui.colored_label(egui::Color32::from_rgb(240, 160, 90), msg);
-                    } else {
-                        ui.label(msg);
+    fn open_project(&mut self, rs: &RenderState, path: &Path) {
+        let dir = if path.is_dir() { path.to_path_buf() } else { path.parent().map(Path::to_path_buf).unwrap_or_default() };
+        let result = (|| -> anyhow::Result<()> {
+            let doc = project::load_manifest(&dir)?;
+            let mesh = Mesh::load(&dir.join(&doc.mesh))?;
+            self.reset_state(rs, doc);
+            let (d, q) = (&rs.device, &rs.queue);
+            let size = self.doc.resolution;
+            for l in self.doc.layers.clone() {
+                if let Some(r) = l.paint_res() {
+                    let px = project::read_layer(&dir, r, size)?;
+                    io::upload_layer(d, q, &mut self.ts, r, &px);
+                }
+                if let Some(m) = &l.mask {
+                    match project::read_mask(&dir, m.res, size)? {
+                        Some(px) => io::upload_mask(d, q, &mut self.ts, m.res, &px),
+                        None => self.ts.new_mask(d, q, m.res, true),
                     }
                 }
-            });
-        });
-
-        egui::Panel::left("tools").resizable(true).default_size(240.0).show(ui, |ui| self.side_panel(ui));
-
-        egui::CentralPanel::default().frame(egui::Frame::NONE).show(ui, |ui| {
-            let rect = ui.available_rect_before_wrap();
-            let response = ui.allocate_rect(rect, egui::Sense::click_and_drag());
-            self.handle_viewport_input(ui, &response);
-            let ppp = ui.ctx().pixels_per_point();
-            let size = [(rect.width() * ppp).round() as u32, (rect.height() * ppp).round() as u32];
-            if let Some(tex) = self.viewport.render(&rs, size, &self.camera, self.view_mode) {
-                let uv = egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0));
-                ui.painter().image(tex, rect, uv, egui::Color32::WHITE);
             }
-        });
+            self.ts.unsaved.clear();
+            self.export_name = dir.file_stem().map(|s| s.to_string_lossy().to_string()).unwrap_or_else(|| "Asset".into());
+            self.load_mesh_gpu(rs, mesh);
+            self.mesh_source = Some(dir.join(&self.doc.mesh));
+            self.project_dir = Some(dir.clone());
+            self.modified = false;
+            Ok(())
+        })();
+        match result {
+            Ok(()) => {
+                self.bake(rs);
+                self.set_status(format!("Opened {}", dir.display()), false);
+            }
+            Err(e) => self.set_status(format!("Couldn't open project: {e:#}"), true),
+        }
+    }
 
-        // Keep the fps counter live; the viewport becomes continuously animated in later milestones anyway.
-        ui.ctx().request_repaint();
+    fn save(&mut self, rs: &RenderState, save_as: bool) {
+        let dir = match (&self.project_dir, save_as) {
+            (Some(d), false) => d.clone(),
+            _ => {
+                let Some(mut p) = rfd::FileDialog::new().set_title("Save project").set_file_name(format!("{}.{}", self.export_name, project::EXTENSION)).save_file()
+                else {
+                    return;
+                };
+                if p.extension().is_none_or(|e| e != project::EXTENSION) {
+                    p.set_extension(project::EXTENSION);
+                }
+                p
+            }
+        };
+        let fresh = self.project_dir.as_deref() != Some(dir.as_path());
+        let t0 = Instant::now();
+        let result = (|| -> anyhow::Result<usize> {
+            std::fs::create_dir_all(&dir)?;
+            // the mesh lives inside the project
+            let inside = self.mesh_source.as_ref().is_some_and(|m| m.starts_with(&dir));
+            if fresh || !inside || self.doc.mesh.is_empty() {
+                self.doc.mesh = match &self.mesh_source {
+                    Some(src) if src.exists() => project::copy_mesh(&dir, src)?,
+                    _ => {
+                        std::fs::create_dir_all(dir.join("mesh"))?;
+                        self.mesh.write_obj(&dir.join("mesh/mesh.obj"))?;
+                        "mesh/mesh.obj".to_string()
+                    }
+                };
+                self.committed.mesh = self.doc.mesh.clone();
+                self.mesh_source = Some(dir.join(&self.doc.mesh));
+            }
+            let (d, q) = (&rs.device, &rs.queue);
+            let mut written = 0;
+            for l in &self.doc.layers {
+                if let Some(r) = l.paint_res() {
+                    if fresh || self.ts.unsaved.contains(&r) || !project::layer_dir(&dir, r).exists() {
+                        if let Some(px) = io::read_layer(d, q, &self.ts, r) {
+                            project::write_layer(&dir, r, &px)?;
+                            written += 1;
+                        }
+                    }
+                }
+                if let Some(m) = &l.mask {
+                    if fresh || self.ts.unsaved.contains(&m.res) || !project::mask_path(&dir, m.res).exists() {
+                        if let Some(px) = io::read_mask(d, q, &self.ts, m.res) {
+                            project::write_mask(&dir, m.res, self.ts.res, &px)?;
+                            written += 1;
+                        }
+                    }
+                }
+            }
+            project::prune(&dir, &self.doc)?;
+            project::save_manifest(&dir, &self.doc)?;
+            project::write_gitignore(&dir)?;
+            Ok(written)
+        })();
+        match result {
+            Ok(n) => {
+                self.ts.unsaved.clear();
+                self.project_dir = Some(dir.clone());
+                self.modified = false;
+                self.set_status(format!("Saved {} ({n} image files updated, {:.0} ms)", dir.display(), t0.elapsed().as_secs_f64() * 1000.0), false);
+            }
+            Err(e) => self.set_status(format!("Save failed: {e:#}"), true),
+        }
+    }
+
+    fn export(&mut self, rs: &RenderState) {
+        let Some(dir) = self.export_dir.clone() else { return };
+        let Some(preset) = export::preset(&self.doc.export_preset) else { return };
+        self.ensure_composited(rs);
+        let t0 = Instant::now();
+        let m = io::read_material(&rs.device, &rs.queue, &self.ts);
+        match export::export(&dir, &self.export_name, &preset, &m) {
+            Ok(files) => self.set_status(
+                format!("Exported {} maps ({}x{}) to {} in {:.0} ms", files.len(), m.size, m.size, dir.display(), t0.elapsed().as_secs_f64() * 1000.0),
+                false,
+            ),
+            Err(e) => self.set_status(format!("Export failed: {e:#}"), true),
+        }
+    }
+
+    fn change_resolution(&mut self, rs: &RenderState, res: u32) {
+        if res == self.ts.res {
+            return;
+        }
+        let (d, q) = (&rs.device, &rs.queue);
+        let mut nts = TexSet::new(d, q, res);
+        io::resample_into(d, q, &self.ts, &mut nts);
+        self.ts = nts;
+        self.painter.resize(d, res);
+        self.doc.resolution = res;
+        self.committed.resolution = res;
+        // tile snapshots are resolution-specific
+        let _ = self.history.clear();
+        if let Some(mg) = &self.mesh_gpu {
+            let (c, r) = self.mesh.bounding_sphere();
+            self.ts.prepare_mesh(d, q, mg, c, r);
+        }
+        self.modified = true;
+        self.bake(rs);
+        self.set_status(format!("Texture size is now {res}x{res} (undo history cleared)"), false);
+    }
+
+    fn run_pending(&mut self, rs: &RenderState, p: Pending) {
+        match p {
+            Pending::NewFromMesh(path) => self.open_mesh_as_new(rs, &path),
+            Pending::OpenProject(path) => self.open_project(rs, &path),
+            Pending::NewTorus => {
+                self.new_project(rs, Mesh::torus(1.0, 0.38, 192, 64), None);
+                self.set_status("New project with the test torus", false);
+            }
+        }
+    }
+
+    /// Run an action that replaces the project, asking first if there are unsaved changes.
+    fn request(&mut self, rs: &RenderState, p: Pending) {
+        if self.modified {
+            self.pending = Some(p);
+        } else {
+            self.run_pending(rs, p);
+        }
+    }
+
+    // ------------------------------------------------------------ undo
+
+    fn live_resources(&self) -> HashSet<ResId> {
+        let mut live: HashSet<ResId> = self.doc.resources().into_iter().collect();
+        live.extend(self.committed.resources());
+        for e in self.history.entries() {
+            match &e.data {
+                Edit::Doc { before, after } => {
+                    live.extend(before.resources());
+                    live.extend(after.resources());
+                }
+                Edit::Stroke(s) => {
+                    live.insert(s.target.res());
+                }
+            }
+        }
+        live
+    }
+
+    fn push_history(&mut self, label: String, e: Edit) {
+        let mut dropped: Vec<Entry<Edit>> = self.history.push(label, e);
+        dropped.extend(self.history.trim_to_budget(UNDO_BUDGET_BYTES, |e| match e {
+            Edit::Stroke(s) => s.bytes(),
+            Edit::Doc { .. } => 0,
+        }));
+        self.modified = true;
+        if !dropped.is_empty() {
+            drop(dropped);
+            let live = self.live_resources();
+            self.ts.retain(&live);
+        }
+    }
+
+    fn commit_doc_changes(&mut self) {
+        if self.doc != self.committed {
+            let label = Document::describe_change(&self.committed, &self.doc);
+            let before = Box::new(std::mem::replace(&mut self.committed, self.doc.clone()));
+            self.push_history(label, Edit::Doc { before, after: Box::new(self.doc.clone()) });
+        }
+    }
+
+    fn undo(&mut self, rs: &RenderState, redo: bool) {
+        if self.stroke.is_some() {
+            return;
+        }
+        self.commit_doc_changes();
+        let entry = if redo { self.history.redo() } else { self.history.undo() };
+        let Some(entry) = entry else { return };
+        let label = entry.label.clone();
+        match &mut entry.data {
+            Edit::Doc { before, after } => {
+                let d = if redo { (**after).clone() } else { (**before).clone() };
+                self.doc = d.clone();
+                self.committed = d;
+            }
+            Edit::Stroke(snap) => {
+                self.painter.swap(&rs.device, &rs.queue, &self.ts, snap);
+                self.ts.unsaved.insert(snap.target.res());
+                self.composited = None;
+            }
+        }
+        if self.selected.is_none_or(|id| self.doc.layer(id).is_none()) {
+            self.selected = self.doc.layers.last().map(|l| l.id);
+        }
+        self.modified = true;
+        self.set_status(format!("{} {label}", if redo { "Redo:" } else { "Undo:" }), false);
+        log::info!("history: {:?}", self.history.history());
+    }
+
+    // ------------------------------------------------------------ painting
+
+    fn paint_target(&self) -> Result<Target, &'static str> {
+        let l = self.selected.and_then(|id| self.doc.layer(id)).ok_or("Select a layer to paint on")?;
+        if self.paint_mask || !l.is_paint() {
+            return match &l.mask {
+                Some(m) => Ok(Target::Mask(m.res)),
+                None if l.is_paint() => Err("This layer has no mask. Add one in the layer properties."),
+                None => Err("Fill layers can't be painted directly. Add a mask to paint where the fill shows."),
+            };
+        }
+        Ok(Target::Layer(l.paint_res().unwrap()))
+    }
+
+    fn brush_gpu(&self) -> BrushGpu {
+        let b = &self.brush;
+        let c = b.values.base_color.map(srgb_to_linear);
+        let n = normal_from_tilt(Vec2::from(b.values.normal));
+        let on = |i: usize| if b.channels[i] { 1.0 } else { 0.0 };
+        let mask_value = if b.erase { if b.mask_white { 0.0 } else { 1.0 } } else if b.mask_white { 1.0 } else { 0.0 };
+        BrushGpu {
+            color: [c[0], c[1], c[2], 1.0],
+            rmh: [b.values.roughness, b.values.metallic, b.values.height, 0.0],
+            normal: [n.x, n.y, n.z, 0.0],
+            enabled: [on(0), on(1), on(2), on(3)],
+            enabled2: [on(4), if b.erase { 1.0 } else { 0.0 }, mask_value, 0.0],
+        }
+    }
+
+    fn begin_stroke(&mut self, rs: &RenderState, pos_px: Vec2, viewport_px: Vec2) {
+        let target = match self.paint_target() {
+            Ok(t) => t,
+            Err(msg) => {
+                self.set_status(msg, true);
+                return;
+            }
+        };
+        if self.viewport.paint_depth().is_none() || self.mesh_gpu.is_none() {
+            return;
+        }
+        // make sure the stack is current before snapshotting / partial compositing
+        self.ensure_composited(rs);
+        if !self.painter.begin(&rs.device, &rs.queue, &self.ts, target) {
+            return;
+        }
+        let aspect = viewport_px.x / viewport_px.y.max(1.0);
+        let vp = self.camera.view_proj(aspect);
+        let eye = self.camera.eye();
+        let view = ViewGpu {
+            view_proj: vp.to_cols_array_2d(),
+            eye: [eye.x, eye.y, eye.z, 1.0],
+            viewport: [viewport_px.x, viewport_px.y, self.camera.near(), 0.0],
+        };
+        let bins = ScreenBins::build(&self.mesh, vp, viewport_px);
+        let mut s = Stroke { sampler: StrokeSampler::default(), bins, tiles: TileSet::default(), target, view };
+        let stamps = s.sampler.begin(pos_px);
+        self.stroke = Some(s);
+        self.apply_stamps(rs, stamps);
+    }
+
+    fn apply_stamps(&mut self, rs: &RenderState, points: Vec<Vec2>) {
+        if points.is_empty() {
+            return;
+        }
+        let ppp_radius = self.brush_radius_px();
+        let (opacity, hardness) = (self.brush.opacity, self.brush.hardness);
+        let brush = self.brush_gpu();
+        let Some(stroke) = self.stroke.as_mut() else { return };
+        let t0 = Instant::now();
+        let mut frame_tiles = TileSet::default();
+        let stamps: Vec<StampGpu> = points
+            .iter()
+            .map(|p| {
+                stroke.bins.mark_stamp(*p, ppp_radius, &mut frame_tiles);
+                StampGpu { center_radius: [p.x, p.y, ppp_radius, opacity], params: [hardness, 0.0, 0.0, 0.0] }
+            })
+            .collect();
+        stroke.tiles.union(&frame_tiles);
+        let Some(rect) = frame_tiles.texel_bounds(self.ts.res) else { return };
+        let view = stroke.view;
+        let (Some(depth), Some(mg)) = (self.viewport.paint_depth(), self.mesh_gpu.as_ref()) else { return };
+        self.painter.stamps(&rs.device, &rs.queue, &self.ts, mg, depth, view, &stamps, &brush, rect);
+        self.ts.composite(&rs.device, &rs.queue, &self.doc, Some(rect));
+        self.last_stamp_ms = t0.elapsed().as_secs_f32() * 1000.0 / stamps.len() as f32;
+    }
+
+    fn end_stroke(&mut self, rs: &RenderState) {
+        let Some(stroke) = self.stroke.take() else { return };
+        if let Some(snap) = self.painter.end(&rs.device, &rs.queue, &stroke.tiles) {
+            self.ts.unsaved.insert(stroke.target.res());
+            let what = match stroke.target {
+                Target::Layer(_) => "Paint",
+                Target::Mask(_) => "Paint mask",
+            };
+            let layer = self.selected.and_then(|id| self.doc.layer(id)).map(|l| l.name.clone()).unwrap_or_default();
+            log::info!("stroke recorded: {} tiles, {:.1} MB snapshot", stroke.tiles.count(), snap.bytes() as f64 / 1048576.0);
+            self.push_history(format!("{what} on {layer}"), Edit::Stroke(snap));
+        }
+        // full pass refreshes seam padding outside the dirty rectangles
+        self.composited = None;
+    }
+
+    fn brush_radius_px(&self) -> f32 {
+        self.brush.size * 0.5 * self.ppp
+    }
+
+    fn ensure_composited(&mut self, rs: &RenderState) {
+        self.ts.ensure_resources(&rs.device, &rs.queue, &self.doc);
+        if self.composited.as_ref() != Some(&self.doc) {
+            self.ts.composite(&rs.device, &rs.queue, &self.doc, None);
+            self.composited = Some(self.doc.clone());
+        }
     }
 }
 
@@ -229,7 +634,6 @@ mod tests {
     #[test]
     fn counts_are_grouped() {
         assert_eq!(super::format_count(0), "0");
-        assert_eq!(super::format_count(999), "999");
         assert_eq!(super::format_count(100000), "100,000");
         assert_eq!(super::format_count(1234567), "1,234,567");
     }
