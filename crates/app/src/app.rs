@@ -25,6 +25,7 @@ use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 pub mod automation;
+mod bridge;
 mod tour;
 mod ui;
 
@@ -443,7 +444,9 @@ impl PigmentApp {
         let t0 = Instant::now();
         let m = io::read_material(&rs.device, &rs.queue, &self.ts);
         self.last_emissive_scale = m.emissive_scale;
-        match export::export(&dir, &self.export_name, &preset, &m) {
+        // material.json sidecar for the Blender bridge (tools/blender_addon)
+        let sidecar = pigment_core::bridge::SidecarExtra { project: self.project_dir.clone(), source_mesh: self.mesh_source.clone(), mesh: None };
+        match export::export(&dir, &self.export_name, &preset, &m).and_then(|f| pigment_core::bridge::write_sidecar(&dir, &self.export_name, &preset, &m, &sidecar).map(|_| f)) {
             Ok(files) => self.set_status(
                 format!("Exported {} maps ({}x{}) to {} in {:.0} ms", files.len(), m.size, m.size, dir.display(), t0.elapsed().as_secs_f64() * 1000.0),
                 false,

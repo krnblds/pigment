@@ -6,6 +6,10 @@
 //! It can also run a script of tool calls without an MCP client:
 //!
 //!   pigment-mcp --script calls.jsonl     (one {"tool": ..., "args": {...}} per line)
+//!
+//! or export a project (or mesh) for the Blender bridge add-on:
+//!
+//!   pigment-mcp --export-for-blender <project.pigment | mesh.glb> <dir> [--name N] [--preset P] [--no-mesh]
 
 use base64::Engine;
 use pigment_engine::app::automation::Session;
@@ -88,6 +92,14 @@ fn tools() -> Value {
         t("render", "Render the model with its current material (PBR, studio lighting). Returns the image.", render_props, &[]),
         t("export_textures", "Export PNG texture maps. Presets: unreal, unity, godot, separate (glTF/Blender: BaseColor, Roughness, Metallic, AO, Normal_OpenGL, Height).",
           json!({ "dir": { "type": "string" }, "preset": { "type": "string" }, "name": { "type": "string" } }), &["dir"]),
+        t("send_to_blender", "Export everything Blender needs into `dir`: the texture maps (preset, default 'separate'), a material.json sidecar (channels and files, emissive_scale, normal convention, resolution, project path) and the painted mesh with tangents (<name>.glb). The Pigment Bridge add-on (tools/blender_addon/pigment_bridge) links objects to this folder and live-reloads it. For random per-object variants in Blender, export each variant to a folder named <asset>__<variant>.",
+          json!({ "dir": { "type": "string" }, "name": { "type": "string", "description": "base file name (default: mesh name)" },
+                  "preset": { "type": "string", "description": "export preset (default separate)" },
+                  "mesh": { "type": "boolean", "description": "also export the mesh (default true)" },
+                  "mesh_format": { "type": "string", "enum": ["glb", "obj"], "description": "glb (default, with tangents) or obj (no tangents)" },
+                  "project": { "type": "string", "description": "save the project here first, so the sidecar links to it" } }), &["dir"]),
+        t("export_mesh", "Write the loaded mesh exactly as Pigment paints it (world transforms applied, UVs, normals, and in .glb the tangents the normal map was baked with).",
+          json!({ "path": { "type": "string", "description": ".glb or .obj (no extension: .glb)" }, "format": { "type": "string", "enum": ["glb", "obj"] } }), &["path"]),
         t("undo", "Undo the last action.", json!({}), &[]),
         t("redo", "Redo.", json!({}), &[]),
     ])
@@ -116,6 +128,8 @@ fn call(session: &mut Option<Session>, name: &str, args: &Value) -> Result<Vec<V
         "paint_stroke" => text(s.paint_stroke(args)?),
         "project_decal" => text(s.project_decal(args)?),
         "export_textures" => text(s.export_textures(args)?),
+        "send_to_blender" => text(s.send_to_blender(args)?),
+        "export_mesh" => text(s.export_mesh(args)?),
         "undo" => text(s.undo(false)?),
         "redo" => text(s.undo(true)?),
         "render" => {
@@ -165,6 +179,9 @@ fn main() {
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("warn,wgpu_hal=error")).target(env_logger::Target::Stderr).init();
     let mut session: Option<Session> = None;
     let args: Vec<String> = std::env::args().collect();
+    if let Some(i) = args.iter().position(|a| a == "--export-for-blender") {
+        std::process::exit(export_for_blender(&mut session, &args[i + 1..]));
+    }
     if let Some(i) = args.iter().position(|a| a == "--script") {
         // scripted mode: {"tool": "...", "args": {...}} per line; prints results
         let path = args.get(i + 1).expect("--script <file.jsonl>");
@@ -208,6 +225,47 @@ fn main() {
         if let Some(r) = reply {
             let _ = writeln!(out, "{r}");
             let _ = out.flush();
+        }
+    }
+}
+
+/// `--export-for-blender <project.pigment | mesh> <dir> [--name N] [--preset P] [--no-mesh] [--mesh-format glb|obj]`.
+/// Used by the Blender add-on to (re)export a linked Pigment project.
+fn export_for_blender(session: &mut Option<Session>, rest: &[String]) -> i32 {
+    let usage = "usage: pigment-mcp --export-for-blender <project.pigment | mesh.glb> <dir> [--name N] [--preset P] [--no-mesh] [--mesh-format glb|obj]";
+    let valued = ["--name", "--preset", "--mesh-format"];
+    let pos: Vec<&String> = rest.iter().enumerate().filter(|(i, a)| !a.starts_with("--") && (*i == 0 || !valued.contains(&rest[i - 1].as_str()))).map(|(_, a)| a).collect();
+    let (Some(src), Some(dir)) = (pos.first(), pos.get(1)) else {
+        eprintln!("{usage}");
+        return 2;
+    };
+    let opt = |k: &str| rest.iter().position(|a| a == k).and_then(|i| rest.get(i + 1)).cloned();
+    let src_path = std::path::Path::new(src.as_str());
+    let open = if src_path.join("project.json").exists() || src_path.file_name().is_some_and(|f| f == "project.json") {
+        call(session, "open_project", &json!({ "path": src }))
+    } else {
+        call(session, "new_project", &json!({ "mesh": src }))
+    };
+    if let Err(e) = open {
+        eprintln!("[export-for-blender] ERROR: {e}");
+        return 1;
+    }
+    let mut a = json!({ "dir": dir, "mesh": !rest.iter().any(|x| x == "--no-mesh") });
+    for (flag, key) in [("--name", "name"), ("--preset", "preset"), ("--mesh-format", "mesh_format")] {
+        if let Some(v) = opt(flag) {
+            a[key] = json!(v);
+        }
+    }
+    match call(session, "send_to_blender", &a) {
+        Ok(content) => {
+            for c in content {
+                println!("{}", c["text"].as_str().unwrap_or(""));
+            }
+            0
+        }
+        Err(e) => {
+            eprintln!("[export-for-blender] ERROR: {e}");
+            1
         }
     }
 }
