@@ -319,7 +319,8 @@ def _welded_components(me):
     return len(used)
 
 
-def export(name, centre_xy=True, max_tris=80000, max_parts=240):
+def export(name, centre_xy=True, max_tris=80000, max_parts=240, close=(), view=(-1.0, -1.45, 0.75)):
+    """close: extra preview shots [(suffix, centre, radius, view_dir)] in final coordinates."""
     for o in parts:
         bpy.ops.object.select_all(action="DESELECT")
         bpy.context.view_layer.objects.active = o
@@ -377,11 +378,11 @@ def export(name, centre_xy=True, max_tris=80000, max_parts=240):
     os.makedirs(os.path.dirname(os.path.abspath(OUT)), exist_ok=True)
     bpy.ops.export_scene.gltf(filepath=OUT, export_format="GLB", use_selection=True, export_texcoords=True, export_normals=True, export_materials="NONE", export_yup=True)
     print("exported", OUT)
-    preview(obj, vcomp, nparts)
+    preview(obj, vcomp, nparts, view=view, close=close)
     return obj
 
 
-def preview(obj, vcomp, nparts, view=(-1.0, -1.45, 0.75), res=(1000, 1000)):
+def preview(obj, vcomp, nparts, view=(-1.0, -1.45, 0.75), res=(1000, 1000), close=()):
     """Workbench render, one colour per part, 3/4 view from the front-left."""
     name = os.path.splitext(os.path.basename(OUT))[0]
     path = os.path.join(os.environ.get("TEMP", "/tmp"), "pig", f"town_{name}.png")
@@ -426,12 +427,13 @@ def preview(obj, vcomp, nparts, view=(-1.0, -1.45, 0.75), res=(1000, 1000)):
     cam = bpy.data.objects.new("cam", bpy.data.cameras.new("cam"))
     sc.collection.objects.link(cam)
     cam.data.lens = 50
-    fov = cam.data.angle
-    d = Vector(view).normalized()
-    cam.location = c + d * (rad / math.sin(fov / 2) * 0.92)
-    cam.rotation_euler = (-d).to_track_quat("-Z", "Y").to_euler()
     cam.data.clip_end = 1000
     sc.camera = cam
-    sc.render.filepath = path
-    bpy.ops.render.render(write_still=True)
-    print("preview", path)
+    shots = [("", c, rad, view)] + [("_" + s_, Vector(c_), r_, v_) for s_, c_, r_, v_ in close]
+    for suffix, cc, rr, vv in shots:
+        d = Vector(vv).normalized()
+        cam.location = cc + d * (rr / math.sin(cam.data.angle / 2) * 0.92)
+        cam.rotation_euler = (-d).to_track_quat("-Z", "Y").to_euler()
+        sc.render.filepath = path.replace(".png", suffix + ".png")
+        bpy.ops.render.render(write_still=True)
+        print("preview", sc.render.filepath)

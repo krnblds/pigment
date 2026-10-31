@@ -1,0 +1,25 @@
+{"tool": "new_project", "args": {"mesh": "assets/vending_machine.glb", "resolution": 2048, "material": "Violet paint"}}
+{"tool": "add_layer", "args": {"name": "Paint roughness breakup", "material": "Violet paint", "mask": {"parts": [0], "generator": "grunge", "amount": 0.5, "scale": 5.0, "softness": 0.3}, "opacity": 0.5, "values": {"roughness": 0.6}, "channels": {"base_color": false, "metallic": false}}}
+{"tool": "add_layer", "args": {"name": "Scratches", "material": "Brushed steel", "mask": {"parts": [0], "generator": "scratches", "amount": 0.12, "scale": 5.0}, "opacity": 0.5}}
+{"tool": "add_layer", "args": {"name": "Chipped edges", "material": "Steel", "mask": {"parts": [0], "generator": "edge_wear", "amount": 0.42, "scale": 20.0, "breakup": 0.8, "softness": 0.05}, "values": {"height": -0.3}}}
+{"tool": "add_layer", "args": {"name": "Frame + trim", "material": "Brushed steel", "mask": {"parts": [1, 2, 3, 4, 26, 27]}}}
+{"tool": "add_layer", "args": {"name": "Chrome hardware", "material": "Chrome", "mask": {"parts": [23, 24, 25]}}}
+{"tool": "add_layer", "args": {"name": "Dispenser", "material": "Matte black", "mask": {"parts": [8, 9, 10]}}}
+{"tool": "add_layer", "args": {"name": "Feet", "material": "Black rubber", "mask": {"parts": [28, 29, 30, 31]}}}
+{"tool": "add_layer", "args": {"name": "Shelf LEDs", "material": "LED white", "mask": {"parts": [5, 6, 7]}, "values": {"emissive_strength": 1.2}}}
+{"tool": "add_layer", "args": {"name": "Keypad buttons", "material": "Neon cyan", "mask": {"parts": [11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]}, "values": {"emissive_strength": 2.5}}}
+{"tool": "add_layer", "args": {"name": "Ground grime", "material": "Grime", "mask": {"parts": [], "generator": "dirt", "amount": 0.6, "softness": 0.25, "breakup": 0.5, "effects": [{"generator": "gradient", "op": "max", "amount": 0.18, "breakup": 0.4}]}, "opacity": 0.85}}
+{"tool": "add_layer", "args": {"name": "Rain streaks", "material": "Grime", "mask": {"parts": [0], "generator": "streaks", "amount": 0.25, "scale": 6.0}, "opacity": 0.35}}
+{"tool": "add_layer", "args": {"kind": "paint", "name": "Display", "mask": {"parts": [0]}}}
+{"tool": "project_decal", "args": {"layer": "Display", "image": "assets/decals/vending_products.png", "rect": [0.341, 0.175, 0.581, 0.6375], "yaw": 0, "pitch": 0, "material": "White plastic", "emissive_strength": 1.6}}
+{"tool": "add_layer", "args": {"kind": "paint", "name": "Graphics"}}
+{"tool": "project_decal", "args": {"layer": "Graphics", "image": "assets/decals/logo_hoshikawa_dynamics.png", "rect": [0.36, 0.128, 0.6, 0.162], "yaw": 0, "pitch": 0, "tint": [0.9, 0.95, 1.0], "emissive_strength": 0.8}}
+{"tool": "project_decal", "args": {"layer": "Graphics", "image": "assets/decals/poster_yume.png", "rect": [0.366, 0.33, 0.641, 0.72], "yaw": 90, "pitch": 0}}
+{"tool": "project_decal", "args": {"layer": "Graphics", "image": "assets/decals/poster_yume.png", "rect": [0.359, 0.33, 0.634, 0.72], "yaw": -90, "pitch": 0}}
+{"tool": "project_decal", "args": {"layer": "Graphics", "image": "assets/decals/label_barcode_serial.png", "rect": [0.4, 0.76, 0.55, 0.83], "yaw": -90, "pitch": 0}}
+{"tool": "project_decal", "args": {"layer": "Graphics", "image": "assets/decals/graffiti_tag_kaze.png", "rect": [0.37, 0.75, 0.62, 0.88], "yaw": 90, "pitch": 0, "opacity": 0.85}}
+{"tool": "render", "args": {"yaw": 30, "pitch": 12, "width": 700, "height": 700, "path": "C:/Users/kiera/AppData/Local/Temp/pig/vm_a.png", "exposure": -0.4}}
+{"tool": "render", "args": {"yaw": -35, "pitch": 6, "width": 700, "height": 700, "path": "C:/Users/kiera/AppData/Local/Temp/pig/vm_b.png", "exposure": -0.4}}
+{"tool": "render", "args": {"yaw": 0, "pitch": 2, "zoom": 2.2, "width": 700, "height": 700, "path": "C:/Users/kiera/AppData/Local/Temp/pig/vm_c.png", "exposure": -0.4}}
+{"tool": "export_textures", "args": {"dir": "scenes/cyberpunk/textures/vending_machine", "preset": "separate", "name": "vending_machine"}}
+{"tool": "save_project", "args": {"path": "scenes/cyberpunk/projects/vending_machine.pigment"}}
