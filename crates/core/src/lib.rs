@@ -6,6 +6,7 @@
 pub mod blend;
 pub mod camera;
 pub mod curvature;
+pub mod decal;
 pub mod document;
 pub mod envmath;
 pub mod export;
