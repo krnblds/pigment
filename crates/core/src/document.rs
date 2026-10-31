@@ -201,6 +201,14 @@ impl Default for MaterialValues {
 pub enum LayerKind {
     Paint { res: ResId },
     Fill { values: MaterialValues },
+    /// A group of layers (see `folders.rs`): its children are the layers whose
+    /// `parent` is this layer's id. It has its own opacity, per-channel blend,
+    /// mask (which multiplies its children's masks) and visibility.
+    Folder {
+        /// Collapsed in the layer panel (UI state only).
+        #[serde(default)]
+        collapsed: bool,
+    },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -423,6 +431,10 @@ pub struct Layer {
     pub channels: Channels<ChannelSettings>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub mask: Option<Mask>,
+    /// The folder this layer is in (`None` = top level). Older projects have
+    /// no folders, so they load with every layer at the top level.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub parent: Option<LayerId>,
 }
 
 impl Layer {
@@ -734,6 +746,7 @@ impl Document {
             kind: LayerKind::Paint { res },
             channels: Self::channels_default(),
             mask: None,
+            parent: None,
         }
     }
 
@@ -749,6 +762,7 @@ impl Document {
             kind: LayerKind::Fill { values: MaterialValues::default() },
             channels,
             mask: None,
+            parent: None,
         }
     }
 
