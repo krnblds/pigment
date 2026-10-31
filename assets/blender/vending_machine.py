@@ -164,7 +164,6 @@ for sx in (-1, 1):
     for zb in (0.16, 1.45):
         for i in range(6):
             cuts.append(cutter((0.03, 0.42, 0.014), (sx * W / 2, 0.02, zb + i * 0.04)))
-# a horizontal seam around the cabinet (door line)
 cut(body, cuts)
 
 # raised lip framing the display bay
