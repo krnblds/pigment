@@ -51,7 +51,7 @@ impl Default for Brush {
             opacity: 1.0,
             hardness: 0.6,
             spacing: 0.1,
-            values: MaterialValues { base_color: [0.75, 0.2, 0.12], roughness: 0.35, metallic: 0.0, height: 0.5, normal: [0.0, 0.0] },
+            values: material_preset("Orange paint"),
             channels: [true, true, true, false, false],
             erase: false,
             mask_white: true,
@@ -72,6 +72,7 @@ enum Pending {
     NewFromMesh(PathBuf),
     OpenProject(PathBuf),
     NewTorus,
+    Demo,
 }
 
 pub struct PigmentApp {
@@ -118,7 +119,7 @@ impl PigmentApp {
         let rs = cc.wgpu_render_state.as_ref().ok_or("Pigment needs the wgpu renderer")?;
         let info = rs.adapter.get_info();
         log::info!("GPU: {} ({:?})", info.name, info.backend);
-        cc.egui_ctx.set_visuals(egui::Visuals::dark());
+        ui::apply_style(&cc.egui_ctx);
         Ok(Self::create(rs, startup))
     }
 
@@ -160,7 +161,8 @@ impl PigmentApp {
             ppp: 1.0,
             dump_requested: false,
         };
-        app.new_project(rs, Mesh::torus(1.0, 0.38, 192, 64), None);
+        app.new_project(rs, Mesh::demo_crate(96), None, Document::demo());
+        app.export_name = "DemoCrate".into();
         if let Some(p) = startup {
             app.run_pending(rs, Self::pending_for_path(&p));
         }
@@ -237,8 +239,7 @@ impl PigmentApp {
         self.paint_mask = false;
     }
 
-    fn new_project(&mut self, rs: &RenderState, mesh: Mesh, source: Option<PathBuf>) {
-        let mut doc = Document::new_default();
+    fn new_project(&mut self, rs: &RenderState, mesh: Mesh, source: Option<PathBuf>, mut doc: Document) {
         doc.resolution = self.doc.resolution;
         self.reset_state(rs, doc);
         self.ts.ensure_resources(&rs.device, &rs.queue, &self.doc);
@@ -269,7 +270,7 @@ impl PigmentApp {
                 let tris = mesh.triangle_count();
                 let name = mesh.name.clone();
                 self.export_name = name.clone();
-                self.new_project(rs, mesh, Some(path.to_path_buf()));
+                self.new_project(rs, mesh, Some(path.to_path_buf()), Document::new_default());
                 self.set_status(format!("New project from {name}: {} triangles, loaded in {:.0} ms", format_count(tris), t0.elapsed().as_secs_f64() * 1000.0), false);
             }
             Err(e) => self.set_status(format!("Couldn't open that file: {e:#}"), true),
@@ -427,8 +428,14 @@ impl PigmentApp {
             Pending::NewFromMesh(path) => self.open_mesh_as_new(rs, &path),
             Pending::OpenProject(path) => self.open_project(rs, &path),
             Pending::NewTorus => {
-                self.new_project(rs, Mesh::torus(1.0, 0.38, 192, 64), None);
+                self.new_project(rs, Mesh::torus(1.0, 0.38, 192, 64), None, Document::new_default());
+                self.export_name = "Torus".into();
                 self.set_status("New project with the test torus", false);
+            }
+            Pending::Demo => {
+                self.new_project(rs, Mesh::demo_crate(96), None, Document::demo());
+                self.export_name = "DemoCrate".into();
+                self.set_status("Demo crate: painted metal with edge wear and dirt. Select a layer to see how it's built.", false);
             }
         }
     }
@@ -513,6 +520,24 @@ impl PigmentApp {
 
     // ------------------------------------------------------------ painting
 
+    /// Painting on a fill layer without a mask gives it a black mask first,
+    /// so the brush reveals the fill where you paint (like Substance).
+    fn auto_mask_for_fill(&mut self, rs: &RenderState) {
+        let Some(i) = self.selected.and_then(|id| self.doc.index_of(id)) else { return };
+        if self.doc.layers[i].is_paint() || self.doc.layers[i].mask.is_some() {
+            return;
+        }
+        let res = self.doc.mint();
+        self.ts.new_mask(&rs.device, &rs.queue, res, false);
+        self.doc.layers[i].mask = Some(Mask { res, generator: None, invert: false, enabled: true });
+        self.paint_mask = true;
+        self.brush.mask_white = true;
+        self.brush.erase = false;
+        self.commit_doc_changes();
+        let name = self.doc.layers[i].name.clone();
+        self.set_status(format!("Added a black mask to {name}: painting reveals the fill"), false);
+    }
+
     fn paint_target(&self) -> Result<Target, &'static str> {
         let l = self.selected.and_then(|id| self.doc.layer(id)).ok_or("Select a layer to paint on")?;
         if self.paint_mask || !l.is_paint() {
@@ -541,6 +566,7 @@ impl PigmentApp {
     }
 
     fn begin_stroke(&mut self, rs: &RenderState, pos_px: Vec2, viewport_px: Vec2) {
+        self.auto_mask_for_fill(rs);
         let target = match self.paint_target() {
             Ok(t) => t,
             Err(msg) => {
@@ -686,6 +712,7 @@ mod tests {
         };
         let mut app = PigmentApp::create(&rs, None);
         app.change_resolution(&rs, 512);
+        let base_layers = app.doc.layers.len();
         let res = app.doc.layers.iter().find_map(|l| l.paint_res()).unwrap();
 
         paint(&mut app, &rs, Vec2::new(250.0, 450.0), Vec2::new(550.0, 420.0));
@@ -700,13 +727,13 @@ mod tests {
         app.commit_doc_changes();
         assert_eq!(app.history.undo_label(), Some("Add layer Rust"));
         app.undo(&rs, false);
-        assert_eq!(app.doc.layers.len(), 2);
+        assert_eq!(app.doc.layers.len(), base_layers);
         app.undo(&rs, false); // the stroke
         let blank = io::read_layer(&rs.device, &rs.queue, &app.ts, res).unwrap();
         assert!(blank.color.chunks_exact(4).all(|p| p[3] == 0), "undo left pixels behind");
         app.undo(&rs, true);
         app.undo(&rs, true);
-        assert_eq!(app.doc.layers.len(), 3);
+        assert_eq!(app.doc.layers.len(), base_layers + 1);
         assert_eq!(io::read_layer(&rs.device, &rs.queue, &app.ts, res).unwrap(), painted);
 
         // mask with a generator, painted on
@@ -727,6 +754,7 @@ mod tests {
         assert!(!app.modified, "save failed: {:?}", app.status);
         assert!(dir.join("project.json").exists());
         assert!(dir.join("mesh/mesh.obj").exists());
+        assert!(app.doc.layers.iter().any(|l| l.mask.as_ref().is_some_and(|m| m.generator.is_some())), "demo stack saved");
         let mask_before = io::read_mask(&rs.device, &rs.queue, &app.ts, mres).unwrap();
         let doc_before = app.doc.clone();
 
@@ -760,6 +788,22 @@ mod tests {
             }
         }
         out
+    }
+
+    /// Render the startup state through the app's own code path.
+    #[test]
+    #[ignore]
+    fn app_startup_render() {
+        let Some(rs) = headless() else { return };
+        let mut app = PigmentApp::create(&rs, None);
+        draw(&mut app, &rs);
+        let img = crate::render::gpu::readback(&rs.device, &rs.queue, app.viewport.color().unwrap());
+        let out = std::env::temp_dir().join("pig");
+        image::save_buffer(out.join("app_startup.png"), &img, 800, 800, image::ExtendedColorType::Rgba8).unwrap();
+        let bk = crate::render::gpu::readback(&rs.device, &rs.queue, &app.ts.bakes);
+        let ao: Vec<f32> = bk.chunks_exact(8).map(|c| half::f16::from_bits(u16::from_le_bytes([c[0], c[1]])).to_f32()).collect();
+        let mean = ao.iter().sum::<f32>() / ao.len() as f32;
+        eprintln!("mean AO {mean}, baked {}", app.ts.baked);
     }
 
     #[test]

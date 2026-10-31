@@ -72,6 +72,10 @@ struct Targets {
     size: [u32; 2],
     msaa: Tex,
     resolve: Tex,
+    /// Raw (non-sRGB) view of `resolve` for egui, which treats texture values
+    /// as already gamma-encoded. Sampling through the sRGB view would decode
+    /// them first and egui would darken the image a second time.
+    display: wgpu::TextureView,
     depth: Tex,
     paint_depth: Tex,
 }
@@ -197,10 +201,23 @@ impl Viewport {
             return false;
         }
         let att = wgpu::TextureUsages::RENDER_ATTACHMENT;
+        let resolve_tex = d.create_texture(&wgpu::TextureDescriptor {
+            label: Some("viewport color"),
+            size: wgpu::Extent3d { width: size[0], height: size[1], depth_or_array_layers: 1 },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: COLOR_FORMAT,
+            usage: att | wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_SRC,
+            view_formats: &[wgpu::TextureFormat::Rgba8Unorm],
+        });
+        let display = resolve_tex.create_view(&wgpu::TextureViewDescriptor { format: Some(wgpu::TextureFormat::Rgba8Unorm), ..Default::default() });
+        let resolve = Tex { view: resolve_tex.create_view(&Default::default()), tex: resolve_tex, size: size[0], height: size[1], format: COLOR_FORMAT, mips: 1 };
         self.targets = Some(Targets {
             size,
             msaa: Tex::new_ms(d, "viewport msaa", size, COLOR_FORMAT, att, MSAA),
-            resolve: Tex::new(d, "viewport color", size[0], size[1], COLOR_FORMAT, att | wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_SRC, 1),
+            resolve,
+            display,
             depth: Tex::new_ms(d, "viewport depth", size, DEPTH_FORMAT, att, MSAA),
             paint_depth: Tex::new(d, "paint depth", size[0], size[1], DEPTH_FORMAT, att | wgpu::TextureUsages::TEXTURE_BINDING, 1),
         });
@@ -231,7 +248,7 @@ impl Viewport {
     ) -> Option<egui::TextureId> {
         let size = [size[0].clamp(1, 8192), size[1].clamp(1, 8192)];
         if self.ensure_targets(&rs.device, size) || self.texture_id.is_none() {
-            let view = &self.targets.as_ref()?.resolve.view;
+            let view = &self.targets.as_ref()?.display;
             let mut renderer = rs.renderer.write();
             match self.texture_id {
                 Some(id) => renderer.update_egui_texture_from_wgpu_texture(&rs.device, view, wgpu::FilterMode::Linear, id),
