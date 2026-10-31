@@ -571,11 +571,12 @@ impl PigmentApp {
                     }
                     ui.separator();
                     ui.label(RichText::new("Smart materials (several layers)").size(11.0).color(MUTED));
-                    for paint in ["Olive drab", "Teal paint", "Orange paint", "Red paint"] {
-                        if ui.button(format!("Worn {} metal", paint.to_lowercase().replace(" paint", ""))).on_hover_text("Paint worn to bare steel on edges, with grime in crevices").clicked() {
-                            let layers = self.doc.worn_paint_layers(paint);
-                            for l in layers {
-                                self.insert_layer(l);
+                    for name in smart_material_names() {
+                        if ui.button(&name).clicked() {
+                            if let Some(layers) = self.doc.smart_material(&name) {
+                                for l in layers {
+                                    self.insert_layer(l);
+                                }
                             }
                             ui.close();
                         }
@@ -899,11 +900,15 @@ impl PigmentApp {
                 let top = ui.cursor().min;
                 card(ui, CARD, |ui| {
                     let mut kind = m.generator.as_ref().map(|g| g.kind);
-                    ui.horizontal(|ui| {
-                        ui.selectable_value(&mut kind, None, "None");
-                        ui.selectable_value(&mut kind, Some(GeneratorKind::EdgeWear), "Edge wear");
-                        ui.selectable_value(&mut kind, Some(GeneratorKind::Dirt), "Dirt");
-                    });
+                    egui::ComboBox::from_id_salt("generator kind")
+                        .width(200.0)
+                        .selected_text(kind.map(|k| k.label()).unwrap_or("None (hand-painted)"))
+                        .show_ui(ui, |ui| {
+                            ui.selectable_value(&mut kind, None, "None (hand-painted)");
+                            for k in GeneratorKind::ALL {
+                                ui.selectable_value(&mut kind, Some(k), k.label());
+                            }
+                        });
                     if kind != m.generator.as_ref().map(|g| g.kind) {
                         m.generator = kind.map(Generator::new);
                     }
@@ -912,13 +917,20 @@ impl PigmentApp {
                             ui.label(RichText::new("Hand-painted mask only.").color(MUTED));
                         }
                         Some(g) => {
-                            if !baked {
+                            if !baked && g.kind.uses_bakes() {
                                 ui.colored_label(WARN, "Bake mesh maps first (Texture set & baking, left).");
                             }
                             let what = match g.kind {
                                 GeneratorKind::EdgeWear => "Finds convex edges (curvature), breaks them up with noise, avoids occluded areas.",
                                 GeneratorKind::Dirt => "Finds crevices and occluded areas (AO + concave curvature), broken up with noise.",
+                                GeneratorKind::Grunge => "Blotchy multi-scale noise in world space: discolouration, damp patches, roughness breakup.",
+                                GeneratorKind::Streaks => "Vertical streaks along world up, heavier under overhangs: rain, leaks, rust runs.",
+                                GeneratorKind::Stripes => "Diagonal hazard stripes in world space. Amount = stripe width, Scale = stripes per metre.",
+                                GeneratorKind::Spots => "Warped blobs: rust spots, paint splotches, stains.",
+                                GeneratorKind::Scratches => "Thin sharp lines: scratches and scuffs.",
+                                GeneratorKind::PanelLines => "A grid of seams on every face. Use with a dark, negative-height fill for engraved panels.",
                             };
+                            let pattern = !matches!(g.kind, GeneratorKind::EdgeWear | GeneratorKind::Dirt);
                             ui.label(RichText::new(what).size(11.5).color(MUTED));
                             egui::Grid::new("generator").num_columns(2).spacing([10.0, 6.0]).show(ui, |ui| {
                                 ui.label("Amount");
@@ -930,18 +942,22 @@ impl PigmentApp {
                                     g.softness = (1.0 - sharp) * 0.5;
                                 }
                                 ui.end_row();
-                                ui.label("Breakup scale");
-                                ui.add(egui::Slider::new(&mut g.noise_scale, 0.5..=64.0).logarithmic(true));
+                                ui.label(if pattern { "Scale (per metre)" } else { "Breakup scale" });
+                                ui.add(egui::Slider::new(&mut g.noise_scale, 0.2..=64.0).logarithmic(true));
                                 ui.end_row();
                                 ui.label("Breakup amount");
                                 ui.add(egui::Slider::new(&mut g.noise_amount, 0.0..=1.5));
                                 ui.end_row();
-                                ui.label("Curvature weight");
-                                ui.add(egui::Slider::new(&mut g.curvature_weight, 0.0..=2.0));
-                                ui.end_row();
-                                ui.label("AO influence");
-                                ui.add(egui::Slider::new(&mut g.ao_influence, 0.0..=1.5));
-                                ui.end_row();
+                                if !pattern {
+                                    ui.label("Curvature weight");
+                                    ui.add(egui::Slider::new(&mut g.curvature_weight, 0.0..=2.0));
+                                    ui.end_row();
+                                }
+                                if g.kind.uses_bakes() {
+                                    ui.label("AO influence");
+                                    ui.add(egui::Slider::new(&mut g.ao_influence, 0.0..=1.5));
+                                    ui.end_row();
+                                }
                                 ui.label("Seed");
                                 ui.horizontal(|ui| {
                                     ui.add(egui::DragValue::new(&mut g.seed).range(0..=999));

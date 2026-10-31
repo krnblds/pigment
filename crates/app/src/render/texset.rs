@@ -151,7 +151,7 @@ impl Pipes {
         let common = include_str!("../shaders/common.wgsl");
         let comp = gpu::shader(device, "composite.wgsl", &[common, include_str!("../shaders/composite.wgsl")].concat());
         let ts = gpu::shader(device, "texspace.wgsl", &[common, include_str!("../shaders/texspace.wgsl")].concat());
-        let shared_bgl = gpu::bgl(device, "shared", &[gpu::ntex(0), gpu::ntex(1), gpu::utex(2), gpu::uniform_entry(3, false)]);
+        let shared_bgl = gpu::bgl(device, "shared", &[gpu::ntex(0), gpu::ntex(1), gpu::utex(2), gpu::uniform_entry(3, false), gpu::ntex(4)]);
         let acc_bgl = gpu::bgl(device, "acc", &[gpu::ntex(0), gpu::ntex(1), gpu::ntex(2)]);
         let layer_bgl = gpu::bgl(
             device,
@@ -243,6 +243,7 @@ impl TexSet {
                 wgpu::BindingResource::TextureView(&position.view),
                 wgpu::BindingResource::TextureView(&nearest.view),
                 shared_buf.as_entire_binding(),
+                wgpu::BindingResource::TextureView(&wnormal.view),
             ],
         );
         let acc = [acc_set(device, &p, res, "acc ping"), acc_set(device, &p, res, "acc pong"), acc_set(device, &p, res, "acc final")];

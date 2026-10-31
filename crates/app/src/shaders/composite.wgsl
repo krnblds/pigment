@@ -15,6 +15,7 @@ struct Shared {
     res: vec4<f32>,             // x = resolution, y = height-to-normal strength
 };
 @group(0) @binding(3) var<uniform> sh: Shared;
+@group(0) @binding(4) var wnormal: texture_2d<f32>;    // world normal
 
 // ---- group 1: accumulation input ----
 @group(1) @binding(0) var acc_color: texture_2d<f32>;
@@ -48,23 +49,76 @@ struct Acc {
     @location(2) normal: vec4<f32>,
 };
 
+// Ridged fbm: 1 at the noise's zero crossings, falling off around them.
+fn ridged(p: vec3<f32>) -> f32 {
+    return 1.0 - abs(fbm(p) * 2.0 - 1.0);
+}
+
 fn generator(t: vec2<i32>) -> f32 {
     let bk = textureLoad(bakes, t, 0);
     let ao = bk.r;
     let curv = bk.g;
-    let p = (textureLoad(position, t, 0).xyz - sh.center_radius.xyz) / max(sh.center_radius.w, 1e-6);
-    let n = fbm(p * lp.gen.z + vec3<f32>(lp.gen2.x * 7.31, lp.gen2.x * 3.17, lp.gen2.x * 5.53));
+    let pw = textureLoad(position, t, 0).xyz;                 // world, metres
+    let p = (pw - sh.center_radius.xyz) / max(sh.center_radius.w, 1e-6);  // object-relative
+    let seed = vec3<f32>(lp.gen2.x * 7.31, lp.gen2.x * 3.17, lp.gen2.x * 5.53);
+    let s = lp.gen.z;
+    let n = fbm(p * s + seed);
     let threshold = 1.0 - lp.gen.x;
-    let soft = max(lp.gen.y, 0.005);
+    let soft = max(lp.gen.y, 0.003);
+    let occl = 1.0 - ao;
     var v = 0.0;
-    if (lp.flags.z == 1u) {
-        // edge wear: convex curvature, broken up by noise, kept out of occluded areas
-        let convex = clamp((curv - 0.5) * 2.0, 0.0, 1.0);
-        v = convex * lp.gen2.z + (n - 0.5) * lp.gen.w - (1.0 - ao) * lp.gen2.y;
-    } else {
-        // dirt: occluded and concave areas
-        let cavity = clamp((0.5 - curv) * 2.0, 0.0, 1.0);
-        v = max((1.0 - ao) * lp.gen2.y, cavity * lp.gen2.z) + (n - 0.5) * lp.gen.w;
+    switch lp.flags.z {
+        case 1u: {
+            // edge wear: convex curvature, broken up by noise, kept out of occluded areas
+            let convex = clamp((curv - 0.5) * 2.0, 0.0, 1.0);
+            v = convex * lp.gen2.z + (n - 0.5) * lp.gen.w - occl * lp.gen2.y;
+        }
+        case 2u: {
+            // dirt: occluded and concave areas
+            let cavity = clamp((0.5 - curv) * 2.0, 0.0, 1.0);
+            v = max(occl * lp.gen2.y, cavity * lp.gen2.z) + (n - 0.5) * lp.gen.w;
+        }
+        case 3u: {
+            // grunge: two octaves of blotches, in world space
+            v = fbm(pw * s + seed) * 0.65 + fbm(pw * s * 4.3 + seed.zxy) * 0.35 + occl * lp.gen2.y;
+        }
+        case 4u: {
+            // streaks: noise stretched along world up, more under overhangs
+            let q = vec3<f32>(pw.x * s, pw.y * s * 0.07, pw.z * s);
+            v = fbm(q + seed) * 0.8 + fbm(q * 3.0 + seed.yzx) * 0.2 + occl * lp.gen2.y;
+        }
+        case 5u: {
+            // hazard stripes: diagonal triangle wave in world space (amount = stripe width)
+            let d = (pw.x + pw.y + pw.z) * s;
+            v = abs(fract(d) - 0.5) * 2.0 + (fbm(pw * 8.0 + seed) - 0.5) * lp.gen.w * 0.3;
+        }
+        case 6u: {
+            // spots: domain-warped blobs
+            let w = pw * s + vec3<f32>(fbm(pw * s * 0.7 + seed), fbm(pw * s * 0.7 + seed.yzx), fbm(pw * s * 0.7 + seed.zxy)) * 2.0;
+            v = smoothstep(0.35, 0.75, fbm(w + seed * 1.3)) + occl * lp.gen2.y;
+        }
+        case 7u: {
+            // scratches: sharp ridges of strongly stretched noise, two directions
+            let a = ridged(vec3<f32>(pw.x * s, pw.y * s * 9.0, pw.z * s) + seed);
+            let b = ridged(vec3<f32>(pw.x * s * 9.0, pw.y * s, pw.z * s * 9.0) + seed.zyx);
+            v = pow(max(a, b), 10.0) * smoothstep(0.35, 0.6, fbm(pw * s * 0.5 + seed));
+        }
+        case 8u: {
+            // panel lines: distance to a world grid, measured on the two axes
+            // that lie in the surface (the axis along the normal is skipped)
+            let nrm = abs(normalize(textureLoad(wnormal, t, 0).xyz));
+            let g = fract(pw * s);
+            let dist = min(g, vec3<f32>(1.0) - g);
+            var dmin = 1.0;
+            if (nrm.x < 0.75) { dmin = min(dmin, dist.x); }
+            if (nrm.y < 0.75) { dmin = min(dmin, dist.y); }
+            if (nrm.z < 0.75) { dmin = min(dmin, dist.z); }
+            v = 1.0 - dmin * 2.0;
+        }
+        default: {}
+    }
+    if (lp.flags.z >= 3u && lp.flags.z != 5u) {
+        v += (n - 0.5) * lp.gen.w;
     }
     return smoothstep(threshold - soft, threshold + soft, v);
 }

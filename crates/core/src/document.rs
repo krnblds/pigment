@@ -186,14 +186,62 @@ pub enum GeneratorKind {
     EdgeWear,
     /// Grime in cavities: inverse AO + concave curvature + noise.
     Dirt,
+    /// Blotchy multi-scale noise: discolouration, roughness breakup.
+    Grunge,
+    /// Vertical rain / leak streaks (world up), heavier under overhangs.
+    Streaks,
+    /// Diagonal hazard stripes in world space.
+    Stripes,
+    /// Domain-warped blobs: rust spots, paint splotches.
+    Spots,
+    /// Thin ridged lines: scratches and scuffs.
+    Scratches,
+    /// Grid of panel seams on every face (pair with negative height).
+    PanelLines,
 }
 
 impl GeneratorKind {
+    pub const ALL: [GeneratorKind; 8] = [
+        GeneratorKind::EdgeWear,
+        GeneratorKind::Dirt,
+        GeneratorKind::Grunge,
+        GeneratorKind::Streaks,
+        GeneratorKind::Stripes,
+        GeneratorKind::Spots,
+        GeneratorKind::Scratches,
+        GeneratorKind::PanelLines,
+    ];
     pub fn label(self) -> &'static str {
         match self {
             GeneratorKind::EdgeWear => "Edge wear",
             GeneratorKind::Dirt => "Dirt",
+            GeneratorKind::Grunge => "Grunge",
+            GeneratorKind::Streaks => "Streaks",
+            GeneratorKind::Stripes => "Hazard stripes",
+            GeneratorKind::Spots => "Spots",
+            GeneratorKind::Scratches => "Scratches",
+            GeneratorKind::PanelLines => "Panel lines",
         }
+    }
+    pub fn id(self) -> &'static str {
+        match self {
+            GeneratorKind::EdgeWear => "edge_wear",
+            GeneratorKind::Dirt => "dirt",
+            GeneratorKind::Grunge => "grunge",
+            GeneratorKind::Streaks => "streaks",
+            GeneratorKind::Stripes => "stripes",
+            GeneratorKind::Spots => "spots",
+            GeneratorKind::Scratches => "scratches",
+            GeneratorKind::PanelLines => "panel_lines",
+        }
+    }
+    pub fn from_id(s: &str) -> Option<GeneratorKind> {
+        let s = s.to_ascii_lowercase().replace([' ', '-'], "_");
+        Self::ALL.into_iter().find(|k| k.id() == s || k.label().to_ascii_lowercase().replace(' ', "_") == s)
+    }
+    /// Uses the curvature / AO bakes (vs. a pure world-space pattern).
+    pub fn uses_bakes(self) -> bool {
+        matches!(self, GeneratorKind::EdgeWear | GeneratorKind::Dirt | GeneratorKind::Streaks | GeneratorKind::Grunge | GeneratorKind::Spots)
     }
 }
 
@@ -226,17 +274,36 @@ fn one() -> f32 {
 
 impl Generator {
     pub fn new(kind: GeneratorKind) -> Self {
-        let ao_influence = match kind {
-            GeneratorKind::EdgeWear => 0.5,
-            GeneratorKind::Dirt => 1.0,
+        // (amount, softness, scale, breakup, AO influence). Pattern generators
+        // (grunge and later) use `noise_scale` as features per metre.
+        let (amount, softness, noise_scale, noise_amount, ao_influence) = match kind {
+            GeneratorKind::EdgeWear => (0.5, 0.15, 8.0, 0.5, 0.5),
+            GeneratorKind::Dirt => (0.5, 0.15, 8.0, 0.5, 1.0),
+            GeneratorKind::Grunge => (0.45, 0.12, 4.0, 0.0, 0.2),
+            GeneratorKind::Streaks => (0.4, 0.1, 6.0, 0.2, 0.4),
+            GeneratorKind::Stripes => (0.5, 0.01, 3.0, 0.0, 0.0),
+            GeneratorKind::Spots => (0.3, 0.06, 4.0, 0.2, 0.3),
+            GeneratorKind::Scratches => (0.2, 0.03, 5.0, 0.0, 0.0),
+            GeneratorKind::PanelLines => (0.06, 0.01, 2.5, 0.0, 0.0),
         };
-        Self { kind, amount: 0.5, softness: 0.15, noise_scale: 8.0, noise_amount: 0.5, seed: 1, ao_influence, curvature_weight: 1.0 }
+        Self { kind, amount, softness, noise_scale, noise_amount, seed: 1, ao_influence, curvature_weight: 1.0 }
     }
     pub fn gpu_id(&self) -> u32 {
         match self.kind {
             GeneratorKind::EdgeWear => 1,
             GeneratorKind::Dirt => 2,
+            GeneratorKind::Grunge => 3,
+            GeneratorKind::Streaks => 4,
+            GeneratorKind::Stripes => 5,
+            GeneratorKind::Spots => 6,
+            GeneratorKind::Scratches => 7,
+            GeneratorKind::PanelLines => 8,
         }
+    }
+    pub fn with(mut self, amount: f32, noise_scale: f32) -> Self {
+        self.amount = amount;
+        self.noise_scale = noise_scale;
+        self
     }
 }
 
@@ -337,6 +404,19 @@ impl Default for Document {
     }
 }
 
+/// Paint colours offered as "Worn <paint> metal" smart materials.
+pub const SMART_PAINTS: [&str; 7] = ["Olive drab", "Teal paint", "Orange paint", "Red paint", "Hazard yellow", "Matte black", "Violet paint"];
+/// Plastics offered as "Scuffed <plastic>" smart materials.
+pub const SMART_PLASTICS: [&str; 4] = ["Neon pink plastic", "Cyan plastic", "White plastic", "Black rubber"];
+
+/// Every smart material name, for menus and the MCP server.
+pub fn smart_material_names() -> Vec<String> {
+    let mut v: Vec<String> = SMART_PAINTS.iter().map(|p| format!("Worn {} metal", p.to_ascii_lowercase())).collect();
+    v.extend(["Rusty steel", "Hazard stripes", "Grimy concrete", "Tech panels", "Grimy chrome"].map(String::from));
+    v.extend(SMART_PLASTICS.iter().map(|p| format!("Scuffed {}", p.to_ascii_lowercase())));
+    v
+}
+
 /// Ready-made materials for the brush and for fill layers.
 pub fn material_presets() -> Vec<(&'static str, MaterialValues)> {
     let m = |c: [f32; 3], r: f32, mt: f32, h: f32| MaterialValues { base_color: c, roughness: r, metallic: mt, height: h, normal: [0.0, 0.0] };
@@ -349,6 +429,20 @@ pub fn material_presets() -> Vec<(&'static str, MaterialValues)> {
         ("Teal paint", m([0.1, 0.32, 0.35], 0.45, 0.0, 0.0)),
         ("Orange paint", m([0.86, 0.36, 0.08], 0.4, 0.0, 0.0)),
         ("Olive drab", m([0.29, 0.31, 0.18], 0.6, 0.0, 0.0)),
+        ("Hazard yellow", m([0.93, 0.72, 0.05], 0.45, 0.0, 0.0)),
+        ("Matte black", m([0.03, 0.03, 0.035], 0.75, 0.0, 0.0)),
+        ("Gunmetal", m([0.22, 0.23, 0.25], 0.4, 1.0, 0.0)),
+        ("Chrome", m([0.95, 0.95, 0.96], 0.05, 1.0, 0.0)),
+        ("Brushed steel", m([0.62, 0.63, 0.64], 0.42, 1.0, 0.0)),
+        ("Neon pink plastic", m([1.0, 0.1, 0.55], 0.3, 0.0, 0.0)),
+        ("Cyan plastic", m([0.0, 0.75, 0.85], 0.3, 0.0, 0.0)),
+        ("Violet paint", m([0.38, 0.12, 0.62], 0.45, 0.0, 0.0)),
+        ("Carbon black", m([0.06, 0.06, 0.07], 0.35, 0.0, 0.0)),
+        ("Asphalt", m([0.09, 0.09, 0.09], 0.8, 0.0, 0.0)),
+        ("Wet concrete", m([0.32, 0.32, 0.33], 0.25, 0.0, 0.0)),
+        ("Verdigris", m([0.32, 0.6, 0.5], 0.8, 0.0, 0.05)),
+        ("Oxidized iron", m([0.2, 0.1, 0.06], 0.9, 0.3, 0.1)),
+        ("Panel seam", m([0.05, 0.05, 0.05], 0.6, 0.5, -0.5)),
         ("Red paint", m([0.62, 0.07, 0.05], 0.4, 0.0, 0.0)),
         ("White plastic", m([0.85, 0.85, 0.83], 0.35, 0.0, 0.0)),
         ("Black rubber", m([0.04, 0.04, 0.04], 0.9, 0.0, 0.0)),
@@ -421,6 +515,103 @@ impl Document {
         g.noise_amount = 0.7;
         dirt.mask = Some(Mask { res, generator: Some(g), invert: false, enabled: true });
         vec![base, wear, dirt]
+    }
+
+    /// A fill layer from a preset, optionally masked by a generator. Height
+    /// only participates when the preset has some.
+    pub fn fill_with(&mut self, name: &str, preset: &str, generator: Option<Generator>) -> Layer {
+        let mut l = self.new_fill_layer(name);
+        let values = material_preset(preset);
+        l.channels.height.enabled = values.height.abs() > 1e-3;
+        l.channels.normal.enabled = false;
+        l.kind = LayerKind::Fill { values };
+        if let Some(g) = generator {
+            let res = self.mint();
+            l.mask = Some(Mask { res, generator: Some(g), invert: false, enabled: true });
+        }
+        l
+    }
+
+    /// Multi-layer smart materials, bottom to top. `None` for an unknown name.
+    pub fn smart_material(&mut self, name: &str) -> Option<Vec<Layer>> {
+        use GeneratorKind::*;
+        if let Some(paint) = name.strip_prefix("Worn ").and_then(|p| p.strip_suffix(" metal")) {
+            let preset = SMART_PAINTS.iter().find(|p| p.to_ascii_lowercase() == paint.to_ascii_lowercase())?;
+            return Some(self.worn_paint_layers(preset));
+        }
+        let g = Generator::new;
+        let only = |l: &mut Layer, keep: &[Channel]| {
+            for c in Channel::ALL {
+                l.channels.get_mut(c).enabled = keep.contains(&c);
+            }
+        };
+        Some(match name {
+            "Rusty steel" => {
+                let base = self.fill_with("Dark iron", "Dark iron", None);
+                let mut grunge = self.fill_with("Grunge", "Oxidized iron", Some(g(Grunge).with(0.45, 3.0)));
+                grunge.opacity = 0.6;
+                let rust = self.fill_with("Rust spots", "Rust", Some(g(Spots).with(0.45, 3.0)));
+                let mut cav = g(Dirt);
+                cav.amount = 0.55;
+                let rust2 = self.fill_with("Rust in crevices", "Rust", Some(cav));
+                let streaks = self.fill_with("Rust streaks", "Oxidized iron", Some(g(Streaks).with(0.35, 7.0)));
+                vec![base, grunge, rust, rust2, streaks]
+            }
+            "Hazard stripes" => {
+                let base = self.fill_with("Hazard yellow", "Hazard yellow", None);
+                let stripes = self.fill_with("Black stripes", "Matte black", Some(g(Stripes)));
+                let mut wear = self.worn_paint_layers("Hazard yellow");
+                let dirt = wear.pop().unwrap();
+                let edge = wear.pop().unwrap();
+                vec![base, stripes, edge, dirt]
+            }
+            "Grimy concrete" => {
+                let base = self.fill_with("Concrete", "Concrete", None);
+                let mut blotch = self.fill_with("Damp patches", "Wet concrete", Some(g(Grunge).with(0.5, 2.0)));
+                only(&mut blotch, &[Channel::BaseColor, Channel::Roughness]);
+                let leaks = self.fill_with("Leaks", "Grime", Some(g(Streaks).with(0.45, 5.0)));
+                let mut dirt = g(Dirt);
+                dirt.amount = 0.6;
+                let grime = self.fill_with("Grime", "Grime", Some(dirt));
+                vec![base, blotch, leaks, grime]
+            }
+            "Tech panels" => {
+                let base = self.fill_with("Gunmetal", "Gunmetal", None);
+                let mut rough = self.fill_with("Roughness breakup", "Dark iron", Some(g(Grunge).with(0.5, 6.0)));
+                only(&mut rough, &[Channel::Roughness]);
+                let seams = self.fill_with("Panel seams", "Panel seam", Some(g(PanelLines)));
+                let scratches = self.fill_with("Scratches", "Brushed steel", Some(g(Scratches)));
+                let mut wear = g(EdgeWear);
+                wear.amount = 0.55;
+                wear.noise_scale = 22.0;
+                wear.noise_amount = 0.8;
+                wear.softness = 0.05;
+                let edges = self.fill_with("Edge wear", "Brushed steel", Some(wear));
+                let mut dirt = g(Dirt);
+                dirt.amount = 0.5;
+                let grime = self.fill_with("Grime", "Grime", Some(dirt));
+                vec![base, rough, seams, scratches, edges, grime]
+            }
+            "Grimy chrome" => {
+                let base = self.fill_with("Chrome", "Chrome", None);
+                let mut smudge = self.fill_with("Smudges", "Brushed steel", Some(g(Grunge).with(0.5, 8.0)));
+                only(&mut smudge, &[Channel::Roughness]);
+                let mut dirt = g(Dirt);
+                dirt.amount = 0.5;
+                let grime = self.fill_with("Grime", "Grime", Some(dirt));
+                vec![base, smudge, grime]
+            }
+            other => {
+                let color = other.strip_prefix("Scuffed ")?;
+                let preset = SMART_PLASTICS.iter().find(|p| p.to_ascii_lowercase() == color.to_ascii_lowercase())?;
+                let base = self.fill_with(preset, preset, None);
+                let scratches = self.fill_with("Scuffs", "White plastic", Some(g(Scratches).with(0.25, 7.0)));
+                let mut dirt = g(Dirt);
+                dirt.amount = 0.45;
+                let grime = self.fill_with("Grime", "Grime", Some(dirt));
+                vec![base, scratches, grime]
+            }
+        })
     }
 
     pub fn mint(&mut self) -> u64 {
@@ -545,6 +736,31 @@ mod tests {
         assert!(d.layers.last().unwrap().is_paint());
         assert_eq!(d.resources().len(), 3);
         assert!(material_presets().len() >= 10);
+    }
+
+    #[test]
+    fn every_smart_material_builds() {
+        for name in smart_material_names() {
+            let mut d = Document::default();
+            let layers = d.smart_material(&name).unwrap_or_else(|| panic!("{name} didn't build"));
+            assert!(layers.len() >= 2, "{name}");
+            // every layer id and resource id unique
+            let mut ids: Vec<u64> = layers.iter().map(|l| l.id).collect();
+            ids.extend(layers.iter().filter_map(|l| l.mask.as_ref().map(|m| m.res)));
+            let n = ids.len();
+            ids.sort();
+            ids.dedup();
+            assert_eq!(ids.len(), n, "{name}");
+        }
+        assert!(Document::default().smart_material("Nope").is_none());
+    }
+
+    #[test]
+    fn generator_kinds_round_trip_by_id() {
+        for k in GeneratorKind::ALL {
+            assert_eq!(GeneratorKind::from_id(k.id()), Some(k));
+            assert_eq!(GeneratorKind::from_id(k.label()), Some(k));
+        }
     }
 
     #[test]
