@@ -7,7 +7,8 @@
 //! * **Edge convexity**: positions are welded (so UV and normal splits don't
 //!   hide adjacency), and every edge shared by two triangles gets the signed
 //!   dihedral angle between them, positive = convex.
-//! * **Vertex curvature**: the mean convexity of a vertex's edges, for smooth,
+//! * **Vertex curvature**: mean curvature (radians per unit length) across a
+//!   vertex's edges, for bevels and smooth,
 //!   dense meshes where individual edges are nearly flat.
 //!
 //! The baker rasterises each triangle in UV space, and for each texel adds the
@@ -25,7 +26,7 @@ pub struct CurvatureData {
     pub edge_convexity: Vec<[f32; 3]>,
     /// Per triangle, the distance from each corner to its opposite edge.
     pub heights: Vec<[f32; 3]>,
-    /// Per (unwelded) vertex, mean convexity of adjacent edges.
+    /// Per (unwelded) vertex, signed mean curvature in 1/units (positive = convex).
     pub vertex: Vec<f32>,
 }
 
@@ -93,8 +94,13 @@ pub fn compute(mesh: &Mesh) -> CurvatureData {
         let v = if convex { angle } else { -angle };
         edge_convexity[ta][ka] = v;
         edge_convexity[tb][kb] = v;
+        // Curvature proper = turning angle per unit length across the edge.
+        // Unlike the raw angle this doesn't depend on tessellation density,
+        // so a bevel reads the same at 4 or 40 segments.
+        let dist = (centroid[tb] - centroid[ta]).length().max(1e-9);
+        let k = v * std::f32::consts::PI / dist;
         for w in [*a, *b] {
-            vsum[w as usize] += v;
+            vsum[w as usize] += k;
             vcnt[w as usize] += 1;
         }
     }

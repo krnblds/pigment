@@ -33,7 +33,9 @@ fn fs_curv(i: CurvOut) -> @location(0) vec4<f32> {
     let dist = i.bary * i.heights;
     let fade = clamp(vec3<f32>(1.0) - dist / max(cp.radius, 1e-6), vec3<f32>(0.0), vec3<f32>(1.0));
     let edge = dot(i.convexity, fade * fade);
-    let k = (edge + i.vcurv * 0.5) * 2.0 * cp.strength;
+    // hard edges: dihedral angle, faded over the edge width;
+    // bevels / smooth surfaces: curvature x edge width (dimensionless)
+    let k = (edge * 2.0 + i.vcurv * cp.radius) * cp.strength;
     return vec4<f32>(0.5 + 0.5 * clamp(k, -1.0, 1.0), 0.0, 0.0, 1.0);
 }
 

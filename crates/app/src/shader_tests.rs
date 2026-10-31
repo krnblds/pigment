@@ -30,3 +30,4 @@ shader_test!(apply, "apply.wgsl");
 shader_test!(bake_ao, "bake_ao.wgsl");
 shader_test!(bake_curv, "bake_curv.wgsl");
 shader_test!(bake_resolve, "bake_resolve.wgsl");
+shader_test!(bake_blur, "bake_blur.wgsl");

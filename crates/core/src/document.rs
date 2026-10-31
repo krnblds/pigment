@@ -270,7 +270,7 @@ pub struct BakeSettings {
 
 impl Default for BakeSettings {
     fn default() -> Self {
-        Self { ao_samples: 128, curvature_radius: 0.01, curvature_strength: 1.0 }
+        Self { ao_samples: 128, curvature_radius: 0.05, curvature_strength: 1.0 }
     }
 }
 
@@ -307,6 +307,31 @@ impl Default for Document {
     }
 }
 
+/// Ready-made materials for the brush and for fill layers.
+pub fn material_presets() -> Vec<(&'static str, MaterialValues)> {
+    let m = |c: [f32; 3], r: f32, mt: f32, h: f32| MaterialValues { base_color: c, roughness: r, metallic: mt, height: h, normal: [0.0, 0.0] };
+    vec![
+        ("Steel", m([0.56, 0.57, 0.58], 0.3, 1.0, 0.0)),
+        ("Dark iron", m([0.33, 0.33, 0.34], 0.55, 1.0, 0.0)),
+        ("Aluminium", m([0.91, 0.92, 0.92], 0.35, 1.0, 0.0)),
+        ("Gold", m([1.0, 0.77, 0.34], 0.22, 1.0, 0.0)),
+        ("Copper", m([0.95, 0.64, 0.54], 0.3, 1.0, 0.0)),
+        ("Teal paint", m([0.1, 0.32, 0.35], 0.45, 0.0, 0.0)),
+        ("Orange paint", m([0.86, 0.36, 0.08], 0.4, 0.0, 0.0)),
+        ("Red paint", m([0.62, 0.07, 0.05], 0.4, 0.0, 0.0)),
+        ("White plastic", m([0.85, 0.85, 0.83], 0.35, 0.0, 0.0)),
+        ("Black rubber", m([0.04, 0.04, 0.04], 0.9, 0.0, 0.0)),
+        ("Rust", m([0.42, 0.18, 0.08], 0.85, 0.15, 0.15)),
+        ("Grime", m([0.13, 0.1, 0.07], 0.95, 0.0, 0.0)),
+        ("Concrete", m([0.55, 0.54, 0.52], 0.9, 0.0, 0.0)),
+        ("Chip (dent)", m([0.56, 0.57, 0.58], 0.3, 1.0, -0.6)),
+    ]
+}
+
+pub fn material_preset(name: &str) -> MaterialValues {
+    material_presets().into_iter().find(|(n, _)| *n == name).map(|(_, v)| v).unwrap_or_default()
+}
+
 pub const RESOLUTIONS: [u32; 4] = [512, 1024, 2048, 4096];
 
 impl Document {
@@ -315,6 +340,48 @@ impl Document {
         let mut d = Document::default();
         let base = d.new_fill_layer("Base material");
         d.layers.push(base);
+        let paint = d.new_paint_layer("Paint");
+        d.layers.push(paint);
+        d
+    }
+
+    /// The demo stack: painted metal, worn to bare steel on edges (with
+    /// recessed chips), grime in the creases, and an empty paint layer on top.
+    pub fn demo() -> Self {
+        let mut d = Document::default();
+        let mut base = d.new_fill_layer("Painted metal");
+        base.kind = LayerKind::Fill { values: material_preset("Teal paint") };
+        d.layers.push(base);
+
+        let mut wear = d.new_fill_layer("Edge wear");
+        let mut steel = material_preset("Steel");
+        steel.height = -0.35;
+        wear.kind = LayerKind::Fill { values: steel };
+        wear.channels.normal.enabled = false;
+        let res = d.mint();
+        let mut g = Generator::new(GeneratorKind::EdgeWear);
+        g.amount = 0.62;
+        g.softness = 0.04;
+        g.noise_scale = 22.0;
+        g.noise_amount = 0.9;
+        wear.mask = Some(Mask { res, generator: Some(g), invert: false, enabled: true });
+        d.layers.push(wear);
+
+        let mut dirt = d.new_fill_layer("Dirt");
+        dirt.kind = LayerKind::Fill { values: material_preset("Grime") };
+        dirt.channels.metallic.enabled = false;
+        dirt.channels.height.enabled = false;
+        dirt.channels.normal.enabled = false;
+        dirt.opacity = 0.85;
+        let res = d.mint();
+        let mut g = Generator::new(GeneratorKind::Dirt);
+        g.amount = 0.55;
+        g.softness = 0.2;
+        g.noise_scale = 5.0;
+        g.noise_amount = 0.7;
+        dirt.mask = Some(Mask { res, generator: Some(g), invert: false, enabled: true });
+        d.layers.push(dirt);
+
         let paint = d.new_paint_layer("Paint");
         d.layers.push(paint);
         d
@@ -432,6 +499,16 @@ mod tests {
         assert!(!d.layers[0].is_paint());
         assert!(d.layers[1].is_paint());
         assert_eq!(d.resources().len(), 1);
+    }
+
+    #[test]
+    fn demo_stack_is_complete() {
+        let d = Document::demo();
+        assert_eq!(d.layers.len(), 4);
+        assert_eq!(d.layers.iter().filter(|l| l.mask.as_ref().is_some_and(|m| m.generator.is_some())).count(), 2);
+        assert!(d.layers.last().unwrap().is_paint());
+        assert_eq!(d.resources().len(), 3);
+        assert!(material_presets().len() >= 10);
     }
 
     #[test]

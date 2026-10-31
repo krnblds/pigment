@@ -6,7 +6,7 @@ use super::gpu::{self, Tex};
 use super::texset::{TexSet, BAKES};
 use super::MeshGpu;
 use eframe::egui_wgpu::wgpu;
-use glam::{Mat4, Vec3};
+use glam::Vec3;
 use pigment_core::{curvature, BakeSettings, Mesh};
 use wgpu::util::DeviceExt;
 
@@ -21,6 +21,8 @@ pub struct Baker {
     curv_bgl: wgpu::BindGroupLayout,
     resolve_pipe: wgpu::RenderPipeline,
     resolve_bgl: wgpu::BindGroupLayout,
+    blur_pipe: wgpu::RenderPipeline,
+    blur_bgl: wgpu::BindGroupLayout,
     cmp_sampler: wgpu::Sampler,
 }
 
@@ -133,6 +135,16 @@ impl Baker {
             &gpu::layout(device, "bake resolve", &[&resolve_bgl]),
             &[gpu::target(BAKES, None)],
         );
+        let bm = gpu::shader(device, "bake_blur.wgsl", &[common, include_str!("../shaders/bake_blur.wgsl")].concat());
+        let blur_bgl = gpu::bgl(device, "curv blur", &[gpu::ntex(0), gpu::utex(1), gpu::uniform_entry(2, false)]);
+        let blur_pipe = gpu::fullscreen(
+            device,
+            "curv blur",
+            &bm,
+            "fs_blur",
+            &gpu::layout(device, "curv blur", &[&blur_bgl]),
+            &[gpu::target(wgpu::TextureFormat::R16Float, None)],
+        );
         let cmp_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
             label: Some("shadow"),
             mag_filter: wgpu::FilterMode::Linear,
@@ -140,7 +152,7 @@ impl Baker {
             compare: Some(wgpu::CompareFunction::LessEqual),
             ..Default::default()
         });
-        Self { depth_pipe, accum_pipe, light_bgl, accum_bgl, curv_pipe, curv_bgl, resolve_pipe, resolve_bgl, cmp_sampler }
+        Self { depth_pipe, accum_pipe, light_bgl, accum_bgl, curv_pipe, curv_bgl, resolve_pipe, resolve_bgl, blur_pipe, blur_bgl, cmp_sampler }
     }
 
     pub fn bake(&self, device: &wgpu::Device, queue: &wgpu::Queue, mesh: &Mesh, mg: &MeshGpu, ts: &mut TexSet, s: &BakeSettings) {
@@ -255,6 +267,26 @@ impl Baker {
             pass.set_vertex_buffer(0, vbuf.slice(..));
             pass.draw(0..verts.len() as u32, 0..1);
         }
+        // ---- blur (horizontal then vertical), a few texels per 512 ----
+        let tmp = Tex::target(device, "curvature blur", res, wgpu::TextureFormat::R16Float);
+        let radius = (res / 256).max(2) as i32;
+        for (src, dst, dir) in [(&curv, &tmp, [1i32, 0]), (&tmp, &curv, [0, 1])] {
+            let p = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("blur params"),
+                contents: bytemuck::cast_slice(&[dir[0], dir[1], radius, res as i32]),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
+            let bg = gpu::bind_group(
+                device,
+                "curv blur",
+                &self.blur_bgl,
+                &[wgpu::BindingResource::TextureView(&src.view), wgpu::BindingResource::TextureView(&ts.nearest.view), p.as_entire_binding()],
+            );
+            let mut pass = gpu::pass(&mut enc, "curv blur", &[&dst.view], None);
+            pass.set_pipeline(&self.blur_pipe);
+            pass.set_bind_group(0, &bg, &[]);
+            pass.draw(0..3, 0..1);
+        }
         // ---- resolve into the bakes texture (seam padded) ----
         {
             let bg = gpu::bind_group(
@@ -274,7 +306,6 @@ impl Baker {
         }
         queue.submit([enc.finish()]);
         ts.baked = true;
-        let _ = Mat4::IDENTITY;
     }
 }
 

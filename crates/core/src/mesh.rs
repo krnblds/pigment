@@ -140,6 +140,83 @@ impl Mesh {
         }
     }
 
+    /// Smooth normals shared across split vertices (UV seams): area-weighted
+    /// face normals summed per welded position.
+    pub fn compute_normals_welded(&mut self) {
+        let welded = crate::curvature::weld(self);
+        let count = welded.iter().copied().max().map_or(0, |m| m as usize + 1);
+        let mut acc = vec![Vec3::ZERO; count];
+        for t in self.indices.chunks_exact(3) {
+            let [a, b, c] = [t[0] as usize, t[1] as usize, t[2] as usize];
+            let pa = Vec3::from(self.vertices[a].position);
+            let n = (Vec3::from(self.vertices[b].position) - pa).cross(Vec3::from(self.vertices[c].position) - pa);
+            for i in [a, b, c] {
+                acc[welded[i] as usize] += n;
+            }
+        }
+        for (v, w) in self.vertices.iter_mut().zip(&welded) {
+            v.normal = acc[*w as usize].try_normalize().unwrap_or(Vec3::Y).into();
+        }
+    }
+
+    /// Demo asset: a bevelled crate whose faces have a raised frame around a
+    /// recessed panel. Convex bevels and frame rims give edge wear something to
+    /// find; the creases at the bottom of each recess collect dirt. `n` = grid cells per face side.
+    pub fn demo_crate(n: u32) -> Mesh {
+        let ext = Vec3::new(1.0, 0.72, 0.82); // half extents
+        let bevel = 0.09;
+        let (margin, slope, depth) = (0.16, 0.035, 0.07);
+        let inner_ext = ext - Vec3::splat(bevel);
+        // (normal, u axis, v axis) with u x v = normal
+        let faces = [
+            (Vec3::X, -Vec3::Z, Vec3::Y),
+            (-Vec3::X, Vec3::Z, Vec3::Y),
+            (Vec3::Y, Vec3::X, -Vec3::Z),
+            (-Vec3::Y, Vec3::X, Vec3::Z),
+            (Vec3::Z, Vec3::X, Vec3::Y),
+            (-Vec3::Z, -Vec3::X, Vec3::Y),
+        ];
+        let pad = 0.012;
+        let (cw, ch) = (1.0 / 3.0, 0.5);
+        let mut m = Mesh { name: "Demo crate".into(), has_uvs: true, ..Default::default() };
+        for (f, (nrm, u, v)) in faces.iter().enumerate() {
+            let (eu, ev) = (u.abs().dot(ext), v.abs().dot(ext));
+            let en = nrm.abs().dot(ext);
+            let (col, row) = ((f % 3) as f32, (f / 3) as f32);
+            let base = m.vertices.len() as u32;
+            for j in 0..=n {
+                for i in 0..=n {
+                    let a = i as f32 / n as f32 * 2.0 - 1.0;
+                    let b = j as f32 / n as f32 * 2.0 - 1.0;
+                    let p = *u * (a * eu) + *v * (b * ev) + *nrm * en;
+                    // rounded box: clamp to the inner box, push out by the bevel radius
+                    let inner = p.clamp(-inner_ext, inner_ext);
+                    let dir = (p - inner).normalize_or(*nrm);
+                    let mut pos = inner + dir * bevel;
+                    // recessed panel inside a frame: distance to the face border, in world units
+                    let d = ((1.0 - a.abs()) * eu).min((1.0 - b.abs()) * ev);
+                    let t = ((d - margin) / slope).clamp(0.0, 1.0);
+                    pos -= *nrm * depth * t * t * (3.0 - 2.0 * t);
+                    let uv = [
+                        (col + pad + (a * 0.5 + 0.5) * (1.0 - 2.0 * pad)) * cw,
+                        (row + pad + (0.5 - b * 0.5) * (1.0 - 2.0 * pad)) * ch,
+                    ];
+                    m.vertices.push(Vertex { position: pos.into(), normal: dir.into(), uv, tangent: [0.0; 4] });
+                }
+            }
+            let stride = n + 1;
+            for j in 0..n {
+                for i in 0..n {
+                    let k = base + j * stride + i;
+                    m.indices.extend_from_slice(&[k, k + 1, k + stride + 1, k, k + stride + 1, k + stride]);
+                }
+            }
+        }
+        m.compute_normals_welded();
+        m.compute_tangents();
+        m
+    }
+
     /// A torus with a UV seam in both directions: a good default for testing
     /// seam handling. `segments` around the ring, `sides` around the tube.
     pub fn torus(major: f32, minor: f32, segments: u32, sides: u32) -> Mesh {
@@ -388,6 +465,25 @@ f 1/1 2/2 3/3 4/4
             assert!((Vec3::from(a.position) - Vec3::from(b.position)).length() < 1e-5);
             assert!((Vec4::from(a.tangent) - Vec4::from(b.tangent)).length() < 1e-5, "{:?} vs {:?}", a.tangent, b.tangent);
         }
+    }
+
+    #[test]
+    fn demo_crate_is_well_formed() {
+        let m = Mesh::demo_crate(24);
+        assert_eq!(m.triangle_count(), 6 * 24 * 24 * 2);
+        assert!(m.vertices.iter().all(|v| v.uv[0] > 0.0 && v.uv[0] < 1.0 && v.uv[1] > 0.0 && v.uv[1] < 1.0));
+        // normals point outward everywhere (the shape is star-shaped around the origin)
+        assert!(m.vertices.iter().all(|v| Vec3::from(v.normal).dot(Vec3::from(v.position)) > 0.0));
+        // faces wind outward: area-weighted normals agree with vertex normals
+        for t in m.indices.chunks_exact(3).step_by(97) {
+            let p = [0, 1, 2].map(|k| Vec3::from(m.vertices[t[k] as usize].position));
+            let fnrm = (p[1] - p[0]).cross(p[2] - p[0]);
+            assert!(fnrm.dot(Vec3::from(m.vertices[t[0] as usize].normal)) > 0.0);
+        }
+        // the bevel edges are convex: curvature sees them
+        let c = crate::curvature::compute(&m);
+        let convex = c.vertex.iter().filter(|&&k| k > 3.0).count();
+        assert!(convex > m.vertices.len() / 20, "{convex} strongly convex vertices");
     }
 
     #[test]

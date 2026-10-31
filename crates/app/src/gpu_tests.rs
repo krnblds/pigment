@@ -457,3 +457,37 @@ fn stroke_across_uv_seam_renders_without_a_line() {
     std::fs::create_dir_all(&out).ok();
     image::save_buffer(out.join("seam_test.png"), &img, VIEW.x as u32, VIEW.y as u32, image::ExtendedColorType::Rgba8).unwrap();
 }
+
+/// Renders the demo crate with the demo layer stack to %TEMP%/pig/demo_*.png
+/// (material, curvature, AO). `cargo test -p pigment --release render_demo -- --ignored`
+#[test]
+#[ignore]
+fn render_demo() {
+    use crate::render::viewport::ViewMode;
+    let Some(g) = gpu() else { return };
+    let (d, q) = (&g.device, &g.queue);
+    let mesh = Mesh::demo_crate(96);
+    let mg = MeshGpu::new(d, &mesh);
+    let doc = Document::demo();
+    let mut ts = TexSet::new(d, q, doc.resolution);
+    let (c, r) = mesh.bounding_sphere();
+    ts.prepare_mesh(d, q, &mg, c, r);
+    Baker::new(d).bake(d, q, &mesh, &mg, &mut ts, &doc.bake);
+    ts.ensure_resources(d, q, &doc);
+    ts.composite(d, q, &doc, None);
+    let mut camera = OrbitCamera::default();
+    camera.frame(c, r);
+    camera.distance *= 0.85;
+    let mut vp = Viewport::new(d);
+    let size = [1200u32, 900];
+    vp.ensure_targets(d, size);
+    let env = Environment::studio(d, q);
+    let out = std::env::temp_dir().join("pig");
+    std::fs::create_dir_all(&out).ok();
+    for (name, mode) in [("material", ViewMode::Material), ("curvature", ViewMode::Curvature), ("ao", ViewMode::Ao)] {
+        let settings = ViewSettings { mode, ..Default::default() };
+        vp.draw(d, q, &camera, &settings, Some(&mg), &env, &ts);
+        let img = crate::render::gpu::readback(d, q, vp.color().unwrap());
+        image::save_buffer(out.join(format!("demo_{name}.png")), &img, size[0], size[1], image::ExtendedColorType::Rgba8).unwrap();
+    }
+}
