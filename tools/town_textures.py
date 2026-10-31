@@ -84,7 +84,7 @@ def windows(glass, seed):
     rng = random.Random(seed)
     rng.shuffle(glass)
     n = len(glass)
-    warm, cyan, pink = glass[: int(n * 0.35)], glass[int(n * 0.35): int(n * 0.45)], glass[int(n * 0.45): int(n * 0.52)]
+    warm, cyan, pink = glass[: int(n * 0.32)], glass[int(n * 0.32): int(n * 0.40)], glass[int(n * 0.40): int(n * 0.43)]
     L = [fill("Dark glass", None, glass, values={"base_color": [0.02, 0.025, 0.03], "roughness": 0.04, "metallic": 0.0}, channels={"height": False})]
     for name, parts, col, k in (("Lit windows (warm)", warm, [1.0, 0.72, 0.42], 2.4), ("Lit windows (cyan)", cyan, [0.35, 0.85, 1.0], 2.2), ("Lit windows (pink)", pink, [1.0, 0.3, 0.7], 2.2)):
         if parts:
@@ -97,9 +97,16 @@ def common(c, seed):
     L += windows(list(c.get("glass", [])), seed)
     if c.get("frame"):
         L.append(fill("Frames", "Matte black", c["frame"]))
+    if c.get("panel"):
+        L.append(fill("Screens", None, c["panel"], values={"base_color": [0.012, 0.012, 0.015], "roughness": 0.08, "metallic": 0.0}, channels={"height": False}))
     if c.get("trim"):
         L.append(fill("Trim", "Gunmetal", c["trim"]))
-        L.append(fill("Trim rust", "Rust", c["trim"], {"generator": "spots", "amount": 0.3, "scale": 4.0}))
+    if c.get("door"):
+        L.append(fill("Doors", None, c["door"], values={"base_color": [0.11, 0.12, 0.13], "roughness": 0.45, "metallic": 0.6}))
+        L.append(fill("Door scuffs", "Steel", c["door"], {"generator": "edge_wear", "amount": 0.25, "scale": 20.0, "breakup": 0.7, "softness": 0.05}))
+    if c.get("roof"):
+        L.append(fill("Rooftop metal", None, c["roof"], values={"base_color": [0.32, 0.33, 0.34], "roughness": 0.55, "metallic": 0.8}))
+        L.append(fill("Rooftop rust streaks", "Rust", c["roof"], {"generator": "streaks", "amount": 0.18, "scale": 3.0, "softness": 0.2}, opacity=0.6))
     if c.get("ac"):
         L.append(fill("AC units", "White plastic", c["ac"]))
     if c.get("grille"):
@@ -117,8 +124,18 @@ def common(c, seed):
 def building(asset, base, shell_extra, signs, seed):
     parts = parts_of(asset)
     c = {}
+    shells = [p for p in parts if classify(p) == "shell"]
+    roof_y = max(p["center"][1] + p["size"][1] / 2 for p in shells) - 0.6
     for p in parts:
-        c.setdefault(classify(p), []).append(p["id"])
+        k = classify(p)
+        if k == "trim":
+            s = sorted(p["size"])
+            bottom = p["center"][1] - p["size"][1] / 2
+            if s[0] <= 0.08 and 0.9 <= s[1] <= 1.4 and 2.2 <= s[2] <= 2.7 and bottom < 0.6:
+                k = "door"
+            elif bottom >= roof_y:
+                k = "roof"
+        c.setdefault(k, []).append(p["id"])
     sel = lambda k: [i for i in c.get(k, []) if i < 256]
     c = {k: sel(k) for k in c}
     shell = c.get("shell", [])
@@ -171,7 +188,7 @@ def build_b():
 
 def build_c():
     def shell_extra(shell):
-        return [fill("Gunmetal cladding", "Gunmetal", shell),
+        return [fill("Steel cladding", None, shell, values={"base_color": [0.2, 0.21, 0.23], "roughness": 0.5, "metallic": 0.7}),
                 fill("Cladding seams", "Panel seam", shell, {"generator": "panel_lines", "amount": 0.008, "scale": 0.5}),
                 fill("Scratches", "Brushed steel", shell, {"generator": "scratches", "amount": 0.08, "scale": 3.0}, opacity=0.35)]
     signs = [{"image": DECALS + "logo_hoshikawa_dynamics.png", "part": 0, "fit": "contain", "tint": [0.9, 0.95, 1.0], "emissive_strength": 2.0}]
