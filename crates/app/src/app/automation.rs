@@ -1,0 +1,602 @@
+//! Headless automation: drive Pigment with commands instead of a mouse.
+//! Used by the `pigment-mcp` server (one JSON object per tool call) and by tests.
+//!
+//! Every command runs through the same code paths as the UI (document edits,
+//! undo history, strokes, bake, composite, save, export).
+
+use super::*;
+use crate::render::viewport::ViewMode;
+use serde_json::{json, Value};
+
+type Res<T> = Result<T, String>;
+
+/// A GPU device without a window.
+pub fn headless_render_state() -> Option<RenderState> {
+    use eframe::egui_wgpu::wgpu;
+    let instance = wgpu::Instance::default();
+    let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
+        power_preference: wgpu::PowerPreference::HighPerformance,
+        ..Default::default()
+    }))
+    .ok()?;
+    let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor::default())).ok()?;
+    let format = wgpu::TextureFormat::Rgba8UnormSrgb;
+    let renderer = eframe::egui_wgpu::Renderer::new(&device, format, Default::default());
+    Some(RenderState {
+        available_adapters: vec![adapter.clone()],
+        adapter,
+        instance,
+        device,
+        queue,
+        target_format: format,
+        renderer: std::sync::Arc::new(egui::mutex::RwLock::new(renderer)),
+    })
+}
+
+pub struct Session {
+    pub rs: RenderState,
+    pub app: PigmentApp,
+    size: [u32; 2],
+}
+
+/// A rendered preview.
+pub struct Image {
+    pub png: Vec<u8>,
+    pub path: PathBuf,
+}
+
+fn f(v: &Value, k: &str) -> Option<f32> {
+    v.get(k).and_then(Value::as_f64).map(|x| x as f32)
+}
+fn s<'a>(v: &'a Value, k: &str) -> Option<&'a str> {
+    v.get(k).and_then(Value::as_str)
+}
+fn req<'a>(v: &'a Value, k: &str) -> Res<&'a str> {
+    s(v, k).ok_or_else(|| format!("missing string argument `{k}`"))
+}
+
+fn view_mode(name: &str) -> Res<ViewMode> {
+    let n = name.to_ascii_lowercase();
+    ViewMode::ALL
+        .into_iter()
+        .find(|m| m.label().to_ascii_lowercase().starts_with(&n) || format!("{m:?}").to_ascii_lowercase() == n)
+        .ok_or_else(|| format!("unknown view `{name}` (material, base color, roughness, metallic, height, normal, ambient, curvature, world, uv)"))
+}
+
+fn channel(name: &str) -> Res<Channel> {
+    let n = name.to_ascii_lowercase().replace([' ', '-'], "_");
+    Channel::ALL.into_iter().find(|c| c.file_stem() == n || c.label().to_ascii_lowercase().replace(' ', "_") == n).ok_or_else(|| format!("unknown channel `{name}`"))
+}
+
+fn blend_mode(name: &str) -> Res<BlendMode> {
+    let n = name.to_ascii_lowercase();
+    [
+        BlendMode::Normal,
+        BlendMode::Multiply,
+        BlendMode::Screen,
+        BlendMode::Overlay,
+        BlendMode::Add,
+        BlendMode::Subtract,
+        BlendMode::Darken,
+        BlendMode::Lighten,
+        BlendMode::Replace,
+        BlendMode::NormalCombine,
+    ]
+    .into_iter()
+    .find(|m| m.label().to_ascii_lowercase().starts_with(&n) || format!("{m:?}").to_ascii_lowercase() == n)
+    .ok_or_else(|| format!("unknown blend mode `{name}`"))
+}
+
+impl Session {
+    pub fn new() -> Res<Session> {
+        let rs = headless_render_state().ok_or("no GPU adapter available")?;
+        let app = PigmentApp::create(&rs, None);
+        Ok(Session { rs, app, size: [1280, 960] })
+    }
+
+    fn status(&self) -> Res<String> {
+        match &self.app.status {
+            Some((m, true)) => Err(m.clone()),
+            Some((m, false)) => Ok(m.clone()),
+            None => Ok(String::new()),
+        }
+    }
+
+    fn settle(&mut self) {
+        self.app.commit_doc_changes();
+        self.app.ensure_composited(&self.rs);
+    }
+
+    // ------------------------------------------------------------------ projects
+
+    pub fn new_project(&mut self, a: &Value) -> Res<Value> {
+        let mesh = PathBuf::from(req(a, "mesh")?);
+        self.app.status = None;
+        if let Some(r) = a.get("resolution").and_then(Value::as_u64) {
+            if !RESOLUTIONS.contains(&(r as u32)) {
+                return Err(format!("resolution must be one of {RESOLUTIONS:?}"));
+            }
+            self.app.doc.resolution = r as u32;
+        }
+        self.app.open_mesh_as_new(&self.rs, &mesh);
+        self.status()?;
+        // start from an empty stack, then optionally a smart material and a paint layer on top
+        self.app.doc.layers.clear();
+        if let Some(name) = s(a, "smart_material") {
+            let layers = self.app.doc.smart_material(name).ok_or_else(|| format!("unknown smart material `{name}`"))?;
+            self.app.doc.layers.extend(layers);
+        } else {
+            let base = self.app.doc.fill_with("Base", s(a, "material").unwrap_or("White plastic"), None);
+            self.app.doc.layers.push(base);
+        }
+        let paint = self.app.doc.new_paint_layer("Paint");
+        self.app.doc.layers.push(paint);
+        self.app.committed = self.app.doc.clone();
+        let _ = self.app.history.clear();
+        self.app.select(self.app.doc.layers.last().map(|l| l.id), false);
+        self.settle();
+        Ok(json!({ "mesh": self.app.mesh.name, "triangles": self.app.mesh.triangle_count(), "layers": self.layers() }))
+    }
+
+    pub fn open_project(&mut self, a: &Value) -> Res<Value> {
+        self.app.status = None;
+        self.app.open_project(&self.rs, Path::new(req(a, "path")?));
+        self.status()?;
+        self.settle();
+        Ok(json!({ "layers": self.layers() }))
+    }
+
+    pub fn save_project(&mut self, a: &Value) -> Res<Value> {
+        self.settle();
+        let dir = match s(a, "path") {
+            Some(p) => PathBuf::from(p),
+            None => self.app.project_dir.clone().ok_or("no project folder yet: pass `path` (e.g. C:/work/crate.pigment)")?,
+        };
+        self.app.status = None;
+        self.app.save_to(&self.rs, dir.clone());
+        Ok(json!({ "saved": dir, "status": self.status()? }))
+    }
+
+    // ------------------------------------------------------------------ library + layers
+
+    pub fn library(&self) -> Value {
+        json!({
+            "materials": material_presets().into_iter().map(|(n, v)| json!({
+                "name": n, "base_color": v.base_color, "roughness": v.roughness, "metallic": v.metallic, "height": v.height
+            })).collect::<Vec<_>>(),
+            "smart_materials": smart_material_names(),
+            "generators": GeneratorKind::ALL.iter().map(|k| json!({ "id": k.id(), "label": k.label(), "uses_bakes": k.uses_bakes() })).collect::<Vec<_>>(),
+            "blend_modes": ["normal", "multiply", "screen", "overlay", "add", "subtract", "darken", "lighten", "replace", "combine"],
+            "export_presets": export::presets().iter().map(|p| json!({ "id": p.id, "label": p.label })).collect::<Vec<_>>(),
+            "views": ViewMode::ALL.iter().map(|m| m.label()).collect::<Vec<_>>(),
+        })
+    }
+
+    pub fn layers(&self) -> Value {
+        Value::Array(
+            self.app
+                .doc
+                .layers
+                .iter()
+                .enumerate()
+                .map(|(i, l)| {
+                    let mut o = json!({
+                        "index": i,
+                        "name": l.name,
+                        "kind": if l.is_paint() { "paint" } else { "fill" },
+                        "visible": l.visible,
+                        "opacity": l.opacity,
+                        "channels": Channel::ALL.iter().filter(|c| l.channels.get(**c).enabled).map(|c| c.file_stem()).collect::<Vec<_>>(),
+                    });
+                    if let LayerKind::Fill { values } = &l.kind {
+                        o["material"] = json!(material_presets().into_iter().find(|(_, v)| v == values).map(|(n, _)| n).unwrap_or("custom"));
+                    }
+                    if let Some(m) = &l.mask {
+                        o["mask"] = json!({
+                            "generator": m.generator.as_ref().map(|g| json!({
+                                "kind": g.kind.id(), "amount": g.amount, "softness": g.softness, "scale": g.noise_scale,
+                                "breakup": g.noise_amount, "seed": g.seed, "ao_influence": g.ao_influence, "curvature_weight": g.curvature_weight
+                            })),
+                            "invert": m.invert,
+                        });
+                    }
+                    o
+                })
+                .collect(),
+        )
+    }
+
+    fn find_layer(&self, r: &Value) -> Res<usize> {
+        match r {
+            Value::Number(n) => {
+                let i = n.as_u64().ok_or("layer index must be >= 0")? as usize;
+                (i < self.app.doc.layers.len()).then_some(i).ok_or_else(|| format!("no layer {i}"))
+            }
+            Value::String(name) => {
+                let n = name.to_ascii_lowercase();
+                // last match = the topmost layer with that name
+                self.app.doc.layers.iter().rposition(|l| l.name.to_ascii_lowercase() == n).ok_or_else(|| format!("no layer named `{name}`"))
+            }
+            _ => Err("`layer` must be a name or an index (0 = bottom)".into()),
+        }
+    }
+
+    /// Apply the optional layer fields of `a` to layer `i`.
+    fn configure(&mut self, i: usize, a: &Value) -> Res<()> {
+        let rs = &self.rs;
+        let app = &mut self.app;
+        if let Some(n) = s(a, "name") {
+            app.doc.layers[i].name = n.to_string();
+        }
+        if let Some(o) = f(a, "opacity") {
+            app.doc.layers[i].opacity = o.clamp(0.0, 1.0);
+        }
+        if let Some(v) = a.get("visible").and_then(Value::as_bool) {
+            app.doc.layers[i].visible = v;
+        }
+        if let Some(name) = s(a, "material") {
+            if !material_presets().iter().any(|(n, _)| *n == name) {
+                return Err(format!("unknown material `{name}` (see list_library)"));
+            }
+            let values = material_preset(name);
+            let l = &mut app.doc.layers[i];
+            let LayerKind::Fill { values: v } = &mut l.kind else { return Err("`material` applies to fill layers".into()) };
+            *v = values.clone();
+            if values.height.abs() > 1e-3 {
+                l.channels.height.enabled = true;
+            }
+        }
+        if let Some(vals) = a.get("values") {
+            let LayerKind::Fill { values: v } = &mut app.doc.layers[i].kind else { return Err("`values` apply to fill layers".into()) };
+            if let Some(c) = vals.get("base_color").and_then(Value::as_array) {
+                for (k, x) in c.iter().take(3).enumerate() {
+                    v.base_color[k] = x.as_f64().unwrap_or(0.0).clamp(0.0, 1.0) as f32;
+                }
+            }
+            if let Some(x) = f(vals, "roughness") {
+                v.roughness = x.clamp(0.0, 1.0);
+            }
+            if let Some(x) = f(vals, "metallic") {
+                v.metallic = x.clamp(0.0, 1.0);
+            }
+            if let Some(x) = f(vals, "height") {
+                v.height = x.clamp(-1.0, 1.0);
+                app.doc.layers[i].channels.height.enabled = true;
+            }
+        }
+        if let Some(chs) = a.get("channels").and_then(Value::as_object) {
+            for (k, on) in chs {
+                let c = channel(k)?;
+                app.doc.layers[i].channels.get_mut(c).enabled = on.as_bool().unwrap_or(true);
+            }
+        }
+        if let Some(bl) = a.get("blend").and_then(Value::as_object) {
+            for (k, m) in bl {
+                let c = channel(k)?;
+                app.doc.layers[i].channels.get_mut(c).blend = blend_mode(m.as_str().unwrap_or("normal"))?;
+            }
+        }
+        match a.get("mask") {
+            None => {}
+            Some(Value::Null) => app.doc.layers[i].mask = None,
+            Some(Value::String(c)) => {
+                let white = match c.as_str() {
+                    "white" => true,
+                    "black" => false,
+                    _ => return Err("mask must be \"white\", \"black\", null or {generator: ...}".into()),
+                };
+                let res = app.doc.mint();
+                app.ts.new_mask(&rs.device, &rs.queue, res, white);
+                app.doc.layers[i].mask = Some(Mask { res, generator: None, invert: false, enabled: true });
+            }
+            Some(m) => {
+                let kind = match s(m, "generator") {
+                    Some(k) => Some(GeneratorKind::from_id(k).ok_or_else(|| format!("unknown generator `{k}`"))?),
+                    None => None,
+                };
+                if app.doc.layers[i].mask.is_none() {
+                    let res = app.doc.mint();
+                    app.ts.new_mask(&rs.device, &rs.queue, res, true);
+                    app.doc.layers[i].mask = Some(Mask { res, generator: None, invert: false, enabled: true });
+                }
+                let mask = app.doc.layers[i].mask.as_mut().unwrap();
+                if let Some(k) = kind {
+                    if mask.generator.as_ref().map(|g| g.kind) != Some(k) {
+                        mask.generator = Some(Generator::new(k));
+                    }
+                }
+                if let Some(inv) = m.get("invert").and_then(Value::as_bool) {
+                    mask.invert = inv;
+                }
+                if let Some(g) = mask.generator.as_mut() {
+                    if let Some(x) = f(m, "amount") {
+                        g.amount = x;
+                    }
+                    if let Some(x) = f(m, "softness") {
+                        g.softness = x;
+                    }
+                    if let Some(x) = f(m, "scale") {
+                        g.noise_scale = x;
+                    }
+                    if let Some(x) = f(m, "breakup") {
+                        g.noise_amount = x;
+                    }
+                    if let Some(x) = m.get("seed").and_then(Value::as_u64) {
+                        g.seed = x as u32;
+                    }
+                    if let Some(x) = f(m, "ao_influence") {
+                        g.ao_influence = x;
+                    }
+                    if let Some(x) = f(m, "curvature_weight") {
+                        g.curvature_weight = x;
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
+    pub fn add_smart_material(&mut self, a: &Value) -> Res<Value> {
+        let name = req(a, "name")?;
+        let layers = self.app.doc.smart_material(name).ok_or_else(|| format!("unknown smart material `{name}` (see list_library)"))?;
+        // insert below the topmost paint layer so painting stays on top
+        let at = self.app.doc.layers.iter().rposition(|l| l.is_paint()).unwrap_or(self.app.doc.layers.len());
+        for (k, l) in layers.into_iter().enumerate() {
+            self.app.doc.layers.insert(at + k, l);
+        }
+        self.settle();
+        Ok(json!({ "layers": self.layers() }))
+    }
+
+    pub fn add_layer(&mut self, a: &Value) -> Res<Value> {
+        let kind = s(a, "kind").unwrap_or("fill");
+        let name = s(a, "name").unwrap_or(if kind == "paint" { "Paint" } else { "Fill" }).to_string();
+        let l = match kind {
+            "paint" => self.app.doc.new_paint_layer(&name),
+            "fill" => self.app.doc.fill_with(&name, s(a, "material").unwrap_or("White plastic"), None),
+            _ => return Err("`kind` must be \"fill\" or \"paint\"".into()),
+        };
+        let at = match a.get("index").and_then(Value::as_u64) {
+            Some(i) => (i as usize).min(self.app.doc.layers.len()),
+            None if kind == "paint" => self.app.doc.layers.len(),
+            None => self.app.doc.layers.iter().rposition(|l| l.is_paint()).unwrap_or(self.app.doc.layers.len()),
+        };
+        self.app.doc.layers.insert(at, l);
+        let mut cfg = a.clone();
+        if let Some(o) = cfg.as_object_mut() {
+            o.remove("name");
+        }
+        if let Err(e) = self.configure(at, &cfg) {
+            self.app.doc.layers.remove(at);
+            return Err(e);
+        }
+        self.settle();
+        Ok(json!({ "added": at, "layers": self.layers() }))
+    }
+
+    pub fn update_layer(&mut self, a: &Value) -> Res<Value> {
+        let i = self.find_layer(a.get("layer").ok_or("missing `layer`")?)?;
+        self.configure(i, a)?;
+        if let Some(to) = a.get("move_to").and_then(Value::as_u64) {
+            let l = self.app.doc.layers.remove(i);
+            let to = (to as usize).min(self.app.doc.layers.len());
+            self.app.doc.layers.insert(to, l);
+        }
+        self.settle();
+        Ok(json!({ "layers": self.layers() }))
+    }
+
+    pub fn delete_layer(&mut self, a: &Value) -> Res<Value> {
+        let i = self.find_layer(a.get("layer").ok_or("missing `layer`")?)?;
+        self.app.doc.layers.remove(i);
+        self.settle();
+        Ok(json!({ "layers": self.layers() }))
+    }
+
+    pub fn undo(&mut self, redo: bool) -> Res<Value> {
+        self.app.undo(&self.rs, redo);
+        self.settle();
+        Ok(json!({ "status": self.status()?, "layers": self.layers() }))
+    }
+
+    pub fn bake(&mut self, a: &Value) -> Res<Value> {
+        let b = &mut self.app.doc.bake;
+        if let Some(n) = a.get("ao_samples").and_then(Value::as_u64) {
+            b.ao_samples = (n as u32).clamp(8, 1024);
+        }
+        if let Some(x) = f(a, "ao_distance") {
+            b.ao_distance = x;
+        }
+        if let Some(x) = f(a, "curvature_radius") {
+            b.curvature_radius = x;
+        }
+        if let Some(x) = f(a, "curvature_strength") {
+            b.curvature_strength = x;
+        }
+        self.app.bake(&self.rs);
+        self.settle();
+        Ok(json!({ "status": self.status()? }))
+    }
+
+    // ------------------------------------------------------------------ camera, painting, output
+
+    fn set_camera(&mut self, a: &Value) {
+        let (c, r) = self.app.mesh.bounding_sphere();
+        let cam = &mut self.app.camera;
+        cam.frame(c, r);
+        cam.yaw = f(a, "yaw").map(|d| d.to_radians()).unwrap_or(35f32.to_radians());
+        cam.pitch = f(a, "pitch").map(|d| d.to_radians()).unwrap_or(20f32.to_radians());
+        cam.distance *= f(a, "zoom").map(|z| 1.0 / z.max(0.05)).unwrap_or(1.0);
+        if let Some(w) = a.get("width").and_then(Value::as_u64) {
+            self.size[0] = (w as u32).clamp(64, 4096);
+        }
+        if let Some(h) = a.get("height").and_then(Value::as_u64) {
+            self.size[1] = (h as u32).clamp(64, 4096);
+        }
+    }
+
+    fn draw(&mut self) {
+        self.app.viewport.ensure_targets(&self.rs.device, self.size);
+        self.app.viewport.draw(&self.rs.device, &self.rs.queue, &self.app.camera, &self.app.view, self.app.mesh_gpu.as_ref(), &self.app.env, &self.app.ts);
+    }
+
+    /// Paint one stroke. `points` are viewport positions in 0..1 (x right, y down)
+    /// for a camera given by yaw / pitch / zoom (degrees; same as `render`).
+    pub fn paint_stroke(&mut self, a: &Value) -> Res<Value> {
+        let pts: Vec<Vec2> = a
+            .get("points")
+            .and_then(Value::as_array)
+            .ok_or("missing `points`: [[x, y], ...] in 0..1")?
+            .iter()
+            .filter_map(|p| {
+                let p = p.as_array()?;
+                Some(Vec2::new(p.first()?.as_f64()? as f32, p.get(1)?.as_f64()? as f32))
+            })
+            .collect();
+        if pts.is_empty() {
+            return Err("`points` is empty".into());
+        }
+        self.set_camera(a);
+        // target layer: given, else the topmost paint layer (created if missing)
+        let i = match a.get("layer") {
+            Some(r) => self.find_layer(r)?,
+            None => match self.app.doc.layers.iter().rposition(|l| l.is_paint()) {
+                Some(i) => i,
+                None => {
+                    let l = self.app.doc.new_paint_layer("Paint");
+                    self.app.doc.layers.push(l);
+                    self.app.doc.layers.len() - 1
+                }
+            },
+        };
+        let id = self.app.doc.layers[i].id;
+        let on_mask = a.get("mask").and_then(Value::as_bool).unwrap_or(false);
+        self.app.select(Some(id), on_mask);
+        self.settle();
+        let b = &mut self.app.brush;
+        if let Some(name) = s(a, "material") {
+            if !material_presets().iter().any(|(n, _)| *n == name) {
+                return Err(format!("unknown material `{name}`"));
+            }
+            b.values = material_preset(name);
+            b.channels = [true, true, true, b.values.height.abs() > 1e-3, false];
+        }
+        if let Some(chs) = a.get("channels").and_then(Value::as_array) {
+            b.channels = [false; 5];
+            for c in chs.iter().filter_map(Value::as_str) {
+                b.channels[channel(c)?.index()] = true;
+            }
+        }
+        if let Some(h) = f(a, "height") {
+            b.values.height = h;
+            b.channels[3] = true;
+        }
+        b.size = f(a, "size").unwrap_or(40.0);
+        b.opacity = f(a, "opacity").unwrap_or(1.0);
+        b.hardness = f(a, "hardness").unwrap_or(0.6);
+        b.spacing = 0.1;
+        b.erase = a.get("erase").and_then(Value::as_bool).unwrap_or(false);
+        b.mask_white = s(a, "mask_value").unwrap_or("white") != "black";
+        self.app.ppp = 1.0;
+        self.draw();
+        let px = Vec2::new(self.size[0] as f32, self.size[1] as f32);
+        let to_px = |p: Vec2| p * px;
+        self.app.begin_stroke(&self.rs, to_px(pts[0]), px);
+        if self.app.stroke.is_none() {
+            return Err(self.status().err().unwrap_or_else(|| "couldn't start the stroke".into()));
+        }
+        let spacing = (self.app.brush.size * self.app.brush.spacing).max(1.0);
+        for p in &pts[1..] {
+            let stamps = self.app.stroke.as_mut().map(|st| st.sampler.move_to(to_px(*p), spacing)).unwrap_or_default();
+            self.app.apply_stamps(&self.rs, stamps);
+        }
+        self.app.end_stroke(&self.rs);
+        self.settle();
+        Ok(json!({ "painted_on": self.app.doc.layers[i].name, "mask": on_mask }))
+    }
+
+    pub fn render(&mut self, a: &Value) -> Res<Image> {
+        self.settle();
+        self.set_camera(a);
+        if let Some(v) = s(a, "view") {
+            self.app.view.mode = view_mode(v)?;
+        } else {
+            self.app.view.mode = ViewMode::Material;
+        }
+        if let Some(x) = f(a, "exposure") {
+            self.app.view.exposure = x;
+        }
+        if let Some(bg) = a.get("background").and_then(Value::as_bool) {
+            self.app.view.show_env = bg;
+        }
+        self.draw();
+        let rgba = crate::render::gpu::readback(&self.rs.device, &self.rs.queue, self.app.viewport.color().ok_or("no viewport")?);
+        let mut png = Vec::new();
+        image::codecs::png::PngEncoder::new(&mut png)
+            .write_image(&rgba, self.size[0], self.size[1], image::ExtendedColorType::Rgba8)
+            .map_err(|e| e.to_string())?;
+        let path = match s(a, "path") {
+            Some(p) => PathBuf::from(p),
+            None => std::env::temp_dir().join("pigment-mcp").join(format!("render-{}.png", std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis()).unwrap_or(0))),
+        };
+        if let Some(d) = path.parent() {
+            std::fs::create_dir_all(d).map_err(|e| e.to_string())?;
+        }
+        std::fs::write(&path, &png).map_err(|e| e.to_string())?;
+        Ok(Image { png, path })
+    }
+
+    pub fn export_textures(&mut self, a: &Value) -> Res<Value> {
+        self.settle();
+        let dir = PathBuf::from(req(a, "dir")?);
+        let preset = s(a, "preset").unwrap_or("separate");
+        if export::preset(preset).is_none() {
+            return Err(format!("unknown preset `{preset}`: unreal, unity, godot, separate"));
+        }
+        self.app.doc.export_preset = preset.to_string();
+        self.app.export_dir = Some(dir.clone());
+        self.app.export_name = s(a, "name").map(String::from).unwrap_or_else(|| self.app.mesh.name.clone());
+        self.app.status = None;
+        self.app.export(&self.rs);
+        let msg = self.status()?;
+        let files: Vec<String> = export::preset(preset)
+            .unwrap()
+            .outputs
+            .iter()
+            .map(|o| dir.join(format!("{}_{}.png", self.app.export_name, o.suffix)).to_string_lossy().to_string())
+            .collect();
+        Ok(json!({ "status": msg, "files": files }))
+    }
+}
+
+use image::ImageEncoder;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn scripted_session_builds_a_material_and_exports() {
+        let Ok(mut s) = Session::new() else { return };
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let mesh = root.join("assets/ammo_box.glb");
+        let r = s.new_project(&json!({ "mesh": mesh, "resolution": 512, "smart_material": "Hazard stripes" })).unwrap();
+        assert!(r["layers"].as_array().unwrap().len() >= 5, "{r}");
+        s.add_layer(&json!({ "kind": "fill", "name": "Seams", "material": "Panel seam", "mask": { "generator": "panel_lines", "scale": 4.0 } })).unwrap();
+        s.update_layer(&json!({ "layer": "Seams", "opacity": 0.8 })).unwrap();
+        assert!(s.update_layer(&json!({ "layer": "Nope" })).is_err());
+        let p = s.paint_stroke(&json!({ "points": [[0.3, 0.5], [0.7, 0.45]], "material": "Neon pink plastic", "size": 30 })).unwrap();
+        assert_eq!(p["painted_on"], "Paint");
+        let img = s.render(&json!({ "yaw": 30, "pitch": 20, "width": 320, "height": 240 })).unwrap();
+        assert!(img.png.len() > 1000 && img.path.exists());
+        let out = std::env::temp_dir().join(format!("pigment-auto-{}", std::process::id()));
+        let e = s.export_textures(&json!({ "dir": out, "preset": "separate", "name": "Box" })).unwrap();
+        for f in e["files"].as_array().unwrap() {
+            assert!(Path::new(f.as_str().unwrap()).exists(), "{f}");
+        }
+        s.undo(false).unwrap();
+        let saved = s.save_project(&json!({ "path": out.join("box.pigment") })).unwrap();
+        assert!(out.join("box.pigment/project.json").exists(), "{saved}");
+        std::fs::remove_dir_all(out).ok();
+    }
+}

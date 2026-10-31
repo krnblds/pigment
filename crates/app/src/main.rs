@@ -1,11 +1,6 @@
 //! Pigment — paint PBR textures directly onto 3D meshes.
 
-mod app;
-mod render;
-#[cfg(test)]
-mod shader_tests;
-#[cfg(test)]
-mod gpu_tests;
+use pigment_engine::app;
 
 fn main() -> eframe::Result {
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("warn,wgpu_hal=error,pigment=info")).init();

@@ -1,0 +1,2 @@
+{"tool":"new_project","args":{"mesh":"assets/jerry_can.glb","resolution":1024,"smart_material":"Rusty steel"}}
+{"tool":"render","args":{"yaw":40,"pitch":15,"width":640,"height":480,"path":"C:/Users/kiera/AppData/Local/Temp/pig/mcp_rust.png"}}

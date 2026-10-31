@@ -24,6 +24,7 @@ use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
+pub mod automation;
 mod tour;
 mod ui;
 

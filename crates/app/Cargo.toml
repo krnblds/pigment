@@ -4,6 +4,18 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 
+[lib]
+name = "pigment_engine"
+path = "src/lib.rs"
+
+[[bin]]
+name = "pigment"
+path = "src/main.rs"
+
+[[bin]]
+name = "pigment-mcp"
+path = "src/bin/pigment-mcp.rs"
+
 [dependencies]
 pigment-core = { path = "../core" }
 glam.workspace = true
@@ -15,7 +27,9 @@ log = "0.4"
 half = { version = "2", features = ["bytemuck"] }
 image = { version = "0.25", default-features = false, features = ["png", "hdr", "exr", "jpeg"] }
 env_logger = "0.11"
+pollster = "1"
+serde_json.workspace = true
+base64 = "0.22"
 
 [dev-dependencies]
 naga = { version = "30", features = ["wgsl-in"] }
-pollster = "1"

@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "pigment": {
+      "command": "target/release/pigment-mcp.exe",
+      "args": []
+    }
+  }
+}

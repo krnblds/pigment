@@ -548,13 +548,13 @@ impl Document {
         Some(match name {
             "Rusty steel" => {
                 let base = self.fill_with("Dark iron", "Dark iron", None);
-                let mut grunge = self.fill_with("Grunge", "Oxidized iron", Some(g(Grunge).with(0.45, 3.0)));
+                let mut grunge = self.fill_with("Grunge", "Oxidized iron", Some(g(Grunge).with(0.4, 7.0)));
                 grunge.opacity = 0.6;
-                let rust = self.fill_with("Rust spots", "Rust", Some(g(Spots).with(0.45, 3.0)));
+                let rust = self.fill_with("Rust spots", "Rust", Some(g(Spots).with(0.3, 9.0)));
                 let mut cav = g(Dirt);
                 cav.amount = 0.55;
                 let rust2 = self.fill_with("Rust in crevices", "Rust", Some(cav));
-                let streaks = self.fill_with("Rust streaks", "Oxidized iron", Some(g(Streaks).with(0.35, 7.0)));
+                let streaks = self.fill_with("Rust streaks", "Oxidized iron", Some(g(Streaks).with(0.3, 12.0)));
                 vec![base, grunge, rust, rust2, streaks]
             }
             "Hazard stripes" => {
