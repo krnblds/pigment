@@ -555,7 +555,7 @@ impl PigmentApp {
             eye: [eye.x, eye.y, eye.z, 1.0],
             viewport: [viewport_px.x, viewport_px.y, self.camera.near(), 0.0],
         };
-        let bins = ScreenBins::build(&self.mesh, vp, viewport_px);
+        let bins = ScreenBins::build(&self.mesh, vp, viewport_px, Some(eye));
         let mut s = Stroke { sampler: StrokeSampler::default(), bins, tiles: TileSet::default(), target, view };
         let stamps = s.sampler.begin(pos_px);
         self.stroke = Some(s);

@@ -12,7 +12,7 @@
 //! occluded triangles too), which is fine: an extra tile costs a few KB.
 
 use crate::mesh::Mesh;
-use glam::{Mat4, Vec2, Vec4};
+use glam::{Mat4, Vec2, Vec3, Vec4};
 
 pub const GRID: u32 = 32;
 
@@ -90,7 +90,10 @@ pub struct ScreenBins {
 }
 
 impl ScreenBins {
-    pub fn build(mesh: &Mesh, view_proj: Mat4, viewport_px: Vec2) -> Self {
+    /// `eye` enables back-face skipping: the brush never paints texels whose
+    /// normal faces away from the camera (see stamp.wgsl), so triangles whose
+    /// three vertex normals all face away can't be touched.
+    pub fn build(mesh: &Mesh, view_proj: Mat4, viewport_px: Vec2, eye: Option<Vec3>) -> Self {
         const CELL: f32 = 48.0;
         let cols = ((viewport_px.x / CELL).ceil() as usize).max(1);
         let rows = ((viewport_px.y / CELL).ceil() as usize).max(1);
@@ -117,6 +120,15 @@ impl ScreenBins {
             let ulo = uvs[0].min(uvs[1]).min(uvs[2]);
             let uhi = uvs[0].max(uvs[1]).max(uvs[2]);
             uv_box[t] = [ulo.x, ulo.y, uhi.x, uhi.y];
+            if let Some(eye) = eye {
+                let away = tri.iter().all(|&i| {
+                    let v = &mesh.vertices[i as usize];
+                    Vec3::from(v.normal).dot(eye - Vec3::from(v.position)) <= 0.0
+                });
+                if away {
+                    continue;
+                }
+            }
             let pts = [0, 1, 2].map(|k| projected[tri[k] as usize]);
             if pts.iter().any(|p| p.is_none()) {
                 always.push(t as u32);
@@ -194,11 +206,11 @@ mod tests {
         let (c, r) = m.bounding_sphere();
         cam.frame(c, r);
         let size = Vec2::new(860.0, 840.0);
-        let bins = ScreenBins::build(&m, cam.view_proj(size.x / size.y), size);
+        let bins = ScreenBins::build(&m, cam.view_proj(size.x / size.y), size, Some(cam.eye()));
         let mut t = TileSet::default();
         bins.mark_stamp(Vec2::new(300.0, 500.0), 30.0, &mut t);
         eprintln!("tiles marked: {}", t.count());
-        assert!(t.count() < 40, "{} tiles", t.count());
+        assert!(t.count() < 20, "{} tiles", t.count());
     }
 
     #[test]
@@ -209,7 +221,8 @@ mod tests {
         cam.frame(c, r);
         let size = Vec2::new(860.0, 840.0);
         let vp = cam.view_proj(size.x / size.y);
-        let bins = ScreenBins::build(&m, vp, size);
+        let eye = cam.eye();
+        let bins = ScreenBins::build(&m, vp, size, Some(eye));
         for center in [Vec2::new(300.0, 500.0), Vec2::new(430.0, 300.0), Vec2::new(600.0, 420.0), Vec2::new(200.0, 450.0)] {
             let mut t = TileSet::default();
             bins.mark_stamp(center, 30.0, &mut t);
@@ -223,7 +236,8 @@ mod tests {
                     let clip = vp * p.extend(1.0);
                     let ndc = clip.truncate().truncate() / clip.w;
                     let px = Vec2::new((ndc.x * 0.5 + 0.5) * size.x, (0.5 - ndc.y * 0.5) * size.y);
-                    if (px - center).length() < 30.0 {
+                    let n = (0..3).fold(glam::Vec3::ZERO, |acc, k| acc + glam::Vec3::from(v[k].normal) * w[k]);
+                    if (px - center).length() < 30.0 && n.dot(eye - p) > 0.0 {
                         let tx = ((uv.x * GRID as f32) as u32).min(GRID - 1);
                         let ty = ((uv.y * GRID as f32) as u32).min(GRID - 1);
                         assert!(t.contains(tx, ty), "stamp {center}: point at uv {uv} (tile {tx},{ty}) not marked");
@@ -252,7 +266,7 @@ mod tests {
         let m = quad();
         // orthographic-ish: map x,y in 0..1 to clip -1..1
         let vp = Mat4::from_translation(glam::Vec3::new(-1.0, -1.0, 0.0)) * Mat4::from_scale(glam::Vec3::new(2.0, 2.0, 1.0));
-        let bins = ScreenBins::build(&m, vp, Vec2::new(512.0, 512.0));
+        let bins = ScreenBins::build(&m, vp, Vec2::new(512.0, 512.0), None);
         let mut hit = TileSet::default();
         bins.mark_stamp(Vec2::new(256.0, 256.0), 10.0, &mut hit);
         assert!(hit.count() > 0);

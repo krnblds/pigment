@@ -79,7 +79,7 @@ impl Scene {
         let vp = self.camera.view_proj(VIEW.x / VIEW.y);
         let eye = self.camera.eye();
         let view = ViewGpu { view_proj: vp.to_cols_array_2d(), eye: [eye.x, eye.y, eye.z, 1.0], viewport: [VIEW.x, VIEW.y, self.camera.near(), 0.0] };
-        let bins = ScreenBins::build(&self.mesh, vp, VIEW);
+        let bins = ScreenBins::build(&self.mesh, vp, VIEW, Some(eye));
         let mut sampler = StrokeSampler::default();
         let mut all = TileSet::default();
         let radius = 25.0;
@@ -307,4 +307,128 @@ fn viewport_renders_a_lit_material() {
     assert!(mean > 20, "viewport too dark: {mean}");
     let red = img.chunks_exact(4).filter(|p| p[0] as i32 > p[1] as i32 + 60).count();
     assert!(red > 500, "painted stroke not visible ({red} red pixels)");
+}
+
+/// Performance check against the brief's targets: 100k triangles, 4K
+/// textures, 20 layers. Run with:
+/// `cargo test -p pigment --release perf_targets -- --ignored --nocapture`
+#[test]
+#[ignore]
+fn perf_targets() {
+    let Some(g) = gpu() else { return };
+    let (d, q) = (&g.device, &g.queue);
+    let wait = || {
+        let _ = d.poll(wgpu::PollType::Wait { submission_index: None, timeout: None });
+    };
+    let time = |label: &str, n: u32, f: &mut dyn FnMut()| {
+        f();
+        wait();
+        let t0 = std::time::Instant::now();
+        for _ in 0..n {
+            f();
+        }
+        wait();
+        let ms = t0.elapsed().as_secs_f64() * 1000.0 / n as f64;
+        eprintln!("{label:<44} {ms:8.2} ms");
+        ms
+    };
+    let mesh = Mesh::torus(1.0, 0.38, 400, 128); // 102,400 triangles
+    eprintln!("mesh: {} triangles, 4096² textures, 20 layers", mesh.triangle_count());
+    let mg = MeshGpu::new(d, &mesh);
+    let res = 4096;
+    let mut ts = TexSet::new(d, q, res);
+    let (c, r) = mesh.bounding_sphere();
+    ts.prepare_mesh(d, q, &mg, c, r);
+    let mut doc = Document::default();
+    doc.resolution = res;
+    for i in 0..20 {
+        let mut l = if i % 2 == 0 { doc.new_paint_layer(&format!("p{i}")) } else { doc.new_fill_layer(&format!("f{i}")) };
+        if i % 4 == 1 {
+            let m = doc.mint();
+            l.mask = Some(Mask { res: m, generator: Some(Generator::new(GeneratorKind::EdgeWear)), invert: false, enabled: true });
+        }
+        doc.layers.push(l);
+    }
+    ts.ensure_resources(d, q, &doc);
+    eprintln!("layer VRAM: {} MB", ts.vram_bytes() >> 20);
+    let mut camera = OrbitCamera::default();
+    camera.frame(c, r);
+    let mut viewport = Viewport::new(d);
+    viewport.ensure_targets(d, [1600, 1000]);
+    let env = Environment::studio(d, q);
+    let settings = ViewSettings::default();
+
+    time("bake AO(128) + curvature", 1, &mut || Baker::new(d).bake(d, q, &mesh, &mg, &mut ts, &BakeSettings::default()));
+    time("full composite (20 layers)", 5, &mut || ts.composite(d, q, &doc, None));
+    let frame = time("viewport frame (1600x1000, MSAA 4x)", 30, &mut || viewport.draw(d, q, &camera, &settings, Some(&mg), &env, &ts));
+
+    // a typical painting frame: 8 stamps of a 50 px brush, tiles from the CPU binner
+    let vp = camera.view_proj(1.6);
+    let eye = camera.eye();
+    let bins = ScreenBins::build(&mesh, vp, Vec2::new(1600.0, 1000.0), Some(eye));
+    let view = ViewGpu { view_proj: vp.to_cols_array_2d(), eye: [eye.x, eye.y, eye.z, 1.0], viewport: [1600.0, 1000.0, camera.near(), 0.0] };
+    let target = doc.layers.iter().rev().find_map(|l| l.paint_res()).unwrap();
+    let mut painter = Painter::new(d, res);
+    painter.begin(d, q, &ts, Target::Layer(target));
+    let brush = BrushGpu { color: [1.0, 0.0, 0.0, 1.0], rmh: [0.5; 4], normal: [0.0, 0.0, 1.0, 0.0], enabled: [1.0; 4], enabled2: [0.0, 0.0, 1.0, 0.0] };
+    let mut x = 600.0;
+    let depth = viewport.paint_depth().unwrap();
+    let paint_ms = time("paint frame: 8 stamps + apply + composite", 30, &mut || {
+        let mut ft = TileSet::default();
+        let stamps: Vec<StampGpu> = (0..8)
+            .map(|k| {
+                let p = Vec2::new(x + k as f32 * 5.0, 560.0);
+                bins.mark_stamp(p, 25.0, &mut ft);
+                StampGpu { center_radius: [p.x, p.y, 25.0, 1.0], params: [0.5, 0.0, 0.0, 0.0] }
+            })
+            .collect();
+        x += 40.0;
+        if x > 1000.0 {
+            x = 600.0;
+        }
+        if let Some(rect) = ft.texel_bounds(res) {
+            painter.stamps(d, q, &ts, &mg, depth, view, &stamps, &brush, rect);
+            ts.composite(d, q, &doc, Some(rect));
+        }
+    });
+    let cpu = time("CPU stroke setup (screen binning, 100k tris)", 3, &mut || {
+        let _ = ScreenBins::build(&mesh, vp, Vec2::new(1600.0, 1000.0), Some(eye));
+    });
+    eprintln!("=> viewport {:.0} fps; painting {:.2} ms per stamp; stroke start {:.1} ms", 1000.0 / frame, paint_ms / 8.0, cpu);
+}
+
+#[test]
+#[ignore]
+fn perf_viewport_breakdown() {
+    let Some(g) = gpu() else { return };
+    let (d, q) = (&g.device, &g.queue);
+    let wait = || {
+        let _ = d.poll(wgpu::PollType::Wait { submission_index: None, timeout: None });
+    };
+    let env = Environment::studio(d, q);
+    for (tris, res) in [(96 * 32, 1024u32), (400 * 128, 1024), (400 * 128, 4096)] {
+        let seg = if tris > 10000 { (400, 128) } else { (96, 32) };
+        let mesh = Mesh::torus(1.0, 0.38, seg.0, seg.1);
+        let mg = MeshGpu::new(d, &mesh);
+        let mut ts = TexSet::new(d, q, res);
+        let (c, r) = mesh.bounding_sphere();
+        ts.prepare_mesh(d, q, &mg, c, r);
+        let doc = Document::new_default();
+        ts.ensure_resources(d, q, &doc);
+        ts.composite(d, q, &doc, None);
+        let mut camera = OrbitCamera::default();
+        camera.frame(c, r);
+        let mut vp = Viewport::new(d);
+        vp.ensure_targets(d, [1600, 1000]);
+        for (label, mesh_opt) in [("background only", None), ("with mesh", Some(&mg))] {
+            vp.draw(d, q, &camera, &ViewSettings::default(), mesh_opt, &env, &ts);
+            wait();
+            let t0 = std::time::Instant::now();
+            for _ in 0..30 {
+                vp.draw(d, q, &camera, &ViewSettings::default(), mesh_opt, &env, &ts);
+            }
+            wait();
+            eprintln!("{:>7} tris {res:>5}² {label:<16} {:.2} ms", mesh.triangle_count(), t0.elapsed().as_secs_f64() * 1000.0 / 30.0);
+        }
+    }
 }
