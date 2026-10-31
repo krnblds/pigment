@@ -423,6 +423,9 @@ pub struct Layer {
     pub channels: Channels<ChannelSettings>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub mask: Option<Mask>,
+    /// Variant group tag, random part subset and recorded decals.
+    #[serde(default, skip_serializing_if = "crate::variants::LayerVariant::is_empty")]
+    pub variant: crate::variants::LayerVariant,
 }
 
 impl Layer {
@@ -473,6 +476,9 @@ pub struct Document {
     #[serde(default = "default_preset")]
     pub export_preset: String,
     pub next_id: u64,
+    /// Variant seed and stored variant definitions (see `variants`).
+    #[serde(default, skip_serializing_if = "crate::variants::Variants::is_empty")]
+    pub variants: crate::variants::Variants,
 }
 
 fn default_preset() -> String {
@@ -489,6 +495,7 @@ impl Default for Document {
             bake: BakeSettings::default(),
             export_preset: default_preset(),
             next_id: 1,
+            variants: Default::default(),
         }
     }
 }
@@ -734,6 +741,7 @@ impl Document {
             kind: LayerKind::Paint { res },
             channels: Self::channels_default(),
             mask: None,
+            variant: Default::default(),
         }
     }
 
@@ -749,6 +757,7 @@ impl Document {
             kind: LayerKind::Fill { values: MaterialValues::default() },
             channels,
             mask: None,
+            variant: Default::default(),
         }
     }
 

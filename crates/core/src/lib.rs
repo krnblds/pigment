@@ -14,6 +14,7 @@ pub mod project;
 pub mod stroke;
 pub mod tiles;
 pub mod undo;
+pub mod variants;
 
 pub use camera::OrbitCamera;
 pub use document::*;

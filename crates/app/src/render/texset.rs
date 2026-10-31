@@ -76,7 +76,8 @@ struct LayerParams {
     misc: [u32; 4],
 }
 
-fn layer_params(l: &Layer) -> LayerParams {
+fn layer_params(l: &Layer, variant_seed: u32) -> LayerParams {
+    let vseed = |g: u32| pigment_core::variants::generator_seed(g, variant_seed);
     let ch = |c: Channel| {
         let s = l.channels.get(c);
         (if s.enabled { s.opacity * l.opacity } else { 0.0 }, s.blend.gpu_id())
@@ -124,11 +125,11 @@ fn layer_params(l: &Layer) -> LayerParams {
         if let Some(g) = &m.generator {
             p.flags[2] = g.gpu_id();
             p.gp = [g.amount, g.softness, g.noise_scale, g.noise_amount];
-            p.gp2 = [g.seed as f32, g.ao_influence, g.curvature_weight, 0.0];
+            p.gp2 = [vseed(g.seed) as f32, g.ao_influence, g.curvature_weight, 0.0];
             for (k, e) in m.effects.iter().take(pigment_core::MAX_MASK_EFFECTS).enumerate() {
                 let g = &e.generator;
                 let a = [g.amount, g.softness, g.noise_scale, g.noise_amount];
-                let b = [g.seed as f32, g.ao_influence, g.curvature_weight, 0.0];
+                let b = [vseed(g.seed) as f32, g.ao_influence, g.curvature_weight, 0.0];
                 p.eff[2 * k] = g.gpu_id();
                 p.eff[2 * k + 1] = e.op.gpu_id();
                 if k == 0 {
@@ -138,9 +139,9 @@ fn layer_params(l: &Layer) -> LayerParams {
                 }
             }
         }
-        if !m.parts.is_empty() {
+        if let Some(parts) = pigment_core::variants::selected_parts(l, variant_seed) {
             p.misc[0] = 1;
-            for &id in m.parts.iter().filter(|&&id| id < pigment_core::MAX_SELECTABLE_PARTS) {
+            for &id in parts.iter().filter(|&&id| id < pigment_core::MAX_SELECTABLE_PARTS) {
                 p.pbits[(id / 32) as usize] |= 1 << (id % 32);
             }
         }
@@ -501,7 +502,7 @@ impl TexSet {
         }
         let mut params = vec![0u8; (LAYER_UNIFORM_STRIDE as usize) * visible.len().max(1)];
         for (i, l) in visible.iter().enumerate() {
-            let mut p = layer_params(l);
+            let mut p = layer_params(l, doc.variants.seed);
             // a mask flagged in the doc but without pixels yet acts as "no mask"
             if l.mask.as_ref().is_some_and(|m| !self.masks.contains_key(&m.res)) {
                 p.flags[1] = 0;
