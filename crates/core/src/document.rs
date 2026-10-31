@@ -423,6 +423,9 @@ pub struct Layer {
     pub channels: Channels<ChannelSettings>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub mask: Option<Mask>,
+    /// Fill layers only: channels from tiling images instead of flat values.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub image: Option<crate::image_fill::ImageFill>,
 }
 
 impl Layer {
@@ -734,6 +737,7 @@ impl Document {
             kind: LayerKind::Paint { res },
             channels: Self::channels_default(),
             mask: None,
+            image: None,
         }
     }
 
@@ -749,6 +753,7 @@ impl Document {
             kind: LayerKind::Fill { values: MaterialValues::default() },
             channels,
             mask: None,
+            image: None,
         }
     }
 

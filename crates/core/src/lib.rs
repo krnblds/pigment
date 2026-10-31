@@ -9,6 +9,7 @@ pub mod curvature;
 pub mod document;
 pub mod envmath;
 pub mod export;
+pub mod image_fill;
 pub mod mesh;
 pub mod project;
 pub mod stroke;
@@ -17,4 +18,5 @@ pub mod undo;
 
 pub use camera::OrbitCamera;
 pub use document::*;
+pub use image_fill::{ImageChannel, ImageFill, Projection};
 pub use mesh::{Mesh, Vertex};
