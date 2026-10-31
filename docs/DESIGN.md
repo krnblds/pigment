@@ -98,24 +98,29 @@ A project is a **folder**, so git can diff it and store it efficiently:
 
 ```
 my_asset.pigment/
-  project.json          # manifest: format version, mesh ref, texture size,
-                        # layer stack, all parameters. Pretty-printed, sorted keys,
-                        # stable layer ids, so diffs are readable.
-  mesh/source.glb       # copy of the imported mesh (or a relative path + hash)
-  layers/<layer-id>/
-    base_color.png      # RGBA8, alpha = coverage
-    rmh.png             # R=roughness G=metallic B=height(8-bit) A=coverage
-    height16.png        # 16-bit height, written when height is painted
-    normal.png          # RG = tangent-space XY, B = coverage
-    mask.png            # 8-bit greyscale, only if a mask exists
-  bakes/                # derived data, can be regenerated: ao.png, curvature.png, wsnormal.png
-                        # (a .gitignore is written here by default)
+  project.json              # format version, mesh path, resolution, layer stack, every
+                            # parameter, bake + export settings. Pretty-printed with
+                            # stable ids, so diffs are readable.
+  mesh/<file>               # copy of the source mesh (+ .bin/.png files for .gltf)
+  layers/<res-id>/
+    base_color.png          # RGBA8: sRGB colour + coverage
+    roughness.png           # LA8: value + coverage
+    metallic.png            # LA8
+    height.png              # LA16: height (-1..1 mapped to 0..65535) + coverage
+    normal.png              # RGBA8: tangent-space normal (OpenGL) + coverage
+  masks/<res-id>.png        # L8
+  .gitignore
 ```
 
-- Only layers that changed get rewritten when you save, so commits stay small.
-- PNG keeps the files lossless and readable by any tool.
-- `project.json` carries `"format": 1`, and loaders migrate forward.
-- Later: an optional single-file `.pigz` (a zip of the folder) for sharing.
+- A channel nobody painted has no file. Saving only rewrites the pixel files of
+  resources changed since the last save, and removes files nothing references.
+- Every layer's pixels live under a *resource id*, separate from the layer id. A
+  fresh id is minted whenever new pixels are created (new layer, duplicate, new
+  mask), so undo history can never point at pixels that were overwritten.
+- Mesh maps (AO, curvature) aren't stored: the bake takes well under a second
+  (0.3 s for 100k triangles at 4K), so it reruns when a project opens.
+- The manifest carries `"format": 1`. Newer formats are refused with a clear
+  message, and older ones get migrated on load.
 
 ## Milestones (each one gives you something you can run)
 
@@ -131,3 +136,51 @@ my_asset.pigment/
 | M8 | Performance: 100k triangles, 4K, 20 layers, 60 fps. Sparse tiles, per-stamp triangle culling, GPU timings overlay | check the targets on an RTX 3060 |
 
 Built so these can come later without rewrites: **UDIMs** (a texture set is a list of tiles, and the stamp pass already works per tile), **high-to-low baking** (the bakers take a "source mesh" input that's the same mesh for now), **particle brushes** (they're just another stamp producer), **smart materials** (a layer stack saved as JSON), and a **plugin / Python API** (the core model plus the command-based undo is the scripting surface).
+
+## Status (all MVP milestones implemented)
+
+| | |
+|---|---|
+| M1 import + viewport | OBJ / glTF / GLB (scene transforms applied), orbit / pan / zoom, reverse-Z camera |
+| M2 PBR + IBL | GGX-prefiltered environment (filtered importance sampling), SH9 diffuse, split-sum BRDF LUT, specular occlusion, ACES. Procedural studio HDRI built in, plus `.hdr` / `.exr` loading |
+| M3 painting | 5 channels, size / opacity / hardness / spacing, eraser, UV-space projection with depth occlusion and facing fade, jump-flood seam padding |
+| M4 layers | Paint and fill layers, 10 blend modes (RNM for normals), per-channel opacity, black/white masks, GPU compositor with dirty-rect updates |
+| M5 save / load | Project folders as above |
+| M6 bakes + generators | Many-direction shadow-map AO, dihedral curvature, world normal. Edge wear and dirt generators (curvature + AO + world-space fBm noise) |
+| M7 export | Unreal (packed ORM, DirectX normal, 16-bit height), Unity (MetallicSmoothness), Godot (ORM), separate maps |
+| Undo | Every document edit (diffs, coalesced per interaction) + strokes (GPU tile snapshots, 1.5 GB budget) |
+
+### Measured performance (RTX 4070 Ti, release build, `perf_targets` test)
+
+100k-triangle mesh, 4096² textures, 20 layers (10 paint, 10 fill, 5 masks with generators):
+
+| | time |
+|---|---|
+| Viewport frame, 1600×1000, MSAA 4× | 0.37 ms |
+| Painting frame: 8 stamps + apply + recomposite of the dirty rect through 20 layers | 6.1 ms (0.77 ms/stamp) |
+| Full recomposite (stroke end, layer edits) | 24 ms |
+| Stroke start (CPU screen binning of 100k triangles) | 3.2 ms |
+| Bake AO (128 directions) + curvature | 0.3 s |
+| Layer VRAM for that stack | 2.6 GB |
+
+An RTX 3060 has roughly 40% of this card's throughput, so expect about 15 ms
+painting frames at 4K with 20 layers, and comfortable 60 fps at 2K.
+
+### Known limitations and next steps
+
+- **Seams in height-derived normals.** Colour and painted channels are seamless
+  (texels on both sides of a seam take their brush value from the same world
+  position). Normals computed from *height* use one-sided slopes at island
+  borders, which leaves a faint 1-texel line where a stroke crosses a seam
+  diagonally. The fix is a cross-seam neighbour map (each border texel finds its
+  3D neighbour on the other island). Planned.
+- **Tangents** use Lengyel's method with seam welding, not MikkTSpace, so baked
+  normal maps from other tools may shade slightly differently. Add `mikktspace`
+  before importing external normal maps.
+- **VRAM.** Paint layers are dense. The sparse 256² tile allocation from the plan
+  is the next performance step, for 8 GB cards at 4K.
+- **AO** has no max-distance (shadow maps see the first hit only), so deep
+  cavities read darker than in a ray-traced bake.
+- **No pen pressure** yet (egui doesn't expose tablet pressure on all platforms).
+- UVs must be in the 0..1 range (no UDIM / tiling), as scoped.
+- Changing resolution resamples every layer and clears the undo history.
