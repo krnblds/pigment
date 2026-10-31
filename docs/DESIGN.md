@@ -166,6 +166,23 @@ Built so these can come later without rewrites: **UDIMs** (a texture set is a li
 An RTX 3060 has roughly 40% of this card's throughput, so expect about 15 ms
 painting frames at 4K with 20 layers, and comfortable 60 fps at 2K.
 
+### Checked against production practice
+
+A research pass compared the generators and bakers with Substance Painter's
+documentation. Verified correct: chips and painted dents are recessed
+(negative height), height-to-normal sign conventions (OpenGL, DirectX flip on
+export), and the RNM blend. Changed as a result:
+
+- **Height stacks:** the default height blend is Add, as in Substance, and
+  height is HDR (no clamp until export).
+- **Generator controls:** generators expose *AO influence* and *curvature
+  weight*.
+- **AO max distance:** the AO bake has a max occluder distance (Substance:
+  "Max Occluder Distance").
+- **No smearing on big triangles:** vertex curvature is faded by distance from
+  each corner, so large flat triangles next to a bevel no longer inherit its
+  curvature.
+
 ### Known limitations and next steps
 
 - **Seams in height-derived normals.** Colour and painted channels are seamless

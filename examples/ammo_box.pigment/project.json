@@ -43,7 +43,7 @@
         },
         "height": {
           "enabled": true,
-          "blend": "normal",
+          "blend": "add",
           "opacity": 1.0
         },
         "normal": {
@@ -93,7 +93,7 @@
         },
         "height": {
           "enabled": true,
-          "blend": "normal",
+          "blend": "add",
           "opacity": 1.0
         },
         "normal": {
@@ -110,7 +110,9 @@
           "softness": 0.04,
           "noise_scale": 22.0,
           "noise_amount": 0.9,
-          "seed": 1
+          "seed": 1,
+          "ao_influence": 0.5,
+          "curvature_weight": 1.0
         },
         "invert": false,
         "enabled": true
@@ -156,7 +158,7 @@
         },
         "height": {
           "enabled": false,
-          "blend": "normal",
+          "blend": "add",
           "opacity": 1.0
         },
         "normal": {
@@ -173,7 +175,9 @@
           "softness": 0.2,
           "noise_scale": 5.0,
           "noise_amount": 0.7,
-          "seed": 1
+          "seed": 1,
+          "ao_influence": 1.0,
+          "curvature_weight": 1.0
         },
         "invert": false,
         "enabled": true
@@ -206,7 +210,7 @@
         },
         "height": {
           "enabled": true,
-          "blend": "normal",
+          "blend": "add",
           "opacity": 1.0
         },
         "normal": {
@@ -220,7 +224,8 @@
   "bake": {
     "ao_samples": 128,
     "curvature_radius": 0.05,
-    "curvature_strength": 0.6
+    "curvature_strength": 0.6,
+    "ao_distance": 0.3
   },
   "export_preset": "unreal",
   "next_id": 8

@@ -38,7 +38,7 @@ struct LayerParams {
     fill_rmh: vec4<f32>,
     fill_normal: vec4<f32>,
     gen: vec4<f32>,         // amount, softness, noise scale, noise amount
-    gen2: vec4<f32>,        // seed
+    gen2: vec4<f32>,        // seed, AO influence, curvature weight
 };
 @group(2) @binding(6) var<uniform> lp: LayerParams;
 
@@ -60,11 +60,11 @@ fn generator(t: vec2<i32>) -> f32 {
     if (lp.flags.z == 1u) {
         // edge wear: convex curvature, broken up by noise, kept out of occluded areas
         let convex = clamp((curv - 0.5) * 2.0, 0.0, 1.0);
-        v = convex + (n - 0.5) * lp.gen.w - (1.0 - ao) * 0.5;
+        v = convex * lp.gen2.z + (n - 0.5) * lp.gen.w - (1.0 - ao) * lp.gen2.y;
     } else {
         // dirt: occluded and concave areas
         let cavity = clamp((0.5 - curv) * 2.0, 0.0, 1.0);
-        v = max(1.0 - ao, cavity) + (n - 0.5) * lp.gen.w;
+        v = max((1.0 - ao) * lp.gen2.y, cavity * lp.gen2.z) + (n - 0.5) * lp.gen.w;
     }
     return smoothstep(threshold - soft, threshold + soft, v);
 }
@@ -111,7 +111,8 @@ fn fs_layer(f: FullOut) -> Acc {
     o.rmh = vec4<f32>(
         clamp(blend_scalar(lp.blend.y, dr.x, r.x, a.y), 0.0, 1.0),
         clamp(blend_scalar(lp.blend.z, dr.y, m.x, a.z), 0.0, 1.0),
-        clamp(blend_scalar(lp.blend.w, dr.z, h.x, a.w), -1.0, 1.0),
+        // height is HDR (stacked dents can pass -1); clamped only on export
+        clamp(blend_scalar(lp.blend.w, dr.z, h.x, a.w), -8.0, 8.0),
         1.0);
     o.normal = vec4<f32>(blend_normal(lp.blend2.x, dn, n.xyz, an), 1.0);
     return o;

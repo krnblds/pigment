@@ -31,6 +31,7 @@ pub struct Baker {
 struct LightGpu {
     view_proj: [[f32; 4]; 4],
     dir: [f32; 4],
+    range: [f32; 4],
 }
 
 #[repr(C)]
@@ -40,7 +41,7 @@ struct CurvVertex {
     bary: [f32; 3],
     heights: [f32; 3],
     convexity: [f32; 3],
-    vcurv: f32,
+    vcurv: [f32; 3],
 }
 
 /// Evenly spread directions over the sphere (Fibonacci lattice).
@@ -106,7 +107,7 @@ impl Baker {
         );
 
         let curv_bgl = gpu::bgl(device, "curv", &[gpu::uniform_entry(0, false)]);
-        let curv_attrs = wgpu::vertex_attr_array![0 => Float32x2, 1 => Float32x3, 2 => Float32x3, 3 => Float32x3, 4 => Float32];
+        let curv_attrs = wgpu::vertex_attr_array![0 => Float32x2, 1 => Float32x3, 2 => Float32x3, 3 => Float32x3, 4 => Float32x3];
         let curv_pipe = gpu::pipeline(
             device,
             gpu::PipeDesc {
@@ -184,7 +185,11 @@ impl Baker {
                 let eye = center + *d * radius * 2.0;
                 let view = glam::camera::rh::view::look_at_mat4(eye, center, up);
                 let proj = glam::camera::rh::proj::directx::orthographic(-radius, radius, -radius, radius, radius * 0.5, radius * 3.5);
-                let light = LightGpu { view_proj: (proj * view).to_cols_array_2d(), dir: [d.x, d.y, d.z, radius * 0.003] };
+                let light = LightGpu {
+                    view_proj: (proj * view).to_cols_array_2d(),
+                    dir: [d.x, d.y, d.z, radius * 0.003],
+                    range: [radius * 3.0, s.ao_distance * radius, 0.0, 0.0],
+                };
                 let buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                     label: Some("light"),
                     contents: bytemuck::bytes_of(&light),
@@ -242,7 +247,7 @@ impl Baker {
                     bary,
                     heights: cd.heights[t],
                     convexity: cd.edge_convexity[t],
-                    vcurv: cd.vertex[tri[k] as usize],
+                    vcurv: [cd.vertex[tri[0] as usize], cd.vertex[tri[1] as usize], cd.vertex[tri[2] as usize]],
                 });
             }
         }

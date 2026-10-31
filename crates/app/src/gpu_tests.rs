@@ -185,18 +185,26 @@ fn composite_and_export_produce_painted_material() {
 fn bake_gives_occlusion_inside_the_ring_and_convex_curvature_outside() {
     let Some(mut s) = Scene::new() else { return };
     let (d, q) = (&s.g.device, &s.g.queue);
-    Baker::new(d).bake(d, q, &s.mesh, &s.mg, &mut s.ts, &BakeSettings { ao_samples: 64, ..Default::default() });
-    let raw = crate::render::gpu::readback(d, q, &s.ts.bakes);
-    let px: Vec<[f32; 4]> = raw
-        .chunks_exact(8)
-        .map(|c| [0, 1, 2, 3].map(|k| half::f16::from_bits(u16::from_le_bytes([c[2 * k], c[2 * k + 1]])).to_f32()))
-        .collect();
+    let baker = Baker::new(d);
+    let read = |ts: &TexSet| -> Vec<[f32; 4]> {
+        crate::render::gpu::readback(d, q, &ts.bakes)
+            .chunks_exact(8)
+            .map(|c| [0, 1, 2, 3].map(|k| half::f16::from_bits(u16::from_le_bytes([c[2 * k], c[2 * k + 1]])).to_f32()))
+            .collect()
+    };
     // torus UV: v = 0 outer equator, v = 0.5 inner equator (facing the hole)
-    let at = |u: f32, v: f32| px[((v * RES as f32) as usize).min(RES as usize - 1) * RES as usize + (u * RES as f32) as usize];
-    let outer = at(0.3, 0.02);
-    let inner = at(0.3, 0.5);
+    let at = |px: &[[f32; 4]], u: f32, v: f32| px[((v * RES as f32) as usize).min(RES as usize - 1) * RES as usize + (u * RES as f32) as usize];
+    // short max distance: the far side of the hole (~1.24 away) doesn't count
+    baker.bake(d, q, &s.mesh, &s.mg, &mut s.ts, &BakeSettings { ao_samples: 64, ao_distance: 0.3, ..Default::default() });
+    let near_only = at(&read(&s.ts), 0.3, 0.5)[0];
+    // long max distance: it does
+    baker.bake(d, q, &s.mesh, &s.mg, &mut s.ts, &BakeSettings { ao_samples: 64, ao_distance: 3.0, ..Default::default() });
+    let px = read(&s.ts);
+    let outer = at(&px, 0.3, 0.02);
+    let inner = at(&px, 0.3, 0.5);
     assert!(outer[0] > 0.85, "outer AO {}", outer[0]);
     assert!(inner[0] < outer[0] - 0.15, "inner AO {} vs outer {}", inner[0], outer[0]);
+    assert!(near_only > inner[0] + 0.1, "max distance has no effect: {near_only} vs {}", inner[0]);
     // a torus is convex on the outside and saddle-shaped on the inside: average over bands
     let band = |v0: f32, v1: f32| {
         let mut sum = 0.0;
@@ -266,7 +274,7 @@ fn edge_wear_generator_masks_a_fill_layer() {
     let mg = MeshGpu::new(d, &mesh);
     let (c, r) = mesh.bounding_sphere();
     s.ts.prepare_mesh(d, q, &mg, c, r);
-    Baker::new(d).bake(d, q, &mesh, &mg, &mut s.ts, &BakeSettings { ao_samples: 32, curvature_radius: 0.05, curvature_strength: 1.0 });
+    Baker::new(d).bake(d, q, &mesh, &mg, &mut s.ts, &BakeSettings { ao_samples: 32, curvature_radius: 0.05, curvature_strength: 1.0, ..Default::default() });
 
     let mut doc = Document::new_default();
     let mut wear = doc.new_fill_layer("wear");

@@ -535,6 +535,9 @@ impl PigmentApp {
                     }
                 });
                 ui.end_row();
+                ui.label("AO distance");
+                ui.add(egui::Slider::new(&mut self.doc.bake.ao_distance, 0.02..=2.0).logarithmic(true));
+                ui.end_row();
                 ui.label("Edge width");
                 ui.add(egui::Slider::new(&mut self.doc.bake.curvature_radius, 0.005..=0.2).logarithmic(true));
                 ui.end_row();
@@ -932,6 +935,12 @@ impl PigmentApp {
                                 ui.end_row();
                                 ui.label("Breakup amount");
                                 ui.add(egui::Slider::new(&mut g.noise_amount, 0.0..=1.5));
+                                ui.end_row();
+                                ui.label("Curvature weight");
+                                ui.add(egui::Slider::new(&mut g.curvature_weight, 0.0..=2.0));
+                                ui.end_row();
+                                ui.label("AO influence");
+                                ui.add(egui::Slider::new(&mut g.ao_influence, 0.0..=1.5));
                                 ui.end_row();
                                 ui.label("Seed");
                                 ui.horizontal(|ui| {

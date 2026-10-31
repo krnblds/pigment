@@ -15,6 +15,13 @@ curvature-driven edge-wear generator (with recessed chips via height), a
 Click a layer to see how it's built; drag the generator sliders to watch the
 wear change live.
 
+Two Blender-made examples ship in `examples/` (built headless by
+`assets/blender/*.py`, textured with the *Worn … metal* smart material):
+
+| `examples/ammo_box.pigment` | `examples/jerry_can.pigment` |
+|---|---|
+| ![ammo box](docs/ammo_box.png) | ![jerry can](docs/jerry_can.png) |
+
 See [docs/DESIGN.md](docs/DESIGN.md) for the architecture, project format and the graphics techniques.
 
 ## Run

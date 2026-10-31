@@ -59,6 +59,10 @@ impl Channel {
     pub fn default_blend(self) -> BlendMode {
         match self {
             Channel::Normal => BlendMode::NormalCombine,
+            // Height layers stack (Substance's default is Linear Dodge / Add):
+            // a dent painted over a chip goes deeper, and a fill with height 0
+            // doesn't wipe height painted below it.
+            Channel::Height => BlendMode::Add,
             _ => BlendMode::Normal,
         }
     }
@@ -204,11 +208,29 @@ pub struct Generator {
     pub noise_scale: f32,
     pub noise_amount: f32,
     pub seed: u32,
+    /// How strongly occluded areas count: keeps edge wear out of cavities,
+    /// drives dirt into them.
+    #[serde(default = "half")]
+    pub ao_influence: f32,
+    /// How strongly curvature counts (0 = noise/AO only).
+    #[serde(default = "one")]
+    pub curvature_weight: f32,
+}
+
+fn half() -> f32 {
+    0.5
+}
+fn one() -> f32 {
+    1.0
 }
 
 impl Generator {
     pub fn new(kind: GeneratorKind) -> Self {
-        Self { kind, amount: 0.5, softness: 0.15, noise_scale: 8.0, noise_amount: 0.5, seed: 1 }
+        let ao_influence = match kind {
+            GeneratorKind::EdgeWear => 0.5,
+            GeneratorKind::Dirt => 1.0,
+        };
+        Self { kind, amount: 0.5, softness: 0.15, noise_scale: 8.0, noise_amount: 0.5, seed: 1, ao_influence, curvature_weight: 1.0 }
     }
     pub fn gpu_id(&self) -> u32 {
         match self.kind {
@@ -266,11 +288,19 @@ pub struct BakeSettings {
     /// Curvature edge width as a fraction of the mesh's bounding radius.
     pub curvature_radius: f32,
     pub curvature_strength: f32,
+    /// Occluders farther than this (fraction of the bounding radius) don't
+    /// darken AO, so big interiors don't go black (Substance: max occluder distance).
+    #[serde(default = "ao_distance")]
+    pub ao_distance: f32,
+}
+
+fn ao_distance() -> f32 {
+    0.3
 }
 
 impl Default for BakeSettings {
     fn default() -> Self {
-        Self { ao_samples: 128, curvature_radius: 0.05, curvature_strength: 1.0 }
+        Self { ao_samples: 128, curvature_radius: 0.05, curvature_strength: 1.0, ao_distance: ao_distance() }
     }
 }
 
@@ -515,6 +545,25 @@ mod tests {
         assert!(d.layers.last().unwrap().is_paint());
         assert_eq!(d.resources().len(), 3);
         assert!(material_presets().len() >= 10);
+    }
+
+    #[test]
+    fn height_stacks_by_default() {
+        // Substance's default: a dent painted over a chip goes deeper
+        assert_eq!(Channel::Height.default_blend(), BlendMode::Add);
+        let mut d = Document::default();
+        let l = d.new_fill_layer("f");
+        assert_eq!(l.channels.height.blend, BlendMode::Add);
+        let chip = crate::blend::blend_scalar(BlendMode::Add, 0.0, -0.35, 1.0);
+        let dent = crate::blend::blend_scalar(BlendMode::Add, chip, -0.3, 1.0);
+        assert!(dent < chip);
+    }
+
+    #[test]
+    fn old_projects_get_new_generator_fields() {
+        let json = r#"{"kind":"edge_wear","amount":0.5,"softness":0.1,"noise_scale":8.0,"noise_amount":0.5,"seed":1}"#;
+        let g: Generator = serde_json::from_str(json).unwrap();
+        assert_eq!((g.ao_influence, g.curvature_weight), (0.5, 1.0));
     }
 
     #[test]

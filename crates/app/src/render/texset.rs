@@ -98,7 +98,7 @@ fn layer_params(l: &Layer) -> LayerParams {
         if let Some(g) = &m.generator {
             p.flags[2] = g.gpu_id();
             p.gp = [g.amount, g.softness, g.noise_scale, g.noise_amount];
-            p.gp2 = [g.seed as f32, 0.0, 0.0, 0.0];
+            p.gp2 = [g.seed as f32, g.ao_influence, g.curvature_weight, 0.0];
         }
     }
     p
