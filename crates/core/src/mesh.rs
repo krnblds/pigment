@@ -18,6 +18,21 @@ pub struct Vertex {
     pub tangent: [f32; 4],
 }
 
+/// Connected parts of a mesh (see [`Mesh::parts`]).
+#[derive(Clone, Debug, Default)]
+pub struct Parts {
+    pub vertex_part: Vec<u32>,
+    pub triangle_part: Vec<u32>,
+    pub info: Vec<PartInfo>,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct PartInfo {
+    pub triangles: u32,
+    pub min: [f32; 3],
+    pub max: [f32; 3],
+}
+
 #[derive(Clone, Debug, Default)]
 pub struct Mesh {
     pub name: String,
@@ -215,6 +230,106 @@ impl Mesh {
         m.compute_normals_welded();
         m.compute_tangents();
         m
+    }
+
+    /// Split the mesh into parts: connected surfaces. Triangles join when they
+    /// share a vertex index, or share an edge (by position) that only those two
+    /// triangles use, which reconnects surfaces split at UV seams or hard edges.
+    /// Separate pieces that merely touch (a window pane against its frame, three
+    /// or more triangles on an edge, or only a corner) stay separate parts.
+    pub fn parts(&self) -> Parts {
+        let n = self.indices.len() / 3;
+        let mut parent: Vec<u32> = (0..n as u32).collect();
+        fn find(p: &mut [u32], mut x: u32) -> u32 {
+            while p[x as usize] != x {
+                p[x as usize] = p[p[x as usize] as usize];
+                x = p[x as usize];
+            }
+            x
+        }
+        let union = |p: &mut Vec<u32>, a: u32, b: u32| {
+            let (ra, rb) = (find(p, a), find(p, b));
+            if ra != rb {
+                p[ra.max(rb) as usize] = ra.min(rb);
+            }
+        };
+        let mut by_vertex: Vec<u32> = vec![u32::MAX; self.vertices.len()];
+        let welded = crate::curvature::weld(self);
+        let mut edges: std::collections::HashMap<(u32, u32), Vec<u32>> = Default::default();
+        for (t, tri) in self.indices.chunks_exact(3).enumerate() {
+            let t = t as u32;
+            for &v in tri {
+                match by_vertex[v as usize] {
+                    u32::MAX => by_vertex[v as usize] = t,
+                    o => union(&mut parent, o, t),
+                }
+            }
+            for k in 0..3 {
+                let (a, b) = (welded[tri[k] as usize], welded[tri[(k + 1) % 3] as usize]);
+                if a != b {
+                    edges.entry((a.min(b), a.max(b))).or_default().push(t);
+                }
+            }
+        }
+        for users in edges.values() {
+            if users.len() == 2 {
+                union(&mut parent, users[0], users[1]);
+            }
+        }
+        // number the parts in order of first appearance
+        let mut id_of_root: std::collections::HashMap<u32, u32> = Default::default();
+        let mut tri_part = Vec::with_capacity(n);
+        for t in 0..n as u32 {
+            let r = find(&mut parent, t);
+            let next = id_of_root.len() as u32;
+            tri_part.push(*id_of_root.entry(r).or_insert(next));
+        }
+        let count = id_of_root.len();
+        let mut info = vec![PartInfo { triangles: 0, min: [f32::MAX; 3], max: [f32::MIN; 3] }; count];
+        let mut vertex_part = vec![0u32; self.vertices.len()];
+        for (t, tri) in self.indices.chunks_exact(3).enumerate() {
+            let p = tri_part[t] as usize;
+            info[p].triangles += 1;
+            for &v in tri {
+                vertex_part[v as usize] = p as u32;
+                let pos = self.vertices[v as usize].position;
+                for k in 0..3 {
+                    info[p].min[k] = info[p].min[k].min(pos[k]);
+                    info[p].max[k] = info[p].max[k].max(pos[k]);
+                }
+            }
+        }
+        Parts { vertex_part, triangle_part: tri_part, info }
+    }
+
+    /// The triangle hit by a ray, and the distance along it (Möller–Trumbore).
+    pub fn raycast(&self, origin: Vec3, dir: Vec3) -> Option<(usize, f32)> {
+        let mut best: Option<(usize, f32)> = None;
+        for (t, tri) in self.indices.chunks_exact(3).enumerate() {
+            let [a, b, c] = [0, 1, 2].map(|k| Vec3::from(self.vertices[tri[k] as usize].position));
+            let (e1, e2) = (b - a, c - a);
+            let p = dir.cross(e2);
+            let det = e1.dot(p);
+            if det.abs() < 1e-12 {
+                continue;
+            }
+            let inv = 1.0 / det;
+            let s = origin - a;
+            let u = s.dot(p) * inv;
+            if !(0.0..=1.0).contains(&u) {
+                continue;
+            }
+            let q = s.cross(e1);
+            let v = dir.dot(q) * inv;
+            if v < 0.0 || u + v > 1.0 {
+                continue;
+            }
+            let d = e2.dot(q) * inv;
+            if d > 1e-6 && best.is_none_or(|(_, bd)| d < bd) {
+                best = Some((t, d));
+            }
+        }
+        best
     }
 
     /// A torus with a UV seam in both directions: a good default for testing
@@ -484,6 +599,65 @@ f 1/1 2/2 3/3 4/4
         let c = crate::curvature::compute(&m);
         let convex = c.vertex.iter().filter(|&&k| k > 3.0).count();
         assert!(convex > m.vertices.len() / 20, "{convex} strongly convex vertices");
+    }
+
+    fn cube_at(m: &mut Mesh, o: Vec3, split: bool) {
+        // 6 faces; with `split`, every face has its own vertices (like UV seams)
+        let faces: [[[f32; 3]; 4]; 6] = [
+            [[0., 0., 1.], [1., 0., 1.], [1., 1., 1.], [0., 1., 1.]],
+            [[1., 0., 0.], [0., 0., 0.], [0., 1., 0.], [1., 1., 0.]],
+            [[1., 0., 1.], [1., 0., 0.], [1., 1., 0.], [1., 1., 1.]],
+            [[0., 0., 0.], [0., 0., 1.], [0., 1., 1.], [0., 1., 0.]],
+            [[0., 1., 1.], [1., 1., 1.], [1., 1., 0.], [0., 1., 0.]],
+            [[0., 0., 0.], [1., 0., 0.], [1., 0., 1.], [0., 0., 1.]],
+        ];
+        let base = m.vertices.len() as u32;
+        let mut idx = std::collections::HashMap::new();
+        for f in faces {
+            let ids: Vec<u32> = f
+                .iter()
+                .map(|p| {
+                    let key = p.map(|c| c as i32);
+                    if !split {
+                        if let Some(i) = idx.get(&key) {
+                            return *i;
+                        }
+                    }
+                    let i = m.vertices.len() as u32;
+                    m.vertices.push(Vertex { position: (Vec3::from(*p) + o).into(), ..Default::default() });
+                    idx.insert(key, i);
+                    i
+                })
+                .collect();
+            m.indices.extend_from_slice(&[ids[0], ids[1], ids[2], ids[0], ids[2], ids[3]]);
+        }
+        let _ = base;
+    }
+
+    #[test]
+    fn parts_follow_surfaces_not_seams() {
+        // a cube split at every edge (like a UV-unwrapped export) is still one part
+        let mut m = Mesh::default();
+        cube_at(&mut m, Vec3::ZERO, true);
+        assert_eq!(m.parts().info.len(), 1);
+        // a second, separate cube is a second part
+        cube_at(&mut m, Vec3::new(3.0, 0.0, 0.0), true);
+        let p = m.parts();
+        assert_eq!(p.info.len(), 2);
+        assert_eq!(p.info[0].triangles, 12);
+        // a cube touching the first along a full edge stays separate (3+ triangles on that edge)
+        cube_at(&mut m, Vec3::new(1.0, 1.0, 0.0), true);
+        assert_eq!(m.parts().info.len(), 3);
+    }
+
+    #[test]
+    fn raycast_hits_the_nearest_face() {
+        let mut m = Mesh::default();
+        cube_at(&mut m, Vec3::ZERO, false);
+        let (t, d) = m.raycast(Vec3::new(0.5, 0.5, 5.0), -Vec3::Z).unwrap();
+        assert!((d - 4.0).abs() < 1e-5, "{d}");
+        assert!(t < 2, "front face first, got triangle {t}");
+        assert!(m.raycast(Vec3::new(5.0, 5.0, 5.0), Vec3::Z).is_none());
     }
 
     #[test]

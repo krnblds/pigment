@@ -128,6 +128,10 @@ pub struct PigmentApp {
     decals: std::collections::HashMap<PathBuf, crate::render::gpu::Tex>,
     /// Decal tool: the image, and where the drag started.
     decal_tool: Option<(PathBuf, Option<egui::Pos2>)>,
+    /// Mesh parts (connected surfaces) of the current mesh.
+    parts: pigment_core::mesh::Parts,
+    /// Clicking the model toggles parts in the selected layer's mask.
+    part_pick: bool,
     tour: tour::Tour,
     counters: Counters,
     /// Screen rects of UI elements the guide can point at, rebuilt every frame.
@@ -183,6 +187,8 @@ impl PigmentApp {
             last_emissive_scale: 1.0,
             decals: Default::default(),
             decal_tool: None,
+            parts: Default::default(),
+            part_pick: false,
             tour: Default::default(),
             counters: Counters::default(),
             anchors: Default::default(),
@@ -255,6 +261,7 @@ impl PigmentApp {
         let (c, r) = mesh.bounding_sphere();
         self.camera.frame(c, r);
         let mg = MeshGpu::new(&rs.device, &mesh);
+        self.parts = mesh.parts();
         self.ts.prepare_mesh(&rs.device, &rs.queue, &mg, c, r);
         self.mesh_gpu = Some(mg);
         self.mesh = mesh;
@@ -586,7 +593,7 @@ impl PigmentApp {
         self.commit_doc_changes();
         let res = self.doc.mint();
         self.ts.new_mask(&rs.device, &rs.queue, res, false);
-        self.doc.layers[i].mask = Some(Mask { res, generator: None, invert: false, enabled: true });
+        self.doc.layers[i].mask = Some(Mask { res, generator: None, invert: false, enabled: true, parts: Vec::new(), effects: Vec::new() });
         self.paint_mask = true;
         self.brush.mask_white = true;
         self.brush.erase = false;
@@ -684,6 +691,43 @@ impl PigmentApp {
         self.painter.stamps(&rs.device, &rs.queue, &self.ts, mg, depth, view, &stamps, &brush, rect);
         self.ts.composite(&rs.device, &rs.queue, &self.doc, Some(rect));
         self.last_stamp_ms = t0.elapsed().as_secs_f32() * 1000.0 / stamps.len() as f32;
+    }
+
+    /// The mesh part under a viewport pixel, if any.
+    pub(super) fn part_at(&self, px: Vec2, viewport_px: Vec2) -> Option<u32> {
+        let vp = self.camera.view_proj(viewport_px.x / viewport_px.y.max(1.0));
+        let ndc = Vec2::new(px.x / viewport_px.x * 2.0 - 1.0, 1.0 - px.y / viewport_px.y * 2.0);
+        let near = vp.inverse().project_point3(glam::Vec3::new(ndc.x, ndc.y, 1.0));
+        let eye = self.camera.eye();
+        let (t, _) = self.mesh.raycast(eye, (near - eye).normalize())?;
+        self.parts.triangle_part.get(t).copied()
+    }
+
+    /// Toggle a part in the selected layer's mask (adding a white mask if needed).
+    pub(super) fn toggle_part(&mut self, rs: &RenderState, part: u32) -> Result<String, String> {
+        if part >= MAX_SELECTABLE_PARTS {
+            return Err(format!("part {part} is beyond the {MAX_SELECTABLE_PARTS} selectable parts"));
+        }
+        let i = self.selected.and_then(|id| self.doc.index_of(id)).ok_or("select a layer first")?;
+        if self.doc.layers[i].mask.is_none() {
+            let res = self.doc.mint();
+            self.ts.new_mask(&rs.device, &rs.queue, res, true);
+            self.doc.layers[i].mask = Some(Mask::new(res));
+        }
+        let m = self.doc.layers[i].mask.as_mut().unwrap();
+        let added = match m.parts.iter().position(|&p| p == part) {
+            Some(k) => {
+                m.parts.remove(k);
+                false
+            }
+            None => {
+                m.parts.push(part);
+                m.parts.sort_unstable();
+                true
+            }
+        };
+        let tris = self.parts.info.get(part as usize).map(|p| p.triangles).unwrap_or(0);
+        Ok(format!("{} part {part} ({tris} triangles) - {} selected", if added { "Added" } else { "Removed" }, m.parts.len()))
     }
 
     fn decal_texture(&mut self, rs: &RenderState, path: &Path) -> Result<(), String> {
@@ -878,7 +922,7 @@ mod tests {
         let i = app.doc.layers.len() - 1;
         let mres = app.doc.mint();
         app.ts.new_mask(&rs.device, &rs.queue, mres, true);
-        app.doc.layers[i].mask = Some(Mask { res: mres, generator: Some(Generator::new(GeneratorKind::Dirt)), invert: false, enabled: true });
+        app.doc.layers[i].mask = Some(Mask { res: mres, generator: Some(Generator::new(GeneratorKind::Dirt)), invert: false, enabled: true, parts: Vec::new(), effects: Vec::new() });
         app.selected = Some(app.doc.layers[i].id);
         app.paint_mask = true;
         app.brush.mask_white = false;

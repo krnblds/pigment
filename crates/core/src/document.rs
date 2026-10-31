@@ -222,10 +222,12 @@ pub enum GeneratorKind {
     Scratches,
     /// Grid of panel seams on every face (pair with negative height).
     PanelLines,
+    /// Rises from the bottom of the model: grime, splash and rust near the ground.
+    Gradient,
 }
 
 impl GeneratorKind {
-    pub const ALL: [GeneratorKind; 8] = [
+    pub const ALL: [GeneratorKind; 9] = [
         GeneratorKind::EdgeWear,
         GeneratorKind::Dirt,
         GeneratorKind::Grunge,
@@ -234,6 +236,7 @@ impl GeneratorKind {
         GeneratorKind::Spots,
         GeneratorKind::Scratches,
         GeneratorKind::PanelLines,
+        GeneratorKind::Gradient,
     ];
     pub fn label(self) -> &'static str {
         match self {
@@ -245,6 +248,7 @@ impl GeneratorKind {
             GeneratorKind::Spots => "Spots",
             GeneratorKind::Scratches => "Scratches",
             GeneratorKind::PanelLines => "Panel lines",
+            GeneratorKind::Gradient => "Ground gradient",
         }
     }
     pub fn id(self) -> &'static str {
@@ -257,6 +261,7 @@ impl GeneratorKind {
             GeneratorKind::Spots => "spots",
             GeneratorKind::Scratches => "scratches",
             GeneratorKind::PanelLines => "panel_lines",
+            GeneratorKind::Gradient => "gradient",
         }
     }
     pub fn from_id(s: &str) -> Option<GeneratorKind> {
@@ -309,6 +314,7 @@ impl Generator {
             GeneratorKind::Spots => (0.3, 0.06, 4.0, 0.2, 0.3),
             GeneratorKind::Scratches => (0.2, 0.03, 5.0, 0.0, 0.0),
             GeneratorKind::PanelLines => (0.06, 0.01, 2.5, 0.0, 0.0),
+            GeneratorKind::Gradient => (0.2, 0.15, 6.0, 0.25, 0.0),
         };
         Self { kind, amount, softness, noise_scale, noise_amount, seed: 1, ao_influence, curvature_weight: 1.0 }
     }
@@ -322,6 +328,7 @@ impl Generator {
             GeneratorKind::Spots => 6,
             GeneratorKind::Scratches => 7,
             GeneratorKind::PanelLines => 8,
+            GeneratorKind::Gradient => 9,
         }
     }
     pub fn with(mut self, amount: f32, noise_scale: f32) -> Self {
@@ -330,6 +337,48 @@ impl Generator {
         self
     }
 }
+
+/// How an extra mask effect combines with the effects before it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum MaskOp {
+    Multiply,
+    Add,
+    Subtract,
+    Max,
+    Min,
+}
+
+impl MaskOp {
+    pub const ALL: [MaskOp; 5] = [MaskOp::Multiply, MaskOp::Add, MaskOp::Subtract, MaskOp::Max, MaskOp::Min];
+    pub fn label(self) -> &'static str {
+        match self {
+            MaskOp::Multiply => "Multiply (both)",
+            MaskOp::Add => "Add (either)",
+            MaskOp::Subtract => "Subtract",
+            MaskOp::Max => "Max",
+            MaskOp::Min => "Min",
+        }
+    }
+    pub fn gpu_id(self) -> u32 {
+        self as u32
+    }
+    pub fn from_id(s: &str) -> Option<MaskOp> {
+        Self::ALL.into_iter().find(|o| format!("{o:?}").eq_ignore_ascii_case(s))
+    }
+}
+
+/// An extra generator in a mask, combined with the result so far.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct MaskEffect {
+    pub generator: Generator,
+    pub op: MaskOp,
+}
+
+/// Most mask effects after the main generator (GPU parameter budget).
+pub const MAX_MASK_EFFECTS: usize = 2;
+/// Parts with ids below this can be selected in masks.
+pub const MAX_SELECTABLE_PARTS: u32 = 256;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Mask {
@@ -342,6 +391,22 @@ pub struct Mask {
     pub invert: bool,
     #[serde(default = "yes")]
     pub enabled: bool,
+    /// Only these mesh parts (empty = the whole model). Non-destructive
+    /// "polygon fill": survives resolution changes and stays editable.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub parts: Vec<u32>,
+    /// Further generators combined after `generator` (at most MAX_MASK_EFFECTS).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub effects: Vec<MaskEffect>,
+}
+
+impl Mask {
+    pub fn new(res: ResId) -> Self {
+        Mask { res, generator: None, invert: false, enabled: true, parts: Vec::new(), effects: Vec::new() }
+    }
+    pub fn with_generator(res: ResId, g: Generator) -> Self {
+        Mask { generator: Some(g), ..Mask::new(res) }
+    }
 }
 
 fn yes() -> bool {
@@ -531,7 +596,7 @@ impl Document {
         g.softness = 0.04;
         g.noise_scale = 22.0;
         g.noise_amount = 0.9;
-        wear.mask = Some(Mask { res, generator: Some(g), invert: false, enabled: true });
+        wear.mask = Some(Mask { res, generator: Some(g), invert: false, enabled: true, parts: Vec::new(), effects: Vec::new() });
 
         let mut dirt = self.new_fill_layer("Dirt");
         dirt.kind = LayerKind::Fill { values: material_preset("Grime") };
@@ -545,7 +610,7 @@ impl Document {
         g.softness = 0.2;
         g.noise_scale = 5.0;
         g.noise_amount = 0.7;
-        dirt.mask = Some(Mask { res, generator: Some(g), invert: false, enabled: true });
+        dirt.mask = Some(Mask { res, generator: Some(g), invert: false, enabled: true, parts: Vec::new(), effects: Vec::new() });
         vec![base, wear, dirt]
     }
 
@@ -560,7 +625,7 @@ impl Document {
         l.kind = LayerKind::Fill { values };
         if let Some(g) = generator {
             let res = self.mint();
-            l.mask = Some(Mask { res, generator: Some(g), invert: false, enabled: true });
+            l.mask = Some(Mask { res, generator: Some(g), invert: false, enabled: true, parts: Vec::new(), effects: Vec::new() });
         }
         l
     }
@@ -853,7 +918,7 @@ mod tests {
     #[test]
     fn json_round_trip() {
         let mut d = Document::new_default();
-        d.layers[1].mask = Some(Mask { res: 99, generator: Some(Generator::new(GeneratorKind::EdgeWear)), invert: false, enabled: true });
+        d.layers[1].mask = Some(Mask { res: 99, generator: Some(Generator::new(GeneratorKind::EdgeWear)), invert: false, enabled: true, parts: Vec::new(), effects: Vec::new() });
         let s = serde_json::to_string_pretty(&d).unwrap();
         let back: Document = serde_json::from_str(&s).unwrap();
         assert_eq!(d, back);

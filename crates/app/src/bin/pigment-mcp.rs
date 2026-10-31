@@ -25,7 +25,7 @@ fn tools() -> Value {
         "visible": { "type": "boolean" },
         "channels": { "type": "object", "description": "e.g. {\"height\": false, \"roughness\": true}" },
         "blend": { "type": "object", "description": "per channel, e.g. {\"base_color\": \"multiply\", \"height\": \"add\"}" },
-        "mask": { "description": "\"white\" | \"black\" | null (remove) | {generator: edge_wear|dirt|grunge|streaks|stripes|spots|scratches|panel_lines, amount, softness, scale, breakup, seed, ao_influence, curvature_weight, invert}" }
+        "mask": { "description": "\"white\" | \"black\" | null (remove) | {generator: edge_wear|dirt|grunge|streaks|stripes|spots|scratches|panel_lines|gradient, amount, softness, scale, breakup, seed, ao_influence, curvature_weight, invert, parts: [part ids from list_parts / pick_parts: limit the layer to those mesh pieces], effects: [{generator, op: multiply|add|subtract|max|min, amount, scale, breakup, ...}] (max 2)}" }
     });
     let camera = json!({
         "yaw": { "type": "number", "description": "degrees around the model (default 35)" },
@@ -71,6 +71,9 @@ fn tools() -> Value {
         t("add_layer", "Add a fill or paint layer, optionally with a material and a generator mask.", add_props, &[]),
         t("update_layer", "Change a layer: material, values, opacity, visibility, channels, blend modes, mask/generator, position.", upd_props, &["layer"]),
         t("delete_layer", "Remove a layer.", json!({ "layer": {} }), &["layer"]),
+        t("list_parts", "The mesh's parts (connected pieces: body, glass panes, buttons...) with id, triangle count, centre and size. Use ids in a mask's `parts`.", json!({}), &[]),
+        t("pick_parts", "Which parts are under viewport points [[x,y],...] (0..1) for a camera view (yaw/pitch/zoom). Render the same view first to choose points.",
+          json!({ "points": { "type": "array" }, "yaw": { "type": "number" }, "pitch": { "type": "number" }, "zoom": { "type": "number" }, "width": { "type": "integer" }, "height": { "type": "integer" } }), &["points"]),
         t("bake", "Re-bake AO and curvature.", json!({ "ao_samples": { "type": "integer" }, "ao_distance": { "type": "number" }, "curvature_radius": { "type": "number" }, "curvature_strength": { "type": "number" } }), &[]),
         t("paint_stroke", "Paint a brush stroke projected from a camera view onto the model.", paint_props, &["points"]),
         t("project_decal", "Project an image (PNG with alpha: sign, logo, label, graffiti) onto the model from a camera view, like a sticker. Colour comes from the image times `tint`; optional emission (glowing neon signs) and height. Lands on the top paint layer unless `layer` is given.",
@@ -100,6 +103,8 @@ fn call(session: &mut Option<Session>, name: &str, args: &Value) -> Result<Vec<V
         "save_project" => text(s.save_project(args)?),
         "list_library" => text(s.library()),
         "list_layers" => text(s.layers()),
+        "list_parts" => text(s.list_parts()),
+        "pick_parts" => text(s.pick_parts(args)?),
         "add_smart_material" => text(s.add_smart_material(args)?),
         "add_layer" => text(s.add_layer(args)?),
         "update_layer" => text(s.update_layer(args)?),

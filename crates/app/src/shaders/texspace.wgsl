@@ -6,20 +6,23 @@ struct UvOut {
     @builtin(position) pos: vec4<f32>,
     @location(0) world: vec3<f32>,
     @location(1) normal: vec3<f32>,
+    @location(2) @interpolate(flat) part: u32,
 };
 
 @vertex
-fn vs_uv(v: MeshIn) -> UvOut {
+fn vs_uv(v: MeshIn, @location(4) part: u32) -> UvOut {
     var o: UvOut;
     o.pos = uv_to_clip(v.uv);
     o.world = v.position;
     o.normal = v.normal;
+    o.part = part;
     return o;
 }
 
 struct UvTargets {
     @location(0) position: vec4<f32>,  // xyz world, w = 1 where the mesh covers the texel
     @location(1) normal: vec4<f32>,
+    @location(2) part: vec4<u32>,      // mesh part id + 1 (0 = no surface)
 };
 
 @fragment
@@ -27,6 +30,7 @@ fn fs_uv(i: UvOut) -> UvTargets {
     var o: UvTargets;
     o.position = vec4<f32>(i.world, 1.0);
     o.normal = vec4<f32>(normalize(i.normal), 1.0);
+    o.part = vec4<u32>(min(i.part + 1u, 65535u), 0u, 0u, 0u);
     return o;
 }
 

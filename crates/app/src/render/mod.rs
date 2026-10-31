@@ -10,11 +10,14 @@ use eframe::egui_wgpu::wgpu;
 use pigment_core::Mesh;
 use wgpu::util::DeviceExt;
 
-/// A mesh's vertex and index buffers.
+/// A mesh's vertex and index buffers, plus each vertex's part id.
 pub struct MeshGpu {
     pub vertices: wgpu::Buffer,
     pub indices: wgpu::Buffer,
     pub index_count: u32,
+    pub parts: wgpu::Buffer,
+    pub part_count: u32,
+    pub bounds: ([f32; 3], [f32; 3]),
 }
 
 impl MeshGpu {
@@ -29,6 +32,13 @@ impl MeshGpu {
             contents: bytemuck::cast_slice(&mesh.indices),
             usage: wgpu::BufferUsages::INDEX,
         });
-        Self { vertices, indices, index_count: mesh.indices.len() as u32 }
+        let p = mesh.parts();
+        let parts = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("mesh parts"),
+            contents: bytemuck::cast_slice(&p.vertex_part),
+            usage: wgpu::BufferUsages::VERTEX,
+        });
+        let (lo, hi) = mesh.bounds();
+        Self { vertices, indices, index_count: mesh.indices.len() as u32, parts, part_count: p.info.len() as u32, bounds: (lo.into(), hi.into()) }
     }
 }

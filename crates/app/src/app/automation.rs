@@ -198,6 +198,8 @@ impl Session {
                                 "kind": g.kind.id(), "amount": g.amount, "softness": g.softness, "scale": g.noise_scale,
                                 "breakup": g.noise_amount, "seed": g.seed, "ao_influence": g.ao_influence, "curvature_weight": g.curvature_weight
                             })),
+                            "effects": m.effects.iter().map(|e| json!({ "generator": e.generator.kind.id(), "op": format!("{:?}", e.op).to_lowercase(), "amount": e.generator.amount, "scale": e.generator.noise_scale })).collect::<Vec<_>>(),
+                            "parts": m.parts,
                             "invert": m.invert,
                         });
                     }
@@ -304,7 +306,7 @@ impl Session {
                 };
                 let res = app.doc.mint();
                 app.ts.new_mask(&rs.device, &rs.queue, res, white);
-                app.doc.layers[i].mask = Some(Mask { res, generator: None, invert: false, enabled: true });
+                app.doc.layers[i].mask = Some(Mask::new(res));
             }
             Some(m) => {
                 let kind = match s(m, "generator") {
@@ -314,7 +316,7 @@ impl Session {
                 if app.doc.layers[i].mask.is_none() {
                     let res = app.doc.mint();
                     app.ts.new_mask(&rs.device, &rs.queue, res, true);
-                    app.doc.layers[i].mask = Some(Mask { res, generator: None, invert: false, enabled: true });
+                    app.doc.layers[i].mask = Some(Mask::new(res));
                 }
                 let mask = app.doc.layers[i].mask.as_mut().unwrap();
                 if let Some(k) = kind {
@@ -325,32 +327,64 @@ impl Session {
                 if let Some(inv) = m.get("invert").and_then(Value::as_bool) {
                     mask.invert = inv;
                 }
+                if let Some(ps) = m.get("parts").and_then(Value::as_array) {
+                    mask.parts = ps.iter().filter_map(|p| p.as_u64().map(|x| x as u32)).filter(|&p| p < MAX_SELECTABLE_PARTS).collect();
+                    mask.parts.sort_unstable();
+                    mask.parts.dedup();
+                }
+                if let Some(effs) = m.get("effects").and_then(Value::as_array) {
+                    if effs.len() > MAX_MASK_EFFECTS {
+                        return Err(format!("at most {MAX_MASK_EFFECTS} extra effects"));
+                    }
+                    mask.effects.clear();
+                    for e in effs {
+                        let k = s(e, "generator").ok_or("each effect needs `generator`")?;
+                        let mut g = Generator::new(GeneratorKind::from_id(k).ok_or_else(|| format!("unknown generator `{k}`"))?);
+                        apply_generator_fields(&mut g, e);
+                        let op = match s(e, "op") {
+                            Some(o) => MaskOp::from_id(o).ok_or_else(|| format!("unknown op `{o}` (multiply, add, subtract, max, min)"))?,
+                            None => MaskOp::Multiply,
+                        };
+                        mask.effects.push(MaskEffect { generator: g, op });
+                    }
+                }
                 if let Some(g) = mask.generator.as_mut() {
-                    if let Some(x) = f(m, "amount") {
-                        g.amount = x;
-                    }
-                    if let Some(x) = f(m, "softness") {
-                        g.softness = x;
-                    }
-                    if let Some(x) = f(m, "scale") {
-                        g.noise_scale = x;
-                    }
-                    if let Some(x) = f(m, "breakup") {
-                        g.noise_amount = x;
-                    }
-                    if let Some(x) = m.get("seed").and_then(Value::as_u64) {
-                        g.seed = x as u32;
-                    }
-                    if let Some(x) = f(m, "ao_influence") {
-                        g.ao_influence = x;
-                    }
-                    if let Some(x) = f(m, "curvature_weight") {
-                        g.curvature_weight = x;
-                    }
+                    apply_generator_fields(g, m);
                 }
             }
         }
         Ok(())
+    }
+
+    /// Connected pieces of the mesh, for part masks.
+    pub fn list_parts(&self) -> Value {
+        Value::Array(
+            self.app
+                .parts
+                .info
+                .iter()
+                .enumerate()
+                .map(|(i, p)| {
+                    let c: Vec<f32> = (0..3).map(|k| (p.min[k] + p.max[k]) * 0.5).collect();
+                    let sz: Vec<f32> = (0..3).map(|k| p.max[k] - p.min[k]).collect();
+                    json!({ "id": i, "triangles": p.triangles, "center": c, "size": sz })
+                })
+                .collect(),
+        )
+    }
+
+    /// Which parts are under viewport points (0..1) for a camera view.
+    pub fn pick_parts(&mut self, a: &Value) -> Res<Value> {
+        self.set_camera(a);
+        let px = Vec2::new(self.size[0] as f32, self.size[1] as f32);
+        let pts = a.get("points").and_then(Value::as_array).ok_or("missing `points`")?;
+        let mut out = Vec::new();
+        for p in pts {
+            let p = p.as_array().ok_or("points are [x, y]")?;
+            let v = Vec2::new(p[0].as_f64().unwrap_or(0.0) as f32, p[1].as_f64().unwrap_or(0.0) as f32);
+            out.push(self.app.part_at(v * px, px).map(Value::from).unwrap_or(Value::Null));
+        }
+        Ok(json!({ "parts": out }))
     }
 
     pub fn add_smart_material(&mut self, a: &Value) -> Res<Value> {
@@ -650,6 +684,30 @@ impl Session {
 
 use image::ImageEncoder;
 
+fn apply_generator_fields(g: &mut Generator, m: &Value) {
+    if let Some(x) = f(m, "amount") {
+        g.amount = x;
+    }
+    if let Some(x) = f(m, "softness") {
+        g.softness = x;
+    }
+    if let Some(x) = f(m, "scale") {
+        g.noise_scale = x;
+    }
+    if let Some(x) = f(m, "breakup") {
+        g.noise_amount = x;
+    }
+    if let Some(x) = m.get("seed").and_then(Value::as_u64) {
+        g.seed = x as u32;
+    }
+    if let Some(x) = f(m, "ao_influence") {
+        g.ao_influence = x;
+    }
+    if let Some(x) = f(m, "curvature_weight") {
+        g.curvature_weight = x;
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -731,5 +789,29 @@ mod tests {
             }
         }
         assert!(worst < 20, "flat side panel reads as curved (max deviation {worst}/255)");
+    }
+
+    #[test]
+    fn part_masks_limit_a_layer_to_the_picked_pieces() {
+        let Ok(mut s) = Session::new() else { return };
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        s.new_project(&json!({ "mesh": root.join("assets/ammo_box.glb"), "resolution": 512, "material": "Matte black" })).unwrap();
+        let parts = s.list_parts();
+        assert!(parts.as_array().unwrap().len() > 5, "ammo box should have several pieces");
+        // the piece under the middle of the front view (the body)
+        let picked = s.pick_parts(&json!({ "points": [[0.5, 0.55]], "yaw": 0, "pitch": 5 })).unwrap();
+        let body = picked["parts"][0].as_u64().expect("something under the centre");
+        let glow = |s: &mut Session| -> usize {
+            let img = s.render(&json!({ "view": "emission", "yaw": 0, "pitch": 5, "width": 320, "height": 320 })).unwrap();
+            image::load_from_memory(&img.png).unwrap().to_luma8().pixels().filter(|p| p.0[0] > 100).count()
+        };
+        s.add_layer(&json!({ "name": "Glow", "material": "Neon green", "mask": { "parts": [body] } })).unwrap();
+        let only_body = glow(&mut s);
+        s.update_layer(&json!({ "layer": "Glow", "mask": { "parts": [] } })).unwrap();
+        let everything = glow(&mut s);
+        assert!(only_body > 1000, "selected part glows ({only_body})");
+        assert!(everything > only_body + 1000, "whole model glows more than one part ({everything} vs {only_body})");
+        let layers = s.layers();
+        assert!(layers.to_string().contains("\"parts\":[]"));
     }
 }

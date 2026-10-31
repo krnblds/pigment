@@ -14,9 +14,12 @@
 struct Shared {
     center_radius: vec4<f32>,   // bounding sphere for noise space
     res: vec4<f32>,             // x = resolution, y = height-to-normal strength
+    bmin: vec4<f32>,            // mesh bounds
+    bmax: vec4<f32>,
 };
 @group(0) @binding(3) var<uniform> sh: Shared;
 @group(0) @binding(4) var wnormal: texture_2d<f32>;    // world normal
+@group(0) @binding(5) var parts: texture_2d<u32>;      // mesh part id + 1
 
 // ---- group 1: accumulation input ----
 @group(1) @binding(0) var acc_color: texture_2d<f32>;
@@ -44,6 +47,14 @@ struct LayerParams {
     gen: vec4<f32>,         // amount, softness, noise scale, noise amount
     gen2: vec4<f32>,        // seed, AO influence, curvature weight
     fill_emissive: vec4<f32>, // linear rgb x strength
+    eff: vec4<u32>,           // extra mask effects: kind b, op b, kind c, op c
+    gb: vec4<f32>,
+    gb2: vec4<f32>,
+    gc: vec4<f32>,
+    gc2: vec4<f32>,
+    pbits0: vec4<u32>,        // selected parts bitset, ids 0..127
+    pbits1: vec4<u32>,        // ids 128..255
+    misc: vec4<u32>,          // x = part selection on
 };
 @group(2) @binding(7) var<uniform> lp: LayerParams;
 
@@ -59,48 +70,48 @@ fn ridged(p: vec3<f32>) -> f32 {
     return 1.0 - abs(fbm(p) * 2.0 - 1.0);
 }
 
-fn generator(t: vec2<i32>) -> f32 {
+fn gen_eval(t: vec2<i32>, kind: u32, gp: vec4<f32>, gp2: vec4<f32>) -> f32 {
     let bk = textureLoad(bakes, t, 0);
     let ao = bk.r;
     let curv = bk.g;
     let pw = textureLoad(position, t, 0).xyz;                 // world, metres
     let p = (pw - sh.center_radius.xyz) / max(sh.center_radius.w, 1e-6);  // object-relative
-    let seed = vec3<f32>(lp.gen2.x * 7.31, lp.gen2.x * 3.17, lp.gen2.x * 5.53);
-    let s = lp.gen.z;
+    let seed = vec3<f32>(gp2.x * 7.31, gp2.x * 3.17, gp2.x * 5.53);
+    let s = gp.z;
     let n = fbm(p * s + seed);
-    let threshold = 1.0 - lp.gen.x;
-    let soft = max(lp.gen.y, 0.003);
+    let threshold = 1.0 - gp.x;
+    let soft = max(gp.y, 0.003);
     let occl = 1.0 - ao;
     var v = 0.0;
-    switch lp.flags.z {
+    switch kind {
         case 1u: {
             // edge wear: convex curvature, broken up by noise, kept out of occluded areas
             let convex = clamp((curv - 0.5) * 2.0, 0.0, 1.0);
-            v = convex * lp.gen2.z + (n - 0.5) * lp.gen.w - occl * lp.gen2.y;
+            v = convex * gp2.z + (n - 0.5) * gp.w - occl * gp2.y;
         }
         case 2u: {
             // dirt: occluded and concave areas
             let cavity = clamp((0.5 - curv) * 2.0, 0.0, 1.0);
-            v = max(occl * lp.gen2.y, cavity * lp.gen2.z) + (n - 0.5) * lp.gen.w;
+            v = max(occl * gp2.y, cavity * gp2.z) + (n - 0.5) * gp.w;
         }
         case 3u: {
             // grunge: two octaves of blotches, in world space
-            v = fbm(pw * s + seed) * 0.65 + fbm(pw * s * 4.3 + seed.zxy) * 0.35 + occl * lp.gen2.y;
+            v = fbm(pw * s + seed) * 0.65 + fbm(pw * s * 4.3 + seed.zxy) * 0.35 + occl * gp2.y;
         }
         case 4u: {
             // streaks: noise stretched along world up, more under overhangs
             let q = vec3<f32>(pw.x * s, pw.y * s * 0.07, pw.z * s);
-            v = fbm(q + seed) * 0.8 + fbm(q * 3.0 + seed.yzx) * 0.2 + occl * lp.gen2.y;
+            v = fbm(q + seed) * 0.8 + fbm(q * 3.0 + seed.yzx) * 0.2 + occl * gp2.y;
         }
         case 5u: {
             // hazard stripes: diagonal triangle wave in world space (amount = stripe width)
             let d = (pw.x + pw.y + pw.z) * s;
-            v = abs(fract(d) - 0.5) * 2.0 + (fbm(pw * 8.0 + seed) - 0.5) * lp.gen.w * 0.3;
+            v = abs(fract(d) - 0.5) * 2.0 + (fbm(pw * 8.0 + seed) - 0.5) * gp.w * 0.3;
         }
         case 6u: {
             // spots: domain-warped blobs
             let w = pw * s + vec3<f32>(fbm(pw * s * 0.7 + seed), fbm(pw * s * 0.7 + seed.yzx), fbm(pw * s * 0.7 + seed.zxy)) * 2.0;
-            v = smoothstep(0.35, 0.75, fbm(w + seed * 1.3)) + occl * lp.gen2.y;
+            v = smoothstep(0.35, 0.75, fbm(w + seed * 1.3)) + occl * gp2.y;
         }
         case 7u: {
             // scratches: sharp ridges of strongly stretched noise, two directions
@@ -120,12 +131,55 @@ fn generator(t: vec2<i32>) -> f32 {
             if (nrm.z < 0.75) { dmin = min(dmin, dist.z); }
             v = 1.0 - dmin * 2.0;
         }
+        case 9u: {
+            // ground gradient: 1 at the bottom of the model, 0 at the top
+            let yr = (pw.y - sh.bmin.y) / max(sh.bmax.y - sh.bmin.y, 1e-4);
+            v = 1.0 - yr;
+        }
         default: {}
     }
-    if (lp.flags.z >= 3u && lp.flags.z != 5u) {
-        v += (n - 0.5) * lp.gen.w;
+    if (kind >= 3u && kind != 5u) {
+        v += (n - 0.5) * gp.w;
     }
     return smoothstep(threshold - soft, threshold + soft, v);
+}
+
+fn combine(op: u32, a: f32, b: f32) -> f32 {
+    switch op {
+        case 1u: { return min(a + b, 1.0); }
+        case 2u: { return max(a - b, 0.0); }
+        case 3u: { return max(a, b); }
+        case 4u: { return min(a, b); }
+        default: { return a * b; }
+    }
+}
+
+// The main generator, then up to two more combined in order.
+fn generator(t: vec2<i32>) -> f32 {
+    var g = gen_eval(t, lp.flags.z, lp.gen, lp.gen2);
+    if (lp.eff.x != 0u) { g = combine(lp.eff.y, g, gen_eval(t, lp.eff.x, lp.gb, lp.gb2)); }
+    if (lp.eff.z != 0u) { g = combine(lp.eff.w, g, gen_eval(t, lp.eff.z, lp.gc, lp.gc2)); }
+    return g;
+}
+
+// Is this texel on one of the selected mesh parts?
+fn part_selected(t: vec2<i32>) -> f32 {
+    let id = textureLoad(parts, t, 0).r;
+    if (id == 0u || id > 256u) { return 0.0; }
+    let k = id - 1u;
+    let word = k / 32u;
+    var w = 0u;
+    switch word {
+        case 0u: { w = lp.pbits0.x; }
+        case 1u: { w = lp.pbits0.y; }
+        case 2u: { w = lp.pbits0.z; }
+        case 3u: { w = lp.pbits0.w; }
+        case 4u: { w = lp.pbits1.x; }
+        case 5u: { w = lp.pbits1.y; }
+        case 6u: { w = lp.pbits1.z; }
+        default: { w = lp.pbits1.w; }
+    }
+    return f32((w >> (k % 32u)) & 1u);
 }
 
 @fragment
@@ -156,6 +210,10 @@ fn fs_layer(f: FullOut) -> Acc {
     if (lp.flags.y == 1u) {
         mask = textureLoad(l_mask, t, 0).r;
         if (lp.flags.z != 0u) { mask *= generator(t); }
+        if (lp.misc.x == 1u) {
+            // selection is looked up at the padded source texel so seams stay clean
+            mask *= part_selected(src_texel(t));
+        }
         if (lp.flags.w == 1u) { mask = 1.0 - mask; }
     }
 

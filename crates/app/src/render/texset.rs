@@ -34,7 +34,8 @@ const POSITION: wgpu::TextureFormat = wgpu::TextureFormat::Rgba32Float;
 const WNORMAL: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
 const NEAREST: wgpu::TextureFormat = wgpu::TextureFormat::Rg16Uint;
 pub const BAKES: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
-const LAYER_UNIFORM_STRIDE: u64 = 256;
+const LAYER_UNIFORM_STRIDE: u64 = 512;
+const PARTS: wgpu::TextureFormat = wgpu::TextureFormat::R16Uint;
 
 pub struct LayerTex {
     pub ch: [Tex; 6],
@@ -63,6 +64,16 @@ struct LayerParams {
     gp: [f32; 4],
     gp2: [f32; 4],
     fill_emissive: [f32; 4],
+    /// extra mask effects: kind b, op b, kind c, op c
+    eff: [u32; 4],
+    gb: [f32; 4],
+    gb2: [f32; 4],
+    gc: [f32; 4],
+    gc2: [f32; 4],
+    /// selected parts bitset (256 bits)
+    pbits: [u32; 8],
+    /// x = part selection on
+    misc: [u32; 4],
 }
 
 fn layer_params(l: &Layer) -> LayerParams {
@@ -88,6 +99,13 @@ fn layer_params(l: &Layer) -> LayerParams {
         gp: [0.0; 4],
         gp2: [0.0; 4],
         fill_emissive: [0.0; 4],
+        eff: [0; 4],
+        gb: [0.0; 4],
+        gb2: [0.0; 4],
+        gc: [0.0; 4],
+        gc2: [0.0; 4],
+        pbits: [0; 8],
+        misc: [0; 4],
     };
     if let LayerKind::Fill { values } = &l.kind {
         p.flags[0] = 1;
@@ -107,6 +125,24 @@ fn layer_params(l: &Layer) -> LayerParams {
             p.flags[2] = g.gpu_id();
             p.gp = [g.amount, g.softness, g.noise_scale, g.noise_amount];
             p.gp2 = [g.seed as f32, g.ao_influence, g.curvature_weight, 0.0];
+            for (k, e) in m.effects.iter().take(pigment_core::MAX_MASK_EFFECTS).enumerate() {
+                let g = &e.generator;
+                let a = [g.amount, g.softness, g.noise_scale, g.noise_amount];
+                let b = [g.seed as f32, g.ao_influence, g.curvature_weight, 0.0];
+                p.eff[2 * k] = g.gpu_id();
+                p.eff[2 * k + 1] = e.op.gpu_id();
+                if k == 0 {
+                    (p.gb, p.gb2) = (a, b);
+                } else {
+                    (p.gc, p.gc2) = (a, b);
+                }
+            }
+        }
+        if !m.parts.is_empty() {
+            p.misc[0] = 1;
+            for &id in m.parts.iter().filter(|&&id| id < pigment_core::MAX_SELECTABLE_PARTS) {
+                p.pbits[(id / 32) as usize] |= 1 << (id % 32);
+            }
         }
     }
     p
@@ -130,6 +166,9 @@ pub struct TexSet {
     pub position: Tex,
     pub wnormal: Tex,
     pub nearest: Tex,
+    /// Mesh part id + 1 per texel (0 = no surface).
+    pub parts: Tex,
+    bounds: [[f32; 4]; 2],
     pub bakes: Tex,
     pub baked: bool,
     dummy_layer: LayerTex,
@@ -162,7 +201,7 @@ impl Pipes {
         let common = include_str!("../shaders/common.wgsl");
         let comp = gpu::shader(device, "composite.wgsl", &[common, include_str!("../shaders/composite.wgsl")].concat());
         let ts = gpu::shader(device, "texspace.wgsl", &[common, include_str!("../shaders/texspace.wgsl")].concat());
-        let shared_bgl = gpu::bgl(device, "shared", &[gpu::ntex(0), gpu::ntex(1), gpu::utex(2), gpu::uniform_entry(3, false), gpu::ntex(4)]);
+        let shared_bgl = gpu::bgl(device, "shared", &[gpu::ntex(0), gpu::ntex(1), gpu::utex(2), gpu::uniform_entry(3, false), gpu::ntex(4), gpu::utex(5)]);
         let acc_bgl = gpu::bgl(device, "acc", &[gpu::ntex(0), gpu::ntex(1), gpu::ntex(2), gpu::ntex(3)]);
         let layer_bgl = gpu::bgl(
             device,
@@ -195,8 +234,11 @@ impl Pipes {
                     vs: "vs_uv",
                     fs: Some("fs_uv"),
                     layout: &empty_layout,
-                    buffers: &mesh_layout,
-                    targets: &[gpu::target(POSITION, None), gpu::target(WNORMAL, None)],
+                    buffers: &[
+                        mesh_layout[0].clone(),
+                        Some(wgpu::VertexBufferLayout { array_stride: 4, step_mode: wgpu::VertexStepMode::Vertex, attributes: &wgpu::vertex_attr_array![4 => Uint32] }),
+                    ],
+                    targets: &[gpu::target(POSITION, None), gpu::target(WNORMAL, None), gpu::target(PARTS, None)],
                     depth: None,
                     samples: 1,
                     cull: None,
@@ -241,10 +283,11 @@ impl TexSet {
         let position = Tex::target(device, "position map", res, POSITION);
         let wnormal = Tex::target(device, "world normal map", res, WNORMAL);
         let nearest = Tex::target(device, "nearest map", res, NEAREST);
+        let parts = Tex::target(device, "part ids", res, PARTS);
         let bakes = Tex::target(device, "bakes", res, BAKES);
         let shared_buf = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("composite shared"),
-            size: 32,
+            size: 64,
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
@@ -258,6 +301,7 @@ impl TexSet {
                 wgpu::BindingResource::TextureView(&nearest.view),
                 shared_buf.as_entire_binding(),
                 wgpu::BindingResource::TextureView(&wnormal.view),
+                wgpu::BindingResource::TextureView(&parts.view),
             ],
         );
         let acc = [acc_set(device, &p, res, "acc ping"), acc_set(device, &p, res, "acc pong"), acc_set(device, &p, res, "acc final")];
@@ -281,6 +325,8 @@ impl TexSet {
             position,
             wnormal,
             nearest,
+            parts,
+            bounds: [[0.0; 4]; 2],
             bakes,
             baked: false,
             dummy_layer,
@@ -379,11 +425,14 @@ impl TexSet {
     /// build the seam-padding map. Runs once per mesh / resolution.
     pub fn prepare_mesh(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, mesh: &MeshGpu, center: Vec3, radius: f32) {
         self.center_radius = [center.x, center.y, center.z, radius];
+        let (lo, hi) = mesh.bounds;
+        self.bounds = [[lo[0], lo[1], lo[2], 0.0], [hi[0], hi[1], hi[2], 0.0]];
         let mut enc = device.create_command_encoder(&Default::default());
         {
-            let mut pass = gpu::pass(&mut enc, "uv raster", &[&self.position.view, &self.wnormal.view], Some(wgpu::Color::TRANSPARENT));
+            let mut pass = gpu::pass(&mut enc, "uv raster", &[&self.position.view, &self.wnormal.view, &self.parts.view], Some(wgpu::Color::TRANSPARENT));
             pass.set_pipeline(&self.p.uv);
             pass.set_vertex_buffer(0, mesh.vertices.slice(..));
+            pass.set_vertex_buffer(1, mesh.parts.slice(..));
             pass.set_index_buffer(mesh.indices.slice(..), wgpu::IndexFormat::Uint32);
             pass.draw_indexed(0..mesh.index_count, 0, 0..1);
         }
@@ -437,7 +486,7 @@ impl TexSet {
     /// `rect` (texels) limits the work to a region, used while painting.
     pub fn composite(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, doc: &Document, rect: Option<[u32; 4]>) {
         let res = self.res;
-        let shared = [self.center_radius, [res as f32, res as f32 / 256.0, 0.0, 0.0]];
+        let shared = [self.center_radius, [res as f32, res as f32 / 256.0, 0.0, 0.0], self.bounds[0], self.bounds[1]];
         queue.write_buffer(&self.shared_buf, 0, bytemuck::cast_slice(&shared));
 
         let visible: Vec<&Layer> = doc.layers.iter().filter(|l| l.visible).collect();

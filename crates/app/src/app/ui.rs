@@ -281,6 +281,7 @@ impl PigmentApp {
             }
             if i.key_pressed(Key::Escape) {
                 self.decal_tool = None;
+                self.part_pick = false;
             }
             if i.key_pressed(Key::F12) {
                 self.dump_requested = true;
@@ -754,7 +755,7 @@ impl PigmentApp {
             g.noise_amount = 0.8;
             g.softness = 0.05;
         }
-        l.mask = Some(Mask { res, generator: Some(g), invert: false, enabled: true });
+        l.mask = Some(Mask { res, generator: Some(g), invert: false, enabled: true, parts: Vec::new(), effects: Vec::new() });
         self.insert_layer(l);
     }
 
@@ -947,6 +948,7 @@ impl PigmentApp {
                                 GeneratorKind::Spots => "Warped blobs: rust spots, paint splotches, stains.",
                                 GeneratorKind::Scratches => "Thin sharp lines: scratches and scuffs.",
                                 GeneratorKind::PanelLines => "A grid of seams on every face. Use with a dark, negative-height fill for engraved panels.",
+                                GeneratorKind::Gradient => "Rises from the bottom of the model: grime, splash and rust near the ground. Amount = how high.",
                             };
                             let pattern = !matches!(g.kind, GeneratorKind::EdgeWear | GeneratorKind::Dirt);
                             ui.label(RichText::new(what).size(11.5).color(MUTED));
@@ -993,6 +995,68 @@ impl PigmentApp {
                 if gen_rect.height() > 10.0 {
                     self.anchors.insert("generator", gen_rect);
                 }
+                if m.generator.is_some() {
+                    section(ui, "More effects");
+                    card(ui, CARD, |ui| {
+                        ui.label(RichText::new("Combine more generators, e.g. dirt x ground gradient = grime only low down.").size(11.5).color(MUTED));
+                        let mut drop: Option<usize> = None;
+                        for (k, e) in m.effects.iter_mut().enumerate() {
+                            ui.horizontal(|ui| {
+                                egui::ComboBox::from_id_salt(("eff op", k)).width(110.0).selected_text(e.op.label()).show_ui(ui, |ui| {
+                                    for o in MaskOp::ALL {
+                                        ui.selectable_value(&mut e.op, o, o.label());
+                                    }
+                                });
+                                let mut kind = e.generator.kind;
+                                egui::ComboBox::from_id_salt(("eff kind", k)).width(120.0).selected_text(kind.label()).show_ui(ui, |ui| {
+                                    for g in GeneratorKind::ALL {
+                                        ui.selectable_value(&mut kind, g, g.label());
+                                    }
+                                });
+                                if kind != e.generator.kind {
+                                    e.generator = Generator::new(kind);
+                                }
+                                if ui.small_button("x").on_hover_text("Remove this effect").clicked() {
+                                    drop = Some(k);
+                                }
+                            });
+                            egui::Grid::new(("eff grid", k)).num_columns(2).show(ui, |ui| {
+                                ui.label("Amount");
+                                ui.add(egui::Slider::new(&mut e.generator.amount, 0.0..=1.0));
+                                ui.end_row();
+                                ui.label("Scale");
+                                ui.add(egui::Slider::new(&mut e.generator.noise_scale, 0.2..=64.0).logarithmic(true));
+                                ui.end_row();
+                                ui.label("Breakup");
+                                ui.add(egui::Slider::new(&mut e.generator.noise_amount, 0.0..=1.5));
+                                ui.end_row();
+                            });
+                        }
+                        if let Some(k) = drop {
+                            m.effects.remove(k);
+                        }
+                        if m.effects.len() < MAX_MASK_EFFECTS && ui.button("+ Add effect").clicked() {
+                            m.effects.push(MaskEffect { generator: Generator::new(GeneratorKind::Gradient), op: MaskOp::Multiply });
+                        }
+                    });
+                }
+                section(ui, "Parts");
+                card(ui, CARD, |ui| {
+                    ui.label(if m.parts.is_empty() {
+                        RichText::new("Whole model. Limit this layer to chosen pieces (glass, frame, buttons...).").size(11.5).color(MUTED)
+                    } else {
+                        RichText::new(format!("Only {} selected part(s): {:?}", m.parts.len(), m.parts)).size(11.5)
+                    });
+                    ui.horizontal(|ui| {
+                        let label = if self.part_pick { "Done picking" } else { "Pick parts in the viewport" };
+                        if ui.add(egui::Button::new(label).selected(self.part_pick)).clicked() {
+                            self.part_pick = !self.part_pick;
+                        }
+                        if !m.parts.is_empty() && ui.button("Whole model").clicked() {
+                            m.parts.clear();
+                        }
+                    });
+                });
                 ui.add_space(4.0);
                 if ui.button("Remove mask").clicked() {
                     removed = true;
@@ -1006,7 +1070,7 @@ impl PigmentApp {
         if let Some((white, generator)) = add {
             let res = self.doc.mint();
             self.ts.new_mask(&rs.device, &rs.queue, res, white);
-            self.doc.layers[i].mask = Some(Mask { res, generator: generator.map(Generator::new), invert: false, enabled: true });
+            self.doc.layers[i].mask = Some(Mask { res, generator: generator.map(Generator::new), invert: false, enabled: true, parts: Vec::new(), effects: Vec::new() });
             self.brush.mask_white = !white;
         }
     }
@@ -1036,8 +1100,20 @@ impl PigmentApp {
         self.hover = response.hover_pos();
         let d = Vec2::new(delta.x, delta.y);
 
+        // part picking: a click toggles the part under the cursor in the layer's mask
+        if self.part_pick && pressed && response.hovered() && !alt {
+            if let Some(p) = latest {
+                match self.part_at(to_px(p), viewport_px) {
+                    Some(part) => match self.toggle_part(rs, part) {
+                        Ok(msg) => self.set_status(msg, false),
+                        Err(e) => self.set_status(e, true),
+                    },
+                    None => self.set_status("Nothing under the cursor", false),
+                }
+            }
+        }
         // decal tool: drag a box, release to stick the image there (stays active for more)
-        let decal_mode = self.decal_tool.is_some();
+        let decal_mode = self.decal_tool.is_some() || self.part_pick;
         if let Some((path, start)) = self.decal_tool.clone() {
             if pressed && response.hovered() && !alt {
                 self.decal_tool = Some((path.clone(), latest));
