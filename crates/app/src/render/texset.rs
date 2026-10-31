@@ -199,7 +199,7 @@ struct Pipes {
 impl Pipes {
     fn new(device: &wgpu::Device) -> Self {
         let common = include_str!("../shaders/common.wgsl");
-        let comp = gpu::shader(device, "composite.wgsl", &[common, include_str!("../shaders/composite.wgsl")].concat());
+        let comp = gpu::shader(device, "composite.wgsl", &[common, include_str!("../shaders/composite.wgsl"), include_str!("../shaders/gen_weather.wgsl")].concat());
         let ts = gpu::shader(device, "texspace.wgsl", &[common, include_str!("../shaders/texspace.wgsl")].concat());
         let shared_bgl = gpu::bgl(device, "shared", &[gpu::ntex(0), gpu::ntex(1), gpu::utex(2), gpu::uniform_entry(3, false), gpu::ntex(4), gpu::utex(5)]);
         let acc_bgl = gpu::bgl(device, "acc", &[gpu::ntex(0), gpu::ntex(1), gpu::ntex(2), gpu::ntex(3)]);

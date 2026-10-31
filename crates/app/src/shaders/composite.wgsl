@@ -71,6 +71,7 @@ fn ridged(p: vec3<f32>) -> f32 {
 }
 
 fn gen_eval(t: vec2<i32>, kind: u32, gp: vec4<f32>, gp2: vec4<f32>) -> f32 {
+    if (kind >= 10u) { return gen_weather(t, kind, gp, gp2); }  // gen_weather.wgsl
     let bk = textureLoad(bakes, t, 0);
     let ao = bk.r;
     let curv = bk.g;

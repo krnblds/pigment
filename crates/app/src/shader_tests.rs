@@ -24,7 +24,12 @@ shader_test!(viewport, "viewport.wgsl");
 shader_test!(env, "env.wgsl");
 shader_test!(mip, "mip.wgsl");
 shader_test!(texspace, "texspace.wgsl");
-shader_test!(composite, "composite.wgsl");
+#[test]
+fn composite() {
+    // the weathering generators live in their own file, appended at load
+    let src = [include_str!("shaders/composite.wgsl"), include_str!("shaders/gen_weather.wgsl")].concat();
+    check("composite.wgsl + gen_weather.wgsl", &src);
+}
 shader_test!(stamp, "stamp.wgsl");
 shader_test!(apply, "apply.wgsl");
 shader_test!(bake_ao, "bake_ao.wgsl");
