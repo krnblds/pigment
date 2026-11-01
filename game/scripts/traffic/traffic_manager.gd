@@ -116,7 +116,8 @@ func setup(m: Node3D, opts := {}) -> bool:
 		target = mini(target, max_count)
 	lib = VehicleLib.new()
 	lib.load_index()
-	print("traffic: %d vehicle models from %s" % [lib.models.size(), lib.source])
+	print("traffic: %d vehicle models from %s in %d ms (%s), variant materials %s" % [lib.models.size(), lib.source, lib.load_ms,
+		", ".join(lib.models.map(func(x): return "%s %d LODs %d variants" % [x.name, x.lods.size(), x.variants.size()])), JSON.stringify(lib.variant_paths)])
 	signals = Signals.new()
 	signals.name = "Signals"
 	add_child(signals)
@@ -294,7 +295,7 @@ func _place(c, l, s: float) -> void:
 	c.last_progress = 0.0
 	c.spawn_t = 0.0
 	c.mode = TrafficCar.KINEMATIC
-	c.set_variant(VehicleLib.pick_variant(c.model, rng))
+	c.set_variant(VehicleLib.pick_variant(c.model, rng, c.patrol))
 	c.set_braking(false, lib)
 	c.activate()
 	_enter_lane(c)
@@ -303,6 +304,7 @@ func _place(c, l, s: float) -> void:
 	active.append(c)
 	_occ_add(c)
 	stats.spawned += 1
+	c.show_bar(c.patrol)
 	if c.patrol:
 		c.set_lightbar(rng.randf() < 0.6, lib)
 
@@ -1000,7 +1002,7 @@ func _spawn_parked() -> void:
 	ray.exclude = [_hero_rid]
 	qp.exclude = [_hero_rid]
 	var placed := 0
-	var models: Array = lib.models.filter(func(x): return not x.patrol)
+	var models: Array = lib.models.filter(func(x): return x.has_civil())
 	if models.is_empty():
 		return
 	var limit := int(maxf(10.0, parked_per_100m * _road_cum[_road_cum.size() - 1] / 200.0))
@@ -1064,6 +1066,7 @@ func _spawn_parked() -> void:
 				add_child(car)
 				car.build(m, lib, 1000 + placed)
 				car.set_variant(VehicleLib.pick_variant(m, rng))
+				car.show_bar(false)
 				car.mode = TrafficCar.PARKED
 				car.freeze_mode = RigidBody3D.FREEZE_MODE_STATIC
 				car.activate()

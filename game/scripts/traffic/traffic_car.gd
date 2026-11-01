@@ -200,6 +200,13 @@ func set_braking(b: bool, lib) -> void:
 		tail.material_override = lib.brake_mat if b else lib.tail_mat
 
 
+## The add-on light bar only on patrols (civilian variants of a police model have none).
+func show_bar(on: bool) -> void:
+	if bar_red:
+		bar_red.visible = on
+		bar_blue.visible = on
+
+
 func set_lightbar(on: bool, lib) -> void:
 	lightbar_on = on
 	if bar_red == null:
