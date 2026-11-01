@@ -253,7 +253,7 @@ All of these are built only from design-system components. `no_raw_styles_outsid
   Plus the ignored `foliage_screenshots`.
 - **naga**: `shader_tests::foliage`.
 - **MCP**: the schema completeness and repo-script tests.
-- `cargo test --release -- --test-threads=2`: see the final report for the counts.
+- `cargo test --release -- --test-threads=2`: all green. app 84 passed (10 ignored), core 117 (1 ignored), pigment-mcp 4. `blender -b --factory-startup --python tools/test_blender_pigment.py` passes on 5.2.2.
 
 ## Reproduce
 
