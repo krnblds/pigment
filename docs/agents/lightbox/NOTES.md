@@ -1,5 +1,73 @@
 # Lightbox and showroom
 
+## Pigment viewport lightbox
+
+![Fleet bodies in the dark lightbox](pigment_fleet_dark.png)
+
+Two new lighting presets put the model in a seamless photo studio:
+
+- `lightbox`: a white cove with a big overhead softbox, a tall key and fill, and long low rim strips along both sides and across the back.
+- `lightbox_dark`: a black glossy cove lit only by strip lights. There are three overhead strips along the length, two rows down each side, vertical rims behind, and a dim key. This is the car-commercial look: clearcoat paint picks up long, clean reflection lines.
+
+### What it draws
+
+- **Environment** (`pigment_core::envmath`, `EnvImage::lightbox` / `lightbox_dark`): the presets are HDRI-like equirect images built from rectangular area lights (`area_light`: a flat rectangle with a soft rim and a slightly brighter centre) over a seamless floor, cove and ceiling gradient with no horizon line. This means reflections, the SH diffuse lighting and `export_lighting` .hdr files (for Blender) all see the same softboxes.
+- **Stage** (`pigment_core::stage`, `render/stage.rs`, `shaders/stage.wgsl`): a real mesh under the model, a revolved "infinity cove". A flat round floor curves up (with a wide fillet) into a round wall, so there is no seam from any orbit angle, including `render_turntable`. It is placed at the bottom of the model's bounds and scaled to its footprint (`StageLayout::from_bounds`). The floor is glossy and the walls are satin, so strip lights don't make hard arcs behind the model.
+- **Soft contact shadow, recomputed every frame:**
+  - The model is rendered orthographically from below and from above into two 256² depth maps, giving its lowest and highest surface over each floor point.
+  - `fs_shadow` marches 48 cosine-weighted rays per texel through those height maps. Each ray is weighted by the environment's brightness in its direction, so the softboxes cast the shadow.
+  - A second, short-range term adds contact occlusion: the dark line where the model meets the floor.
+- **Soft reflection:** the model is mirrored in the floor plane into a half-resolution target. The mirror pass shades it as seen from the mirrored eye and fades it with depth below the floor. The floor blurs this reflection by its roughness and blends it over the environment reflection with Fresnel.
+- **Look per preset** (`stage::look`): sweep albedo, roughness, f0, model-reflection strength and fade, shadow strength, and how strongly the sweep reflects the environment.
+- **Paint flakes:** the viewport now fades metallic flakes out once a 0.4 mm flake cell is smaller than a pixel (`fwidth`). Before, they aliased into salt noise on every car seen from more than about a metre away.
+
+### MCP
+
+| tool / arg | values |
+|---|---|
+| `render.lighting`, `render_turntable.lighting`, `export_lighting.lighting` | adds `lightbox`, `lightbox_dark` (names also accept `Lightbox (dark)`, `lightbox-dark`) |
+| `render.stage`, `render_turntable.stage` | `true` (default) / `false`: show or hide the cove floor, contact shadow and reflection; persists like `exposure` |
+
+```json
+{"tool": "render", "args": {"lighting": "lightbox_dark", "yaw": 38, "pitch": 11, "width": 800, "height": 500}}
+{"tool": "render_turntable", "args": {"lighting": "lightbox_dark", "frames": 8, "pitch": 12, "width": 400, "height": 260}}
+{"tool": "render", "args": {"lighting": "lightbox", "stage": false}}
+```
+
+The stage shows only in the Material view, and only when the model is loaded.
+
+### UI
+
+The Lighting panel and the command palette list the two presets ("Lightbox", "Lightbox (dark)", the dark one with the moon icon) alongside the other presets. When a lightbox is active, the Lighting panel shows a "Lightbox floor: contact shadow and reflection" toggle. The toggle uses only design-system widgets.
+
+### Proof
+
+The fleet body projects (`agent-fleet/scenes/vehicles/<id>/projects/<id>_body.pigment`) and four props from `agent-props/scenes/props/projects/` were rendered through `pigment-mcp --script`:
+
+- `pigment_fleet_light.png`, `pigment_fleet_dark.png`: all six bodies (yaw 38, pitch 11).
+- `pigment_turntable_dark.png`: `render_turntable`, 8 frames, `lightbox_dark`.
+- `pigment_props.png`: ramen cart, vending machine, data kiosk and scooter in both looks.
+
+The body projects hold only the body mesh, so the cars show without wheels (the wheels are a separate `<id>_wheel.pigment`).
+
+### Tests
+
+- `pigment-core`:
+  - `envmath::tests::lightbox_presets_are_strip_lit_studios`: the dark studio is black between its strips, the light one is a white cove, the side strips are long and thin, and the top is the brightest.
+  - `lighting_presets_resolve_and_differ`: name resolution.
+  - `stage::tests::*`: looks exist only for the lightbox presets, the layout sits under the bounds, and the sweep's winding faces inwards.
+- `pigment` (GPU):
+  - `render::stage::tests::gpu_occluders_and_shadow`: an off-centre torus fills the occluder maps, its hole stays empty, and the shadow is dark under the ring and lit in the corners.
+  - `automation::tests::lightbox_stage`: a bright cove, a contact shadow at the barrel's foot, `stage: false` changes the picture, the dark studio is black, and the turntable works.
+  - `render::stage::tests::{occluder_maps_measure_height_above_the_floor, mirror_reflects_in_the_floor}` and `shader_tests::stage`: naga validation.
+
+### Known limits
+
+- The shadow comes from height maps: the model is treated as solid between its lowest and highest surface over each floor point. Overhangs (like a cart roof) shadow as if they were boxes down to their lowest point, which is fine for soft studio light.
+- The planar reflection covers only the flat part of the floor. The fillet and walls reflect the environment only.
+- The model doesn't get shadow or bounce light from the stage, beyond what its own baked AO gives.
+- The stage and its passes run every frame while a lightbox preset is active: about 1-2 ms extra on an RTX 4070 Ti.
+
 ## Blender lightbox
 
 `tools/lightbox/lightbox_scene.py` is a headless Cycles studio for product shots of any glb in the repo: the six vehicles (with their liveries), props and town kit pieces. It works as a module (import it inside Blender) and as a CLI. `tools/lightbox/sheets.py` builds contact sheets with PIL. `tools/lightbox/make_hero_cars.py` rebuilds `docs/readme/hero_cars.png`.
