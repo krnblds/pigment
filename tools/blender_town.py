@@ -481,179 +481,15 @@ class Junction:
         arc = [C + Vector((math.cos(a0 + sw * i / m), math.sin(a0 + sw * i / m))) * rd for i in range(m + 1)]
         return [A] + arc + [B]
 
-    def build_mesh(self, name):
-        """bmesh in local coordinates; material index 0 road, 1 curb, 2 sidewalk, 3 paint.
-        Returns (mesh, parts) with parts = [{kind, verts}] for the Pigment sidecar."""
-        bm = bmesh.new()
-        parts = []
-
-        def face(vs, want, mat):
-            f = bm.faces.new(vs)
-            f.normal_update()
-            if f.normal.dot(want) < 0:
-                f.normal_flip()
-            f.material_index = mat
-            return f
-
-        up = Vector((0, 0, 1))
-        # asphalt: one polygon through every corner's curb line
-        ring = []
-        for c in self.corners:
-            ring += self.corner_line(c, 0.0)
-        clean = []
-        for p in ring:
-            if not clean or (p - clean[-1]).length > 1e-3:
-                clean.append(p)
-        if (clean[0] - clean[-1]).length < 1e-3:
-            clean.pop()
-        rv = [bm.verts.new((p.x, p.y, ROAD_Z)) for p in clean]
-        f = face(rv, up, 0)
-        parts.append({"kind": "road", "verts": rv})
-        bmesh.ops.triangulate(bm, faces=[f], quad_method="BEAUTY", ngon_method="EAR_CLIP")
-
-        for c in self.corners:
-            l0 = self.corner_line(c, 0.0)
-            l1 = self.corner_line(c, CURB_W)
-            l2 = self.corner_line(c, WALK_W)
-            n = len(l0)
-            # outward (towards the sidewalk) horizontal direction per point
-            outw = [(l2[i] - l0[i]).normalized().to_3d() for i in range(n)]
-            cf_lo = [bm.verts.new((p.x, p.y, ROAD_Z - 0.01)) for p in l0]
-            cf_hi = [bm.verts.new((p.x, p.y, CURB_Z)) for p in l0]
-            ct_out = [bm.verts.new((p.x, p.y, CURB_Z)) for p in l1]
-            cb_lo = [bm.verts.new((p.x, p.y, WALK_Z - 0.005)) for p in l1]
-            sw_in = [bm.verts.new((p.x, p.y, WALK_Z)) for p in l1]
-            sw_out = [bm.verts.new((p.x, p.y, WALK_Z)) for p in l2]
-            sk_lo = [bm.verts.new((p.x, p.y, -1.0)) for p in l2]
-            for i in range(n - 1):
-                face([cf_lo[i], cf_lo[i + 1], cf_hi[i + 1], cf_hi[i]], -outw[i], 1)
-                face([cf_hi[i], cf_hi[i + 1], ct_out[i + 1], ct_out[i]], up, 1)
-                face([ct_out[i], ct_out[i + 1], cb_lo[i + 1], cb_lo[i]], outw[i], 1)
-                face([sw_in[i], sw_in[i + 1], sw_out[i + 1], sw_out[i]], up, 2)
-                face([sw_out[i], sw_out[i + 1], sk_lo[i + 1], sk_lo[i]], outw[i], 2)
-            parts.append({"kind": "curb", "verts": cf_lo + cf_hi + ct_out + cb_lo})
-            parts.append({"kind": "walk", "verts": sw_in + sw_out + sk_lo})
-        # zebra crossings across each arm mouth
-        for i, d in enumerate(self.dirs):
-            nrm = rot90(d)
-            t0, t1 = self.L[i] - 4.2, self.L[i] - 1.2
-            for k in range(-3, 4):
-                y0, y1 = k * 1.0 - 0.25, k * 1.0 + 0.25
-                q = [d * t0 + nrm * y0, d * t1 + nrm * y0, d * t1 + nrm * y1, d * t0 + nrm * y1]
-                vs = [bm.verts.new((p.x, p.y, ROAD_Z + 0.004)) for p in q]
-                face(vs, up, 3)
-                parts.append({"kind": "paint", "verts": vs})
-        # stop lines
-        for i, d in enumerate(self.dirs):
-            nrm = rot90(d)
-            t0, t1 = self.L[i] - 5.0, self.L[i] - 4.6
-            q = [d * t0 + nrm * -3.8, d * t1 + nrm * -3.8, d * t1 + nrm * 0.0, d * t0 + nrm * 0.0]
-            vs = [bm.verts.new((p.x, p.y, ROAD_Z + 0.004)) for p in q]
-            face(vs, up, 3)
-            parts.append({"kind": "paint", "verts": vs})
-
-        self._uv(bm)
-        me = bpy.data.meshes.get(name) or bpy.data.meshes.new(name)
-        info = []
-        for p in parts:
-            co = [v.co.copy() for v in p["verts"]]
-            mn = Vector((min(c.x for c in co), min(c.y for c in co), min(c.z for c in co)))
-            mx = Vector((max(c.x for c in co), max(c.y for c in co), max(c.z for c in co)))
-            ctr, size = (mn + mx) / 2, mx - mn
-            # glTF is Y-up: (x, y, z) -> (x, z, -y)
-            info.append({"kind": p["kind"], "center": [ctr.x, ctr.z, -ctr.y], "size": [size.x, size.z, size.y]})
-        bm.to_mesh(me)
-        bm.free()
-        return me, info
-
-    def _uv(self, bm):
-        """Top faces: planar, fitted into u,v in [0, 0.86].  Curb faces: strips
-        packed in u > 0.88.  Hidden faces (skirts, curb backs) share a corner."""
-        uv = bm.loops.layers.uv.verify()
-        top = [f for f in bm.faces if f.normal.z > 0.7]
-        xs = [v.co.x for f in top for v in f.verts]
-        ys = [v.co.y for f in top for v in f.verts]
-        x0, y0 = min(xs), min(ys)
-        k = 0.86 / max(max(xs) - x0, max(ys) - y0)
-        self.uv_scale = k
-        for f in top:
-            for lp in f.loops:
-                lp[uv].uv = ((lp.vert.co.x - x0) * k, (lp.vert.co.y - y0) * k)
-        u, v, col_w = 0.885, 0.005, 0.18 * k + 0.004
-        for f in bm.faces:
-            if f.normal.z > 0.7:
-                continue
-            zs = [lp.vert.co.z for lp in f.loops]
-            if f.material_index == 1 and min(zs) < ROAD_Z and max(zs) > WALK_Z:     # visible curb face
-                lp = list(f.loops)
-                p2 = sorted({(round(l.vert.co.x, 5), round(l.vert.co.y, 5)) for l in lp})
-                pa = Vector(p2[0])
-                w = (Vector(p2[-1]) - pa).length * k
-                if v + w > 0.995:
-                    u += col_w
-                    v = 0.005
-                for l in lp:
-                    along = 0.0 if (l.vert.co.to_2d() - pa).length < 1e-3 else w
-                    hz = (l.vert.co.z - (ROAD_Z - 0.01)) * k
-                    l[uv].uv = (min(0.999, u + hz), v + along)
-                v += w
-            else:
-                for l in f.loops:
-                    l[uv].uv = (0.998, 0.998)
-
-# ---------------------------------------------------------------- street run
+# ---------------------------------------------------------------- roads
 
 
-def dense_street(kit):
-    name = "street_dense"
-    if name in bpy.data.meshes:
-        return bpy.data.meshes[name]
-    me = kit.data.copy()
-    me.name = name
-    bm = bmesh.new()
-    bm.from_mesh(me)
-    for x in range(-9, 10):
-        geom = bm.verts[:] + bm.edges[:] + bm.faces[:]
-        bmesh.ops.bisect_plane(bm, geom=geom, plane_co=(x, 0, 0), plane_no=(1, 0, 0))
-    bm.to_mesh(me)
-    bm.free()
-    return me
-
-
-def sweep_street(kit_me, path, name):
-    """Tile the street piece along the path: x -> arc length, y -> path normal,
-    z stays vertical.  Tiles are stretched evenly so they end exactly at the
-    path ends."""
-    nv = len(kit_me.vertices)
-    co = np.empty(nv * 3)
-    kit_me.vertices.foreach_get("co", co)
-    co = co.reshape(-1, 3)
-    faces = [tuple(p.vertices) for p in kit_me.polygons]
-    uvl = kit_me.uv_layers[0].data
-    uv = np.empty(len(uvl) * 2)
-    uvl.foreach_get("uv", uv)
-    n = max(1, int(round(path.length / TILE)))
-    sx = path.length / (n * TILE)
-    verts, allf = [], []
-    for i in range(n):
-        s = (i * TILE + co[:, 0] + TILE / 2) * sx
-        pos, t = path.at_many(s)
-        nrm = np.stack([-t[:, 1], t[:, 0]], axis=1)
-        p = np.empty_like(co)
-        p[:, 0] = pos[:, 0] + nrm[:, 0] * co[:, 1]
-        p[:, 1] = pos[:, 1] + nrm[:, 1] * co[:, 1]
-        p[:, 2] = pos[:, 2] + co[:, 2]
-        verts.append(p)
-        off = i * nv
-        allf += [tuple(v + off for v in f) for f in faces]
-    me = bpy.data.meshes.new(name)
-    me.from_pydata(np.concatenate(verts).tolist(), [], allf)
-    me.uv_layers.new(name=kit_me.uv_layers[0].name)
-    me.uv_layers[0].data.foreach_set("uv", np.tile(uv, n))
-    for m in kit_me.materials:
-        me.materials.append(m)
-    me.update()
-    return me, sx
+def _roads_api(root):
+    """tools/town_roads.py: spline road meshes, shared materials, decals."""
+    src = os.path.join(root, "tools", "town_roads.py")
+    ns = {"__name__": "town_roads", "__file__": src}
+    exec(compile(open(src, encoding="utf-8").read(), src, "exec"), ns)
+    return ns
 
 # ---------------------------------------------------------------- variants
 
@@ -698,12 +534,6 @@ def variant_materials(root, asset, kit_obj):
     return mats
 
 
-def junction_material(root, name, fallback):
-    folder = os.path.join(root, "scenes", "town", "textures", name)
-    if os.path.isfile(os.path.join(folder, name + "_BaseColor.png")):
-        return folder
-    return None
-
 # ---------------------------------------------------------------- build
 
 
@@ -720,7 +550,7 @@ def build(root=None, export_junctions=False, quick=False):
         sc.collection.children.link(coll)
     clear(coll)
     K = {n: bpy.data.objects["KIT_" + n] for n in
-         ["building_a", "building_b", "building_c", "street_segment", "street_lamp", "power_pole", "overhead_sign"]}
+         ["building_a", "building_b", "building_c", "street_lamp", "power_pole", "overhead_sign"]}
 
     def put(data, loc, rz=0.0, name="obj", parent=None):
         o = bpy.data.objects.new(name, data)
@@ -742,29 +572,32 @@ def build(root=None, export_junctions=False, quick=False):
         "wire": material("TownWire", flat_nodes((0.01, 0.01, 0.01), 0.5)),
     }
 
+    # ---- roads: shared tileable Pigment materials (scenes/town/textures/roads/)
+    R = _roads_api(root)
+    RT = R["RoadTextures"](root)
+    M["concrete_fallback"] = M["concrete"]
+    road_mats = R["road_materials"](RT, {"asphalt": M["asphalt"], "curb": M["curb"], "walk": M["walk"], "concrete": M["concrete"]})
+    if RT.ok:
+        M["wall"] = road_mats[3]         # Pigment concrete tile, world box mapped
+    else:
+        print("no road textures in scenes/town/textures/roads/ (python tools/road_textures.py --run): flat fallback materials")
+    if export_junctions:
+        print("--export-junctions is gone: junctions use the shared road materials now (no per-junction bake)")
+
     # ---- junctions
     J = {name: Junction(name, pos, z, arms) for name, (pos, z, arms) in NODES.items()}
     jinfo = {}
     road_meshes = []
-    apply = None
     for name, j in J.items():
-        mname = "junction_" + name.lower()
-        me, parts = j.build_mesh(mname)
-        for m in (M["asphalt"], M["curb"], M["walk"], M["paint"]):
-            me.materials.append(m)
+        me = R["build_junction"](j, "junction_" + name.lower(), RT, road_mats, j.corner_line)
         o = put(me, (j.pos.x, j.pos.y, j.z), name="Junction_" + name)
-        if export_junctions:
-            _export_junction(root, o, mname, parts)
-        folder = junction_material(root, mname, None)
-        if folder:
-            apply = apply or _pigment_api(root)
-            apply(o, folder, mname)
         road_meshes.append(o)
         jinfo[name] = {"pos": (j.pos.x, j.pos.y, j.z), "arms": j.arms, "L": j.L,
                        "kind": {4: "X", 3: ("T" if any(abs(c["theta"] - 180) < 4 for c in j.corners) else "Y")}.get(len(j.arms), "?")}
 
     # ---- edges
     runs = []
+    run_ends = []
     for (na, ia), b, wps in EDGES:
         ja = J[na]
         A, da = ja.arm_end(ia), ja.dirs[ia]
@@ -784,15 +617,26 @@ def build(root=None, export_junctions=False, quick=False):
         zz = np.interp(np.cumsum(seg), s, z)
         path = Path(pts, zz)
         runs.append(path)
+        run_ends.append((True, isinstance(b[0], str)))
         grade = float(np.max(np.abs(np.diff(zz)) / np.maximum(1e-6, np.diff(np.cumsum(seg)))))
         print(f"junction arms {na}: {[round(x, 1) for x in ja.L]}") if False else None
         print(f"edge {na}.{ia} -> {b[0] if isinstance(b[0], str) else 'free'}: {L:.0f} m  grade {grade * 100:.1f}%  min radius {path.min_radius():.1f} m")
 
-    street = dense_street(K["street_segment"])
     for i, path in enumerate(runs):
-        me, sx = sweep_street(street, path, f"RoadRun{i}")
+        me = R["build_run"](path, f"RoadRun{i}", RT, road_mats)
         o = put(me, (0, 0, 0), name=f"RoadRun{i}")
         road_meshes.append(o)
+
+    # ---- road decals from the Pigment atlas: markings, cracks, patches, oil, covers
+    if RT.ok and RT.atlas_ok:
+        drng = random.Random(R["SEED"])
+        db = R["DecalBuilder"](RT)
+        for i, path in enumerate(runs):
+            R["scatter_run_decals"](db, path, i, drng, run_ends[i])
+        for name, j in J.items():
+            R["junction_decals"](db, j, drng)
+        print("road decals", dict(sorted(db.count.items())))
+        put(db.finish("RoadDecals", R["decal_atlas_material"](RT)), (0, 0, 0), name="RoadDecals")
 
     # ---- road samples for the level field
     class Road:
@@ -1543,26 +1387,6 @@ def build(root=None, export_junctions=False, quick=False):
     print(f"junctions {len(J)}  runs {len(runs)}  walls {len(walls)}  stairs {len(stairs)}  buildings {n_build}  alleys {n_alley}  lamps {n_lamp}  decals {n_dec}")
     return {"junctions": jinfo, "runs": runs, "walls": walls, "stairs": stairs, "level": level, "J": J,
             "buildings": n_build, "terrain": "TownTerrain"}
-
-
-def _export_junction(root, obj, name, parts):
-    """Write assets/town/<name>.glb (junction-local) and its part sidecar."""
-    out = os.path.join(root, "assets", "town", name + ".glb")
-    tmp = bpy.data.objects.new(name, obj.data)
-    bpy.context.scene.collection.objects.link(tmp)
-    for o in list(bpy.context.selected_objects):
-        o.select_set(False)
-    tmp.select_set(True)
-    bpy.context.view_layer.objects.active = tmp
-    kw = dict(filepath=out, use_selection=True, export_format="GLB", export_yup=True, export_apply=False)
-    try:
-        bpy.ops.export_scene.gltf(export_materials="NONE", **kw)
-    except TypeError:
-        bpy.ops.export_scene.gltf(**kw)
-    bpy.data.objects.remove(tmp)
-    with open(os.path.join(root, "assets", "town", name + ".parts.json"), "w", encoding="utf8") as f:
-        json.dump({"asset": name, "parts": parts}, f, indent=1)
-    print("exported", out)
 
 
 if not globals().get("TOWN_NO_AUTOBUILD"):
