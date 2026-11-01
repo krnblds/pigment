@@ -476,11 +476,25 @@ class Kit:
             b.cyl((0, 0, top), (0, 0, top + (top * 0.18 if crown == "spire" else 30)), 1.6, 1, seg=10, r2=0.25)
             b.box((0, 0, top + 2), (w * 0.5, d * 0.5, 4), 1)
         if crown in ("billboard", "hoshikawa", "meridian"):
-            # two billboard faces near the top (story decals)
+            # two billboard faces near the top (story decals), each on a real
+            # billboard: a cabinet bolted to the facade and a frame round the face
             bw = min(w, d) * 0.9
             bh = bw * 0.5
             zc = top - bh / 2 - 2.0 if crown == "billboard" else top - bh / 2 - 6.0
+
+            def billboard_cabinet(along_x, sgn, half, span):
+                # along_x: the face runs along x (on a +-y facade at distance `half`)
+                for c, sz in (((0, sgn * (half + 0.17), zc), (span + 0.3, 0.34, bh + 0.3)),          # cabinet
+                              ((0, sgn * (half + 0.38), zc + bh / 2 + 0.07), (span + 0.3, 0.08, 0.14)),   # frame top
+                              ((0, sgn * (half + 0.38), zc - bh / 2 - 0.07), (span + 0.3, 0.08, 0.14)),   # frame bottom
+                              ((-(span / 2 + 0.08), sgn * (half + 0.38), zc), (0.14, 0.08, bh)),           # frame sides
+                              (((span / 2 + 0.08), sgn * (half + 0.38), zc), (0.14, 0.08, bh))):
+                    if along_x:
+                        b.box(c, sz, 1, bottom=True)
+                    else:
+                        b.box((c[1], c[0], c[2]), (sz[1], sz[0], sz[2]), 1, bottom=True)
             for sgn in (1, -1):
+                billboard_cabinet(True, sgn, d / 2, bw)
                 y = sgn * (d / 2 + 0.35)
                 pts = [(-bw / 2, y, zc - bh / 2), (bw / 2, y, zc - bh / 2), (bw / 2, y, zc + bh / 2), (-bw / 2, y, zc + bh / 2)]
                 if sgn > 0:
@@ -488,6 +502,7 @@ class Kit:
                 b.quad(pts, 3, [(0, 0), (1, 0), (1, 1), (0, 1)])
             if crown in ("hoshikawa", "meridian"):
                 for sgn in (1, -1):
+                    billboard_cabinet(False, sgn, w / 2, d * 0.9)
                     x = sgn * (w / 2 + 0.35)
                     bwy = d * 0.9
                     pts = [(x, -bwy / 2, zc - bh / 2), (x, bwy / 2, zc - bh / 2), (x, bwy / 2, zc + bh / 2), (x, -bwy / 2, zc + bh / 2)]

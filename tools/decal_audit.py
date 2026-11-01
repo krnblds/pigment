@@ -114,6 +114,55 @@ class Mesh:
         self.hi = np.maximum(np.maximum(a, b), c)
         self.parts = parts
         self.ground = float(self.P[:, 1].min())
+        self.tri_part = self._parts()
+        if self.tri_part.max() + 1 != len(parts):
+            raise SystemExit(f"{glb}: {self.tri_part.max() + 1} parts here vs {len(parts)} from Pigment")
+
+    def _parts(self):
+        """Pigment's parts (pigment_core::Mesh::parts): triangles join when they share a
+        vertex index, or a welded edge used by exactly two triangles; ids by first appearance."""
+        n = len(self.I)
+        parent = np.arange(n)
+
+        def find(x):
+            r = x
+            while parent[r] != r:
+                r = parent[r]
+            while parent[x] != r:
+                parent[x], x = r, parent[x]
+            return r
+
+        def union(a, b):
+            ra, rb = find(a), find(b)
+            if ra != rb:
+                parent[max(ra, rb)] = min(ra, rb)
+        first = {}
+        for t, tri in enumerate(self.I.tolist()):
+            for v in tri:
+                o = first.setdefault(v, t)
+                if o != t:
+                    union(o, t)
+        lo, hi = self.P.min(0), self.P.max(0)
+        c = (lo + hi) / 2
+        r = float(np.linalg.norm(self.P - c, axis=1).max())
+        q = 1e5 / max(r, 1e-6)
+        keys = np.round(self.P.astype(np.float32).astype(np.float64) * q).astype(np.int64)
+        _, weld = np.unique(keys, axis=0, return_inverse=True)
+        weld = weld.reshape(-1)
+        W = weld[self.I]
+        edges = {}
+        for t in range(n):
+            for k in range(3):
+                a, b = W[t, k], W[t, (k + 1) % 3]
+                if a != b:
+                    edges.setdefault((min(a, b), max(a, b)), []).append(t)
+        for users in edges.values():
+            if len(users) == 2:
+                union(users[0], users[1])
+        ids, out = {}, np.empty(n, np.int64)
+        for t in range(n):
+            out[t] = ids.setdefault(find(t), len(ids))
+        return out
 
     def raycast(self, o, d, tmax, cand):
         """Nearest hit of rays (o [k,3], d [3]) against triangles `cand`: (t [k], tri [k]); t=inf if none."""
@@ -132,6 +181,9 @@ class Mesh:
         t = np.where(hit, t, np.inf)
         j = np.argmin(t, axis=1)
         return t[np.arange(len(o)), j], cand[j]
+
+    def part(self, pid):
+        return next(p for p in self.parts if p["id"] == pid)
 
     def part_at(self, q, tol=0.012):
         """Smallest part whose bounds contain point q."""
@@ -358,41 +410,43 @@ def load_project(asset):
 
 # ------------------------------------------------------------------ checks
 
-def check_surface(mesh, c, n, r, u, w, h):
-    """Every grid point of the decal must sit on a face coplanar with it, with nothing in front."""
+def check_surface(mesh, c, n, r, u, w, h, curved=False):
+    """Rays at a grid over the decal must all land on the host part (the part
+    under its centre), on a face coplanar with the decal (`curved`: any face of
+    the host that still faces the decal, for stickers wrapped on poles and
+    tanks), with nothing in front. Returns (host part id, problems)."""
     gx, gy = GRID
     xs = (np.linspace(-0.5, 0.5, gx) * (w - 0.03)) if w > 0.06 else np.zeros(gx)
     ys = (np.linspace(-0.5, 0.5, gy) * (h - 0.03)) if h > 0.06 else np.zeros(gy)
-    pts = np.array([c + r * x + u * y for y in ys for x in xs])
+    pts = np.array([c] + [c + r * x + u * y for y in ys for x in xs])
     reach = 0.6
-    lo = pts.min(0) - 0.01 - np.abs(n) * 0.05
-    hi = pts.max(0) + 0.01 + np.abs(n) * (reach + 0.01)
-    lo = np.minimum(lo, pts.min(0) + n * reach)
-    hi = np.maximum(hi, pts.max(0) - n * 0.05)
-    lo, hi = np.minimum(lo, hi), np.maximum(lo, hi)
+    ends = np.concatenate([pts + n * reach, pts - n * 0.3])
+    lo, hi = ends.min(0) - 0.01, ends.max(0) + 0.01
     cand = np.where(np.all(mesh.hi >= lo, axis=1) & np.all(mesh.lo <= hi, axis=1) & (mesh.area2 > 1e-10))[0]
     if len(cand) == 0:
-        return [("off the mesh", None, pts[0])]
-    t, tri = mesh.raycast(pts + n * reach, -n, reach + 0.05, cand)
+        return None, [("off the mesh", None, pts[0])]
+    t, tri = mesh.raycast(pts + n * reach, -n, reach + 0.3, cand)
+    if not np.isfinite(t[0]):
+        return None, [("no surface under the decal's centre", None, pts[0])]
+    host = int(mesh.tri_part[tri[0]])
     bad = []
-    for k in range(len(pts)):
+    for k in range(1, len(pts)):
         if not np.isfinite(t[k]):
             bad.append(("over an opening or past an edge", None, pts[k]))
             continue
         q = pts[k] + n * (reach - t[k])
         off = reach - t[k]                      # >0: hit in front of the decal plane
-        if off > 0.004:
-            bad.append(("covered by", mesh.part_at(q), q))
-        elif off < -0.004:
-            bad.append(("over a recess / opening at", mesh.part_at(q), q))
-        elif abs(np.dot(mesh.N[tri[k]], n)) < 0.9:
-            bad.append(("over an edge of", mesh.part_at(q), q))
-    return bad
-
-
-def host_part(mesh, c, n):
-    """The part under the decal's centre (smallest whose bounds hold the surface point)."""
-    return mesh.part_at(c, tol=0.006)
+        pid = int(mesh.tri_part[tri[k]])
+        facing = float(np.dot(mesh.N[tri[k]], n))
+        if pid != host:
+            what = "covered by" if off > 0.004 else "over a recess / opening at" if off < -0.004 else "crosses onto"
+            bad.append((what, mesh.part(pid), q))
+        elif curved:
+            if abs(facing) < 0.2 or abs(off) > 0.15:
+                bad.append(("wraps off the face of", mesh.part(pid), q))
+        elif abs(off) > 0.004 or abs(facing) < 0.9:
+            bad.append(("over a recess or edge of", mesh.part(pid), q))
+    return host, bad
 
 
 def audit_asset(asset, report):
@@ -428,10 +482,11 @@ def audit_asset(asset, report):
         bottom = float(c[1] - abs(u[1]) * h / 2 - abs(rr[1]) * w / 2 - mesh.ground)
         top = float(c[1] + abs(u[1]) * h / 2 + abs(rr[1]) * w / 2 - mesh.ground)
         mid = float(c[1] - mesh.ground)
-        host = host_part(mesh, c, n)
-        entry.update(center=[round(float(x), 3) for x in c], size=[round(w, 3), round(h, 3)], host=host["id"] if host else None,
+        hid, problems = check_surface(mesh, c, n, rr, u, w, h, curved=asset not in TOWN)
+        host = mesh.part(hid) if hid is not None else None
+        entry.update(center=[round(float(x), 3) for x in c], size=[round(w, 3), round(h, 3)], host=hid,
                      band=[round(bottom, 2), round(top, 2)])
-        for why, p, q in check_surface(mesh, c, n, rr, u, w, h)[:3]:
+        for why, p, q in problems[:3]:
             v.append(f"{why} {describe(p, parts) if p else ''} at ({q[0]:.2f}, {q[1]:.2f}, {q[2]:.2f})".replace("  ", " "))
         story = Path(args["image"]).parent.name == "story" or Path(args["image"]).stem.startswith("logo")
         if story and host is not None:
