@@ -313,12 +313,19 @@ def render_live(path):
     cam = bpy.data.objects.new("LiveCam", bpy.data.cameras.new("LiveCam"))
     sc.collection.objects.link(cam)
     d = lo.dimensions
-    cam.location = (lo.location.x + d.x * 0.9, lo.location.y + d.y * 2.6 + 4, d.z * 0.55)
+    # the building faces -Y (rotated 180 like the street row): look at its front
+    cam.location = (lo.location.x - d.x * 0.6, lo.location.y - d.z * 1.05, d.z * 0.42)
     look = lo.location.copy()
     look.z = d.z * 0.45
     cam.rotation_euler = (look - cam.location).to_track_quat("-Z", "Y").to_euler()
-    cam.data.lens = 28
+    cam.data.lens = 32
     sc.camera = cam
+    fill = bpy.data.objects.new("LiveFill", bpy.data.lights.new("LiveFill", "AREA"))
+    fill.data.energy = 25000
+    fill.data.size = 12
+    fill.location = (lo.location.x + d.x, lo.location.y - d.z * 0.8, d.z * 0.8)
+    fill.rotation_euler = (look - fill.location).to_track_quat("-Z", "Y").to_euler()
+    sc.collection.objects.link(fill)
     sc.render.resolution_x, sc.render.resolution_y = 480, 640
     sc.render.filepath = path
     hidden = [o for o in sc.objects if o.type == "MESH" and o != lo and o.name != "Ground" and not o.hide_render]
@@ -329,6 +336,7 @@ def render_live(path):
         o.hide_render = False
     sc.camera, sc.render.resolution_x, sc.render.resolution_y, sc.render.filepath = keep
     bpy.data.objects.remove(cam, do_unlink=True)
+    bpy.data.objects.remove(fill, do_unlink=True)
 
 
 def setup_render(samples):
