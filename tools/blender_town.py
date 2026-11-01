@@ -1539,7 +1539,7 @@ def _export_junction(root, obj, name, parts):
     out = os.path.join(root, "assets", "town", name + ".glb")
     tmp = bpy.data.objects.new(name, obj.data)
     bpy.context.scene.collection.objects.link(tmp)
-    for o in bpy.context.view_layer.objects:
+    for o in list(bpy.context.selected_objects):
         o.select_set(False)
     tmp.select_set(True)
     bpy.context.view_layer.objects.active = tmp
