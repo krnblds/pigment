@@ -351,8 +351,8 @@ pub fn segmented<T: PartialEq + Copy>(ui: &mut Ui, value: &mut T, options: &[(T,
     let mut changed = false;
     let frame = egui::Frame::new().fill(p.well).corner_radius(cr(radius::MD)).inner_margin(egui::Margin::same(2)).stroke(Stroke::new(1.0, p.border));
     frame.show(ui, |ui| {
-        ui.spacing_mut().item_spacing.x = space::XXS;
-        ui.horizontal(|ui| {
+        ui.spacing_mut().item_spacing = vec2(space::XXS, space::XXS);
+        ui.horizontal_wrapped(|ui| {
             for (v, ic, label) in options {
                 let on = *value == *v;
                 let g = ui.painter().layout_no_wrap(label.to_string(), if on { fonts::semibold(font::SMALL) } else { fonts::regular(font::SMALL) }, p.text);
@@ -426,14 +426,14 @@ pub fn slider_row(ui: &mut Ui, label: &str, v: &mut f32, range: std::ops::RangeI
 pub fn slider_row_ex(ui: &mut Ui, label: &str, v: &mut f32, range: std::ops::RangeInclusive<f32>, unit: Unit, log: bool, tip: Option<&str>) -> Response {
     let p = pal(ui);
     ui.horizontal(|ui| {
-        let lw = 96.0;
+        let lw = (ui.available_width() * 0.32).clamp(48.0, 96.0);
         let (lr, lresp) = ui.allocate_exact_size(vec2(lw, size::CONTROL_H_SM), Sense::hover());
         ui.painter().text(pos2(lr.left(), lr.center().y), Align2::LEFT_CENTER, label, fonts::regular(font::SMALL), p.text_secondary);
         if let Some(t) = tip {
             lresp.on_hover_ui(|ui| tooltip_body(ui, label, Some(t), None));
         }
         let field_w = 58.0;
-        let sw = (ui.available_width() - field_w - space::SM).max(60.0);
+        let sw = (ui.available_width() - field_w - ui.spacing().item_spacing.x * 2.0 - space::XS).max(40.0);
         ui.spacing_mut().slider_width = sw;
         let mut r = ui.add(egui::Slider::new(v, range.clone()).show_value(false).logarithmic(log));
         let dv = match unit {
@@ -619,6 +619,7 @@ pub fn search_field(ui: &mut Ui, query: &mut String, hint_text: &str) -> Respons
 
 /// Property inspector: label column + control column.
 pub fn prop_grid<R>(ui: &mut Ui, id: &str, add: impl FnOnce(&mut Ui) -> R) -> R {
+    ui.spacing_mut().slider_width = (ui.available_width() - 80.0 - space::LG - 64.0).clamp(60.0, 220.0);
     egui::Grid::new(id).num_columns(2).spacing([space::LG, space::SM]).min_col_width(80.0).show(ui, add).inner
 }
 
@@ -633,8 +634,14 @@ pub fn prop_label(ui: &mut Ui, label: &str, tip: Option<&str>) -> Response {
 
 /// An asset tile: thumbnail (texture or a painter fallback), title, subtitle.
 pub fn asset_tile(ui: &mut Ui, w: f32, thumb: Option<egui::TextureId>, fallback: impl FnOnce(&egui::Painter, Rect), title: &str, subtitle: &str, selected: bool) -> Response {
+    asset_tile_ex(ui, w, w - space::XS * 2.0, thumb, fallback, title, subtitle, selected)
+}
+
+/// `asset_tile` with a thumbnail `img_h` points tall (wide previews), the image cropped to fit.
+#[allow(clippy::too_many_arguments)]
+pub fn asset_tile_ex(ui: &mut Ui, w: f32, img_h: f32, thumb: Option<egui::TextureId>, fallback: impl FnOnce(&egui::Painter, Rect), title: &str, subtitle: &str, selected: bool) -> Response {
     let p = pal(ui);
-    let h = w + 34.0;
+    let h = img_h + space::XS * 2.0 + 34.0;
     let (rect, resp) = ui.allocate_exact_size(vec2(w, h), Sense::click());
     if !ui.is_rect_visible(rect) {
         return resp;
@@ -642,10 +649,12 @@ pub fn asset_tile(ui: &mut Ui, w: f32, thumb: Option<egui::TextureId>, fallback:
     let hov = resp.hovered();
     let bg = if selected { p.accent_subtle } else if hov { p.surface_hover } else { p.surface_raised };
     ui.painter().rect_filled(rect, cr(radius::LG), bg);
-    let img = Rect::from_min_size(rect.min + vec2(space::XS, space::XS), vec2(w - space::XS * 2.0, w - space::XS * 2.0));
+    let img = Rect::from_min_size(rect.min + vec2(space::XS, space::XS), vec2(w - space::XS * 2.0, img_h));
     match thumb {
         Some(t) => {
-            ui.painter().image(t, img, Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)), Color32::WHITE);
+            let a = img.height() / img.width();
+            let uv = if a < 1.0 { Rect::from_min_max(pos2(0.0, 0.5 - a / 2.0), pos2(1.0, 0.5 + a / 2.0)) } else { Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)) };
+            ui.painter().image(t, img, uv, Color32::WHITE);
         }
         None => fallback(ui.painter(), img),
     }

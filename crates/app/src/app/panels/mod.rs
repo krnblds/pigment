@@ -51,6 +51,7 @@ impl Panels {
         Panels { map: list.into_iter().map(|p| (p.id(), p)).collect() }
     }
 
+    #[cfg_attr(not(test), allow(dead_code))]
     pub fn ids(&self) -> Vec<PanelId> {
         self.map.keys().copied().collect()
     }

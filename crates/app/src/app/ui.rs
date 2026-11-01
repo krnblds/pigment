@@ -320,7 +320,7 @@ impl PigmentApp {
         self.status = None;
         self.run_pending(rs, p);
         if let Some((msg, true)) = self.status.clone() {
-            let (what, e) = msg.split_once(": ").unwrap_or(("Couldn't open that", &msg));
+            let (what, e) = msg.split_once(": ").unwrap_or(("Couldn't open the model", &msg));
             self.notify_error(what, e);
             return;
         }
@@ -444,7 +444,7 @@ impl PigmentApp {
             ui.separator();
             let compact = |ui: &mut egui::Ui, label: &str, v: &mut f32, r: std::ops::RangeInclusive<f32>, unit: ds::Unit, log: bool, tip: &str| {
                 ui.scope(|ui| {
-                    ui.set_width(250.0);
+                    ui.set_width(205.0);
                     ds::slider_row_ex(ui, label, v, r, unit, log, Some(tip));
                 });
             };
@@ -1170,7 +1170,7 @@ impl PigmentApp {
         let size = [viewport_px.x as u32, viewport_px.y as u32];
         if let Some(tex) = self.viewport.render(rs, size, &self.camera, &self.view, self.mesh_gpu.as_ref(), &self.env, &self.ts) {
             let uv = Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0));
-            ui.painter().image(tex, rect, uv, egui::Color32::WHITE);
+            ui.painter().image(tex, rect, uv, ds::IMAGE_TINT);
         }
         self.cursor_overlay(ui, rect, alt, tool);
         self.viewport_overlays(ui, rect, rs);

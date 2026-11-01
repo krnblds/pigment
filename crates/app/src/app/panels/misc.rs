@@ -343,8 +343,10 @@ pub fn export_body(app: &mut PigmentApp, ui: &mut egui::Ui, rs: &RenderState, co
             ui.painter().rect(r, egui::CornerRadius::same(ds::radius::LG), bg, egui::Stroke::new(if on { 1.5 } else { 1.0 }, if on { p.accent } else { p.border }), egui::StrokeKind::Inside);
             let ic = match t.id {
                 "blender" => Icon::Send,
-                "gltf" => Icon::Cube,
-                _ => Icon::Play,
+                "unreal" => Icon::Play,
+                "unity" => Icon::Cube,
+                "godot" => Icon::Gear,
+                _ => Icon::Image,
             };
             ic.paint(ui.painter(), egui::Rect::from_center_size(r.center() - egui::vec2(0.0, 10.0), egui::vec2(20.0, 20.0)), if on { p.accent } else { p.text_secondary });
             ui.painter().text(r.center() + egui::vec2(0.0, 16.0), egui::Align2::CENTER_CENTER, t.label, ds::fonts::semibold(font::SMALL), p.text);

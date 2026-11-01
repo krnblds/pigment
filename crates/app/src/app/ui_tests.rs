@@ -221,6 +221,8 @@ fn simple_advanced_toggle() {
 fn every_panel_renders_in_isolation() {
     let Some(mut h) = harness() else { return };
     settle(&mut h);
+    let registered = h.app.ui.panels.as_ref().unwrap().ids();
+    assert_eq!(registered, PanelId::ALL.to_vec(), "every panel id has a widget");
     for p in PanelId::ALL {
         let mut l = DockLayout { root: super::dock::Node::Leaf { tabs: vec![p], active: 0 }, floating: vec![] };
         l.repair();
@@ -394,4 +396,30 @@ fn design_gallery_screenshots() {
     super::design::apply(&h.ctx, super::design::ThemeKind::Light);
     h.run(40);
     h.save_png(&docs().join("design/gallery_light.png"));
+}
+
+/// Preview images for the welcome screen's samples (assets/samples/*.png).
+#[test]
+#[ignore]
+fn sample_previews() {
+    let Some(mut h) = harness() else { return };
+    let out = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/samples");
+    std::fs::create_dir_all(&out).unwrap();
+    let rs = h.rs.clone();
+    for s in super::welcome::SAMPLES.iter().filter(|s| s.mesh.is_none() || super::welcome::sample_mesh(s).is_some()) {
+        h.app.open_sample(&rs, s);
+        eprintln!("{}: {:?} {}", s.id, h.app.status, h.app.mesh.name);
+        h.app.wait_jobs(&rs);
+        h.app.ensure_composited(&rs);
+        let (c, r) = h.app.mesh.bounding_sphere();
+        h.app.camera.frame(c, r);
+        h.app.camera.yaw = 0.7;
+        h.app.camera.pitch = 0.3;
+        h.app.camera.distance *= 0.82;
+        h.app.view.show_env = false;
+        h.app.viewport.ensure_targets(&rs.device, [480, 360]);
+        h.app.viewport.draw(&rs.device, &rs.queue, &h.app.camera, &h.app.view, h.app.mesh_gpu.as_ref(), &h.app.env, &h.app.ts);
+        let px = crate::render::gpu::readback(&rs.device, &rs.queue, h.app.viewport.color().unwrap());
+        image::save_buffer(out.join(format!("{}.png", s.id)), &px, 480, 360, image::ExtendedColorType::Rgba8).unwrap();
+    }
 }

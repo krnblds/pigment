@@ -238,7 +238,8 @@ impl PigmentApp {
         }
     }
 
-    /// Block until every job is done (tests, exit).
+    /// Block until every job is done (tests).
+    #[cfg_attr(not(test), allow(dead_code))]
     pub(super) fn wait_jobs(&mut self, rs: &RenderState) {
         let t0 = Instant::now();
         while !self.ui.jobs.is_empty() && t0.elapsed().as_secs() < 120 {
@@ -258,7 +259,7 @@ pub fn friendly_error(what: &str, e: &str) -> String {
         " The disk is full."
     } else if lower.contains("cannot find the path") || lower.contains("no such file") {
         " The folder or file doesn't exist any more."
-    } else if lower.contains("uv") {
+    } else if lower.contains("uv") && !lower.contains("unwrap") {
         " The model needs UVs: unwrap it in Blender (U > Smart UV Project) and export again."
     } else if lower.contains("unsupported") || lower.contains("format") {
         " Pigment opens OBJ, glTF (.gltf) and GLB models."

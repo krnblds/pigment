@@ -14,7 +14,7 @@ use std::collections::{HashMap, VecDeque};
 const THUMB_RES: u32 = 256;
 const THUMB_PX: u32 = 160;
 /// Bump when thumbnails would look different (invalidates the disk cache).
-const THUMB_VERSION: u32 = 3;
+const THUMB_VERSION: u32 = 4;
 
 /// Material thumbnails, rendered by Pigment's own compositor and viewport on
 /// a small crate, a few per frame so the window never stalls, cached in
@@ -94,7 +94,7 @@ impl Thumbs {
             self.ts.ensure_resources(d, q, &doc);
             self.ts.composite(d, q, &doc, None);
             self.viewport.ensure_targets(d, [THUMB_PX, THUMB_PX]);
-            let view = ViewSettings { show_env: false, ..Default::default() };
+            let view = ViewSettings { show_env: false, exposure: 0.9, ..Default::default() };
             self.viewport.draw(d, q, &self.camera, &view, Some(&self.mg), env, &self.ts);
             let Some(src) = self.viewport.color() else { return };
             let tex = d.create_texture(&wgpu::TextureDescriptor {
@@ -352,6 +352,7 @@ impl PigmentApp {
     /// it to one mesh part.
     pub(in crate::app) fn apply_library(&mut self, _rs: &RenderState, item: &LibItem, part: Option<u32>) {
         let parts: Vec<u32> = part.into_iter().collect();
+        self.commit_doc_changes();
         let layers = match item_layers(&mut self.doc, item, &parts) {
             Ok(l) => l,
             Err(e) => return self.notify_error("Couldn't apply that material", &e),
@@ -409,6 +410,14 @@ impl PigmentApp {
         }
         self.ui.lib_current = Some(item.clone());
         let name = display_name(item);
+        if self.doc != self.committed {
+            let before = Box::new(std::mem::replace(&mut self.committed, self.doc.clone()));
+            let label = match part {
+                Some(p) => format!("Fill part {p} with {name}"),
+                None => format!("Apply {name}"),
+            };
+            self.push_history(label, crate::app::Edit::Doc { before, after: Box::new(self.doc.clone()) });
+        }
         let where_ = match part {
             Some(p) => format!("part {p}"),
             None if simple => "the model".to_string(),

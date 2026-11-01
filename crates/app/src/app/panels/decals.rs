@@ -10,6 +10,15 @@ use pigment_core::decal::{face_point, raycast_parts, Face, Placement, Scatter};
 
 /// `assets/<sub>` near the working directory, the executable or the source tree.
 pub fn asset_dir(sub: &str) -> Option<PathBuf> {
+    asset_roots().into_iter().map(|r| r.join("assets").join(sub)).find(|p| p.is_dir())
+}
+
+/// The file `assets/<rel>` wherever an assets folder has it.
+pub fn asset_file(rel: &str) -> Option<PathBuf> {
+    asset_roots().into_iter().map(|r| r.join("assets").join(rel)).find(|p| p.is_file())
+}
+
+fn asset_roots() -> Vec<PathBuf> {
     let mut roots: Vec<PathBuf> = vec![];
     if let Ok(c) = std::env::current_dir() {
         roots.extend(c.ancestors().map(Path::to_path_buf));
@@ -18,7 +27,7 @@ pub fn asset_dir(sub: &str) -> Option<PathBuf> {
         roots.extend(e.ancestors().skip(1).map(Path::to_path_buf));
     }
     roots.push(Path::new(env!("CARGO_MANIFEST_DIR")).join("../.."));
-    roots.into_iter().map(|r| r.join("assets").join(sub)).find(|p| p.is_dir())
+    roots
 }
 
 /// Decal images under `assets/decals` (one level of subfolders).

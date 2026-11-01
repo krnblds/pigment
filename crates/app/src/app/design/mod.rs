@@ -325,6 +325,9 @@ pub fn bar_frame(p: &Palette) -> egui::Frame {
     egui::Frame::new().fill(p.surface).inner_margin(Margin::symmetric(space::LG as i8, space::SM as i8)).stroke(Stroke::new(1.0, p.border))
 }
 
+/// Untinted image drawing (not a colour role).
+pub const IMAGE_TINT: Color32 = Color32::WHITE;
+
 /// sRGB 0..1 material colour to a display colour (data, not a design token).
 pub fn srgb(c: [f32; 3]) -> Color32 {
     let b = c.map(|v| (v.clamp(0.0, 1.0) * 255.0).round() as u8);
