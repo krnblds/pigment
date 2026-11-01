@@ -7,6 +7,7 @@ they follow the generated layout.
     avenue    street level on a downtown avenue at night
     top       orthographic map-like view (debug), --day for flat daylight
 """
+import json
 import math
 import os
 
@@ -187,6 +188,16 @@ def shots(world, built):
     return out
 
 
+def game_cams(path):
+    """Camera spots written by the game (automation.gd --bench-spots: <dir>/cams.json), so a Cycles
+    shot and a Godot screenshot show the same view: [{name, loc, target, fov_y}] in Blender coords."""
+    out = {}
+    for c in json.load(open(path, encoding="utf-8")):
+        out[c["name"]] = {"loc": tuple(c["loc"]), "target": tuple(c["target"]), "fov_y": c["fov_y"],
+                          "sky": "night", "exposure": c.get("exposure", 0.4), "fog": c.get("fog", 0.0015)}
+    return out
+
+
 def render(world, built, root, opt, log):
     res = tuple(int(v) for v in str(opt("--res", "1600x900")).split("x"))
     setup(int(opt("--samples", 128)), res, cpu=bool(opt("--cpu")))
@@ -198,7 +209,11 @@ def render(world, built, root, opt, log):
     outdir = os.path.join(root, str(opt("--render-dir", os.path.join("docs", "agents", "world"))))
     os.makedirs(outdir, exist_ok=True)
     want = str(opt("--shots", "aerial,bridge,mountain,avenue")).split(",")
-    for name, s in shots(world, built).items():
+    todo = shots(world, built)
+    if opt("--cams"):
+        todo = game_cams(str(opt("--cams")))
+        want = list(todo)
+    for name, s in todo.items():
         if name not in want:
             continue
         sky("day" if opt("--day") else s["sky"], 0.0 if opt("--day") else s.get("fog", 0.0))
@@ -211,7 +226,11 @@ def render(world, built, root, opt, log):
             cam.data.clip_end = 5000
         else:
             cam.data.type = "PERSP"
-            aim(cam, s["loc"], s["target"], s["lens"])
+            cam.data.sensor_fit = "AUTO"
+            aim(cam, s["loc"], s["target"], s.get("lens", 24))
+            if "fov_y" in s:                 # Godot camera: vertical field of view
+                cam.data.sensor_fit = "VERTICAL"
+                cam.data.angle = math.radians(s["fov_y"])
         sc.render.filepath = os.path.join(outdir, name + ".png")
         import time
         t0 = time.time()

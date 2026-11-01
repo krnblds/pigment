@@ -223,10 +223,10 @@ func _setup_environment() -> void:
 	for i in range(1, 8):
 		env.set("glow_levels/%d" % i, [0.0, 0.6, 0.8, 1.0, 0.8, 0.5, 0.0][i - 1])
 	env.ssr_enabled = true
-	env.ssr_max_steps = 72
-	env.ssr_fade_in = 0.1
-	env.ssr_fade_out = 2.5
-	env.ssr_depth_tolerance = 0.3
+	env.ssr_max_steps = int(args.get("ssr-steps", "160"))
+	env.ssr_fade_in = float(args.get("ssr-in", "0.05"))
+	env.ssr_fade_out = float(args.get("ssr-out", "0.8"))
+	env.ssr_depth_tolerance = float(args.get("ssr-depth", "1.0"))
 	env.ssao_enabled = true
 	env.ssao_radius = 1.2
 	env.ssao_intensity = 1.6

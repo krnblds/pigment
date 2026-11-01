@@ -223,19 +223,24 @@ func _tex(path: String) -> Texture2D:
 	return t
 
 
-## Road surfaces rebuilt from the full Pigment map set (tools/godot/pack_textures.py road_maps):
-## tile size in metres, how much water the surface collects, tone variation, world projection.
+## Road surfaces rebuilt from the full Pigment map set (tools/godot/pack_textures.py road_maps) with
+## scripts/road_surface.gdshader: tile size in metres, how much water the surface collects ("wet", as in
+## tools/town_roads.py), how much of it a rain film covers, tone variation, world projection.
 const ROAD_SURFACES := {
-	"RoadAsphalt": {"tile": "asphalt", "tile_m": 4.0, "wet": 1.0, "macro": 0.25, "anti": true, "box": false, "normal": 0.9},
-	"RoadPaving": {"tile": "paving", "tile_m": 2.0, "wet": 0.6, "macro": 0.18, "anti": false, "box": false, "normal": 1.0},
-	"RoadConcrete": {"tile": "concrete", "tile_m": 2.0, "wet": 0.0, "macro": 0.2, "anti": false, "box": true, "normal": 0.7},
+	"RoadAsphalt": {"tile": "asphalt", "tile_m": 4.0, "wet": 1.0, "film": 0.85, "macro": 0.25, "anti": true, "box": false, "normal": 1.0},
+	"RoadPaving": {"tile": "paving", "tile_m": 2.0, "wet": 0.6, "film": 0.55, "macro": 0.18, "anti": false, "box": false, "normal": 1.0},
+	"RoadConcrete": {"tile": "concrete", "tile_m": 2.0, "wet": 0.0, "film": 0.0, "macro": 0.2, "anti": false, "box": true, "normal": 0.8},
+	# the curb / gutter trim sheet: its UVs address the strips, U wraps every 2 m
+	"RoadTrim": {"tile": "trim", "tile_m": 1.0, "wet": 0.8, "film": 0.6, "macro": 0.15, "anti": false, "box": false, "normal": 1.0, "metal": true},
 }
 const ROAD_SHADER := preload("res://scripts/road_surface.gdshader")
+const ROAD_DECAL_SHADER := preload("res://scripts/road_decal.gdshader")
 var road_materials: Array[ShaderMaterial] = []
 
 
-## Rain on / off for every road surface (puddles and damp).
+## Rain on / off for every road surface (puddles, film, ripples).
 func set_road_rain(v: float) -> void:
+	_wet = v
 	for m in road_materials:
 		m.set_shader_parameter("rain", v)
 
@@ -256,8 +261,14 @@ func _road_material(nm: String) -> Material:
 		m.set_shader_parameter("rough_tex", _road_tex(r.tile, "Roughness"))
 		m.set_shader_parameter("normal_tex", _road_tex(r.tile, "Normal_OpenGL"))
 		m.set_shader_parameter("height_tex", _road_tex(r.tile, "Height"))
+		if r.get("metal", false):
+			var met := _road_tex(r.tile, "Metallic")
+			if met:
+				m.set_shader_parameter("metal_tex", met)
+				m.set_shader_parameter("use_metal", true)
 		m.set_shader_parameter("tile_m", r.tile_m)
 		m.set_shader_parameter("wet", r.wet)
+		m.set_shader_parameter("film", r.film)
 		m.set_shader_parameter("macro", r.macro)
 		m.set_shader_parameter("anti_tile", r.anti)
 		m.set_shader_parameter("world_box", r.box)
@@ -265,33 +276,22 @@ func _road_material(nm: String) -> Material:
 		m.set_shader_parameter("rain", _wet)
 		road_materials.append(m)
 		return m
-	if nm == "RoadTrim" or nm == "RoadDecals":
-		var tile := "trim" if nm == "RoadTrim" else "atlas"
-		var albedo := _road_tex(tile, "BaseColorAlpha" if nm == "RoadDecals" else "BaseColor")
+	if nm == "RoadDecals":
+		# painted markings, cracks, patches, manholes: cut out by alpha, no shadows of their own
+		var albedo := _road_tex("atlas", "BaseColorAlpha")
 		if albedo == null:
 			return null
-		var sm := StandardMaterial3D.new()
-		sm.albedo_texture = albedo
-		sm.roughness_texture = _road_tex(tile, "Roughness")
-		sm.roughness_texture_channel = BaseMaterial3D.TEXTURE_CHANNEL_RED
-		sm.roughness = 1.0
-		var nrm := _road_tex(tile, "Normal_OpenGL")
-		if nrm:
-			sm.normal_enabled = true
-			sm.normal_texture = nrm
-		sm.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
-		if nm == "RoadDecals":
-			# painted markings, cracks, manholes: cut out by alpha, no shadows of their own
-			sm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_DEPTH_PRE_PASS
-			sm.texture_repeat = false
-			sm.render_priority = 1
-		else:
-			var met := _road_tex(tile, "Metallic")
-			if met:
-				sm.metallic = 1.0
-				sm.metallic_texture = met
-				sm.metallic_texture_channel = BaseMaterial3D.TEXTURE_CHANNEL_RED
-		return sm
+		var d := ShaderMaterial.new()
+		d.shader = ROAD_DECAL_SHADER
+		d.set_shader_parameter("albedo_tex", albedo)
+		d.set_shader_parameter("rough_tex", _road_tex("atlas", "Roughness"))
+		d.set_shader_parameter("normal_tex", _road_tex("atlas", "Normal_OpenGL"))
+		d.set_shader_parameter("height_tex", _road_tex("atlas", "Height"))
+		d.set_shader_parameter("metal_tex", _road_tex("atlas", "Metallic"))
+		d.set_shader_parameter("rain", _wet)
+		d.render_priority = 1
+		road_materials.append(d)
+		return d
 	return null
 
 
@@ -683,13 +683,78 @@ func _merge_job(job: Dictionary) -> ArrayMesh:
 				by_mat[nm] = []
 			by_mat[nm].append([surfs[i], p[1]])
 	var mesh := ArrayMesh.new()
+	var merged := {}
 	for nm in by_mat:
 		var arrays := _merge_arrays(by_mat[nm])
-		if arrays.is_empty():
-			continue
+		if not arrays.is_empty():
+			merged[nm] = arrays
+	if merged.has("RoadAsphalt") and merged.has("RoadTrim"):
+		_wet_bias(merged["RoadAsphalt"], merged["RoadTrim"])
+	for nm in merged:
+		var arrays: Array = merged[nm]
 		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 		mesh.surface_set_name(mesh.get_surface_count() - 1, nm)
 	return mesh if mesh.get_surface_count() > 0 else null
+
+
+## The Blender roads carry a "wet_bias" attribute (tools/town_roads.py: gutters and the asphalt next to
+## them collect water). Exports from tools/godot/export_town.py keep it as vertex colour (R = 1 - wet_bias);
+## for older exports it is rebuilt here: the gutter strip of the trim sheet (UV.v 0.25..0.475, Blender's
+## "Gutter" cell flipped) gets 0.36 at its road edge .. 0.6 at the curb, the asphalt 0.8 at the gutter
+## fading to 0 over 1.2 m, as SectionBuilder.side() / build_run() write it.
+const GUTTER_V := Vector2(0.25, 0.475)
+
+
+static func _wet_bias(asphalt: Array, trim: Array) -> void:
+	if asphalt[Mesh.ARRAY_COLOR] != null and trim[Mesh.ARRAY_COLOR] != null:
+		var ca: PackedColorArray = asphalt[Mesh.ARRAY_COLOR]
+		var dry := true
+		for c in ca:
+			if c.r < 0.999:
+				dry = false
+				break
+		if not dry:
+			return              # exported with the attribute
+	var tv: PackedVector3Array = trim[Mesh.ARRAY_VERTEX]
+	var tuv: PackedVector2Array = trim[Mesh.ARRAY_TEX_UV] if trim[Mesh.ARRAY_TEX_UV] != null else PackedVector2Array()
+	if tuv.size() != tv.size():
+		return
+	var tc := PackedColorArray()
+	tc.resize(tv.size())
+	var grid := {}           # 1.5 m cells -> gutter road-edge points (x, z)
+	for i in tv.size():
+		var v := tuv[i].y
+		var w := 0.0
+		if v >= GUTTER_V.x - 0.002 and v <= GUTTER_V.y + 0.002:
+			var t := clampf((GUTTER_V.y - v) / (GUTTER_V.y - GUTTER_V.x), 0.0, 1.0)
+			w = lerpf(0.36, 0.6, t)
+			if t < 0.05:
+				var p := tv[i]
+				var k := Vector2i(floori(p.x / 1.5), floori(p.z / 1.5))
+				if not grid.has(k):
+					grid[k] = PackedVector3Array()
+				grid[k].append(p)
+		tc[i] = Color(1.0 - w, 1.0, 1.0, 1.0)
+	trim[Mesh.ARRAY_COLOR] = tc
+	var av: PackedVector3Array = asphalt[Mesh.ARRAY_VERTEX]
+	var ac := PackedColorArray()
+	ac.resize(av.size())
+	for i in av.size():
+		var p := av[i]
+		var k := Vector2i(floori(p.x / 1.5), floori(p.z / 1.5))
+		var best := 4.0
+		for dz in range(-1, 2):
+			for dx in range(-1, 2):
+				var pts = grid.get(k + Vector2i(dx, dz))
+				if pts == null:
+					continue
+				for q in pts:
+					if absf(q.y - p.y) < 0.3:
+						best = minf(best, Vector2(q.x - p.x, q.z - p.z).length_squared())
+		var d := sqrt(best)
+		var w := 0.8 * (1.0 - smoothstep(0.0, 1.2, d))
+		ac[i] = Color(1.0 - w, 1.0, 1.0, 1.0)
+	asphalt[Mesh.ARRAY_COLOR] = ac
 
 
 static func _merge_arrays(parts: Array) -> Array:
