@@ -11,6 +11,8 @@ use serde_json::{json, Value};
 
 type Res<T> = Result<T, String>;
 
+mod decal_tools;
+
 /// A GPU device without a window.
 pub fn headless_render_state() -> Option<RenderState> {
     use eframe::egui_wgpu::wgpu;
@@ -745,9 +747,12 @@ impl Session {
         cam.yaw = f(a, "yaw").map(|d| d.to_radians()).unwrap_or(35f32.to_radians());
         cam.pitch = f(a, "pitch").map(|d| d.to_radians()).unwrap_or(20f32.to_radians());
         cam.distance *= f(a, "zoom").map(|z| 1.0 / z.max(0.05)).unwrap_or(1.0);
-        // optional orbit centre in world metres (close-ups of one spot)
+        // close-ups: orbit a world point (`target`), optionally at a given distance
         if let Some(t) = a.get("target").and_then(Value::as_array).filter(|t| t.len() == 3) {
             cam.target = glam::Vec3::new(t[0].as_f64().unwrap_or(0.0) as f32, t[1].as_f64().unwrap_or(0.0) as f32, t[2].as_f64().unwrap_or(0.0) as f32);
+        }
+        if let Some(d) = f(a, "distance") {
+            cam.distance = d.max(0.01);
         }
         if let Some(w) = a.get("width").and_then(Value::as_u64) {
             self.size[0] = (w as u32).clamp(64, 4096);
@@ -926,6 +931,10 @@ impl Session {
     /// `replay`: re-project a recorded decal during variant export (no
     /// record, no undo step, no history commit).
     fn decal_impl(&mut self, a: &Value, replay: bool) -> Res<Value> {
+        // precise placement: a spot on a part's face, or a world position + normal
+        if a.get("anchor").is_some() || a.get("position").is_some() {
+            return self.place_decal(a, replay);
+        }
         let image = PathBuf::from(req(a, "image")?);
         let (fit, margin, facing) = (s(a, "fit").unwrap_or("contain"), f(a, "margin").unwrap_or(0.05), s(a, "facing"));
         let rect: Vec<f32> = match (a.get("part").and_then(Value::as_u64), a.get("box")) {
@@ -992,11 +1001,8 @@ impl Session {
             }
         }
         self.app.select(Some(id), on_mask);
-        if replay {
-            self.app.ensure_composited(&self.rs);
-        } else {
-            self.settle();
-        }
+        // no commit here: the decal record goes into the same undo step as the pixels
+        self.app.ensure_composited(&self.rs);
         let b = &mut self.app.brush;
         b.values = match s(a, "material") {
             Some(m) if !material_presets().iter().any(|(n, _)| *n == m) => return Err(unknown_material("material", m)),

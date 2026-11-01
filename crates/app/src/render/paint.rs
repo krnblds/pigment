@@ -82,6 +82,19 @@ pub struct DecalGpu {
     pub params: [f32; 4], // opacity, mip level, alpha from luminance
 }
 
+/// Uniforms of `decal_box.wgsl` (a world-space decal, see pigment_core::decal).
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct BoxDecalGpu {
+    pub center: [f32; 4], // xyz, half depth
+    pub right: [f32; 4],  // unit xyz, half width
+    pub up: [f32; 4],     // unit xyz, half height
+    pub normal: [f32; 4], // unit xyz, opacity
+    pub params: [f32; 4], // alpha from luminance, min facing
+    pub wear: [f32; 4],   // tear, fade, noise scale, seed
+    pub wear2: [f32; 4],  // style (0 noise / 1 grunge), paper rim
+}
+
 pub struct Painter {
     res: u32,
     stamp_pipe: wgpu::RenderPipeline,
@@ -104,6 +117,9 @@ pub struct Painter {
     before: [Tex; 8],
     before_mask: Tex,
     active: Option<Target>,
+    box_pipe: wgpu::RenderPipeline,
+    box_bgl: wgpu::BindGroupLayout,
+    box_buf: wgpu::Buffer,
 }
 
 impl Painter {
@@ -162,6 +178,29 @@ impl Painter {
             mapped_at_creation: false,
         });
         let decal_sampler = gpu::linear_sampler(device, 8);
+        let bm = gpu::shader(device, "decal_box.wgsl", &[common, include_str!("../shaders/decal_box.wgsl")].concat());
+        let box_bgl = gpu::bgl(device, "box decal", &[gpu::ftex(0), gpu::sampler_entry(1, wgpu::SamplerBindingType::Filtering), gpu::uniform_entry(2, false)]);
+        let box_pipe = gpu::pipeline(
+            device,
+            gpu::PipeDesc {
+                label: "box decal",
+                module: &bm,
+                vs: "vs_box",
+                fs: Some("fs_box"),
+                layout: &gpu::layout(device, "box decal", &[&box_bgl]),
+                buffers: &mesh_layout,
+                targets: &[gpu::target(wgpu::TextureFormat::R16Float, Some(gpu::MAX_BLEND)), gpu::target(wgpu::TextureFormat::Rgba16Float, None)],
+                depth: None,
+                samples: 1,
+                cull: None,
+            },
+        );
+        let box_buf = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("box decal"),
+            size: std::mem::size_of::<BoxDecalGpu>() as u64,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
         let apply_layout = gpu::layout(device, "apply", &[&apply_bgl]);
         let layer_targets: Vec<_> = LAYER_FORMATS[..MAIN_LAYER_CHANNELS].iter().map(|f| gpu::target(*f, None)).collect();
         let apply_pipe = gpu::fullscreen(device, "apply", &am, "fs_apply", &apply_layout, &layer_targets);
@@ -206,6 +245,9 @@ impl Painter {
             before,
             before_mask,
             active: None,
+            box_pipe,
+            box_bgl,
+            box_buf,
         }
     }
 
@@ -330,6 +372,33 @@ impl Painter {
             pass.set_pipeline(&self.decal_pipe);
             pass.set_bind_group(0, &stamp_bg, &[]);
             pass.set_bind_group(1, &decal_bg, &[]);
+            pass.set_vertex_buffer(0, mesh.vertices.slice(..));
+            pass.set_index_buffer(mesh.indices.slice(..), wgpu::IndexFormat::Uint32);
+            pass.draw_indexed(0..mesh.index_count, 0, 0..1);
+        }
+        queue.submit([enc.finish()]);
+        self.apply(device, queue, target, &live, rect);
+    }
+
+    /// Project an image as a world-space box decal (no camera), then
+    /// re-apply inside `rect` (texels). `brush.enabled3[1]` must be 1.
+    #[allow(clippy::too_many_arguments)]
+    pub fn box_decal(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, ts: &TexSet, mesh: &MeshGpu, image: &Tex, decal: &BoxDecalGpu, brush: &BrushGpu, rect: [u32; 4]) {
+        let Some(target) = self.active else { return };
+        let Some(live) = Self::target_textures(ts, target) else { return };
+        queue.write_buffer(&self.brush_buf, 0, bytemuck::bytes_of(brush));
+        queue.write_buffer(&self.box_buf, 0, bytemuck::bytes_of(decal));
+        let bg = gpu::bind_group(
+            device,
+            "box decal",
+            &self.box_bgl,
+            &[wgpu::BindingResource::TextureView(&image.view), wgpu::BindingResource::Sampler(&self.decal_sampler), self.box_buf.as_entire_binding()],
+        );
+        let mut enc = device.create_command_encoder(&Default::default());
+        {
+            let mut pass = gpu::pass(&mut enc, "box decal", &[&self.stroke_mask.view, &self.decal_color.view], None);
+            pass.set_pipeline(&self.box_pipe);
+            pass.set_bind_group(0, &bg, &[]);
             pass.set_vertex_buffer(0, mesh.vertices.slice(..));
             pass.set_index_buffer(mesh.indices.slice(..), wgpu::IndexFormat::Uint32);
             pass.draw_indexed(0..mesh.index_count, 0, 0..1);

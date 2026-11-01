@@ -82,7 +82,8 @@ fn tools() -> Value {
         "pitch": { "type": "number", "description": "degrees above (default 20)" },
         "zoom": { "type": "number", "description": "1 = framed, 2 = twice as close" },
         "width": { "type": "integer" }, "height": { "type": "integer" },
-        "target": { "type": "array", "items": { "type": "number" }, "maxItems": 3, "description": "orbit centre [x, y, z] in world metres (default: the model's centre); combine with zoom for close-ups" }
+        "target": { "type": "array", "items": { "type": "number" }, "maxItems": 3, "description": "orbit centre [x, y, z] in world metres (default: the model's centre); combine with zoom or distance for close-ups" },
+        "distance": { "type": "number", "minimum": 0, "description": "camera distance from the target in metres (overrides zoom's framing)" }
     });
     let mut add_props = layer_fields.clone();
     let layer_ref = |d: &str| json!({ "type": ["string", "integer"], "description": d });
@@ -130,6 +131,61 @@ fn tools() -> Value {
     sheet_props["width"] = json!({ "type": "integer", "description": "tile width (default 384)" });
     sheet_props["height"] = json!({ "type": "integer", "description": "tile height (default 384)" });
     let t = |name: &str, desc: &str, props: Value, req: &[&str]| json!({ "name": name, "description": desc, "inputSchema": { "type": "object", "properties": props, "required": req, "additionalProperties": false } });
+    // decal wear / layering, shared by project_decal (anchored) and scatter_decals
+    let wear_props = json!({
+        "wear": { "type": "number", "description": "tear 0..1: noise eats the decal from its edges (more at the bottom), leaving a rim of bare paper; 0.3-0.6 = torn poster" },
+        "fade": { "type": "number", "description": "0..1 patchy sun-bleaching and wear-through" },
+        "wear_style": { "type": "string", "enum": ["noise", "grunge"], "description": "soft noise (default) or ridged, streaky grunge" },
+        "wear_scale": { "type": "number", "description": "noise frequency across the decal (default 5; higher = smaller rips)" },
+        "wear_seed": { "type": "number" },
+        "paper_rim": { "type": "number", "description": "width of the bare-paper rim along tears (default 0.035, 0 = none)" },
+        "overlap_order": { "type": "integer", "minimum": 0, "description": "without `layer`: paint onto paint layer `Decals <n>`, created and stacked so higher n is on top (e.g. posters 0, graffiti 1)" },
+        "depth": { "type": "number", "minimum": 0, "description": "half-thickness of the projection box in metres (default 1/4 of the smaller side, 0.02..0.25)" }
+    });
+    // precise (anchored) placement for project_decal
+    let anchored = json!({
+        "anchor": { "type": "array", "items": { "type": "number" }, "maxItems": 2, "description": "precise placement: [u, v] in 0..1 across `face` of `part` (or of the whole mesh), (0,0) = top-left seen from outside. The decal is snapped onto the surface there" },
+        "face": { "type": "string", "enum": ["front", "back", "left", "right", "top", "bottom", "auto"], "description": "with `anchor`: side of the part's box. front = +Z, right = +X, top = +Y; auto = its thinnest side facing away from the model centre" },
+        "position": { "type": "array", "items": { "type": "number" }, "maxItems": 3, "description": "precise placement: world point [x,y,z] (with `normal`), snapped onto the surface" },
+        "normal": { "type": "array", "items": { "type": "number" }, "maxItems": 3, "description": "with `position`: outward surface direction" },
+        "size": { "type": ["number", "array"], "items": { "type": "number" }, "description": "with anchor/position: width in metres (height from the image aspect) or [width, height]; default 0.5" },
+        "rotation": { "type": "number", "description": "with anchor/position: degrees, counter-clockwise seen from outside" }
+    });
+    let scatter_props = {
+        let mut p = json!({
+            "images": { "type": "array", "items": { "type": "string" }, "description": "PNGs to scatter; dealt in shuffled rounds so each appears before any repeats" },
+            "count": { "type": "integer", "minimum": 0, "description": "how many (default 6, max 500; fewer if the surface can't fit them)" },
+            "seed": { "type": "integer", "minimum": 0 },
+            "parts": { "type": "array", "items": { "type": "integer", "minimum": 0 }, "description": "only on these parts (default: whole mesh)" },
+            "mask": layer_ref("layer (name or index) whose part mask limits where decals go"),
+            "region": { "type": "object", "additionalProperties": false, "description": "world box the decal centres must be in",
+                        "properties": { "min": { "type": "array", "items": { "type": "number" } }, "max": { "type": "array", "items": { "type": "number" } } } },
+            "height": { "type": ["number", "array"], "items": { "type": "number" }, "description": "[min, max] metres above `ground`: the whole decal must fit in it (street level: [0.5, 3])" },
+            "ground": { "type": "number", "description": "world Y of the ground (default: the mesh's lowest point)" },
+            "size": { "type": ["number", "array"], "items": { "type": "number" }, "description": "decal width in metres: number or [min, max] (default [0.4, 0.6]); height follows the image" },
+            "rotation": { "type": "number", "description": "base rotation, degrees" },
+            "rotation_jitter": { "type": "number", "description": "+- degrees (default 6)" },
+            "min_spacing": { "type": "number", "description": "minimum distance between decal centres, metres (default 0.9 x max size)" },
+            "facing": { "type": "string", "enum": ["horizontal", "walls", "any"], "description": "horizontal (default) = only walls, surfaces whose normal is within `max_tilt` of horizontal" },
+            "max_tilt": { "type": "number", "description": "degrees (default 20)" },
+            "fit": { "type": "boolean", "description": "reject spots where the decal would hang off the surface: over a window, an edge (default true)" },
+            "wear_jitter": { "type": "number", "description": "per-decal +- variation of wear and fade (default 0.15)" },
+            "tint": { "type": "array", "items": { "type": "number" }, "description": "multiplies the image colour, sRGB 0..1" },
+            "material": { "type": "string", "description": "preset for roughness/metallic (default plain paint)" },
+            "emissive_strength": { "type": "number" }, "opacity": { "type": "number" },
+            "values": brush_values.clone(),
+            "channels": { "type": "array", "items": { "type": "string" }, "description": "channels to write (default base_color, roughness, metallic; + emissive when set)" },
+            "layer": layer_ref("target layer (default: `Decals <overlap_order>` or the top paint layer)"),
+            "alpha_from_luminance": { "type": "boolean" },
+            "name": { "type": "string", "description": "decal name for export_variants, shared by every scattered decal (default: each image's file stem)" },
+            "variant": { "type": "string", "description": "variant group tag for every scattered decal" },
+            "enabled": { "type": "boolean", "description": "false = record them for variants but don't paint them in the authored look" }
+        });
+        for (k, v) in wear_props.as_object().unwrap() {
+            p[k] = v.clone();
+        }
+        p
+    };
     json!([
         t("new_project", "Start a project from a mesh (.glb/.gltf/.obj with UVs). Bakes AO + curvature. Optionally starts from a smart material or a base material; a paint layer goes on top.",
           json!({ "mesh": { "type": "string" }, "resolution": { "type": "integer", "enum": [512, 1024, 2048, 4096] }, "smart_material": { "type": "string" }, "material": { "type": "string" } }), &["mesh"]),
@@ -158,8 +214,9 @@ fn tools() -> Value {
           }, &[]),
         t("bake", "Re-bake AO and curvature.", json!({ "ao_samples": { "type": "integer" }, "ao_distance": { "type": "number" }, "curvature_radius": { "type": "number" }, "curvature_strength": { "type": "number" } }), &[]),
         t("paint_stroke", "Paint a brush stroke projected from a camera view onto the model.", paint_props, &["points"]),
-        t("project_decal", "Project an image (PNG with alpha: sign, logo, label, graffiti) onto the model from a camera view, like a sticker. Colour comes from the image times `tint`; optional emission (glowing neon signs) and height. Lands on the top paint layer unless `layer` is given.",
-          json!({ "image": { "type": "string" }, "rect": { "type": "array", "items": { "type": "number" }, "description": "[x0, y0, x1, y1] viewport area in 0..1 (y down)" },
+        t("project_decal", "Project an image (PNG with alpha: sign, logo, label, poster, graffiti) onto the model like a sticker. Ways to place it: `rect` over a camera view; `part` alone (fit to the part's outward face); a world-space `box` (+ `facing`); or precisely with `anchor` [u,v] on a part's `face` (or `position` + `normal`) plus `size` in metres and `rotation`. Anchored decals can be torn / faded (`wear`, `fade`) and stacked with `overlap_order`. Colour comes from the image times `tint`; optional emission, height, opacity / transmission (`values` + `channels`). Every decal on a paint layer is recorded for export_variants (`name`, `variant`, `enabled`). Lands on the top paint layer unless `layer` / `overlap_order` is given. One undo step.",
+          {
+              let mut p = json!({ "image": { "type": "string" }, "rect": { "type": "array", "items": { "type": "number" }, "description": "[x0, y0, x1, y1] viewport area in 0..1 (y down)" },
                   "part": { "type": "integer", "description": "instead of rect + camera: put the image on this mesh part's outward face (see list_parts)" },
                   "fit": { "type": "string", "enum": ["contain", "fill"], "description": "with `part`: keep the image's aspect (contain, default) or stretch (fill)" },
                   "margin": { "type": "number", "description": "with `part`: border as a fraction (default 0.05)" },
@@ -175,7 +232,16 @@ fn tools() -> Value {
                   "channels": { "type": "array", "items": { "type": "string" }, "description": "channels to write (default base_color, roughness, metallic; + emissive / height when set; e.g. [\"opacity\"] with values {opacity: 0} punches holes in the image's shape)" },
                   "name": { "type": "string", "description": "decal name for export_variants (default: image file stem)" },
                   "variant": { "type": "string", "description": "variant group tag" },
-                  "enabled": { "type": "boolean", "description": "false = record it for variants but don't paint it in the authored look" } }), &["image"]),
+                  "enabled": { "type": "boolean", "description": "false = record it for variants but don't paint it in the authored look" } });
+              for (k, v) in anchored.as_object().unwrap().iter().chain(wear_props.as_object().unwrap()) {
+                  p[k] = v.clone();
+              }
+              p["distance"] = json!({ "type": "number", "minimum": 0, "description": "with rect + camera: camera distance from `target`, metres" });
+              p["part"] = json!({ "type": "integer", "minimum": 0, "description": "put the image on this mesh part's outward face (see list_parts); with `anchor`, the part to place on" });
+              p
+          }, &["image"]),
+        t("scatter_decals", "Scatter images randomly over a mesh (or `parts` / a layer `mask` / a `region`) with a seed: e.g. torn posters at street level. Constraints: `height` band above the ground, `size` range, `rotation_jitter`, `min_spacing`, walls only (`facing`), and `fit` (never hanging off a wall). Per-decal tear / fade wear. Each placed decal is recorded for export_variants like an anchored project_decal. Returns where each landed. One undo step.",
+          scatter_props, &["images"]),
         t("render", "Render the model with its current material (PBR image-based lighting, bloom, ACES). Choose lighting (studio / night / overcast or an hdri), exposure and bloom. With `views` it returns one contact sheet of front/back/left/right/top views. Returns the image.", render_props, &[]),
         t("render_turntable", "Render `frames` views evenly around the model (at `pitch`) as one labelled contact-sheet PNG: see the whole asset in one call. Takes the same lighting / bloom / view args as render.", sheet_props, &[]),
         t("export_lighting", "Write a built-in lighting preset as an equirectangular .hdr (e.g. to light a Blender world exactly like Pigment's viewport).",
@@ -375,6 +441,7 @@ fn call(session: &mut Option<Session>, name: &str, args: &Value) -> Result<Vec<V
         "bake" => text(s.bake(args)?),
         "paint_stroke" => text(s.paint_stroke(args)?),
         "project_decal" => text(s.project_decal(args)?),
+        "scatter_decals" => text(s.scatter_decals(args)?),
         "export_textures" => text(s.export_textures(args)?),
         "export_variants" => text(s.export_variants(args)?),
         "send_to_blender" => text(s.send_to_blender(args)?),

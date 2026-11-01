@@ -27,6 +27,7 @@ use std::time::Instant;
 pub mod automation;
 mod folders_ui;
 mod bridge;
+mod decals;
 mod tour;
 #[cfg(test)]
 mod image_fill_tests;
@@ -45,6 +46,11 @@ const UNDO_BUDGET_BYTES: u64 = 1536 << 20;
 enum Edit {
     Doc { before: Box<Document>, after: Box<Document> },
     Stroke(Snapshot),
+    /// Several strokes undone as one step (a decal scatter), in the order painted.
+    Strokes(Vec<Snapshot>),
+    /// Strokes plus the document change made with them (decals recorded for
+    /// export_variants), undone together as one step.
+    DocStrokes { before: Box<Document>, after: Box<Document>, snaps: Vec<Snapshot> },
 }
 
 struct Brush {
@@ -548,6 +554,12 @@ impl PigmentApp {
                 Edit::Stroke(s) => {
                     live.insert(s.target.res());
                 }
+                Edit::Strokes(v) => live.extend(v.iter().map(|s| s.target.res())),
+                Edit::DocStrokes { before, after, snaps } => {
+                    live.extend(before.resources());
+                    live.extend(after.resources());
+                    live.extend(snaps.iter().map(|s| s.target.res()));
+                }
             }
         }
         live
@@ -557,6 +569,8 @@ impl PigmentApp {
         let mut dropped: Vec<Entry<Edit>> = self.history.push(label, e);
         dropped.extend(self.history.trim_to_budget(UNDO_BUDGET_BYTES, |e| match e {
             Edit::Stroke(s) => s.bytes(),
+            Edit::Strokes(v) => v.iter().map(|s| s.bytes()).sum(),
+            Edit::DocStrokes { snaps, .. } => snaps.iter().map(|s| s.bytes()).sum(),
             Edit::Doc { .. } => 0,
         }));
         self.modified = true;
@@ -564,6 +578,22 @@ impl PigmentApp {
             drop(dropped);
             let live = self.live_resources();
             self.ts.retain(&live);
+        }
+    }
+
+    /// History for painted strokes: one step, together with any pending
+    /// document change made for them (e.g. decal records for variants).
+    fn push_paint_history(&mut self, label: String, mut snaps: Vec<Snapshot>) {
+        if snaps.is_empty() {
+            return;
+        }
+        if self.doc != self.committed {
+            let before = Box::new(std::mem::replace(&mut self.committed, self.doc.clone()));
+            self.push_history(label, Edit::DocStrokes { before, after: Box::new(self.doc.clone()), snaps });
+        } else if snaps.len() == 1 {
+            self.push_history(label, Edit::Stroke(snaps.pop().unwrap()));
+        } else {
+            self.push_history(label, Edit::Strokes(snaps));
         }
     }
 
@@ -596,6 +626,27 @@ impl PigmentApp {
             Edit::Stroke(snap) => {
                 self.painter.swap(&rs.device, &rs.queue, &self.ts, snap);
                 self.ts.unsaved.insert(snap.target.res());
+                self.composited = None;
+            }
+            Edit::Strokes(snaps) => {
+                // undo newest first; redo oldest first
+                let order: Vec<usize> = if redo { (0..snaps.len()).collect() } else { (0..snaps.len()).rev().collect() };
+                for k in order {
+                    self.painter.swap(&rs.device, &rs.queue, &self.ts, &mut snaps[k]);
+                    self.ts.unsaved.insert(snaps[k].target.res());
+                }
+                self.composited = None;
+            }
+            Edit::DocStrokes { before, after, snaps } => {
+                let order: Vec<usize> = if redo { (0..snaps.len()).collect() } else { (0..snaps.len()).rev().collect() };
+                for k in order {
+                    self.painter.swap(&rs.device, &rs.queue, &self.ts, &mut snaps[k]);
+                    self.ts.unsaved.insert(snaps[k].target.res());
+                }
+                let mut d = if redo { (**after).clone() } else { (**before).clone() };
+                d.next_id = d.next_id.max(self.doc.next_id).max(self.committed.next_id);
+                self.doc = d.clone();
+                self.committed = d;
                 self.composited = None;
             }
         }
@@ -844,7 +895,7 @@ impl PigmentApp {
             self.ts.unsaved.insert(target.res());
             let name = image.file_stem().map(|s| s.to_string_lossy().to_string()).unwrap_or_default();
             self.counters.strokes += 1;
-            self.push_history(format!("Decal {name}"), Edit::Stroke(snap));
+            self.push_paint_history(format!("Decal {name}"), vec![snap]);
         }
         self.composited = None;
         Ok(())
