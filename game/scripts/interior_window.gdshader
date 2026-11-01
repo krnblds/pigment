@@ -84,11 +84,11 @@ void fragment() {
 			vec4 d = interior_dims[room];
 			// fit the room round the pane: scale up for big panes, the pane sits on a sill,
 			// off-centre by a random amount
-			float s = max(1.0, max(pane.x / (0.82 * d.x), pane.y / (0.8 * d.y)));
+			float s = max(1.0, max(pane.x / (0.62 * d.x), pane.y / (0.8 * d.y)));
 			d *= s;
 			float slack = max(0.0, 0.5 * (d.x - pane.x) - 0.12);
 			float sill = clamp(0.9 * s, 0.04, d.y - pane.y - 0.04);
-			vec2 p = pp + vec2((h2 * 2.0 - 1.0) * slack * 0.7, -0.5 * d.y + sill + 0.5 * pane.y);
+			vec2 p = pp + vec2((h2 * 2.0 - 1.0) * slack * 0.35, -0.5 * d.y + sill + 0.5 * pane.y);
 
 			float dist = length(wpos - CAMERA_POSITION_WORLD);
 			int steps = dist < 45.0 ? 12 : (dist < 140.0 ? 5 : 0);
@@ -106,12 +106,13 @@ void fragment() {
 			vec3 dressed = cloth * dress.y * (lit ? tint * interior_lit_energy * 0.32 : vec3(0.02));
 			col = mix(col, dressed, dress.x);
 
-			// the glass: Pigment's grime (roughness above clean glass) dulls it; Fresnel splits
-			// what is seen through it from what it reflects (env / SSR via the PBR specular)
-			float dirt = clamp((orm.g - 0.06) * 2.5, 0.0, 1.0);
+			// the glass: Pigment's grime on the plain glass (roughness above clean glass; lit panes
+			// are painted solid by the lit-window layers, so they only get a light film) dulls it;
+			// Fresnel splits what is seen through it from what it reflects (env / SSR via the PBR specular)
+			float dirt = alb.a < 0.6 ? clamp((orm.g - 0.08) * 1.5, 0.0, 0.6) : 0.1;
 			float ndv = clamp(dot(NORMAL, VIEW), 0.0, 1.0);
 			float F = 0.04 + 0.96 * pow(1.0 - ndv, 5.0);
-			ALBEDO = alb.rgb * dirt * 0.35;
+			ALBEDO = alb.rgb * dirt * 0.2;
 			ROUGHNESS = mix(0.03, 0.4, dirt);
 			METALLIC = 0.0;
 			SPECULAR = 0.5;

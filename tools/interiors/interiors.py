@@ -203,7 +203,7 @@ def texture(names):
 
 # ------------------------------------------------------------------ pack / window maps / sheet / sync
 # per-room exposure trims after looking at the contact sheet (white rooms under fluorescents clip)
-ROOM_EXPOSURE = {"konbini": -0.7, "office_cubicles": -0.5, "capsule_hotel": -0.4, "noctis_clinic": -0.4, "implant_clinic": -0.4,
+ROOM_EXPOSURE = {"konbini": -0.2, "office_cubicles": -0.2, "capsule_hotel": -0.4, "noctis_clinic": -0.4, "implant_clinic": -0.4,
                  "hoshikawa_office": -0.3, "gym": -0.2, "hydroponics": -0.3}
 GRADE = {"contrast": 1.05, "saturation": 1.08, "lift": [0.004, 0.004, 0.008]}
 

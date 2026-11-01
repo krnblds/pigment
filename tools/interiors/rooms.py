@@ -537,7 +537,7 @@ def office_cubicles(r):
             r.desk_station((x, y, 0), rz=180, color=r.rng.choice([(0.8, 0.9, 1.0), (0.5, 0.7, 1.0)]), person=r.rng.random() < 0.2)
     for y in (1.2, 2.6, 4.0, 5.4):
         for x in (-1.2, 1.2):
-            r.lamp_panel((x, y, H - 0.02), (1.2, 0.3, 0.04), (0.9, 0.97, 1.0), 70)
+            r.lamp_panel((x, y, H - 0.02), (1.2, 0.3, 0.04), (0.9, 0.97, 1.0), 35)
     r.box((W / 2 - 0.3, D - 0.4, 0.9), (0.5, 0.6, 1.8), GUNMETAL)
     r.box((W / 2 - 0.3, D - 0.72, 1.4), (0.3, 0.02, 0.3), glow((0.4, 0.9, 1.0), 4.0))
     r.poster(STORY + "billboard_jobs.png", "left", 3.0, 1.8, 1.0, 0.55)
@@ -736,7 +736,7 @@ def hydroponics(r):
 
 @room("konbini", ["shop", "ground", "fluorescent"], D=5.0)
 def konbini(r):
-    r.shell(paint((0.85, 0.85, 0.83), 0.4), paint((0.7, 0.7, 0.68), 0.15, tiles=True), WHITE)
+    r.shell(paint((0.55, 0.6, 0.58), 0.4), paint((0.45, 0.45, 0.44), 0.15, tiles=True), WHITE)
     W, D, H = r.W, r.D, r.H
     goods = [paint(c, 0.4) for c in ((0.8, 0.1, 0.1), (0.1, 0.4, 0.8), (0.9, 0.7, 0.1), (0.2, 0.6, 0.2), (0.9, 0.9, 0.9), (0.95, 0.4, 0.1))]
     for x in (-0.7, 0.7):
@@ -753,7 +753,7 @@ def konbini(r):
     r.decal(DEC + "vending_products.png", (-W / 2 + 0.003, 1.2, 1.6), (1, 0, 0), (1.2, 0.6), emissive=0.5)
     for y in (1.0, 2.5, 4.0):
         for x in (-1.0, 1.0):
-            r.lamp_panel((x, y, H - 0.02), (1.2, 0.2, 0.04), (0.95, 1.0, 1.0), 80)
+            r.lamp_panel((x, y, H - 0.02), (1.2, 0.2, 0.04), (0.95, 1.0, 1.0), 28)
     if r.rng.random() < 0.8:
         r.person((1.5, 1.5, 0), rz=180, pose="stand", col=FABRIC((0.1, 0.3, 0.5)))
 
