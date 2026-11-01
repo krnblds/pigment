@@ -27,6 +27,10 @@ var _shadow_t := 0.0
 var _road_lines: Array = []
 var _ap_line := 0
 var _ap_idx := 0
+var _ap_dir := 1
+var _ap_turn := 0
+var _ap_via = null        ## junction centre to pass through when changing runs
+var _ap_stuck := 0.0
 var ap_speed := 15.0
 
 
@@ -269,7 +273,7 @@ func _fallback_ground() -> void:
 func _process(delta: float) -> void:
 	if rain and cam:
 		rain.global_position = cam.global_position + Vector3.UP * 14.0 + cam.global_basis.z * -8.0
-	if car.needs_reset():
+	if car.needs_reset() or (town.layout and car.global_position.y < town.bounds.position.y):
 		reset_car()
 	# shadows on the few street lamps nearest the camera
 	_shadow_t -= delta
@@ -295,35 +299,88 @@ func autopilot_start() -> void:
 				best = d
 				_ap_line = li
 				_ap_idx = i
+	var pts: PackedVector3Array = _road_lines[_ap_line]
+	var a := pts[maxi(0, _ap_idx - 1)]
+	var b := pts[mini(pts.size() - 1, _ap_idx + 1)]
+	_ap_dir = 1 if (b - a).dot(car.global_basis.z) >= 0.0 else -1
 
 
-func autopilot_step(delta: float) -> void:
+## At the end of a run, continue on another run that starts/ends at the same junction
+## (or turn back on the same one at a free end of the map).
+func _ap_next_line() -> void:
+	var pts: PackedVector3Array = _road_lines[_ap_line]
+	var end := pts[_ap_idx]
+	var cands := []
+	for li in _road_lines.size():
+		if li == _ap_line:
+			continue
+		var q: PackedVector3Array = _road_lines[li]
+		if q[0].distance_to(end) < 45.0:
+			cands.append([li, 0, 1])
+		if q[q.size() - 1].distance_to(end) < 45.0:
+			cands.append([li, q.size() - 1, -1])
+	if cands.is_empty():
+		_ap_dir = -_ap_dir
+		var d := pts[_ap_idx] - pts[_ap_idx + _ap_dir]
+		car.place(TownLoader.car_transform(pts[_ap_idx], -d))
+		return
+	var c: Array = cands[_ap_turn % cands.size()]
+	_ap_turn += 1
+	var jbest := INF
+	for jd in town.layout.get("junctions", []):
+		var jp := Vector3(jd.pos[0], jd.pos[1], jd.pos[2])
+		if jp.distance_to(end) < jbest:
+			jbest = jp.distance_to(end)
+			_ap_via = jp
+	if jbest > 40.0:
+		_ap_via = null
+	_ap_line = c[0]
+	_ap_idx = c[1]
+	_ap_dir = c[2]
+
+
+func autopilot_step(_delta: float) -> void:
 	if _road_lines.is_empty():
 		car.input_throttle = 0.5
 		return
 	var pts: PackedVector3Array = _road_lines[_ap_line]
 	var p := car.global_position
 	var fwd := car.global_basis.z
-	# direction along the line we are travelling
-	var dir := 1 if _ap_idx + 1 < pts.size() and (pts[_ap_idx + 1] - pts[_ap_idx]).dot(fwd) >= 0.0 else -1
-	while _ap_idx + dir >= 0 and _ap_idx + dir < pts.size() and pts[_ap_idx + dir].distance_to(p) < pts[_ap_idx].distance_to(p) + 0.5 and (pts[_ap_idx] - p).dot(fwd) < 1.0:
-		_ap_idx += dir
-	var look := 7.0 + car.linear_velocity.length() * 0.55
+	# advance the progress index while the next sample is closer
+	while _ap_idx + _ap_dir >= 0 and _ap_idx + _ap_dir < pts.size() and pts[_ap_idx + _ap_dir].distance_to(p) < pts[_ap_idx].distance_to(p) + 1.0:
+		_ap_idx += _ap_dir
+	var at_end := _ap_idx + _ap_dir < 0 or _ap_idx + _ap_dir >= pts.size()
+	if at_end:
+		_ap_next_line()
+		pts = _road_lines[_ap_line]
+	var look := 7.0 + car.linear_velocity.length() * 0.6
 	var j := _ap_idx
-	while j + dir >= 0 and j + dir < pts.size() and pts[j].distance_to(p) < look:
-		j += dir
+	while j + _ap_dir >= 0 and j + _ap_dir < pts.size() and pts[j].distance_to(p) < look:
+		j += _ap_dir
 	var target := pts[j]
+	if _ap_via != null:
+		if (_ap_via - p).length() < 7.0:
+			_ap_via = null
+		else:
+			target = _ap_via + (pts[_ap_idx] - _ap_via).normalized() * 3.0
 	# keep left of centre (left-hand traffic, like the hill towns it is modelled on)
-	var tdir := (pts[j] - pts[maxi(0, mini(pts.size() - 1, j - dir))]).normalized()
-	var left := Vector3.UP.cross(tdir).normalized()
-	target += left * 2.0
-	var to := (target - p)
+	var tdir := (pts[j] - pts[clampi(j - _ap_dir, 0, pts.size() - 1)]).normalized()
+	target += Vector3.UP.cross(tdir).normalized() * 2.0
+	var to := target - p
 	to.y = 0
 	var ang := fwd.signed_angle_to(to.normalized(), Vector3.UP)
 	car.input_steer = clampf(ang * 2.2, -1.0, 1.0)
-	var v := car.forward_speed()
-	var want := ap_speed * (1.0 - clampf(absf(ang) * 1.2, 0.0, 0.6))
+	# slow for the bend ahead
+	var k := clampi(j + _ap_dir * 8, 0, pts.size() - 1)
+	var bend := absf(tdir.signed_angle_to((pts[k] - pts[j]).normalized(), Vector3.UP)) if k != j else 0.0
+	var v: float = car.forward_speed()
+	var want := ap_speed * (1.0 - clampf(absf(ang) * 1.2 + bend * 0.8, 0.0, 0.6))
 	car.input_throttle = clampf((want - v) * 0.35, -1.0, 1.0)
-	var end := (j == 0 or j == pts.size() - 1)
-	if end and pts[j].distance_to(p) < 10.0:
-		car.input_throttle = -1.0 if v > 1.0 else 0.0
+	# wedged against something: put it back on the road
+	_ap_stuck = _ap_stuck + _delta if absf(v) < 0.5 and car.input_throttle > 0.3 else 0.0
+	if _ap_stuck > 3.0:
+		_ap_stuck = 0.0
+		_ap_via = null
+		var q := pts[clampi(_ap_idx + _ap_dir * 2, 0, pts.size() - 1)]
+		car.place(TownLoader.car_transform(q, (q - pts[_ap_idx]) if q != pts[_ap_idx] else fwd))
+		print("autopilot: unstuck at ", q)

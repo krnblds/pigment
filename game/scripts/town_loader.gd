@@ -24,6 +24,7 @@ var _mesh_cache := {}
 var _mat_cache := {}
 var _tex_cache := {}
 var _body: StaticBody3D
+var _col_root: Node3D
 var _wet := 1.0
 
 
@@ -37,10 +38,11 @@ func load_town(wet := 1.0) -> bool:
 	if layout.is_empty():
 		return false
 	var t0 := Time.get_ticks_msec()
-	_body = StaticBody3D.new()
+	_body = StaticBody3D.new()       # primitive shapes (boxes, cylinders), added to the tree last
 	_body.name = "TownCollision"
-	add_child(_body)
 	_build_instances()
+	add_child(_body)
+	add_child(_col_root)
 	_build_lights()
 	_build_roads()
 	print("town: %d multimesh, %d mesh instances, %d collision shapes, %d lights in %d ms" % [
@@ -248,6 +250,8 @@ func _build_instances() -> void:
 	visuals.name = "Visuals"
 	add_child(visuals)
 	var shapes_cache := {}
+	_col_root = Node3D.new()
+	_col_root.name = "TrimeshCollision"
 	for gk in groups:
 		var g: Dictionary = groups[gk]
 		var info: Dictionary = layout.meshes[g.mesh]
@@ -310,9 +314,17 @@ func _build_instances() -> void:
 					cs.height = maxf(0.5, hi.y - lo.y)
 					_add_shape(cs, Transform3D(Basis(), t.origin + Vector3.UP * cs.height * 0.5))
 				"trimesh":
+					# own body each: Jolt compounds of many mesh shapes run out of sub-shape ID bits
 					if not shapes_cache.has(g.mesh):
 						shapes_cache[g.mesh] = _source_mesh(g.mesh).create_trimesh_shape()
-					_add_shape(shapes_cache[g.mesh], t)
+					var sb := StaticBody3D.new()
+					sb.name = "Col_" + g.mesh
+					var cs := CollisionShape3D.new()
+					cs.shape = shapes_cache[g.mesh]
+					cs.transform = t
+					sb.add_child(cs)
+					_col_root.add_child(sb)
+					stats.shapes += 1
 
 
 func _dress(gi: GeometryInstance3D, vis_end: float, shadows: bool) -> void:
@@ -383,7 +395,9 @@ func _build_lights() -> void:
 
 # ------------------------------------------------------------------ roads (spawn / reset)
 func _build_roads() -> void:
-	for poly in layout.get("roads", []):
+	_compute_bounds()
+	_build_edge_walls()
+	for poly in _clipped_roads():
 		var pts: Array = poly
 		for i in pts.size():
 			var p := Vector3(pts[i][0], pts[i][1], pts[i][2])
@@ -408,10 +422,64 @@ func nearest_road(from: Vector3) -> Array:
 	return [road_points[best], road_dirs[best]]
 
 
+## Playable area: the terrain's extent (roads run on past it to the map edge).
+var bounds := AABB(Vector3(-150, -50, -150), Vector3(300, 200, 300))
+
+
+func _compute_bounds() -> void:
+	for key in layout.meshes:
+		var m: Dictionary = layout.meshes[key]
+		if m.get("cat", "") == "terrain":
+			var a: Array = m.aabb
+			bounds = AABB(Vector3(a[0][0], a[0][1] - 30.0, a[0][2]), Vector3(a[1][0] - a[0][0], a[1][1] - a[0][1] + 200.0, a[1][2] - a[0][2]))
+			return
+
+
+func _inside(q: Array, margin: float) -> bool:
+	return q[0] > bounds.position.x + margin and q[0] < bounds.end.x - margin 			and q[2] > bounds.position.z + margin and q[2] < bounds.end.z - margin
+
+
+## Road polylines cut to the playable area (keeps the longest inside stretch of each).
+func _clipped_roads() -> Array:
+	var out := []
+	for poly in layout.get("roads", []):
+		var best := []
+		var cur := []
+		for q in poly:
+			if _inside(q, 6.0):
+				cur.append(q)
+			else:
+				if cur.size() > best.size():
+					best = cur
+				cur = []
+		if cur.size() > best.size():
+			best = cur
+		if best.size() > 2:
+			out.append(best)
+	return out
+
+
+## Invisible walls on the edge of the playable area.
+func _build_edge_walls() -> void:
+	var c := bounds.get_center()
+	var sz := bounds.size
+	for side in [[Vector3(sz.x * 0.5, 0, 0), Vector3(2, sz.y, sz.z)], [Vector3(-sz.x * 0.5, 0, 0), Vector3(2, sz.y, sz.z)],
+			[Vector3(0, 0, sz.z * 0.5), Vector3(sz.x, sz.y, 2)], [Vector3(0, 0, -sz.z * 0.5), Vector3(sz.x, sz.y, 2)]]:
+		var b := BoxShape3D.new()
+		b.size = side[1]
+		var sb := StaticBody3D.new()
+		sb.name = "EdgeWall"
+		var cs := CollisionShape3D.new()
+		cs.shape = b
+		sb.add_child(cs)
+		sb.position = c + side[0]
+		add_child(sb)
+
+
 ## Road polylines as arrays of Vector3 (for the autopilot).
 func road_polylines() -> Array:
 	var out := []
-	for poly in layout.get("roads", []):
+	for poly in _clipped_roads():
 		var pts := PackedVector3Array()
 		for q in poly:
 			pts.append(Vector3(q[0], q[1], q[2]))

@@ -7,9 +7,9 @@ extends VehicleBody3D
 
 signal impact(strength: float)
 
-@export var engine_power := 9000.0       ## N at the wheels at low speed (split over traction wheels)
+@export var engine_power := 5200.0       ## engine force at low speed (VehicleBody3D.engine_force)
 @export var top_speed := 52.0            ## m/s (~187 km/h)
-@export var reverse_power := 4500.0
+@export var reverse_power := 3000.0
 @export var brake_force := 60.0
 @export var handbrake_force := 90.0
 @export var max_steer := 0.55            ## rad at standstill
@@ -82,7 +82,7 @@ func setup(glb_path: String, json_path: String) -> void:
 	add_child(cs)
 	# wheels
 	var rest := 0.16
-	for wn in ["Wheel_FL", "Wheel_FR", "Wheel_RL", "Wheel_RR"]:
+	for wn: String in ["Wheel_FL", "Wheel_FR", "Wheel_RL", "Wheel_RR"]:
 		var src := _find(model, wn) as Node3D
 		var hub := Vector3.ZERO
 		var hub_basis := Basis()
@@ -106,7 +106,7 @@ func setup(glb_path: String, json_path: String) -> void:
 		w.damping_compression = 2.6
 		w.damping_relaxation = 3.4
 		w.wheel_friction_slip = grip
-		w.wheel_roll_influence = 0.12
+		w.wheel_roll_influence = 0.04
 		var front := wn[6] == "F"
 		w.use_as_steering = front
 		w.use_as_traction = not front
@@ -119,7 +119,7 @@ func setup(glb_path: String, json_path: String) -> void:
 		wheels.append(w)
 		(front_wheels if front else rear_wheels).append(w)
 	# lights
-	for ln in ["Headlight_L", "Headlight_R"]:
+	for ln: String in ["Headlight_L", "Headlight_R"]:
 		var e := _find(model, ln) as Node3D
 		var sl := SpotLight3D.new()
 		sl.position = _model_xf(e, model).origin if e else Vector3(0.7 if ln.ends_with("L") else -0.7, 0.65, 2.3)
@@ -134,7 +134,7 @@ func setup(glb_path: String, json_path: String) -> void:
 		sl.shadow_enabled = ln.ends_with("L")
 		add_child(sl)
 		headlights.append(sl)
-	for ln in ["Taillight_L", "Taillight_R"]:
+	for ln: String in ["Taillight_L", "Taillight_R"]:
 		var e := _find(model, ln) as Node3D
 		var ol := OmniLight3D.new()
 		ol.position = (_model_xf(e, model).origin if e else Vector3(0.7 if ln.ends_with("L") else -0.7, 0.7, -2.3)) + Vector3(0, 0, -0.15)
@@ -145,7 +145,7 @@ func setup(glb_path: String, json_path: String) -> void:
 		tail_lights.append(ol)
 	model.free()
 	center_of_mass_mode = RigidBody3D.CENTER_OF_MASS_MODE_CUSTOM
-	center_of_mass = Vector3(0, 0.38, 0.05)
+	center_of_mass = Vector3(0, 0.22, 0.05)
 	angular_damp = 0.6
 	linear_damp = 0.02
 	contact_monitor = true

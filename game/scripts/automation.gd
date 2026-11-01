@@ -187,16 +187,18 @@ func _bench_only(seconds: float) -> void:
 func _drive_test() -> void:
 	var car: VehicleBody3D = main.car
 	var res := {}
+	print("drive test: settling")
 	await _wait(2.0)
 	var spawn_y: float = car.global_position.y
 	res["rest_speed"] = snappedf(car.linear_velocity.length(), 0.01)
 	res["rest_up"] = snappedf(car.global_basis.y.y, 0.001)
 	res["wheels_contact"] = car.wheels.filter(func(w): return w.is_in_contact()).size()
 	# straight-line acceleration on the road
-	main.ap_speed = 60.0
+	main.ap_speed = 45.0
 	_drive(true)
 	var t := 0.0
 	var t100 := -1.0
+	var t60 := -1.0
 	var start: Vector3 = car.global_position
 	var vmax := 0.0
 	var min_up := 1.0
@@ -207,16 +209,19 @@ func _drive_test() -> void:
 		t += 1.0 / Engine.physics_ticks_per_second
 		var v: float = car.forward_speed()
 		vmax = maxf(vmax, v)
+		if t60 < 0.0 and v * 3.6 >= 60.0:
+			t60 = t
 		if t100 < 0.0 and v * 3.6 >= 100.0:
 			t100 = t
 		min_up = minf(min_up, car.global_basis.y.y)
 		if car.needs_reset():
 			resets += 1
 		if int(t * 120) % 240 == 0:
-			log.append("t=%.0f v=%.1f km/h up=%.2f pos=%s" % [t, v * 3.6, car.global_basis.y.y, car.global_position.snappedf(0.1)])
+			print("  t=%.0f v=%.1f km/h up=%.2f pos=%s fps=%d" % [t, v * 3.6, car.global_basis.y.y, car.global_position.snappedf(0.1), Engine.get_frames_per_second()])
 		if t > 12.0:
-			main.ap_speed = 20.0
+			main.ap_speed = 22.0
 	res["t_0_100"] = snappedf(t100, 0.01)
+	res["t_0_60"] = snappedf(t60, 0.01)
 	res["vmax_kmh"] = snappedf(vmax * 3.6, 0.1)
 	res["min_up"] = snappedf(min_up, 0.01)
 	res["distance"] = snappedf(car.global_position.distance_to(start), 0.1)
