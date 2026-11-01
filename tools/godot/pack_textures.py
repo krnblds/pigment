@@ -166,6 +166,34 @@ def main():
                 write_import(os.path.join(img_dir, fn))
     print(f"textures: {len(done)} folders -> {tex_root}")
     no_mesh_lods(layout)
+    road_maps(layout)
+
+
+# The open-world road materials (tools/town_roads.py) are Blender shader setups; Godot rebuilds
+# them with game/scripts/road_surface.gdshader from the full Pigment map set copied here.
+ROAD_TILES = {"RoadAsphalt": "asphalt", "RoadPaving": "paving", "RoadConcrete": "concrete", "RoadTrim": "trim", "RoadDecals": "atlas"}
+ROAD_MAPS = ["BaseColor", "BaseColorAlpha", "Roughness", "Height", "Normal_OpenGL", "Metallic"]
+
+
+def road_maps(layout):
+    import shutil
+    src_root = os.path.join(ROOT, "scenes", "town", "textures", "roads")
+    out = os.path.join(OUT, "images", "roads")
+    n = 0
+    for mat, tile in ROAD_TILES.items():
+        if mat not in layout.get("materials", {}):
+            continue
+        for mp in ROAD_MAPS:
+            src = os.path.join(src_root, tile, f"{tile}_{mp}.png")
+            if not os.path.isfile(src):
+                continue
+            os.makedirs(out, exist_ok=True)
+            dst = os.path.join(out, f"{tile}_{mp}.png")
+            if FORCE or not os.path.isfile(dst) or os.path.getmtime(dst) < os.path.getmtime(src):
+                shutil.copyfile(src, dst)
+            write_import(dst, normal=mp.startswith("Normal"))
+            n += 1
+    print(f"road maps: {n} -> {out}" if n else "road maps: none (run tools/road_textures.py --run)")
 
 
 # Godot's automatic mesh LODs simplify the terrain (and long road / junction / bridge meshes)

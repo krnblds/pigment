@@ -93,6 +93,8 @@ func _ready() -> void:
 		rain.emitting = false
 	# wet roads while it rains (grip, spray instead of smoke); --dry / --wet override
 	car.wet = 0.0 if args.has("dry") else (1.0 if args.has("wet") else (1.0 if rain.emitting else 0.0))
+	if town.layout:
+		town.set_road_rain(car.wet)          # puddles and damp asphalt follow the grip
 	if args.has("no-gi"):
 		env.sdfgi_enabled = false
 	_road_lines = town.road_polylines() if town.layout else []
@@ -175,6 +177,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		rain.emitting = not rain.emitting
 		rain.visible = rain.emitting
 		car.wet = 1.0 if rain.emitting else 0.0
+		if town.layout:
+			town.set_road_rain(car.wet)
 	elif event.is_action_pressed("toggle_gi"):
 		env.sdfgi_enabled = not env.sdfgi_enabled
 		print("SDFGI ", env.sdfgi_enabled)

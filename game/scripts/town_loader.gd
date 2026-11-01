@@ -223,9 +223,87 @@ func _tex(path: String) -> Texture2D:
 	return t
 
 
+## Road surfaces rebuilt from the full Pigment map set (tools/godot/pack_textures.py road_maps):
+## tile size in metres, how much water the surface collects, tone variation, world projection.
+const ROAD_SURFACES := {
+	"RoadAsphalt": {"tile": "asphalt", "tile_m": 4.0, "wet": 1.0, "macro": 0.25, "anti": true, "box": false, "normal": 0.9},
+	"RoadPaving": {"tile": "paving", "tile_m": 2.0, "wet": 0.6, "macro": 0.18, "anti": false, "box": false, "normal": 1.0},
+	"RoadConcrete": {"tile": "concrete", "tile_m": 2.0, "wet": 0.0, "macro": 0.2, "anti": false, "box": true, "normal": 0.7},
+}
+const ROAD_SHADER := preload("res://scripts/road_surface.gdshader")
+var road_materials: Array[ShaderMaterial] = []
+
+
+## Rain on / off for every road surface (puddles and damp).
+func set_road_rain(v: float) -> void:
+	for m in road_materials:
+		m.set_shader_parameter("rain", v)
+
+
+func _road_tex(tile: String, map: String) -> Texture2D:
+	return _tex(dir + "images/roads/%s_%s.png" % [tile, map])
+
+
+func _road_material(nm: String) -> Material:
+	if ROAD_SURFACES.has(nm):
+		var r: Dictionary = ROAD_SURFACES[nm]
+		var albedo := _road_tex(r.tile, "BaseColor")
+		if albedo == null:
+			return null
+		var m := ShaderMaterial.new()
+		m.shader = ROAD_SHADER
+		m.set_shader_parameter("albedo_tex", albedo)
+		m.set_shader_parameter("rough_tex", _road_tex(r.tile, "Roughness"))
+		m.set_shader_parameter("normal_tex", _road_tex(r.tile, "Normal_OpenGL"))
+		m.set_shader_parameter("height_tex", _road_tex(r.tile, "Height"))
+		m.set_shader_parameter("tile_m", r.tile_m)
+		m.set_shader_parameter("wet", r.wet)
+		m.set_shader_parameter("macro", r.macro)
+		m.set_shader_parameter("anti_tile", r.anti)
+		m.set_shader_parameter("world_box", r.box)
+		m.set_shader_parameter("normal_strength", r.normal)
+		m.set_shader_parameter("rain", _wet)
+		road_materials.append(m)
+		return m
+	if nm == "RoadTrim" or nm == "RoadDecals":
+		var tile := "trim" if nm == "RoadTrim" else "atlas"
+		var albedo := _road_tex(tile, "BaseColorAlpha" if nm == "RoadDecals" else "BaseColor")
+		if albedo == null:
+			return null
+		var sm := StandardMaterial3D.new()
+		sm.albedo_texture = albedo
+		sm.roughness_texture = _road_tex(tile, "Roughness")
+		sm.roughness_texture_channel = BaseMaterial3D.TEXTURE_CHANNEL_RED
+		sm.roughness = 1.0
+		var nrm := _road_tex(tile, "Normal_OpenGL")
+		if nrm:
+			sm.normal_enabled = true
+			sm.normal_texture = nrm
+		sm.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
+		if nm == "RoadDecals":
+			# painted markings, cracks, manholes: cut out by alpha, no shadows of their own
+			sm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_DEPTH_PRE_PASS
+			sm.texture_repeat = false
+			sm.render_priority = 1
+		else:
+			var met := _road_tex(tile, "Metallic")
+			if met:
+				sm.metallic = 1.0
+				sm.metallic_texture = met
+				sm.metallic_texture_channel = BaseMaterial3D.TEXTURE_CHANNEL_RED
+		return sm
+	return null
+
+
 func material(nm: String) -> Material:
 	if _mat_cache.has(nm):
 		return _mat_cache[nm]
+	if nm.begins_with("Road") and nm != "RoadMetal":
+		var rm := _road_material(nm)
+		if rm:
+			rm.resource_name = nm
+			_mat_cache[nm] = rm
+			return rm
 	var d: Dictionary = layout.materials.get(nm, {})
 	var m: BaseMaterial3D
 	match d.get("type", "flat"):
@@ -1096,14 +1174,19 @@ func _stream_cells(p: Vector2, sync: bool) -> void:
 
 
 # ------------------------------------------------------------------ lights (streamed)
+## The world export names its lights Light_<what>; the town uses LampLight / AlleyLight.
+const LIGHT_KINDS := {"Light_lamp": "LampLight", "Light_alley": "AlleyLight", "Light_mast": "MastLight"}
+
+
 func _index_lights() -> void:
 	if _headless:
 		return
 	for d in layout.lights:
+		d["kind"] = LIGHT_KINDS.get(String(d.get("kind", "")), d.get("kind", ""))
 		var i := _lights.size()
 		var p := Vector3(d.pos[0], d.pos[1], d.pos[2])
 		var kind: String = d.get("kind", "")
-		var fade: float = 110.0 if kind == "LampLight" else 60.0
+		var fade: float = 70.0 if kind in ["LampLight", "MastLight"] else 50.0
 		_lights.append({"d": d, "p": p, "r": fade + 30.0 + LIGHT_MARGIN})
 		var k := _key(p, CELL)
 		if not _light_grid.has(k):
@@ -1141,6 +1224,11 @@ func _make_light(i: int) -> Light3D:
 				o.light_size = 0.15
 				o.omni_shadow_mode = OmniLight3D.SHADOW_DUAL_PARABOLOID
 				lamp_lights.append(o)
+			"MastLight":
+				# port flood masts: big, high, few
+				o.omni_range = 38.0
+				o.light_energy = 4.0
+				o.light_volumetric_fog_energy = 1.5
 			"AlleyLight":
 				o.omni_range = 9.0
 				o.light_energy = 2.2
@@ -1155,7 +1243,7 @@ func _make_light(i: int) -> Light3D:
 	l.light_color = col
 	l.shadow_enabled = false
 	l.distance_fade_enabled = true
-	l.distance_fade_begin = 110.0 if kind == "LampLight" else 60.0
+	l.distance_fade_begin = 70.0 if kind in ["LampLight", "MastLight"] else 50.0
 	l.distance_fade_length = 30.0
 	l.distance_fade_shadow = 40.0
 	return l
