@@ -136,6 +136,69 @@ func mesh(key: String, lod: int) -> Mesh:
 	return m
 
 
+## The shared impostor: a unit mesh (3 crossed vertical quads at azimuth 0 / 60 / 120 deg of the bake,
+## and a top quad) with the atlas material; instances carry their variant in INSTANCE_CUSTOM.
+var _imp_mesh: ArrayMesh
+
+
+func impostor_mesh() -> ArrayMesh:
+	if _imp_mesh:
+		return _imp_mesh
+	var v := PackedVector3Array()
+	var n := PackedVector3Array()
+	var uv := PackedVector2Array()
+	var uv2 := PackedVector2Array()
+	var idx := PackedInt32Array()
+	for k in 4:
+		var b := v.size()
+		var corners := [[-1, 0, 0, 0], [1, 0, 1, 0], [1, 1, 1, 1], [-1, 1, 0, 1]]
+		for c in corners:
+			if k < 3:
+				var a := deg_to_rad(60.0 * k)
+				var right := Vector3(cos(a), 0.0, -sin(a))      # Blender (cos a, sin a, 0) in Godot space
+				v.append(right * c[0] * 0.5 + Vector3.UP * c[1])
+				n.append(Vector3(sin(a), 0.0, cos(a)))
+			else:
+				v.append(Vector3(c[0] * 0.5, 0.0, -(c[1] * 2.0 - 1.0) * 0.5))
+				n.append(Vector3.UP)
+			uv.append(Vector2(c[2], c[3]))
+			uv2.append(Vector2(k, 2.0))
+		idx.append_array([b, b + 2, b + 1, b, b + 3, b + 2])
+	var arr := []
+	arr.resize(Mesh.ARRAY_MAX)
+	arr[Mesh.ARRAY_VERTEX] = v
+	arr[Mesh.ARRAY_NORMAL] = n
+	arr[Mesh.ARRAY_TEX_UV] = uv
+	arr[Mesh.ARRAY_TEX_UV2] = uv2
+	arr[Mesh.ARRAY_INDEX] = idx
+	_imp_mesh = ArrayMesh.new()
+	_imp_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
+	var m := ShaderMaterial.new()
+	m.shader = SH_IMP
+	m.set_shader_parameter("albedo_tex", _t("impostors/atlas_albedo.png"))
+	m.set_shader_parameter("normal_tex", _t("impostors/atlas_normal.png"))
+	m.set_shader_parameter("lod_fade", FADE)
+	_imp_mesh.surface_set_material(0, m)
+	# instances are scaled in the shader: a generous AABB keeps culling correct
+	_imp_mesh.custom_aabb = AABB(Vector3(-20, -2, -20), Vector3(40, 40, 40))
+	return _imp_mesh
+
+
+func has_impostor(key: String) -> bool:
+	return index.variants[key].has("impostor")
+
+
+## [instance transform (moved to the crown centre), INSTANCE_CUSTOM] for the shared impostor.
+func impostor_instance(key: String, t: Transform3D) -> Array:
+	var v: Dictionary = index.variants[key]
+	var im: Dictionary = v.impostor
+	var l: Dictionary = v.lod_m
+	var c := Color(float(im.cell) * 1000.0 + float(l.lod2), float(im.size_v), float(im.size_t),
+		floorf(float(l.far) / 10.0) * 1000.0 + float(im.height))
+	var off := Vector3(float(im.center[0]), 0.0, -float(im.center[1]))
+	return [Transform3D(t.basis, t * off), c]
+
+
 func _first_mesh(n: Node) -> MeshInstance3D:
 	if n is MeshInstance3D:
 		return n

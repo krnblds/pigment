@@ -170,9 +170,18 @@ def impostor_material(root, key):
     nt = m.node_tree
     out = next(n for n in nt.nodes if n.type == "OUTPUT_MATERIAL")
     bsdf = next(n for n in nt.nodes if n.type == "BSDF_PRINCIPLED")
-    p = os.path.join(root, "assets", "trees", "impostors", f"{key}_albedo.png")
-    if os.path.isfile(p):
+    p = os.path.join(root, "assets", "trees", "impostors", "atlas_albedo.png")
+    cell = ((load_index(root) or {}).get("variants", {}).get(key, {}).get("impostor") or {}).get("cell")
+    if os.path.isfile(p) and cell is not None:
+        # the LOD2 UVs span this variant's 4-view strip: map them into the shared atlas
+        col, row = cell % 4, cell // 4
+        uvn = nt.nodes.new("ShaderNodeTexCoord")
+        mp = nt.nodes.new("ShaderNodeMapping")
+        mp.inputs["Scale"].default_value = (0.25, 1.0 / 16.0, 1.0)
+        mp.inputs["Location"].default_value = (col * 0.25, 1.0 - (row + 1) / 16.0, 0.0)
+        nt.links.new(uvn.outputs["UV"], mp.inputs["Vector"])
         t = _tex(nt, p, (-600, 200))
+        nt.links.new(mp.outputs["Vector"], t.inputs["Vector"])
         nt.links.new(t.outputs["Color"], bsdf.inputs["Base Color"])
         bsdf.inputs["Roughness"].default_value = 0.8
         gt = nt.nodes.new("ShaderNodeMath")

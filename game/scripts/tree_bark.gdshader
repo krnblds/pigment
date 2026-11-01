@@ -13,7 +13,8 @@ uniform vec3 tint : source_color = vec3(1.0);
 varying float v_ao;
 
 void vertex() {
-	if (!tree_lod(MODEL_MATRIX)) {
+	v_fade = tree_lod(MODEL_MATRIX);
+	if (v_fade.x <= 0.0 || v_fade.y <= 0.0) {
 		VERTEX = vec3(0.0);
 	} else {
 		VERTEX += tree_wind_offset(VERTEX, NORMAL, COLOR, UV2, MODEL_MATRIX, TIME);
@@ -22,7 +23,7 @@ void vertex() {
 }
 
 void fragment() {
-	if (tree_dither_discard(FRAGCOORD.xy)) {
+	if (tree_dither_discard(FRAGCOORD.xy, v_fade)) {
 		discard;
 	}
 	float wet = tree_wind.w;

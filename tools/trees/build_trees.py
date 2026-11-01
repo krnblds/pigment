@@ -281,11 +281,12 @@ def render_impostor(key, me, sp, tmp):
     bpy.data.objects.remove(o)
     bpy.data.objects.remove(cam)
     bpy.data.cameras.remove(cam_d)
-    os.makedirs(os.path.join(OUT, "impostors"), exist_ok=True)
+    imp_dir = os.path.join(ROOT, "scenes", "trees", "impostors")       # per variant (git-ignored): impostor_atlas.py packs them
+    os.makedirs(imp_dir, exist_ok=True)
     for kind, px in atl.items():
         im = bpy.data.images.new(f"_{key}_{kind}", px.shape[1], px.shape[0], alpha=True)
         im.pixels.foreach_set(px.astype(np.float32).ravel())
-        im.filepath_raw = os.path.join(OUT, "impostors", f"{key}_{kind}.png")
+        im.filepath_raw = os.path.join(imp_dir, f"{key}_{kind}.png")
         im.file_format = "PNG"
         im.save()
         bpy.data.images.remove(im)
@@ -440,7 +441,7 @@ def main():
             "species": sp, "variant": v, "look": look, "planter": planter,
             "title": S.SPECIES[sp]["title"], "bark": bsp,
             "files": {"lod0": f"{key}.glb", "lod1": f"{key}_lod1.glb", "lod2": f"{key}_lod2.glb",
-                      "impostor_albedo": f"impostors/{key}_albedo.png", "impostor_normal": f"impostors/{key}_normal.png"},
+                      "impostor_albedo": "impostors/atlas_albedo.png", "impostor_normal": "impostors/atlas_normal.png"},
             "tris": {"lod0": s0["total"], "lod0_bark": s0["bark"], "lod0_leaf": s0["leaf"], "lod1": s1["total"], "lod2": 8},
             "lod_m": lods,
             "height": round(Hh, 2), "crown_radius": round(R, 2),
@@ -465,9 +466,9 @@ def main():
                      "roughness": "textures/bark_<species>_rough.jpg", "uv": "tiling: 1 UV unit = the species' bark tile (BARK in species.py)"},
             "leaves": {"name": "TreeLeaves", "albedo": "textures/leaves_albedo.png (alpha = cut-out)", "normal": "textures/leaves_normal.jpg",
                        "mask": "textures/leaves_mask.jpg (R roughness, G translucency)", "alpha_scissor": 0.42},
-            "impostor": {"name": "TreeImpostor_<key>", "albedo": "impostors/<key>_albedo.png (rgb albedo x occlusion, a = cut-out)",
-                         "normal": "impostors/<key>_normal.png (object-space normal, Blender z up, encoded 0..1)",
-                         "layout": "4 cells across: views at azimuth 0, 60, 120 deg, then top"},
+            "impostor": {"name": "TreeImpostor_<key>", "albedo": "impostors/atlas_albedo.png (rgb albedo x occlusion, a = cut-out)",
+                         "normal": "impostors/atlas_normal.png (object-space normal, Blender z up, encoded 0..1)",
+                         "layout": "per variant a 4-view strip (azimuth 0, 60, 120 deg, then top) at index variants.<key>.impostor.cell; the LOD2 glb UVs span the strip"},
         },
         "attributes": {"COLOR_0.r": "branch flex", "COLOR_0.g": "phase", "COLOR_0.b": "leaf flutter (0 stem .. 1 tip)",
                        "COLOR_0.a": "crown occlusion", "TEXCOORD_1.x": "height / tree height", "TEXCOORD_1.y": "0 bark, 1 leaf card, 2 impostor"},
@@ -477,7 +478,7 @@ def main():
     })
     with open(idx_path, "w", encoding="utf-8") as f:
         json.dump(idx, f, indent=1)
-    print(f"tree kit: {len(keys)} variants -> {OUT} ({time.time() - t0:.0f} s)")
+    print(f"tree kit: {len(keys)} variants -> {OUT} ({time.time() - t0:.0f} s); now: python tools/trees/impostor_atlas.py")
 
 
 main()

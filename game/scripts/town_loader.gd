@@ -612,6 +612,7 @@ func _build_groups(groups: Array) -> void:
 					_cells[uk].entries.append(e)
 					_cells[uk].r = maxf(_cells[uk].r, r)
 	_build_proxies(proxies)
+	_build_tree_impostors()
 	_prepare_collision()
 	_run_merges(merge_jobs.values())
 	_arrays_cache.clear()
@@ -629,11 +630,13 @@ func _build_trees(key: String, xfs: Array) -> void:
 	if _headless:
 		return
 	var bands: Array = _trees.bands(key)
-	for lod in _trees.lod_count(key):
+	var lods: int = _trees.lod_count(key)
+	for lod in mini(lods, 2):
 		var mesh: Mesh = _trees.mesh(key, lod)
 		if mesh == null:
 			continue
-		var size := CELL if lod < 2 else REGION
+		# LOD0 in 64 m cells; LOD1 in 256 m regions (fewer draws; out-of-band vertices collapse)
+		var size := CELL if lod == 0 else REGION
 		var by := {}
 		for x in xfs:
 			var k := _key(x.origin, size)
@@ -642,20 +645,69 @@ func _build_trees(key: String, xfs: Array) -> void:
 			by[k].append(x)
 		var end: float = bands[lod][1] + TreeKit.FADE
 		for k in by:
-			var nm := "%s_l%d_%d_%d" % [key, lod, k.x, k.y]
-			if lod == 2:
-				var mmi := _new_mmi(nm, mesh, _mm_buffer(by[k]), by[k].size())
-				_dress(mmi, end + REGION * 0.71, false)
-				_visuals.add_child(mmi)
-				stats.multimesh += 1
-				continue
-			var e := {"name": nm, "mesh": mesh, "buf": _mm_buffer(by[k]), "n": by[k].size(),
-				"vis": end + CELL * 0.71, "shadows": _trees.lod_count(key) > 1, "region": null}
-			var uk := Vector3i(k.x, k.y, 0)
+			var e := {"name": "%s_l%d_%d_%d" % [key, lod, k.x, k.y], "mesh": mesh, "buf": _mm_buffer(by[k]), "n": by[k].size(),
+				"vis": end + size * 0.71, "shadows": lods > 1 and lod == 0, "region": null}
+			var uk := Vector3i(k.x, k.y, 0 if lod == 0 else 2)
 			if not _cells.has(uk):
-				_cells[uk] = {"center": _center(k, CELL), "r": 0.0, "entries": []}
+				_cells[uk] = {"center": _center(k, size), "r": 0.0, "entries": []}
 			_cells[uk].entries.append(e)
-			_cells[uk].r = maxf(_cells[uk].r, e.vis + CELL * 0.75)
+			_cells[uk].r = maxf(_cells[uk].r, e.vis + size * 0.75)
+	if lods > 2 and _trees.has_impostor(key):
+		for x in xfs:
+			var ic: Array = _trees.impostor_instance(key, x)
+			var k := _key(ic[0].origin, REGION)
+			if not _tree_imp.has(k):
+				_tree_imp[k] = []
+			_tree_imp[k].append(ic)
+
+
+var _tree_imp := {}            ## region -> [[Transform3D, Color custom]] (all species: one MultiMesh)
+
+
+## One impostor MultiMesh per region for every kit tree in it (shared atlas, variant in INSTANCE_CUSTOM).
+func _build_tree_impostors() -> void:
+	if _tree_imp.is_empty() or _headless:
+		return
+	var mesh: ArrayMesh = _trees.impostor_mesh()
+	for k in _tree_imp:
+		var list: Array = _tree_imp[k]
+		var buf := PackedFloat32Array()
+		buf.resize(list.size() * 16)
+		var o := 0
+		for ic in list:
+			var t: Transform3D = ic[0]
+			var c: Color = ic[1]
+			var bs := t.basis
+			buf[o] = bs.x.x
+			buf[o + 1] = bs.y.x
+			buf[o + 2] = bs.z.x
+			buf[o + 3] = t.origin.x
+			buf[o + 4] = bs.x.y
+			buf[o + 5] = bs.y.y
+			buf[o + 6] = bs.z.y
+			buf[o + 7] = t.origin.y
+			buf[o + 8] = bs.x.z
+			buf[o + 9] = bs.y.z
+			buf[o + 10] = bs.z.z
+			buf[o + 11] = t.origin.z
+			buf[o + 12] = c.r
+			buf[o + 13] = c.g
+			buf[o + 14] = c.b
+			buf[o + 15] = c.a
+			o += 16
+		var mm := MultiMesh.new()
+		mm.transform_format = MultiMesh.TRANSFORM_3D
+		mm.use_custom_data = true
+		mm.mesh = mesh
+		mm.instance_count = list.size()
+		mm.buffer = buf
+		var mmi := MultiMeshInstance3D.new()
+		mmi.name = "TreeImpostors_%d_%d" % [k.x, k.y]
+		mmi.multimesh = mm
+		_dress(mmi, 900.0 + REGION * 0.71, false)
+		_visuals.add_child(mmi)
+		stats.multimesh += 1
+	_tree_imp.clear()
 
 
 func _build_proxies(proxies: Dictionary) -> void:

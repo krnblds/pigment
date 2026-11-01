@@ -17,7 +17,8 @@ uniform float occlusion = 0.7;
 varying float v_ao;
 
 void vertex() {
-	if (!tree_lod(MODEL_MATRIX)) {
+	v_fade = tree_lod(MODEL_MATRIX);
+	if (v_fade.x <= 0.0 || v_fade.y <= 0.0) {
 		VERTEX = vec3(0.0);
 	} else {
 		VERTEX += tree_wind_offset(VERTEX, NORMAL, COLOR, UV2, MODEL_MATRIX, TIME);
@@ -26,7 +27,7 @@ void vertex() {
 }
 
 void fragment() {
-	if (tree_dither_discard(FRAGCOORD.xy)) {
+	if (tree_dither_discard(FRAGCOORD.xy, v_fade)) {
 		discard;
 	}
 	vec4 a = texture(albedo_tex, UV);
@@ -37,7 +38,7 @@ void fragment() {
 	float wet = tree_wind.w;
 	ALBEDO = a.rgb * tint * mix(1.0 - occlusion, 1.0, v_ao) * mix(1.0, 0.8, wet);
 	vec3 m = texture(mask_tex, UV).rgb;
-	ROUGHNESS = mix(m.r, m.r * 0.45, wet);
+	ROUGHNESS = mix(m.r, m.r * 0.7, wet);
 	SPECULAR = 0.4;
 	NORMAL_MAP = texture(normal_tex, UV).rgb;
 	NORMAL_MAP_DEPTH = 0.9;

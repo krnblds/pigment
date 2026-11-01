@@ -14,27 +14,27 @@ global uniform vec4 tree_wind;
 uniform vec2 lod_range = vec2(0.0, 100000.0);
 uniform float lod_fade = 6.0;
 
-varying float v_fade_in;
-varying float v_fade_out;
+varying vec2 v_fade;     // x: fade-in, y: fade-out of this LOD band
 
 float tree_hash(vec2 p) {
 	return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
 }
 
-// Returns false when this instance is outside the LOD band (the caller collapses the vertex).
-bool tree_lod(mat4 model) {
+// (fade-in, fade-out) of this instance's LOD band; both > 0 = drawn. The caller stores it in v_fade
+// and collapses the vertex when the instance is outside the band.
+vec2 tree_lod(mat4 model) {
 	vec3 o = model[3].xyz;
 	float d = distance(o.xz, tree_cam.xz) + abs(o.y - tree_cam.y) * 0.25;
 	float h = lod_fade * 0.5;
-	v_fade_in = lod_range.x <= 0.0 ? 1.0 : clamp((d - (lod_range.x - h)) / lod_fade, 0.0, 1.0);
-	v_fade_out = clamp(((lod_range.y + h) - d) / lod_fade, 0.0, 1.0);
-	return v_fade_in > 0.0 && v_fade_out > 0.0;
+	float fi = lod_range.x <= 0.0 ? 1.0 : clamp((d - (lod_range.x - h)) / lod_fade, 0.0, 1.0);
+	float fo = clamp(((lod_range.y + h) - d) / lod_fade, 0.0, 1.0);
+	return vec2(fi, fo);
 }
 
 // Dithered cross-fade between neighbouring LODs: the two bands keep complementary pixels.
-bool tree_dither_discard(vec2 frag) {
+bool tree_dither_discard(vec2 frag, vec2 fade) {
 	float r = tree_hash(floor(frag));
-	return r >= v_fade_out || r < 1.0 - v_fade_in;
+	return r >= fade.y || r < 1.0 - fade.x;
 }
 
 // Wind: a gusting main bend by height, branch sway, leaf flutter. Local (model) space.
