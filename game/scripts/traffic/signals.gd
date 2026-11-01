@@ -225,7 +225,7 @@ func _build_heads(J, c: Dictionary) -> void:
 			var left := Vector3.UP.cross(d).normalized()
 			var side: float = graph.kerb_sign()
 			p += left * side * (kerb_lane.width * 0.5 + 1.7) - d * 0.5
-			places.append([p, -d, ai, ap.lanes.size() > 1, ""])
+			places.append([p, -d, ai, ap.lanes.size() > 1 or ai % 2 == 0, ""])
 	for pl in places:
 		var h := _make_head(pl[0], pl[1], pl[3])
 		h["approach"] = pl[2]
@@ -246,7 +246,8 @@ func attach_instance(signal_id: String, node: Node3D) -> bool:
 	h.root.queue_free()
 	h.root = node
 	h.lamps = lamps
-	h.mats = {}
+	h.ped = _find_ped(node)
+	h.prop = true
 	var ol: OmniLight3D = h.light
 	if ol:
 		ol.reparent(node, false)
@@ -280,7 +281,7 @@ func _make_head(p: Vector3, facing: Vector3, mast := false) -> Dictionary:
 	var z := facing.normalized()
 	var x := Vector3.UP.cross(z).normalized()
 	root.global_transform = Transform3D(Basis(x, Vector3.UP, z), p)
-	var h := {"root": root, "lamps": {"red": [], "amber": [], "green": []}, "light": null, "mats": {}}
+	var h := {"root": root, "lamps": {"red": [], "amber": [], "green": []}, "ped": {"walk": [], "stop": []}, "light": null, "prop": false}
 	var scene: PackedScene = mast_scene if mast else prop_scene
 	if scene:
 		var inst: Node3D = scene.instantiate()
@@ -288,12 +289,15 @@ func _make_head(p: Vector3, facing: Vector3, mast := false) -> Dictionary:
 		h.lamps = _find_lamps(inst)
 		if h.lamps.red.is_empty():
 			inst.queue_free()
+		else:
+			h.prop = true
+			h.ped = _find_ped(inst)
 	if h.lamps.red.is_empty():
 		_simple_head(root, h)
 	var ol := OmniLight3D.new()
-	ol.position = Vector3(0, 3.0, 0.5)
+	ol.position = Vector3(0, 2.8, 1.6)      # in front of the lenses, clear of the pole
 	ol.omni_range = 7.0
-	ol.light_energy = 1.2
+	ol.light_energy = 0.6
 	ol.light_volumetric_fog_energy = 1.5
 	ol.distance_fade_enabled = true
 	ol.distance_fade_begin = 70.0
@@ -350,31 +354,56 @@ func _show(h: Dictionary, st: int) -> void:
 	var on: String = ["green", "amber", "red"][st]
 	for k in ["red", "amber", "green"]:
 		for mi in h.lamps[k]:
-			if prop_scene and not h.mats.has(mi):
-				_prop_mats(h, mi, k)
-			if h.mats.has(mi):
-				var arr: Array = h.mats[mi]
-				for si in arr.size():
-					var m: BaseMaterial3D = arr[si]
-					m.emission_energy_multiplier = 12.0 if k == on else 0.05
+			if h.prop:
+				_prop_lamp(mi, k == on)
 			else:
 				mi.material_override = _mats["%s_%s" % [k, "on" if k == on else "off"]]
+	# pedestrian heads: walk while the vehicles this pole faces are held at red
+	for mi in h.ped.walk:
+		_prop_lamp(mi, st == RED)
+	for mi in h.ped.stop:
+		_prop_lamp(mi, st != RED)
 	if h.light:
 		h.light.light_color = {"green": Color(0.1, 1.0, 0.45), "amber": Color(1.0, 0.55, 0.0), "red": Color(1.0, 0.06, 0.03)}[on]
 
 
-## Prop lamps keep their own look; only the emission is driven (per-head material copies).
-func _prop_mats(h: Dictionary, mi: MeshInstance3D, key: String) -> void:
-	var arr := []
+## The props' lamps (docs/agents/props/NOTES.md): every lamp node shares the prop material, whose
+## emissive texels are the lit lens.  On = the shared material (no override); off = an override
+## with the emission switched off (one copy per source material, shared by every head).
+var _off_cache := {}
+
+
+func _prop_lamp(mi: MeshInstance3D, lit: bool) -> void:
 	for si in mi.mesh.get_surface_count():
-		var m = mi.get_active_material(si)
-		var bm: BaseMaterial3D = m.duplicate() if m is BaseMaterial3D else StandardMaterial3D.new()
-		bm.emission_enabled = true
-		if bm.emission.get_luminance() < 0.05:
-			bm.emission = _mats["%s_on" % key].emission
-		mi.set_surface_override_material(si, bm)
-		arr.append(bm)
-	h.mats[mi] = arr
+		if lit:
+			mi.set_surface_override_material(si, null)
+			continue
+		var src = mi.mesh.surface_get_material(si)
+		if not _off_cache.has(src):
+			var off: BaseMaterial3D = src.duplicate() if src is BaseMaterial3D else StandardMaterial3D.new()
+			off.emission_enabled = false
+			off.emission_energy_multiplier = 0.0
+			_off_cache[src] = off
+		mi.set_surface_override_material(si, _off_cache[src])
+
+
+## Sit the heads on the ground (sidewalk) once the collision exists.
+func ground_heads(space: PhysicsDirectSpaceState3D, exclude: Array = []) -> void:
+	var q := PhysicsRayQueryParameters3D.new()
+	q.collision_mask = 1
+	var ex: Array[RID] = []
+	ex.assign(exclude)
+	q.exclude = ex
+	for c in ctl:
+		if c == null:
+			continue
+		for h in c.heads:
+			var r: Node3D = h.root
+			q.from = r.global_position + Vector3.UP * 1.5
+			q.to = r.global_position - Vector3.UP * 1.5
+			var hit := space.intersect_ray(q)
+			if hit:
+				r.global_position.y = hit.position.y
 
 
 func _find_lamps(root: Node) -> Dictionary:
@@ -393,6 +422,18 @@ func _find_lamps(root: Node) -> Dictionary:
 								out[k].append(mi)
 		if not out.red.is_empty():
 			break
+	return out
+
+
+func _find_ped(root: Node) -> Dictionary:
+	var out := {"walk": [], "stop": []}
+	for n in _all(root):
+		var nm := String(n.name).to_lower()
+		if nm.begins_with("ped") and n is MeshInstance3D:
+			if nm.ends_with("walk"):
+				out.walk.append(n)
+			elif nm.ends_with("stop"):
+				out.stop.append(n)
 	return out
 
 

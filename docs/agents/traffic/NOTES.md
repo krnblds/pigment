@@ -17,7 +17,7 @@ Both drop-ins are already exercised against the other workstreams' current outpu
 | | |
 |---|---|
 | `01_busy_junction.png` | the J1 crossroads at night, signals running |
-| `02_red_light_jam.png` | a queue held at a red light (brake lights, the signal head) |
+| `02_red_light_jam.png` | a queue held at a red light (brake lights; the props' pole light showing red) |
 | `03_chase_traffic.png` | chase cam: the autopilot drives the hero through traffic |
 | `04_security_cruiser.png` | a Hoshikawa Security patrol, light bar flashing |
 | `perf.json` | numbers from the same run (see "Performance") |
@@ -386,7 +386,29 @@ signal or give-way junction every 60 m.
 
 ## Performance
 
-PERF_PLACEHOLDER
+RTX 4070 Ti, 1920×1080, vsync off, SDFGI on, idle GPU. Numbers from `perf.json` (the `--traffic-shots`
+run), `--bench-traffic`, and the existing `--bench`. All of them include the parked cars, 40
+pedestrians and the signal heads.
+
+| scene | moving cars | avg fps | 1 % low | GPU ms | draw calls | traffic CPU per physics tick |
+|---|---|---|---|---|---|---|
+| `--bench`, autopilot drive, `--no-traffic` (baseline) | – | 249 | 183 | | 297 | – |
+| `--bench`, autopilot drive, traffic on (adaptive) | about 53 | 229 | 173 | | 467 | |
+| perf matrix (chase drive): 0 cars | 2 (patrols) | 202 | 81 | 4.3 | 413 | 0.14 ms |
+| 30 cars | 32 | 249 | 160 | 3.6 | 301 | 0.51 ms |
+| 60 cars | 61 | 233 | 136 | 3.9 | 566 | 0.79 ms |
+| 80 cars (the town is full at about 80) | 82 | 218 | 139 | 4.1 | 522 | 1.14 ms |
+| chase cam through dense traffic (shot 3) | 68 | 128 | 61 | 5.0 | 702 | 1.8 ms |
+| busy-junction view (shot 1) | 69 | 177 | 79 | 4.6 | 667 | 1.4 ms |
+
+60+ fps with 60 cars holds with a wide margin. The averages vary with the view: the matrix rows
+are consecutive 6 s windows while the autopilot drives. The GPU cost of 60 to 80 cars is about
+0.5 ms. The traffic CPU cost is 0.8–1.8 ms per 120 Hz tick (about 1 tick per frame at these
+rates). `--bench-matrix` now has a `traffic_hidden` line (traffic not rendered, AI still running).
+
+Measuring needs an idle GPU. While other agents' Cycles renders held 11.7 of the 12 GB of VRAM
+at 100 % utilisation, every configuration ran at about 10 fps, even with no cars. Those runs are
+not representative.
 
 ## Known limits
 
@@ -405,9 +427,14 @@ PERF_PLACEHOLDER
 - **Pedestrians.** They are silhouettes with a procedural walk and never cross roads.
 - **Spawning.** It only checks frustum visibility, not occlusion. Cars despawn at dead ends even
   in view, but in the town those are at the fogged map edges.
-- **Traffic lights.** The props workstream's traffic lights weren't exported yet when this was
-  tested. The loader matches their documented nodes (`Lamp_<head>_Red/Amber/Green`, front +Z, mast
-  arm +X), but only the built-in heads were seen in the shots.
+- **Traffic lights.** The props' traffic lights (merged from master b80fc1b) are used once
+  `sync_vehicles.py` has copied `assets/props/` into `game/assets/props/`. Mast-arm and pole lights
+  alternate per approach, and the heads are raycast onto the sidewalk.
+  - Lamps are switched the way the props NOTES say: lit = the shared material; off = an override
+    with emission off.
+  - Pedestrian Walk/Stop lamps show walk while their approach is red.
+  - Without the props, a built-in pole and three-lamp head is used.
+  - Only the lod0 glb is used (2–4k triangles); the props' lod1 is ignored.
 - **Fleet variants.** Without the fleet's import extension the variant materials are decoded at
   runtime, which costs about 6 s at start-up and more VRAM. Run `sync_vehicles.py` and re-import.
 
@@ -428,6 +455,9 @@ PERF_PLACEHOLDER
   (`scenes/town/textures/building_a/` and so on), or `blender_town.build()` fails with
   `material_slots[0]`. For this run they were seeded from the first variant (git-ignored data). The
   main checkout still has old base folders, so it isn't affected.
+- **Master merged.** Master (the street props kit, b80fc1b) is merged into this branch. Run
+  `python tools/godot/sync_vehicles.py` (it copies the props too) and re-import, so the signals
+  use the props' traffic lights.
 - **Fleet.** Once `assets/vehicles/` is on master, run `python tools/godot/sync_vehicles.py` and
   re-import. If the fleet workstream adds its variant extension to `game/` itself, point
   `addons/fleet_variants/plugin.gd` (`EXT`) at it, or drop the plugin.

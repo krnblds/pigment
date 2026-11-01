@@ -163,6 +163,7 @@ func _late_setup(opts: Dictionary) -> void:
 	if main.town and main.town.layout:
 		var n: int = graph.snap_to_ground(get_world_3d().direct_space_state, 1, [_hero_rid])
 		print("traffic: %d lane samples snapped to the road surface" % n)
+	signals.ground_heads(get_world_3d().direct_space_state, [_hero_rid])
 	if not opts.get("no_parked", false):
 		_spawn_parked()
 	if opts.get("peds", true) and Pedestrians:

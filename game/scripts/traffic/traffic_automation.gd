@@ -429,7 +429,7 @@ func _shots(dir: String) -> void:
 	var ap: Dictionary = J.approaches[ai]
 	var kerb = T.graph.lanes[ap.lanes[0]]
 	var end: Vector3 = kerb.pts[kerb.pts.size() - 1]
-	var back: Vector3 = kerb.pos_at(maxf(0.0, kerb.length - 62.0))
+	var back: Vector3 = kerb.pos_at(maxf(0.0, kerb.length - 48.0))
 	var side: Vector3 = Vector3.UP.cross(ap.dir).normalized() * -T.graph.kerb_sign()
 	cam.global_position = back + side * 4.5 + Vector3.UP * 3.2
 	# frame the queue and the red signal head at its front
