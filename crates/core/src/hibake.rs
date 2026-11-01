@@ -450,7 +450,19 @@ pub fn bake(low: &Mesh, high: Option<&Mesh>, res: u32, s: &HighBake) -> BakeOutp
                         let tg = tg4(0) * w0 + tg4(1) * w1 + tg4(2) * w2;
                         let tan = (tg.truncate() - nl * nl.dot(tg.truncate())).normalize_or_zero();
                         let bit = nl.cross(tan) * if tg.w < 0.0 { -1.0 } else { 1.0 };
-                        let hit = bvh.and_then(|b| b.hit(p + nl * cage, -nl, 0.0, cage * 2.0));
+                        // within the cage; else the nearest surface along +-n (corners
+                        // where the high mesh strays past the cage), in cage coordinates
+                        let hit = bvh.and_then(|b| {
+                            b.hit(p + nl * cage, -nl, 0.0, cage * 2.0).or_else(|| {
+                                let far = radius * 0.25;
+                                let dn = b.hit(p, -nl, 0.0, far).map(|h| Hit { t: cage + h.t, ..h });
+                                let up = b.hit(p, nl, 0.0, far).map(|h| Hit { t: cage - h.t, ..h });
+                                match (dn, up) {
+                                    (Some(a), Some(b)) => Some(if (a.t - cage).abs() <= (b.t - cage).abs() { a } else { b }),
+                                    (a, b) => a.or(b),
+                                }
+                            })
+                        });
                         if hit.is_some() {
                             hits.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                         }
@@ -517,7 +529,7 @@ pub fn bake(low: &Mesh, high: Option<&Mesh>, res: u32, s: &HighBake) -> BakeOutp
                                                 let dir = cosine_dir(-nh, a * 0.5, c);
                                                 sum += b.hit(o, dir, 0.0, far).map(|x| x.t).unwrap_or(far).min(far);
                                             }
-                                            let v = (sum / k as f32 / (radius * 0.5)).clamp(0.0, 1.0);
+                                            let v = (sum / k as f32 / (radius * 1.5)).clamp(0.0, 1.0);
                                             [v, v, v, 1.0]
                                         }
                                         BakeMap::Curvature => {
@@ -750,6 +762,18 @@ mod tests {
         // the low mesh's material ID: one material = one colour everywhere covered
         let mid = get(BakeMap::MaterialId);
         assert!((mid[flat * 4] - body[0]).abs() < 1e-4);
+    }
+
+    /// Writes the generated pair for docs/agents/parity/hibake_demo.py:
+    /// `cargo test -p pigment-core --release write_test_pair -- --ignored`
+    #[test]
+    #[ignore]
+    fn write_test_pair() {
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../target/pd");
+        std::fs::create_dir_all(&dir).unwrap();
+        let (low, high) = test_pair();
+        low.write_obj(&dir.join("box_low.obj")).unwrap();
+        high.write_obj(&dir.join("box_high.obj")).unwrap();
     }
 
     #[test]

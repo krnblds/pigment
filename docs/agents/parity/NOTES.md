@@ -122,3 +122,59 @@ The Brush panel gains Tool (Paint / Clone / Smudge, segmented), Tip (library pic
 - Smudge pulls from the *pre-stroke* pixels, so one stroke smears what was there before it, not what it already smeared.
 - Symmetry needs a symmetric mesh: the mirrored point must lie on the surface. Visibility is tested at the mirrored point, so hidden mirrored areas only get paint where the mirror is visible.
 - **Particle brushes** (falling, dripping, spray-and-stick physics) are not implemented. They were optional, and I spent the time on features 3-6. Spray tips plus position jitter cover spray-and-stick looks.
+
+## 3. High-to-low baking and ID maps
+
+![before / after](hibake_before_after.png)
+
+*The generated pair (`hibake::test_pair`): a bevelled box with 4 × 4 quads per face (low), and a sculpted high version with ~110k triangles: three dents on the front, a raised ring on the lid, grooves round the sides, and three materials (body, lid, ring). After the bake, the normal detail comes from the high mesh, the lid and ring are painted with **ID colour masks**, and edge wear and grime read the **high mesh's** curvature and AO. Bottom row: the baked normal, AO, curvature, height, thickness and colour ID maps.*
+Reproduce: `python docs/agents/parity/hibake_demo.py`.
+
+### What it does (`crates/core/src/hibake.rs`, CPU)
+
+- **BVH ray caster** (median split, iterative traversal). It matches brute-force `Mesh::raycast` in the tests and is used for every map.
+- The low mesh is rasterised in UV space (texel centres, barycentrics). Each texel casts from the **cage** (`p + n * cage`) inward along `-n` over `2 * cage`, so detail on both sides of the low surface is found. Texels whose ray misses (corners where the high surface strays past the cage) take the nearest surface along ±n. Hit rate on the test pair is about 100%.
+- **Auto cage**: 1.25 × the 98th percentile of the gap from the high vertices to the low surface (rays both ways along the high normals). A fixed `cage` in metres overrides it.
+- **Maps**:
+  - `normal`: tangent space, OpenGL / +Y up, the same convention as Pigment's normal maps and image fills;
+  - `normal_object`, `position` (normalised to the bounds);
+  - `height`: signed distance along n, 0.5 = on the low surface;
+  - `ao`: cosine-weighted Hammersley rays on the high mesh, with a max distance;
+  - `curvature`: per-vertex mean curvature of the welded high mesh, interpolated, 0.5 = flat;
+  - `thickness`: inward cone rays, 1 = thick;
+  - `color_id`: high-mesh material, or its vertex colours with `id_source: vertex_color`;
+  - `material_id`: the low mesh's own materials, no high mesh needed.
+- All maps are written in parallel (`std::thread::scope`) and dilated 4 texels into the gutter. The 2048² bake of the test pair with 8 maps takes about 6 s.
+- **Meshes carry materials**: `Mesh::tri_material` / `material_names` (glTF primitive materials, OBJ `usemtl` + `.mtl`) and `colors` (glTF `COLOR_0`). `write_obj` writes materials too. Feature 4 builds its texture sets on these.
+
+### Applying the bake
+
+- AO and curvature replace the mesh bakes' R/G through a write-masked pass (`copy_rg.wgsl`), so drip and rain exposure stay. Every generator (edge wear, dirt...) then follows the high detail. The files are re-applied whenever the mesh bake runs again, e.g. on open.
+- The tangent normal becomes a **Baked normal** fill layer: an image fill with only the normal channel on, at the bottom of the stack.
+- The colour ID map (or the material ID map) becomes `Document::id_map`, bound in the compositor's shared group.
+- **ID mask**: `Mask::id_color {color, tolerance}`. The mask is multiplied by "the ID map's colour is within the tolerance". This took the last free 16 bytes of `LayerParams` (`idc`): it is now **exactly 512 bytes**, so any further per-layer data must go into a storage buffer.
+
+### MCP
+
+- `bake {high_mesh, cage (number | "auto"), maps: [normal, normal_object, position, thickness, ao, curvature, height, color_id, material_id], id_source: material | vertex_color, ao_samples, ao_distance, dir, normal_layer}` returns `{maps: {id: path}, cage, hit_rate, ms, id_map, layers}`. Plain `bake` (no `high_mesh` / `maps`) is the old mesh bake.
+- Mask `id_color: {color: [r, g, b], tolerance}` (`null` removes it) on `add_layer` / `update_layer`. It errors if the project has no ID map.
+
+### UI
+
+- Texture set & bake panel, **High-poly bake** card: choose the high mesh, automatic cage or a cage slider, map toggles, colour ID from vertex colours, and **Bake from high poly**.
+- Mask panel, **ID colour** section: swatches of the ID map's colours (click to mask by one, click again to clear), tolerance, *Any ID*.
+
+### Tests
+
+- core `hibake::tests`: the BVH matches brute force; the bake finds the sculpt (dent lower in height, the dent wall tilts the tangent normal, flat area faces out, AO, lid colour on top, body colour on the front, convex + concave curvature, thickness, material ID); ID colours are distinct.
+- Session `high_to_low_bake_and_id_masks_over_mcp`: materials survive the OBJ round trip; maps need `high_mesh`; all 9 maps are written; a Baked normal layer appears and the rendered normals change; an ID mask paints only the lid; bad args error; save / reopen keeps the bake, the ID map and the mask; `material_id` bakes from the low mesh alone.
+- UI `high_bake_and_id_mask_panels`: the ID palette has 3 colours and both panels render.
+- `shader_tests::copy_rg`.
+
+### Known limits
+
+- CPU only, no GPU path. 2K bakes take seconds; AO and thickness dominate (rays per texel).
+- One UV tile per bake. Feature 4 adds UDIM tiles; for now UVs outside 0-1 wrap into the tile.
+- Height is normalised to the cage (±cage → 0..1) and isn't applied as a layer automatically. Use it as an image fill height if wanted.
+- Curvature is a per-vertex estimate, so it needs a reasonably dense high mesh. Its contrast is fixed (5% of the bounding radius).
+- No explicit cage mesh: the cage is a distance along the averaged low normal. Very concave low meshes can catch the wrong surface; a per-part cage would help.
