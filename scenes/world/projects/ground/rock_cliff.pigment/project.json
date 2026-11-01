@@ -12,9 +12,9 @@
         "type": "fill",
         "values": {
           "base_color": [
-            0.29,
-            0.275,
-            0.255
+            0.2,
+            0.19,
+            0.18
           ],
           "roughness": 0.82,
           "metallic": 0.0,
@@ -103,9 +103,9 @@
         "type": "fill",
         "values": {
           "base_color": [
-            0.34,
-            0.32,
-            0.295
+            0.26,
+            0.245,
+            0.225
           ],
           "roughness": 0.35,
           "metallic": 0.0,
@@ -223,9 +223,9 @@
         "type": "fill",
         "values": {
           "base_color": [
-            0.4,
-            0.38,
-            0.35
+            0.31,
+            0.295,
+            0.27
           ],
           "roughness": 0.35,
           "metallic": 0.0,
@@ -344,9 +344,9 @@
         "type": "fill",
         "values": {
           "base_color": [
-            0.33,
-            0.31,
-            0.29
+            0.24,
+            0.23,
+            0.215
           ],
           "roughness": 0.35,
           "metallic": 0.0,
@@ -1193,9 +1193,9 @@
         "type": "fill",
         "values": {
           "base_color": [
-            0.55,
-            0.55,
-            0.5
+            0.46,
+            0.46,
+            0.42
           ],
           "roughness": 0.9,
           "metallic": 0.0,
@@ -1415,9 +1415,9 @@
         "type": "fill",
         "values": {
           "base_color": [
-            0.4,
-            0.38,
-            0.35
+            0.3,
+            0.285,
+            0.265
           ],
           "roughness": 0.35,
           "metallic": 0.0,
