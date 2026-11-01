@@ -11,14 +11,14 @@ const DIR := "res://data/vehicles/"
 ## keyboard driving. --sim on the command line turns it off for the full simulation feel.
 static var easy := true
 const EASY := {
-	"mass": 0.82,            # lighter car: quicker to turn and to stop
-	"inertia": 0.9,          # a touch more willing to rotate, but not twitchy
-	"torque": 1.18,          # a bit more pull
-	"mu": 1.15,              # more grip
+	"mass": 0.72,            # lighter car: quicker to turn and to stop
+	"inertia": 0.8,          # a touch more willing to rotate, but not twitchy
+	"torque": 1.3,          # a bit more pull
+	"mu": 1.25,              # more grip
 	"slip_angle": 1.25,      # grip peaks later, so the limit is easier to feel
 	"shape_lat": 0.9,        # and falls off more gently past it
-	"steer_rate": 0.85,      # gentler steering: the wheel turns in more progressively
-	"steer_rate_hs": 0.75,   # and much calmer at speed
+	"steer_rate": 1.15,      # gentler steering: the wheel turns in more progressively
+	"steer_rate_hs": 0.95,   # and much calmer at speed
 	"return": 1.6,           # wheel recentres faster when you let go
 }
 
