@@ -1,175 +1,158 @@
-//! The interface, laid out like a texture painter:
+//! The window, built from the design system (`design/`) and dockable panels
+//! (`dock.rs`, `panels/`):
 //!
 //! ```text
-//! ┌ menu ──────────────────────────────────────────────────────────────┐
-//! ├ tool bar: [Brush|Eraser]  size  opacity  hardness  spacing  target ┤
-//! ├ brush     ┬ viewport (view-mode chips · lighting)  ┬ layer stack   ┤
-//! │ material  │                                       │ properties:   │
-//! │ + presets │                                       │ [Layer][Mask] │
-//! │ channels  │                                       │               │
-//! │ texture   │                                       │               │
-//! │ set/bake  │                                       │               │
-//! ├ status ────────────────────────────────────────────────────────────┤
+//! ┌ top bar: logo · menus · [Simple|Advanced] ········ undo redo · ⌘K · ? · Send to Blender · Export ┐
+//! ├ tool options (brush size / strength, decal size / wear ...)                                     ┤
+//! ├ tool ┬ dock: viewport + panels in tabs and splits, user-arranged, per mode ──────────────────────┤
+//! │ rail │                                                                                         │
+//! ├ status: message · progress ················································· texture size ┤
 //! ```
 
+use super::design::{self as ds, font, icon, size, space, Btn, IconBtn, Icon, RichTip, ToastKind};
+use super::dock::{self, DockLayout, PanelId};
+use super::jobs::{self, Job};
+use super::prefs::{Mode, Prefs};
 use super::*;
-use egui::{Color32, CornerRadius, RichText, Stroke};
+use egui::{pos2, vec2, Align2, Rect, Stroke};
 
-const ACCENT: Color32 = Color32::from_rgb(236, 142, 64);
-const ACCENT_DIM: Color32 = Color32::from_rgb(92, 58, 32);
-const PANEL: Color32 = Color32::from_rgb(30, 31, 34);
-const CARD: Color32 = Color32::from_rgb(38, 40, 44);
-const CARD_HI: Color32 = Color32::from_rgb(54, 46, 40);
-const MUTED: Color32 = Color32::from_rgb(140, 144, 152);
-const WARN: Color32 = Color32::from_rgb(240, 160, 90);
+/// The active tool, derived from the brush / decal / pick state.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Tool {
+    Paint,
+    Erase,
+    Fill,
+    Decal,
+    Pick,
+}
 
-pub fn apply_style(ctx: &egui::Context) {
-    ctx.set_visuals(egui::Visuals::dark());
-    ctx.all_styles_mut(|s| {
-        s.spacing.item_spacing = egui::vec2(8.0, 6.0);
-        s.spacing.button_padding = egui::vec2(8.0, 4.0);
-        s.spacing.slider_width = 130.0;
-        s.spacing.interact_size.y = 22.0;
-        let v = &mut s.visuals;
-        v.panel_fill = PANEL;
-        v.window_fill = PANEL;
-        v.extreme_bg_color = Color32::from_rgb(20, 21, 23);
-        v.selection.bg_fill = ACCENT_DIM;
-        v.selection.stroke = Stroke::new(1.0, ACCENT);
-        v.hyperlink_color = ACCENT;
-        v.window_corner_radius = CornerRadius::same(8);
-        for w in [&mut v.widgets.inactive, &mut v.widgets.hovered, &mut v.widgets.active, &mut v.widgets.noninteractive, &mut v.widgets.open] {
-            w.corner_radius = CornerRadius::same(5);
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum DecalMode {
+    /// Click: stick the image flat on the surface under the cursor, sized in metres.
+    Stamp,
+    /// Drag a box: project the image from the camera.
+    Box,
+    /// Click a part: fit the image to that part's face.
+    Part,
+    /// Scatter many over the model with wear.
+    Scatter,
+}
+
+pub struct DecalSettings {
+    pub mode: DecalMode,
+    pub image: Option<PathBuf>,
+    pub size: f32,
+    pub rotation: f32,
+    pub opacity: f32,
+    pub wear: f32,
+    pub fade: f32,
+    pub grunge: bool,
+    pub count: u32,
+    pub size_range: (f32, f32),
+    pub seed: u64,
+    pub walls_only: bool,
+}
+
+impl Default for DecalSettings {
+    fn default() -> Self {
+        DecalSettings { mode: DecalMode::Stamp, image: None, size: 0.3, rotation: 0.0, opacity: 1.0, wear: 0.0, fade: 0.0, grunge: false, count: 8, size_range: (0.2, 0.4), seed: 1, walls_only: false }
+    }
+}
+
+/// A library entry: a smart material, a single material preset or a saved file.
+#[derive(Clone, Debug, PartialEq)]
+pub enum LibItem {
+    Smart(String),
+    Preset(String),
+    File(PathBuf),
+}
+
+impl LibItem {
+    pub fn name(&self) -> String {
+        match self {
+            LibItem::Smart(n) | LibItem::Preset(n) => n.clone(),
+            LibItem::File(p) => p.file_stem().map(|s| s.to_string_lossy().to_string()).unwrap_or_default(),
         }
-        v.widgets.inactive.weak_bg_fill = Color32::from_rgb(48, 50, 55);
-        v.widgets.inactive.bg_fill = Color32::from_rgb(48, 50, 55);
-        v.widgets.hovered.weak_bg_fill = Color32::from_rgb(62, 64, 70);
-        v.widgets.active.weak_bg_fill = ACCENT_DIM;
-    });
-}
-
-// ------------------------------------------------------------------ widgets
-
-fn srgb32(c: [f32; 3]) -> Color32 {
-    let b = c.map(|v| (v.clamp(0.0, 1.0) * 255.0).round() as u8);
-    Color32::from_rgb(b[0], b[1], b[2])
-}
-
-/// A material swatch: base colour, with a sheen for metals, a highlight for
-/// glossy dielectrics, and an inset mark for negative height.
-fn paint_swatch(painter: &egui::Painter, rect: egui::Rect, v: &MaterialValues) {
-    let r = CornerRadius::same(4);
-    painter.rect_filled(rect, r, srgb32(v.base_color));
-    if v.metallic > 0.5 {
-        let a = rect.left_top() + egui::vec2(rect.width() * 0.15, 0.0);
-        let shine = Color32::from_white_alpha(((1.0 - v.roughness) * 120.0) as u8 + 30);
-        painter.with_clip_rect(rect).line_segment([a, a + egui::vec2(rect.width() * 0.5, rect.height())], Stroke::new(rect.width() * 0.18, shine));
-    } else if v.roughness < 0.45 {
-        painter.circle_filled(rect.left_top() + egui::vec2(rect.width() * 0.3, rect.height() * 0.3), rect.width() * 0.12, Color32::from_white_alpha(90));
     }
-    if v.height < -0.1 {
-        painter.rect_stroke(rect.shrink(rect.width() * 0.25), r, Stroke::new(1.5, Color32::from_black_alpha(140)), egui::StrokeKind::Inside);
+}
+
+#[derive(Default)]
+pub struct NewProjectDialog {
+    pub open: bool,
+    pub kind: usize,
+    pub size_m: [f32; 2],
+    pub strips: u32,
+    pub cells: u32,
+    pub resolution: u32,
+}
+
+pub struct UiState {
+    pub prefs: Prefs,
+    pub welcome: bool,
+    pub toasts: ds::Toasts,
+    pub jobs: Vec<Job>,
+    pub palette: ds::Palette2State,
+    pub cheatsheet: bool,
+    pub gallery: Option<ds::gallery::GalleryState>,
+    pub async_bake: bool,
+    pub last_autosave: Instant,
+    pub last_export: Option<PathBuf>,
+    pub panels: Option<super::panels::Panels>,
+    pub fill_tool: bool,
+    pub decal: DecalSettings,
+    pub lib_current: Option<LibItem>,
+    pub wear: f32,
+    pub wear_bases: std::collections::HashMap<LayerId, f32>,
+    pub locked: HashSet<LayerId>,
+    pub new_project: NewProjectDialog,
+    pub settings: bool,
+    pub save_layout: Option<String>,
+    pub export_target: &'static str,
+    pub thumbs: Option<super::panels::library::Thumbs>,
+    pub prefs_dirty_at: Option<Instant>,
+    pub hover_part: Option<(egui::Pos2, Option<(glam::Vec3, glam::Vec3)>)>,
+    pub viewport_rect: Rect,
+    pub dock_rects: Vec<(PanelId, Rect)>,
+    pub pending_theme: bool,
+    pub pending_sample: Option<usize>,
+    pub image_thumbs: super::panels::library::ImageThumbs,
+}
+
+impl UiState {
+    pub fn new(prefs: Prefs) -> UiState {
+        let export_target = jobs::target(&prefs.export_target).id;
+        UiState {
+            prefs,
+            welcome: false,
+            toasts: Default::default(),
+            jobs: vec![],
+            palette: Default::default(),
+            cheatsheet: false,
+            gallery: None,
+            async_bake: false,
+            last_autosave: Instant::now(),
+            last_export: None,
+            panels: Some(super::panels::Panels::new()),
+            fill_tool: false,
+            decal: Default::default(),
+            lib_current: None,
+            wear: 0.5,
+            wear_bases: Default::default(),
+            locked: Default::default(),
+            new_project: NewProjectDialog { size_m: [2.0, 2.0], strips: 4, cells: 6, resolution: 2048, ..Default::default() },
+            settings: false,
+            save_layout: None,
+            export_target,
+            thumbs: None,
+            prefs_dirty_at: None,
+            hover_part: None,
+            viewport_rect: Rect::NOTHING,
+            dock_rects: vec![],
+            pending_theme: false,
+            pending_sample: None,
+            image_thumbs: Default::default(),
+        }
     }
-    painter.rect_stroke(rect, r, Stroke::new(1.0, Color32::from_black_alpha(120)), egui::StrokeKind::Inside);
-}
-
-fn swatch_button(ui: &mut egui::Ui, v: &MaterialValues, size: f32) -> egui::Response {
-    let (rect, resp) = ui.allocate_exact_size(egui::vec2(size, size), egui::Sense::click());
-    paint_swatch(ui.painter(), rect, v);
-    if resp.hovered() {
-        ui.painter().rect_stroke(rect, CornerRadius::same(4), Stroke::new(1.5, ACCENT), egui::StrokeKind::Outside);
-    }
-    resp
-}
-
-fn section(ui: &mut egui::Ui, title: &str) {
-    ui.add_space(6.0);
-    ui.label(RichText::new(title.to_uppercase()).size(11.0).color(MUTED).strong());
-    ui.add_space(2.0);
-}
-
-fn card<R>(ui: &mut egui::Ui, fill: Color32, add: impl FnOnce(&mut egui::Ui) -> R) -> R {
-    egui::Frame::new()
-        .fill(fill)
-        .corner_radius(CornerRadius::same(6))
-        .inner_margin(egui::Margin::same(8))
-        .show(ui, |ui| {
-            ui.set_width(ui.available_width());
-            add(ui)
-        })
-        .inner
-}
-
-fn srgb_edit(ui: &mut egui::Ui, c: &mut [f32; 3]) -> egui::Response {
-    let mut b = c.map(|v| (v.clamp(0.0, 1.0) * 255.0).round() as u8);
-    let r = ui.color_edit_button_srgb(&mut b);
-    if r.changed() {
-        *c = b.map(|v| v as f32 / 255.0);
-    }
-    r
-}
-
-fn tilt_edit(ui: &mut egui::Ui, n: &mut [f32; 2]) {
-    ui.horizontal(|ui| {
-        ui.add(egui::DragValue::new(&mut n[0]).speed(0.01).range(-0.95..=0.95).prefix("x "));
-        ui.add(egui::DragValue::new(&mut n[1]).speed(0.01).range(-0.95..=0.95).prefix("y "));
-    });
-}
-
-/// Editable material values in a two-column grid, optionally with per-channel toggles.
-fn material_grid(ui: &mut egui::Ui, id: &str, v: &mut MaterialValues, enabled: Option<&mut [bool; 11]>) {
-    let mut dummy = [true; 11];
-    let has_toggles = enabled.is_some();
-    let en = enabled.unwrap_or(&mut dummy);
-    egui::Grid::new(id).num_columns(2).spacing([10.0, 6.0]).show(ui, |ui| {
-        let row = |ui: &mut egui::Ui, on: &mut bool, label: &str| {
-            if has_toggles {
-                ui.checkbox(on, label);
-            } else {
-                ui.label(label);
-            }
-        };
-        row(ui, &mut en[0], "Base color");
-        srgb_edit(ui, &mut v.base_color);
-        ui.end_row();
-        row(ui, &mut en[1], "Roughness");
-        ui.add(egui::Slider::new(&mut v.roughness, 0.0..=1.0));
-        ui.end_row();
-        row(ui, &mut en[2], "Metallic");
-        ui.add(egui::Slider::new(&mut v.metallic, 0.0..=1.0));
-        ui.end_row();
-        row(ui, &mut en[3], "Height");
-        ui.add(egui::Slider::new(&mut v.height, -1.0..=1.0));
-        ui.end_row();
-        row(ui, &mut en[4], "Normal tilt");
-        tilt_edit(ui, &mut v.normal);
-        ui.end_row();
-        row(ui, &mut en[5], "Emission");
-        ui.horizontal(|ui| {
-            srgb_edit(ui, &mut v.emissive);
-            ui.add(egui::DragValue::new(&mut v.emissive_strength).range(0.0..=50.0).speed(0.05).prefix("× "));
-        });
-        ui.end_row();
-        row(ui, &mut en[6], "Opacity");
-        ui.add(egui::Slider::new(&mut v.opacity, 0.0..=1.0)).on_hover_text("1 = solid, 0 = a hole (cut-out)");
-        ui.end_row();
-        row(ui, &mut en[7], "Transmission");
-        ui.add(egui::Slider::new(&mut v.transmission, 0.0..=1.0)).on_hover_text("Glass: light passes through (refracts) instead of scattering");
-        ui.end_row();
-        row(ui, &mut en[8], "Coat");
-        ui.add(egui::Slider::new(&mut v.coat, 0.0..=1.0)).on_hover_text("Clearcoat: a glossy varnish layer over the base (car paint, lacquer)");
-        ui.end_row();
-        row(ui, &mut en[9], "Coat rough");
-        ui.add(egui::Slider::new(&mut v.coat_roughness, 0.0..=1.0)).on_hover_text("Roughness of the clearcoat layer");
-        ui.end_row();
-        row(ui, &mut en[10], "Flake");
-        ui.add(egui::Slider::new(&mut v.flake, 0.0..=1.0)).on_hover_text("Metallic flake sparkle in the base under the coat");
-        ui.end_row();
-    });
-}
-
-fn preset_name(v: &MaterialValues) -> Option<&'static str> {
-    material_presets().into_iter().find(|(_, p)| p == v).map(|(n, _)| n)
 }
 
 // ------------------------------------------------------------------ frame
@@ -178,6 +161,17 @@ impl eframe::App for PigmentApp {
     fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
         let Some(rs) = frame.wgpu_render_state().cloned() else { return };
         self.ppp = ui.ctx().pixels_per_point();
+        if let Some(g) = &mut self.ui.gallery {
+            let p = ds::pal(ui);
+            let mut light = ds::theme(ui.ctx()).kind == ds::ThemeKind::Light;
+            egui::CentralPanel::default().frame(ds::panel_frame(&p).inner_margin(egui::Margin::same(space::XXL as i8))).show(ui, |ui| {
+                if ds::toggle(ui, &mut light, "Light theme").changed() {
+                    ds::apply(ui.ctx(), if light { ds::ThemeKind::Light } else { ds::ThemeKind::Dark });
+                }
+                ds::gallery::show(ui, g);
+            });
+            return;
+        }
 
         let now = Instant::now();
         self.frame_times.push((now - self.last_frame).as_secs_f32());
@@ -186,70 +180,612 @@ impl eframe::App for PigmentApp {
             self.frame_times.remove(0);
         }
 
-        let dropped: Vec<PathBuf> = ui.input(|i| i.raw.dropped_files.iter().map(|f| f.path().to_path_buf()).filter(|p| !p.as_os_str().is_empty()).collect());
+        let dropped: Vec<PathBuf> = ui.input(|i| i.raw.dropped_files.iter().filter_map(|f| { let p = f.path(); (!p.as_os_str().is_empty()).then(|| p.to_path_buf()) }).collect());
         if let Some(p) = dropped.first() {
-            if p.extension().is_some_and(|e| matches!(e.to_ascii_lowercase().to_str(), Some("hdr" | "exr"))) {
-                self.load_env(&rs, p);
-            } else {
-                self.request(&rs, Self::pending_for_path(p));
-            }
+            self.open_path(&rs, p);
         }
 
         self.anchors.clear();
+        self.poll_jobs(&rs);
         self.shortcuts(ui, &rs);
         if std::mem::take(&mut self.dump_requested) {
             self.debug_dump(&rs, &std::env::temp_dir().join("pig").join("dump"));
         }
+        let p = ds::pal(ui);
 
-        let bar = |m: i8| egui::Frame::new().fill(PANEL).inner_margin(egui::Margin::symmetric(m, 6));
-        egui::Panel::top("menu").frame(bar(8)).show(ui, |ui| self.menu_bar(ui, &rs));
-        egui::Panel::top("toolbar").frame(bar(10).fill(Color32::from_rgb(36, 37, 41))).show(ui, |ui| self.toolbar(ui));
-        egui::Panel::bottom("status").frame(bar(10)).show(ui, |ui| self.status_bar(ui));
-        egui::Panel::left("material").resizable(true).default_size(268.0).frame(bar(10)).show(ui, |ui| {
-            egui::ScrollArea::vertical().show(ui, |ui| self.material_panel(ui, &rs));
-        });
-        egui::Panel::right("layers").resizable(true).default_size(340.0).frame(bar(10)).show(ui, |ui| {
-            egui::ScrollArea::vertical().show(ui, |ui| self.layers_panel(ui, &rs));
-        });
-        egui::CentralPanel::default().frame(egui::Frame::NONE).show(ui, |ui| self.viewport_ui(ui, &rs));
+        egui::Panel::top("top bar").frame(ds::bar_frame(&p).stroke(Stroke::NONE)).show(ui, |ui| self.top_bar(ui, &rs));
+        egui::Panel::bottom("status").frame(ds::bar_frame(&p).stroke(Stroke::NONE)).show(ui, |ui| self.status_bar(ui));
+        if self.ui.welcome {
+            egui::CentralPanel::default().frame(egui::Frame::new().fill(p.bg)).show(ui, |ui| self.welcome_screen(ui, &rs));
+        } else {
+            egui::Panel::top("tool options").frame(ds::bar_frame(&p).fill(p.surface_raised).stroke(Stroke::NONE)).show(ui, |ui| self.tool_options(ui, &rs));
+            egui::Panel::left("tool rail").exact_size(size::TOOL + space::LG * 2.0).resizable(false).frame(egui::Frame::new().fill(p.surface).inner_margin(egui::Margin::same(space::SM as i8))).show(ui, |ui| self.tool_rail(ui));
+            egui::CentralPanel::default().frame(egui::Frame::new().fill(p.bg).inner_margin(egui::Margin::same(space::XS as i8))).show(ui, |ui| {
+                let mut layout = std::mem::take(self.ui.prefs.layout_mut());
+                let before = layout.clone();
+                let mut panels = self.ui.panels.take().unwrap_or_default();
+                self.ui.dock_rects.clear();
+                let out = dock::show(ui, &mut layout, |ui, id| panels.show(id, self, ui, &rs));
+                self.ui.panels = Some(panels);
+                self.ui.dock_rects.extend(out.rects);
+                if layout != before {
+                    self.prefs_changed();
+                }
+                *self.ui.prefs.layout_mut() = layout;
+            });
+        }
 
         self.dialogs(ui.ctx(), &rs);
+        self.command_palette(ui.ctx(), &rs);
+        if self.ui.cheatsheet {
+            self.cheatsheet(ui.ctx());
+        }
         self.tour_update();
         if let Some(v) = self.anchors.get("viewport").copied() {
             self.tour_ui(ui.ctx(), v);
         }
+        self.drop_overlay(ui.ctx());
+        let screen = ui.ctx().content_rect();
+        let anchor = Rect::from_min_max(screen.min, pos2(screen.right(), screen.bottom() - size::CONTROL_H - space::LG));
+        self.ui.toasts.show(ui.ctx(), anchor);
 
         // Record finished edits (not mid-drag, so a slider drag is one undo step).
         let busy = ui.input(|i| i.pointer.any_down()) || self.stroke.is_some();
         if !busy {
             self.commit_doc_changes();
         }
+        self.remember_window(ui.ctx());
         ui.ctx().request_repaint();
+    }
+
+    fn on_exit(&mut self) {
+        self.ui.prefs.save().ok();
+        if !self.modified {
+            self.discard_recovery();
+        }
     }
 }
 
 impl PigmentApp {
-    fn load_env(&mut self, rs: &RenderState, p: &Path) {
-        match Environment::load(&rs.device, &rs.queue, p) {
-            Ok(e) => {
-                self.set_status(format!("Environment: {}", e.name), false);
-                self.env = e;
+    fn prefs_changed(&mut self) {
+        self.ui.prefs_dirty_at.get_or_insert(Instant::now());
+    }
+
+    fn remember_window(&mut self, ctx: &egui::Context) {
+        let z = ctx.zoom_factor();
+        if (z - self.ui.prefs.ui_scale).abs() > 1e-3 {
+            self.ui.prefs.ui_scale = z;
+            self.prefs_changed();
+        }
+        if let Some(r) = ctx.input(|i| i.viewport().inner_rect) {
+            let s = [r.width() * z, r.height() * z];
+            if self.ui.prefs.window.is_none_or(|w| (w[0] - s[0]).abs() > 1.0 || (w[1] - s[1]).abs() > 1.0) {
+                self.ui.prefs.window = Some(s);
+                self.prefs_changed();
             }
-            Err(e) => self.set_status(format!("Couldn't load environment: {e:#}"), true),
+        }
+        if self.ui.prefs_dirty_at.is_some_and(|t| t.elapsed().as_secs_f32() > 2.0) {
+            self.ui.prefs_dirty_at = None;
+            if let Err(e) = self.ui.prefs.save() {
+                log::warn!("couldn't save preferences: {e}");
+            }
         }
     }
 
+    fn load_env(&mut self, rs: &RenderState, p: &Path) {
+        match Environment::load(&rs.device, &rs.queue, p) {
+            Ok(e) => {
+                self.set_status(format!("Lighting: {}", e.name), false);
+                self.env = e;
+            }
+            Err(e) => self.notify_error("Couldn't load that HDRI", &format!("{e:#}")),
+        }
+    }
+
+    pub(super) fn notify_error(&mut self, what: &str, e: &str) {
+        let msg = jobs::friendly_error(what, e);
+        self.ui.toasts.push(ToastKind::Error, what, msg.trim_start_matches(what).trim_start_matches(": ").to_string());
+        self.set_status(msg, true);
+    }
+
+    /// Open a dropped / chosen file: a model, a project, an HDRI or a smart material.
+    pub(super) fn open_path(&mut self, rs: &RenderState, p: &Path) {
+        let ext = p.extension().map(|e| e.to_string_lossy().to_ascii_lowercase()).unwrap_or_default();
+        match ext.as_str() {
+            "hdr" | "exr" => self.load_env(rs, p),
+            "pigsmart" => match self.apply_smart(p, &[], None) {
+                Ok(id) => {
+                    self.select(Some(id), false);
+                    self.ui.toasts.push(ToastKind::Success, "Smart material applied", p.display().to_string());
+                }
+                Err(e) => self.notify_error("Couldn't apply the smart material", &e),
+            },
+            "png" | "jpg" | "jpeg" => {
+                self.ui.decal.image = Some(p.to_path_buf());
+                self.set_tool(Tool::Decal);
+                self.ui.welcome = false;
+                self.ui.toasts.push(ToastKind::Info, "Decal ready", "Click the model to stick it on. Esc stops.");
+            }
+            "obj" | "gltf" | "glb" | "pigment" | "json" | "" => self.request(rs, Self::pending_for_path(p)),
+            _ => self.notify_error("Can't open that file", &format!("{} is a .{ext} file (unsupported format)", p.display())),
+        }
+    }
+
+    /// `run_pending` plus the bookkeeping a person sees: recent files, toasts.
+    pub(super) fn run_pending_ui(&mut self, rs: &RenderState, p: Pending) {
+        let path = match &p {
+            Pending::NewFromMesh(x) | Pending::OpenProject(x) => Some(x.clone()),
+            _ => None,
+        };
+        self.status = None;
+        self.run_pending(rs, p);
+        if let Some((msg, true)) = self.status.clone() {
+            let (what, e) = msg.split_once(": ").unwrap_or(("Couldn't open that", &msg));
+            self.notify_error(what, e);
+            return;
+        }
+        self.ui.welcome = false;
+        self.ui.wear_bases.clear();
+        self.ui.wear = 0.5;
+        self.ui.locked.clear();
+        if let Some(x) = path {
+            self.ui.prefs.add_recent(&x);
+            self.prefs_changed();
+        }
+        self.discard_recovery();
+    }
+
+    // ------------------------------------------------------------ tools
+
+    pub(super) fn tool(&self) -> Tool {
+        if self.part_pick {
+            Tool::Pick
+        } else if self.decal_tool.is_some() {
+            Tool::Decal
+        } else if self.ui.fill_tool {
+            Tool::Fill
+        } else if self.brush.erase {
+            Tool::Erase
+        } else {
+            Tool::Paint
+        }
+    }
+
+    pub(super) fn set_tool(&mut self, t: Tool) {
+        self.part_pick = t == Tool::Pick;
+        self.ui.fill_tool = t == Tool::Fill;
+        self.brush.erase = t == Tool::Erase;
+        self.decal_tool = None;
+        if t == Tool::Decal {
+            if self.ui.decal.image.is_none() {
+                self.ui.decal.image = super::panels::decals::decal_images().into_iter().next();
+            }
+            match self.ui.decal.image.clone() {
+                Some(img) => self.decal_tool = Some((img, None)),
+                None => {
+                    self.ui.toasts.push(ToastKind::Info, "Choose a decal image", "Open the Decals panel and browse for a PNG.");
+                }
+            }
+            self.ui.prefs.layout_mut().open(PanelId::Decals);
+        }
+        if t == Tool::Fill {
+            self.ui.prefs.layout_mut().focus(PanelId::Library);
+        }
+    }
+
+    fn tool_rail(&mut self, ui: &mut egui::Ui) {
+        let simple = self.ui.prefs.mode == Mode::Simple;
+        let cur = self.tool();
+        ui.vertical_centered(|ui| {
+            ui.spacing_mut().item_spacing.y = space::XS;
+            let tools: &[(Tool, Icon, &str, &str, &str)] = &[
+                (Tool::Paint, Icon::Brush, "Paint", "Paint the brush material onto the model. Left-drag.", "B"),
+                (Tool::Erase, Icon::Eraser, "Erase", "Erase paint, or paint a mask black.", "E"),
+                (Tool::Fill, Icon::Bucket, "Fill part", "Click a part of the model to fill it with the chosen material.", "G"),
+                (Tool::Decal, Icon::Stamp, "Decal", "Stick an image (sign, label, graffiti) onto the model.", "D"),
+                (Tool::Pick, Icon::Target, "Parts", "Click parts to limit the selected layer to them.", "P"),
+            ];
+            for (t, ic, label, tip, key) in tools {
+                if simple && *t == Tool::Pick {
+                    continue;
+                }
+                let r = ds::tool_button(ui, *ic, label, tip, key, cur == *t);
+                if *t == Tool::Fill {
+                    self.anchors.insert("fill_tool", r.rect);
+                }
+                if *t == Tool::Decal {
+                    self.anchors.insert("decal_tool", r.rect);
+                }
+                if r.clicked() {
+                    self.set_tool(*t);
+                }
+            }
+            ui.add_space(space::LG);
+            ui.separator();
+            if ui.add(IconBtn::new(Icon::Frame, "Frame the model (or the selected parts)").shortcut("F").size(size::TOOL)).clicked() {
+                self.frame_selected();
+            }
+            let mv = self.view.mode == ViewMode::Material;
+            if ui.add(IconBtn::new(Icon::Image, "Material / base colour view").shortcut("M").selected(!mv).size(size::TOOL)).clicked() {
+                self.view.mode = if mv { ViewMode::BaseColor } else { ViewMode::Material };
+            }
+        });
+    }
+
+    /// Frame the selected layer's parts if it has a part mask, else the whole model.
+    pub(super) fn frame_selected(&mut self) {
+        let parts = self.selected.and_then(|id| self.doc.layer(id)).and_then(|l| l.mask.as_ref()).map(|m| m.parts.clone()).unwrap_or_default();
+        let boxes: Vec<_> = parts.iter().filter_map(|p| self.parts.info.get(*p as usize)).collect();
+        if boxes.is_empty() {
+            let (c, r) = self.mesh.bounding_sphere();
+            self.camera.frame(c, r);
+            return;
+        }
+        let lo = boxes.iter().fold(glam::Vec3::splat(f32::MAX), |a, b| a.min(glam::Vec3::from(b.min)));
+        let hi = boxes.iter().fold(glam::Vec3::splat(f32::MIN), |a, b| a.max(glam::Vec3::from(b.max)));
+        self.camera.frame((lo + hi) * 0.5, ((hi - lo).length() * 0.5).max(0.01));
+    }
+
+    fn tool_options(&mut self, ui: &mut egui::Ui, rs: &RenderState) {
+        let simple = self.ui.prefs.mode == Mode::Simple;
+        let p = ds::pal(ui);
+        ui.horizontal(|ui| {
+            ui.set_min_height(size::CONTROL_H);
+            let tool = self.tool();
+            let (ic, name) = match tool {
+                Tool::Paint => (Icon::Brush, "Paint"),
+                Tool::Erase => (Icon::Eraser, "Erase"),
+                Tool::Fill => (Icon::Bucket, "Fill part"),
+                Tool::Decal => (Icon::Stamp, "Decal"),
+                Tool::Pick => (Icon::Target, "Pick parts"),
+            };
+            ic.show(ui, icon::MD, p.accent);
+            ui.label(ds::strong(name, font::BODY));
+            ui.separator();
+            let compact = |ui: &mut egui::Ui, label: &str, v: &mut f32, r: std::ops::RangeInclusive<f32>, unit: ds::Unit, log: bool, tip: &str| {
+                ui.scope(|ui| {
+                    ui.set_width(250.0);
+                    ds::slider_row_ex(ui, label, v, r, unit, log, Some(tip));
+                });
+            };
+            match tool {
+                Tool::Paint | Tool::Erase => {
+                    compact(ui, "Size", &mut self.brush.size, 2.0..=800.0, ds::Unit::Suffix(" px", 0), true, "Brush diameter on screen. [ and ] change it.");
+                    compact(ui, "Strength", &mut self.brush.opacity, 0.0..=1.0, ds::Unit::Percent, false, "How much each stroke covers.");
+                    if !simple {
+                        compact(ui, "Hardness", &mut self.brush.hardness, 0.0..=1.0, ds::Unit::Percent, false, "Soft edge (0) to crisp edge (100%).");
+                        compact(ui, "Spacing", &mut self.brush.spacing, 0.02..=1.0, ds::Unit::Percent, false, "Distance between dabs, as a share of the size.");
+                    }
+                }
+                Tool::Fill => {
+                    let name = self.ui.lib_current.as_ref().map(|i| i.name()).unwrap_or_else(|| "nothing yet".into());
+                    ui.label(ds::text(format!("Click a part of the model to fill it with {name}."), font::SMALL).color(p.text_secondary));
+                    if self.ui.lib_current.is_none() {
+                        ui.label(ds::text("Pick a material in the Materials panel first.", font::SMALL).color(p.warn));
+                    }
+                }
+                Tool::Decal => {
+                    let d = &mut self.ui.decal;
+                    ds::segmented(
+                        ui,
+                        &mut d.mode,
+                        &[(DecalMode::Stamp, Some(Icon::Stamp), "Stamp"), (DecalMode::Box, Some(Icon::Frame), "Box"), (DecalMode::Part, Some(Icon::Parts), "Fit to part"), (DecalMode::Scatter, Some(Icon::Scatter), "Scatter")],
+                    );
+                    if d.mode != DecalMode::Box {
+                        compact(ui, "Size", &mut d.size, 0.02..=4.0, ds::Unit::Suffix(" m", 2), true, "Width of the decal in metres; height follows the image.");
+                    }
+                    compact(ui, "Wear", &mut d.wear, 0.0..=1.0, ds::Unit::Percent, false, "Tear the decal with noise, leaving a rim of bare paper.");
+                    compact(ui, "Fade", &mut d.fade, 0.0..=1.0, ds::Unit::Percent, false, "Sun-bleach and wear it through in patches.");
+                }
+                Tool::Pick => {
+                    ui.label(ds::text("Click parts to add them to (or remove them from) the selected layer's mask.", font::SMALL).color(p.text_secondary));
+                }
+            }
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                if matches!(tool, Tool::Paint | Tool::Erase | Tool::Decal) {
+                    self.paint_target_chip(ui, rs);
+                }
+            });
+        });
+    }
+
+    /// What the brush will paint on, and the mask colour swap when on a mask.
+    fn paint_target_chip(&mut self, ui: &mut egui::Ui, _rs: &RenderState) {
+        let p = ds::pal(ui);
+        let layer = self.selected.and_then(|id| self.doc.layer(id)).map(|l| (l.name.clone(), l.is_paint(), l.mask.is_some(), l.id));
+        let locked = layer.as_ref().is_some_and(|l| self.ui.locked.contains(&l.3));
+        match (layer, self.paint_target()) {
+            (Some((name, ..)), _) if locked => {
+                ui.label(ds::text(format!("{name} is locked"), font::SMALL).color(p.warn));
+                Icon::Lock.show(ui, icon::SM, p.warn);
+            }
+            (Some((name, ..)), Ok(Target::Mask(_))) => {
+                ds::segmented(ui, &mut self.brush.mask_white, &[(false, None, "Black: hide"), (true, None, "White: reveal")]);
+                ui.label(ds::text(format!("Painting the mask of {name}"), font::SMALL).color(p.accent)).rich_tip("Painting a mask", "White shows the layer, black hides it. X swaps.");
+            }
+            (Some((name, ..)), Ok(Target::Layer(_))) => {
+                ui.label(ds::text(format!("Painting on {name}"), font::SMALL).color(p.text_secondary));
+            }
+            (Some((name, false, false, _)), _) => {
+                ui.label(ds::text(format!("Painting {name} gives it a mask"), font::SMALL).color(p.text_muted));
+            }
+            (_, Err(e)) => {
+                ui.label(ds::text(e, font::SMALL).color(p.warn));
+            }
+            _ => {}
+        }
+    }
+
+    // ------------------------------------------------------------ bars
+
+    fn top_bar(&mut self, ui: &mut egui::Ui, rs: &RenderState) {
+        let p = ds::pal(ui);
+        egui::MenuBar::new().ui(ui, |ui| {
+            ui.set_min_height(size::CONTROL_H + space::XS);
+            // logo: a pigment drop
+            let (r, _) = ui.allocate_exact_size(vec2(icon::LG, icon::LG), egui::Sense::hover());
+            Icon::Palette.paint(ui.painter(), r, p.accent);
+            ui.label(ds::strong("Pigment", font::TITLE));
+            ui.add_space(space::SM);
+            let file = ui.menu_button("File", |ui| self.file_menu(ui, rs));
+            self.anchors.insert("file_menu", file.response.rect);
+            ui.menu_button("Edit", |ui| {
+                let ul = self.history.undo_label().map(|s| format!("Undo: {s}")).unwrap_or_else(|| "Undo".into());
+                if ui.add_enabled(self.history.can_undo() || self.doc != self.committed, egui::Button::new(ul).shortcut_text("Ctrl+Z")).clicked() {
+                    self.undo(rs, false);
+                }
+                let rl = self.history.redo_label().map(|s| format!("Redo: {s}")).unwrap_or_else(|| "Redo".into());
+                if ui.add_enabled(self.history.can_redo(), egui::Button::new(rl).shortcut_text("Ctrl+Y")).clicked() {
+                    self.undo(rs, true);
+                }
+                if ui.button("Undo history panel").clicked() {
+                    self.ui.prefs.layout_mut().open(PanelId::History);
+                    ui.close();
+                }
+                ui.separator();
+                if ui.add(egui::Button::new("Command palette…").shortcut_text("Ctrl+K")).clicked() {
+                    self.ui.palette.open = true;
+                    ui.close();
+                }
+                if ui.button("Settings…").clicked() {
+                    self.ui.settings = true;
+                    ui.close();
+                }
+            });
+            ui.menu_button("View", |ui| {
+                if ui.add(egui::Button::new("Frame model / selection").shortcut_text("F")).clicked() {
+                    self.frame_selected();
+                }
+                ui.separator();
+                for m in ViewMode::ALL {
+                    ui.radio_value(&mut self.view.mode, m, m.label());
+                }
+            });
+            ui.menu_button("Window", |ui| self.window_menu(ui));
+            ui.menu_button("Help", |ui| {
+                if ui.button("Learn in 2 minutes (guided tour)").clicked() {
+                    self.start_tour(rs);
+                    ui.close();
+                }
+                if ui.add(egui::Button::new("Keyboard shortcuts").shortcut_text("?")).clicked() {
+                    self.ui.cheatsheet = true;
+                    ui.close();
+                }
+                if ui.button("Welcome screen").clicked() {
+                    self.ui.welcome = true;
+                    ui.close();
+                }
+                if ui.button("Design gallery (restart with --design-gallery)").clicked() {
+                    self.ui.toasts.push(ToastKind::Info, "Design gallery", "Run `pigment --design-gallery` to see every component.");
+                    ui.close();
+                }
+            });
+            ui.add_space(space::LG);
+            let mut mode = self.ui.prefs.mode;
+            let seg = ui.scope(|ui| ds::segmented(ui, &mut mode, &[(Mode::Simple, Some(Icon::Sparkle), "Simple"), (Mode::Advanced, Some(Icon::Sliders), "Advanced")]));
+            self.anchors.insert("mode_toggle", seg.response.rect);
+            if seg.inner {
+                self.set_mode(mode);
+            }
+            let name = self.project_dir.as_ref().and_then(|d| d.file_stem()).map(|n| n.to_string_lossy().to_string()).unwrap_or_else(|| self.export_name.clone());
+            ui.add_space(space::LG);
+            ui.label(ds::text(name, font::SMALL).color(p.text_secondary));
+            if self.modified {
+                ds::badge(ui, "unsaved", p.warn).on_hover_text("Ctrl+S saves. Pigment also keeps a recovery copy every few minutes.");
+            }
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                let exp = ui.add(Btn::primary("Export").icon(Icon::Export).shortcut("Ctrl+E"));
+                self.anchors.insert("export_button", exp.rect);
+                if exp.clicked() {
+                    self.show_export = true;
+                }
+                if ui.add(Btn::secondary("Send to Blender").icon(Icon::Send)).rich_tip("Send to Blender", "Exports the maps, the mesh and a material.json the Pigment Bridge add-on links into a Blender material.").clicked() {
+                    self.send_to_blender(rs);
+                }
+                ui.add_space(space::SM);
+                if ui.add(IconBtn::new(Icon::Help, "Keyboard shortcuts").shortcut("?")).clicked() {
+                    self.ui.cheatsheet = !self.ui.cheatsheet;
+                }
+                if ui.add(IconBtn::new(Icon::Command, "Command palette: find any action").shortcut("Ctrl+K")).clicked() {
+                    self.ui.palette.open = true;
+                }
+                let redo = ui.add(IconBtn::new(Icon::Redo, self.history.redo_label().map(|l| format!("Redo: {l}")).unwrap_or("Redo".into())).shortcut("Ctrl+Y").enabled(self.history.can_redo()));
+                if redo.clicked() {
+                    self.undo(rs, true);
+                }
+                let undo = ui.add(IconBtn::new(Icon::Undo, self.history.undo_label().map(|l| format!("Undo: {l}")).unwrap_or("Undo".into())).shortcut("Ctrl+Z").enabled(self.history.can_undo() || self.doc != self.committed));
+                self.anchors.insert("edit_menu", undo.rect.union(redo.rect));
+                if undo.clicked() {
+                    self.undo(rs, false);
+                }
+            });
+        });
+    }
+
+    fn file_menu(&mut self, ui: &mut egui::Ui, rs: &RenderState) {
+        if ui.add(egui::Button::new("New project…").shortcut_text("Ctrl+N")).clicked() {
+            self.ui.new_project.open = true;
+            ui.close();
+        }
+        if ui.add(egui::Button::new("Open model…").shortcut_text("Ctrl+Shift+O")).clicked() {
+            self.open_model_dialog(rs);
+            ui.close();
+        }
+        if ui.add(egui::Button::new("Open project…").shortcut_text("Ctrl+O")).clicked() {
+            self.open_dialog(rs);
+            ui.close();
+        }
+        ui.menu_button("Open recent", |ui| {
+            let recent = self.ui.prefs.recent.clone();
+            if recent.is_empty() {
+                ui.label("Nothing yet");
+            }
+            for r in recent {
+                if ui.button(r.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default()).on_hover_text(r.display().to_string()).clicked() {
+                    self.request(rs, Self::pending_for_path(&r));
+                    ui.close();
+                }
+            }
+        });
+        ui.separator();
+        if ui.add(egui::Button::new("Save").shortcut_text("Ctrl+S")).clicked() {
+            self.save(rs, false);
+            ui.close();
+        }
+        if ui.add(egui::Button::new("Save as…").shortcut_text("Ctrl+Shift+S")).clicked() {
+            self.save(rs, true);
+            ui.close();
+        }
+        ui.separator();
+        if ui.add(egui::Button::new("Export textures…").shortcut_text("Ctrl+E")).clicked() {
+            self.show_export = true;
+            ui.close();
+        }
+        if ui.button("Send to Blender").clicked() {
+            self.send_to_blender(rs);
+            ui.close();
+        }
+        ui.separator();
+        if ui.button("Welcome screen").clicked() {
+            self.ui.welcome = true;
+            ui.close();
+        }
+    }
+
+    fn window_menu(&mut self, ui: &mut egui::Ui) {
+        ui.label(ds::caption(ui, "Panels"));
+        for id in PanelId::ALL {
+            let open = self.ui.prefs.layout().contains(id);
+            if ui.add_enabled(id.closable() || !open, egui::Button::selectable(open, id.title())).clicked() {
+                let l = self.ui.prefs.layout_mut();
+                if open {
+                    l.remove(id);
+                } else {
+                    l.open(id);
+                }
+                self.prefs_changed();
+            }
+        }
+        ui.separator();
+        ui.label(ds::caption(ui, "Layouts"));
+        for name in dock::PRESETS {
+            if ui.button(name).clicked() {
+                *self.ui.prefs.layout_mut() = DockLayout::preset(name).unwrap();
+                self.prefs_changed();
+                ui.close();
+            }
+        }
+        let custom = self.ui.prefs.custom_layouts.clone();
+        if !custom.is_empty() {
+            ui.separator();
+            for (name, l) in custom {
+                ui.horizontal(|ui| {
+                    if ui.button(&name).clicked() {
+                        *self.ui.prefs.layout_mut() = l.clone();
+                        self.prefs_changed();
+                        ui.close();
+                    }
+                    if ui.add(IconBtn::new(Icon::Trash, "Delete this layout").size(size::CONTROL_H_SM)).clicked() {
+                        self.ui.prefs.custom_layouts.retain(|(n, _)| *n != name);
+                        self.prefs_changed();
+                    }
+                });
+            }
+        }
+        ui.separator();
+        if ui.button("Save current layout as…").clicked() {
+            self.ui.save_layout = Some(format!("My layout {}", self.ui.prefs.custom_layouts.len() + 1));
+            ui.close();
+        }
+        if ui.button("Reset layout").clicked() {
+            *self.ui.prefs.layout_mut() = match self.ui.prefs.mode {
+                Mode::Simple => DockLayout::beginner(),
+                Mode::Advanced => DockLayout::texturing(),
+            };
+            self.prefs_changed();
+            ui.close();
+        }
+    }
+
+    pub(super) fn set_mode(&mut self, m: Mode) {
+        if self.ui.prefs.mode == m {
+            return;
+        }
+        self.ui.prefs.mode = m;
+        if m == Mode::Simple && self.part_pick {
+            self.set_tool(Tool::Paint);
+        }
+        self.prefs_changed();
+        let msg = match m {
+            Mode::Simple => "Simple mode: pick a material, set how worn, export.",
+            Mode::Advanced => "Advanced mode: the full layer stack, masks, generators and channels.",
+        };
+        self.set_status(msg, false);
+    }
+
+    fn status_bar(&mut self, ui: &mut egui::Ui) {
+        let p = ds::pal(ui);
+        ui.horizontal(|ui| {
+            if let Some(j) = self.ui.jobs.iter().find(|j| j.toast != 0) {
+                let title = self.ui.toasts.list.iter().find(|t| t.id == j.toast).map(|t| t.title.clone()).unwrap_or_default();
+                ds::progress(ui, None, &title);
+                ui.separator();
+            }
+            if let Some((msg, err)) = &self.status {
+                let (ic, c) = if *err { (Icon::Warning, p.warn) } else { (Icon::Info, p.text_muted) };
+                ic.show(ui, icon::SM, c);
+                ui.add(egui::Label::new(ds::text(msg, font::SMALL).color(if *err { p.warn } else { p.text_secondary })).truncate());
+            }
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                ui.label(ds::mono(format!("{0}×{0}", self.ts.res)).color(p.text_muted)).on_hover_text("Texture size (change it in Texture set & bake)");
+                if self.ui.prefs.mode == Mode::Advanced {
+                    let avg = self.frame_times.iter().sum::<f32>() / self.frame_times.len().max(1) as f32;
+                    let stats = format!("{:.0} fps · {} tris · {} layers · {:.0} MB", 1.0 / avg.max(1e-6), format_count(self.mesh.triangle_count()), self.doc.layers.len(), self.ts.vram_bytes() as f64 / 1048576.0);
+                    ui.label(ds::mono(stats).color(p.text_muted));
+                }
+            });
+        });
+    }
+
+    // ------------------------------------------------------------ shortcuts & commands
+
     fn shortcuts(&mut self, ui: &mut egui::Ui, rs: &RenderState) {
         use egui::{Key, KeyboardShortcut as K, Modifiers as M};
-        let (redo2, redo, undo, save_as, save, open, export) = ui.input_mut(|i| {
+        let c = |i: &mut egui::InputState, m: M, k: Key| i.consume_shortcut(&K::new(m, k));
+        let (redo2, redo, undo, save_as, save, open_model, open, export, export2, palette, newp, tab) = ui.input_mut(|i| {
             (
-                i.consume_shortcut(&K::new(M::COMMAND | M::SHIFT, Key::Z)),
-                i.consume_shortcut(&K::new(M::COMMAND, Key::Y)),
-                i.consume_shortcut(&K::new(M::COMMAND, Key::Z)),
-                i.consume_shortcut(&K::new(M::COMMAND | M::SHIFT, Key::S)),
-                i.consume_shortcut(&K::new(M::COMMAND, Key::S)),
-                i.consume_shortcut(&K::new(M::COMMAND, Key::O)),
-                i.consume_shortcut(&K::new(M::COMMAND | M::SHIFT, Key::E)),
+                c(i, M::COMMAND | M::SHIFT, Key::Z),
+                c(i, M::COMMAND, Key::Y),
+                c(i, M::COMMAND, Key::Z),
+                c(i, M::COMMAND | M::SHIFT, Key::S),
+                c(i, M::COMMAND, Key::S),
+                c(i, M::COMMAND | M::SHIFT, Key::O),
+                c(i, M::COMMAND, Key::O),
+                c(i, M::COMMAND, Key::E),
+                c(i, M::COMMAND | M::SHIFT, Key::E),
+                c(i, M::COMMAND, Key::K),
+                c(i, M::COMMAND, Key::N),
+                c(i, M::COMMAND, Key::Tab),
             )
         });
         if redo || redo2 {
@@ -262,46 +798,89 @@ impl PigmentApp {
         } else if save {
             self.save(rs, false);
         }
-        if open {
+        if open_model {
+            self.open_model_dialog(rs);
+        } else if open {
             self.open_dialog(rs);
         }
-        if export {
+        if export || export2 {
             self.show_export = true;
         }
-        if ui.ctx().egui_wants_keyboard_input() {
+        if palette {
+            self.ui.palette.open = !self.ui.palette.open;
+        }
+        if newp {
+            self.ui.new_project.open = true;
+        }
+        if tab {
+            let m = if self.ui.prefs.mode == Mode::Simple { Mode::Advanced } else { Mode::Simple };
+            self.set_mode(m);
+        }
+        if ui.ctx().egui_wants_keyboard_input() || self.ui.palette.open {
             return;
         }
-        ui.input(|i| {
-            if i.key_pressed(Key::OpenBracket) {
-                self.brush.size = (self.brush.size / 1.15).max(2.0);
-            }
-            if i.key_pressed(Key::CloseBracket) {
-                self.brush.size = (self.brush.size * 1.15).min(800.0);
-            }
-            if i.key_pressed(Key::B) {
-                self.brush.erase = false;
-            }
-            if i.key_pressed(Key::E) {
-                self.brush.erase = !self.brush.erase;
-            }
-            if i.key_pressed(Key::X) {
-                self.brush.mask_white = !self.brush.mask_white;
-            }
-            if i.key_pressed(Key::M) {
-                self.view.mode = if self.view.mode == ViewMode::Material { ViewMode::BaseColor } else { ViewMode::Material };
-            }
-            if i.key_pressed(Key::F) {
-                let (c, r) = self.mesh.bounding_sphere();
-                self.camera.frame(c, r);
-            }
-            if i.key_pressed(Key::Escape) {
-                self.decal_tool = None;
-                self.part_pick = false;
-            }
-            if i.key_pressed(Key::F12) {
-                self.dump_requested = true;
-            }
+        let keys = ui.input(|i| {
+            let k = |key| i.key_pressed(key) && !i.modifiers.command;
+            [
+                k(Key::OpenBracket),
+                k(Key::CloseBracket),
+                k(Key::B),
+                k(Key::E),
+                k(Key::X),
+                k(Key::M),
+                k(Key::F),
+                i.key_pressed(Key::Escape),
+                i.key_pressed(Key::F12),
+                k(Key::G),
+                k(Key::D),
+                k(Key::P),
+                i.key_pressed(Key::Questionmark) || (i.key_pressed(Key::Slash) && i.modifiers.shift) || i.key_pressed(Key::F1),
+            ]
         });
+        let [smaller, bigger, b, e, x, m, f, esc, f12, g, d, pk, help] = keys;
+        if smaller {
+            self.brush.size = (self.brush.size / 1.15).max(2.0);
+        }
+        if bigger {
+            self.brush.size = (self.brush.size * 1.15).min(800.0);
+        }
+        if b {
+            self.set_tool(Tool::Paint);
+        }
+        if e {
+            self.set_tool(if self.tool() == Tool::Erase { Tool::Paint } else { Tool::Erase });
+        }
+        if g {
+            self.set_tool(Tool::Fill);
+        }
+        if d {
+            self.set_tool(Tool::Decal);
+        }
+        if pk && self.ui.prefs.mode == Mode::Advanced {
+            self.set_tool(Tool::Pick);
+        }
+        if x {
+            self.brush.mask_white = !self.brush.mask_white;
+        }
+        if m {
+            self.view.mode = if self.view.mode == ViewMode::Material { ViewMode::BaseColor } else { ViewMode::Material };
+        }
+        if f {
+            self.frame_selected();
+        }
+        if help {
+            self.ui.cheatsheet = !self.ui.cheatsheet;
+        }
+        if esc {
+            if self.ui.cheatsheet {
+                self.ui.cheatsheet = false;
+            } else if self.tool() != Tool::Paint {
+                self.set_tool(Tool::Paint);
+            }
+        }
+        if f12 {
+            self.dump_requested = true;
+        }
     }
 
     fn open_dialog(&mut self, rs: &RenderState) {
@@ -310,978 +889,252 @@ impl PigmentApp {
         }
     }
 
-    // ------------------------------------------------------------ bars
-
-    fn menu_bar(&mut self, ui: &mut egui::Ui, rs: &RenderState) {
-        egui::MenuBar::new().ui(ui, |ui| {
-            ui.label(RichText::new("Pigment").strong().color(ACCENT));
-            ui.add_space(6.0);
-            let file = ui.menu_button("File", |ui| {
-                if ui.button("New project from mesh…").clicked() {
-                    if let Some(p) = rfd::FileDialog::new().add_filter("Meshes", &["obj", "gltf", "glb"]).pick_file() {
-                        self.request(rs, Pending::NewFromMesh(p));
-                    }
-                }
-                if ui.button("Open the demo crate").clicked() {
-                    self.request(rs, Pending::Demo);
-                }
-                if ui.button("New project: test torus").clicked() {
-                    self.request(rs, Pending::NewTorus);
-                }
-                ui.separator();
-                if ui.add(egui::Button::new("Open project…").shortcut_text("Ctrl+O")).clicked() {
-                    self.open_dialog(rs);
-                }
-                if ui.add(egui::Button::new("Save").shortcut_text("Ctrl+S")).clicked() {
-                    self.save(rs, false);
-                }
-                if ui.add(egui::Button::new("Save as…").shortcut_text("Ctrl+Shift+S")).clicked() {
-                    self.save(rs, true);
-                }
-                ui.separator();
-                if ui.add(egui::Button::new("Export textures…").shortcut_text("Ctrl+Shift+E")).clicked() {
-                    self.show_export = true;
-                }
-            });
-            self.anchors.insert("file_menu", file.response.rect);
-            let edit = ui.menu_button("Edit", |ui| {
-                let ul = self.history.undo_label().map(|s| format!("Undo: {s}")).unwrap_or_else(|| "Undo".into());
-                if ui.add_enabled(self.history.can_undo() || self.doc != self.committed, egui::Button::new(ul).shortcut_text("Ctrl+Z")).clicked() {
-                    self.undo(rs, false);
-                }
-                let rl = self.history.redo_label().map(|s| format!("Redo: {s}")).unwrap_or_else(|| "Redo".into());
-                if ui.add_enabled(self.history.can_redo(), egui::Button::new(rl).shortcut_text("Ctrl+Y")).clicked() {
-                    self.undo(rs, true);
-                }
-                ui.separator();
-                ui.menu_button("History", |ui| {
-                    let (labels, applied) = self.history.history();
-                    if labels.is_empty() {
-                        ui.label(RichText::new("Nothing yet").color(MUTED));
-                    }
-                    for (i, l) in labels.iter().enumerate().rev().take(30) {
-                        let t = RichText::new(*l);
-                        ui.label(if i < applied { t } else { t.color(Color32::DARK_GRAY).italics() });
-                    }
-                });
-            });
-            self.anchors.insert("edit_menu", edit.response.rect);
-            ui.menu_button("View", |ui| {
-                if ui.add(egui::Button::new("Frame model").shortcut_text("F")).clicked() {
-                    let (c, r) = self.mesh.bounding_sphere();
-                    self.camera.frame(c, r);
-                }
-                ui.separator();
-                for m in ViewMode::ALL {
-                    ui.radio_value(&mut self.view.mode, m, m.label());
-                }
-            });
-            ui.menu_button("Help", |ui| {
-                if ui.button(RichText::new("Quick start guide").strong()).clicked() {
-                    self.tour_start(true);
-                    ui.close();
-                }
-                ui.separator();
-                ui.label(RichText::new("Controls").strong());
-                for (k, v) in [
-                    ("Left-drag", "paint"),
-                    ("Right-drag / Alt+left", "orbit"),
-                    ("Middle-drag", "pan"),
-                    ("Wheel", "zoom"),
-                    ("[  ]", "brush size"),
-                    ("B / E", "brush / eraser"),
-                    ("X", "swap mask colour"),
-                    ("F", "frame model"),
-                    ("M", "material / base colour view"),
-                ] {
-                    ui.horizontal(|ui| {
-                        ui.label(RichText::new(k).monospace().color(ACCENT));
-                        ui.label(v);
-                    });
-                }
-                ui.separator();
-                ui.label("Fill layers are shaped by their mask. Paint on a fill\nlayer and it gets a black mask you paint white into.");
-            });
-            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                let name = self.project_dir.as_ref().and_then(|d| d.file_name()).map(|n| n.to_string_lossy().to_string()).unwrap_or_else(|| "Untitled project".into());
-                ui.label(RichText::new(format!("{name}{}", if self.modified { "  •  unsaved" } else { "" })).color(MUTED));
-            });
-        });
-    }
-
-    fn toolbar(&mut self, ui: &mut egui::Ui) {
-        ui.horizontal(|ui| {
-            let tool = |ui: &mut egui::Ui, on: bool, label: &str, tip: &str| {
-                let b = egui::Button::new(RichText::new(label).strong()).selected(on).min_size(egui::vec2(70.0, 26.0));
-                ui.add(b).on_hover_text(tip).clicked()
-            };
-            if tool(ui, !self.brush.erase && self.decal_tool.is_none(), "Brush", "Paint (B)") {
-                self.brush.erase = false;
-                self.decal_tool = None;
-            }
-            if tool(ui, self.brush.erase && self.decal_tool.is_none(), "Eraser", "Erase (E)") {
-                self.brush.erase = true;
-                self.decal_tool = None;
-            }
-            if tool(ui, self.decal_tool.is_some(), "Decal…", "Stick an image (sign, logo, label) onto the model: pick a PNG, then drag a box over the model") {
-                let start = std::env::current_dir().map(|d| d.join("assets").join("decals")).unwrap_or_default();
-                if let Some(p) = rfd::FileDialog::new().set_directory(start).add_filter("Images", &["png", "jpg", "jpeg"]).pick_file() {
-                    self.decal_tool = Some((p, None));
-                    self.brush.erase = false;
-                }
-            }
-            ui.separator();
-            let slider = |ui: &mut egui::Ui, label: &str, v: &mut f32, r: std::ops::RangeInclusive<f32>, log: bool, pct: bool| {
-                ui.label(RichText::new(label).color(MUTED));
-                let mut s = egui::Slider::new(v, r).logarithmic(log);
-                if pct {
-                    s = s.custom_formatter(|v, _| format!("{:.0}%", v * 100.0));
-                }
-                ui.add_sized([150.0, 20.0], s);
-                ui.add_space(6.0);
-            };
-            slider(ui, "Size", &mut self.brush.size, 2.0..=800.0, true, false);
-            slider(ui, "Opacity", &mut self.brush.opacity, 0.0..=1.0, false, true);
-            slider(ui, "Hardness", &mut self.brush.hardness, 0.0..=1.0, false, true);
-            slider(ui, "Spacing", &mut self.brush.spacing, 0.02..=1.0, false, true);
-
-            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                let layer = self.selected.and_then(|id| self.doc.layer(id)).map(|l| (l.name.clone(), l.is_paint(), l.mask.is_some()));
-                match (layer, self.paint_target()) {
-                    (Some((name, _, _)), Ok(Target::Mask(_))) => {
-                        ui.selectable_value(&mut self.brush.mask_white, false, "Black: hide").on_hover_text("X swaps");
-                        ui.selectable_value(&mut self.brush.mask_white, true, "White: reveal");
-                        ui.label(RichText::new(format!("Painting the mask of {name}")).color(ACCENT).strong());
-                    }
-                    (Some((name, _, _)), Ok(Target::Layer(_))) => {
-                        ui.label(RichText::new(format!("Painting on {name}")).color(ACCENT).strong());
-                    }
-                    (Some((name, false, false)), _) => {
-                        ui.label(RichText::new(format!("Painting {name} gives it a mask")).color(MUTED));
-                    }
-                    (_, Err(e)) => {
-                        ui.label(RichText::new(e).color(WARN));
-                    }
-                    _ => {}
-                }
-            });
-        });
-    }
-
-    fn status_bar(&mut self, ui: &mut egui::Ui) {
-        ui.horizontal(|ui| {
-            if let Some((msg, err)) = &self.status {
-                ui.label(RichText::new(msg).color(if *err { WARN } else { Color32::LIGHT_GRAY }));
-            }
-            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                let avg = self.frame_times.iter().sum::<f32>() / self.frame_times.len().max(1) as f32;
-                let stats = format!(
-                    "{:.0} fps   ·   {} tris   ·   {res}² × {} layers, {:.0} MB",
-                    1.0 / avg.max(1e-6),
-                    format_count(self.mesh.triangle_count()),
-                    self.doc.layers.len(),
-                    self.ts.vram_bytes() as f64 / 1048576.0,
-                    res = self.ts.res,
-                );
-                ui.label(RichText::new(stats).color(MUTED).size(12.0));
-            });
-        });
-    }
-
-    // ------------------------------------------------------------ left: brush material
-
-    fn material_panel(&mut self, ui: &mut egui::Ui, rs: &RenderState) {
-        let painting_mask = matches!(self.paint_target(), Ok(Target::Mask(_)));
-        section(ui, "Brush material");
-        if painting_mask {
-            card(ui, CARD, |ui| {
-                ui.label(RichText::new("You're painting a mask.").strong());
-                ui.label(RichText::new("White reveals the layer, black hides it (X swaps). Click the layer's Layer tab to paint material again.").color(MUTED));
-                ui.horizontal(|ui| {
-                    ui.selectable_value(&mut self.brush.mask_white, true, "White: reveal");
-                    ui.selectable_value(&mut self.brush.mask_white, false, "Black: hide");
-                });
-            });
+    pub(super) fn open_model_dialog(&mut self, rs: &RenderState) {
+        if let Some(p) = rfd::FileDialog::new().set_title("Open a model to paint").add_filter("3D models", &["obj", "gltf", "glb"]).pick_file() {
+            self.request(rs, Pending::NewFromMesh(p));
         }
-        ui.add_enabled_ui(!painting_mask, |ui| {
-            card(ui, CARD, |ui| {
-                ui.horizontal(|ui| {
-                    let (rect, _) = ui.allocate_exact_size(egui::vec2(54.0, 54.0), egui::Sense::hover());
-                    paint_swatch(ui.painter(), rect, &self.brush.values);
-                    ui.vertical(|ui| {
-                        let name = preset_name(&self.brush.values).unwrap_or("Custom");
-                        ui.label(RichText::new(name).strong().size(15.0));
-                        let v = &self.brush.values;
-                        ui.label(RichText::new(format!("rough {:.2} · metal {:.2}", v.roughness, v.metallic)).color(MUTED).size(12.0));
-                        if v.height.abs() > 0.01 && self.brush.channels[3] {
-                            ui.label(RichText::new(format!("height {:+.2}", v.height)).color(MUTED).size(12.0));
-                        }
-                    });
-                });
-            });
-            section(ui, "Presets");
-            let presets = material_presets();
-            let grid = egui::Grid::new("presets").num_columns(2).spacing([6.0, 6.0]).show(ui, |ui| {
-                for (k, (name, v)) in presets.iter().enumerate() {
-                    let r = ui
-                        .horizontal(|ui| {
-                            let r = swatch_button(ui, v, 22.0);
-                            let l = ui.add(egui::Label::new(RichText::new(*name).size(12.5)).sense(egui::Sense::click()).selectable(false));
-                            r.union(l)
-                        })
-                        .inner;
-                    if r.clicked() {
-                        self.brush.values = v.clone();
-                        let (see, trans) = v.is_see_through();
-                        let (coat, flake) = v.is_coated();
-                        self.brush.channels = [true, true, true, v.height.abs() > 0.01, false, v.emissive_strength > 0.0, see, trans, coat, coat, flake];
-                        self.brush.erase = false;
-                    }
-                    if k % 2 == 1 {
-                        ui.end_row();
-                    }
+    }
+
+    /// Every action, for the command palette.
+    fn commands(&self) -> Vec<ds::Command> {
+        let cmd = |id: &str, title: &str, group: &'static str, shortcut: Option<&'static str>, icon: Icon| ds::Command { id: id.into(), title: title.into(), group, shortcut, icon };
+        let mut v = vec![
+            cmd("new", "New project…", "File", Some("Ctrl+N"), Icon::New),
+            cmd("open_model", "Open model…", "File", Some("Ctrl+Shift+O"), Icon::Open),
+            cmd("open", "Open project…", "File", Some("Ctrl+O"), Icon::Open),
+            cmd("save", "Save", "File", Some("Ctrl+S"), Icon::Save),
+            cmd("save_as", "Save as…", "File", Some("Ctrl+Shift+S"), Icon::Save),
+            cmd("export", "Export textures…", "File", Some("Ctrl+E"), Icon::Export),
+            cmd("blender", "Send to Blender", "File", None, Icon::Send),
+            cmd("welcome", "Welcome screen", "File", None, Icon::Sparkle),
+            cmd("torus", "New project: test torus", "File", None, Icon::Cube),
+            cmd("undo", "Undo", "Edit", Some("Ctrl+Z"), Icon::Undo),
+            cmd("redo", "Redo", "Edit", Some("Ctrl+Y"), Icon::Redo),
+            cmd("simple", "Switch to Simple mode", "Mode", Some("Ctrl+Tab"), Icon::Sparkle),
+            cmd("advanced", "Switch to Advanced mode", "Mode", Some("Ctrl+Tab"), Icon::Sliders),
+            cmd("theme", "Toggle light / dark theme", "View", None, Icon::Sun),
+            cmd("frame", "Frame model / selection", "View", Some("F"), Icon::Frame),
+            cmd("tool_paint", "Paint tool", "Tools", Some("B"), Icon::Brush),
+            cmd("tool_erase", "Eraser", "Tools", Some("E"), Icon::Eraser),
+            cmd("tool_fill", "Fill a part", "Tools", Some("G"), Icon::Bucket),
+            cmd("tool_decal", "Decal tool", "Tools", Some("D"), Icon::Stamp),
+            cmd("tool_pick", "Pick parts", "Tools", Some("P"), Icon::Target),
+            cmd("add_paint", "Add paint layer", "Layers", None, Icon::PaintLayer),
+            cmd("add_fill", "Add fill layer", "Layers", None, Icon::FillLayer),
+            cmd("add_folder", "Add folder", "Layers", None, Icon::Folder),
+            cmd("rebake", "Re-bake AO + curvature", "Texture set", None, Icon::Tile),
+            cmd("shortcuts", "Keyboard shortcuts", "Help", Some("?"), Icon::Keyboard),
+            cmd("tour", "Learn in 2 minutes (guided tour)", "Help", None, Icon::Play),
+            cmd("reset_layout", "Reset layout", "Window", None, Icon::Window),
+            cmd("settings", "Settings…", "Edit", None, Icon::Gear),
+        ];
+        for l in dock::PRESETS {
+            v.push(ds::Command { id: format!("layout:{l}"), title: format!("Layout: {l}"), group: "Window", shortcut: None, icon: Icon::Window });
+        }
+        for p in PanelId::ALL {
+            v.push(ds::Command { id: format!("panel:{p:?}"), title: format!("Show {} panel", p.title()), group: "Window", shortcut: None, icon: p.icon() });
+        }
+        for n in smart_material_names() {
+            v.push(ds::Command { id: format!("smart:{n}"), title: format!("Apply {n}"), group: "Materials", shortcut: None, icon: Icon::Sparkle });
+        }
+        for (id, label) in pigment_core::envmath::PRESETS.iter().chain(pigment_core::envmath::SKIES.iter()) {
+            v.push(ds::Command { id: format!("light:{id}"), title: format!("Lighting: {label}"), group: "Lighting", shortcut: None, icon: Icon::Sun });
+        }
+        v
+    }
+
+    pub(super) fn run_command(&mut self, rs: &RenderState, id: &str) {
+        match id {
+            "new" => self.ui.new_project.open = true,
+            "open_model" => self.open_model_dialog(rs),
+            "open" => self.open_dialog(rs),
+            "save" => self.save(rs, false),
+            "save_as" => self.save(rs, true),
+            "export" => self.show_export = true,
+            "blender" => self.send_to_blender(rs),
+            "welcome" => self.ui.welcome = true,
+            "torus" => self.request(rs, Pending::NewTorus),
+            "undo" => self.undo(rs, false),
+            "redo" => self.undo(rs, true),
+            "simple" => self.set_mode(Mode::Simple),
+            "advanced" => self.set_mode(Mode::Advanced),
+            "theme" => {
+                self.ui.prefs.theme = if self.ui.prefs.theme == ds::ThemeKind::Dark { ds::ThemeKind::Light } else { ds::ThemeKind::Dark };
+                self.ui.pending_theme = true;
+                self.prefs_changed();
+            }
+            "frame" => self.frame_selected(),
+            "tool_paint" => self.set_tool(Tool::Paint),
+            "tool_erase" => self.set_tool(Tool::Erase),
+            "tool_fill" => self.set_tool(Tool::Fill),
+            "tool_decal" => self.set_tool(Tool::Decal),
+            "tool_pick" => {
+                self.set_mode(Mode::Advanced);
+                self.set_tool(Tool::Pick);
+            }
+            "add_paint" => {
+                let l = self.doc.new_paint_layer(&format!("Paint {}", self.doc.layers.len() + 1));
+                self.insert_layer(l);
+            }
+            "add_fill" => {
+                let l = self.doc.new_fill_layer(&format!("Fill {}", self.doc.layers.len() + 1));
+                self.insert_layer(l);
+            }
+            "add_folder" => self.add_folder(),
+            "rebake" => self.bake(rs),
+            "shortcuts" => self.ui.cheatsheet = true,
+            "tour" => self.start_tour(rs),
+            "settings" => self.ui.settings = true,
+            "reset_layout" => {
+                *self.ui.prefs.layout_mut() = if self.ui.prefs.mode == Mode::Simple { DockLayout::beginner() } else { DockLayout::texturing() };
+                self.prefs_changed();
+            }
+            other => {
+                if let Some(l) = other.strip_prefix("layout:").and_then(DockLayout::preset) {
+                    *self.ui.prefs.layout_mut() = l;
+                    self.prefs_changed();
+                } else if let Some(p) = other.strip_prefix("panel:").and_then(|n| PanelId::ALL.into_iter().find(|p| format!("{p:?}") == n)) {
+                    self.ui.prefs.layout_mut().open(p);
+                    self.prefs_changed();
+                } else if let Some(n) = other.strip_prefix("smart:") {
+                    self.apply_library(rs, &LibItem::Smart(n.to_string()), None);
+                } else if let Some(l) = other.strip_prefix("light:") {
+                    self.set_lighting(rs, l);
                 }
-            });
-            self.anchors.insert("presets", grid.response.rect);
-            section(ui, "Channels this brush paints");
-            material_grid(ui, "brush values", &mut self.brush.values, Some(&mut self.brush.channels));
-        });
-
-        ui.add_space(8.0);
-        egui::CollapsingHeader::new(RichText::new("TEXTURE SET & BAKING").size(11.0).color(MUTED).strong()).default_open(false).show(ui, |ui| {
-            let mut res = self.doc.resolution;
-            ui.horizontal(|ui| {
-                ui.label("Size");
-                egui::ComboBox::from_id_salt("res").selected_text(format!("{res} × {res}")).show_ui(ui, |ui| {
-                    for r in RESOLUTIONS {
-                        ui.selectable_value(&mut res, r, format!("{r} × {r}"));
-                    }
-                });
-            });
-            if res != self.doc.resolution {
-                self.change_resolution(rs, res);
             }
-            ui.label(RichText::new("Resamples all layers; clears undo.").size(11.0).color(MUTED));
-            ui.add_space(4.0);
-            egui::Grid::new("bake").num_columns(2).show(ui, |ui| {
-                ui.label("AO quality");
-                egui::ComboBox::from_id_salt("ao").selected_text(format!("{} rays", self.doc.bake.ao_samples)).show_ui(ui, |ui| {
-                    for n in [32, 64, 128, 256, 512] {
-                        ui.selectable_value(&mut self.doc.bake.ao_samples, n, format!("{n} rays"));
-                    }
-                });
-                ui.end_row();
-                ui.label("AO distance");
-                ui.add(egui::Slider::new(&mut self.doc.bake.ao_distance, 0.02..=2.0).logarithmic(true));
-                ui.end_row();
-                ui.label("Edge width");
-                ui.add(egui::Slider::new(&mut self.doc.bake.curvature_radius, 0.005..=0.2).logarithmic(true));
-                ui.end_row();
-                ui.label("Edge strength");
-                ui.add(egui::Slider::new(&mut self.doc.bake.curvature_strength, 0.1..=4.0));
-                ui.end_row();
-            });
-            if ui.button("Re-bake AO + curvature").clicked() {
-                self.bake(rs);
-            }
-            ui.label(RichText::new("Generators (edge wear, dirt) read these maps. Inspect them with the AO / Curvature chips on the viewport.").size(11.0).color(MUTED));
-        });
-    }
-
-    // ------------------------------------------------------------ right: layers + properties
-
-    fn layers_panel(&mut self, ui: &mut egui::Ui, rs: &RenderState) {
-        ui.horizontal(|ui| {
-            section(ui, "Layers");
-            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                ui.menu_button(RichText::new("+ Add layer").strong(), |ui| {
-                    if ui.button("Paint layer").on_hover_text("Paint material directly with the brush").clicked() {
-                        let l = self.doc.new_paint_layer(&format!("Paint {}", self.doc.layers.len() + 1));
-                        self.insert_layer(l);
-                        ui.close();
-                    }
-                    if ui.button("Fill layer").on_hover_text("A flat material; paint on it to mask where it shows").clicked() {
-                        let l = self.doc.new_fill_layer(&format!("Fill {}", self.doc.layers.len() + 1));
-                        self.insert_layer(l);
-                        ui.close();
-                    }
-                    if ui.button("Folder").on_hover_text("Group layers: the folder's opacity and mask apply to everything inside").clicked() {
-                        self.add_folder();
-                        ui.close();
-                    }
-                    if ui.button("Smart material from file...").on_hover_text("Apply a saved .pigsmart folder").clicked() {
-                        self.load_smart_dialog();
-                        ui.close();
-                    }
-                    ui.separator();
-                    ui.label(RichText::new("Smart materials (several layers)").size(11.0).color(MUTED));
-                    for name in smart_material_names() {
-                        if ui.button(&name).clicked() {
-                            if let Some(layers) = self.doc.smart_material(&name) {
-                                for l in layers {
-                                    self.insert_layer(l);
-                                }
-                            }
-                            ui.close();
-                        }
-                    }
-                    ui.separator();
-                    ui.label(RichText::new("Smart layers").size(11.0).color(MUTED));
-                    if ui.button("Edge wear: bare metal on edges").clicked() {
-                        self.add_smart(rs, "Edge wear", "Steel", GeneratorKind::EdgeWear, 0.55);
-                        ui.close();
-                    }
-                    if ui.button("Dirt: grime in crevices").clicked() {
-                        self.add_smart(rs, "Dirt", "Grime", GeneratorKind::Dirt, 0.5);
-                        ui.close();
-                    }
-                    if ui.button("Rust: in crevices").clicked() {
-                        self.add_smart(rs, "Rust", "Rust", GeneratorKind::Dirt, 0.4);
-                        ui.close();
-                    }
-                });
-            });
-        });
-
-        // top of the stack first
-        let n = self.doc.layers.len();
-        let mut select: Option<(LayerId, bool)> = None;
-        for i in (0..n).rev() {
-            let lid = self.doc.layers[i].id;
-            if self.doc.is_hidden_in_panel(lid) {
-                continue; // inside a collapsed folder
-            }
-            let depth = self.doc.depth(lid);
-            let kids = self.doc.children_of(Some(lid)).len();
-            let shown = self.doc.effectively_visible(lid);
-            let selected = self.selected == Some(self.doc.layers[i].id);
-            let paint_mask = self.paint_mask;
-            let l = &mut self.doc.layers[i];
-            let id = l.id;
-            let row = egui::Frame::new()
-                .fill(if selected { CARD_HI } else { CARD })
-                .stroke(if selected { Stroke::new(1.0, ACCENT) } else { Stroke::NONE })
-                .corner_radius(CornerRadius::same(6))
-                .inner_margin(egui::Margin::symmetric(6, 5))
-                .show(ui, |ui| {
-                    ui.set_width(ui.available_width());
-                    ui.horizontal(|ui| {
-                        // folder nesting
-                        if depth > 0 {
-                            let (r, _) = ui.allocate_exact_size(egui::vec2(14.0 * depth as f32 - 4.0, 30.0), egui::Sense::hover());
-                            for k in 0..depth {
-                                let x = r.left() + 5.0 + 14.0 * k as f32;
-                                ui.painter().line_segment([egui::pos2(x, r.top() - 4.0), egui::pos2(x, r.bottom() + 4.0)], Stroke::new(1.0, Color32::from_gray(70)));
-                            }
-                        }
-                        if let LayerKind::Folder { collapsed } = &mut l.kind {
-                            let (r, resp) = ui.allocate_exact_size(egui::vec2(12.0, 16.0), egui::Sense::click());
-                            let c = r.center();
-                            let pts = if *collapsed {
-                                vec![egui::pos2(c.x - 3.0, c.y - 5.0), egui::pos2(c.x + 4.0, c.y), egui::pos2(c.x - 3.0, c.y + 5.0)]
-                            } else {
-                                vec![egui::pos2(c.x - 5.0, c.y - 3.0), egui::pos2(c.x + 5.0, c.y - 3.0), egui::pos2(c.x, c.y + 4.0)]
-                            };
-                            ui.painter().add(egui::Shape::convex_polygon(pts, Color32::from_gray(190), Stroke::NONE));
-                            if resp.on_hover_text(if *collapsed { "Expand folder" } else { "Collapse folder" }).clicked() {
-                                *collapsed = !*collapsed;
-                            }
-                        }
-                        // visibility
-                        let (r, resp) = ui.allocate_exact_size(egui::vec2(16.0, 16.0), egui::Sense::click());
-                        if l.visible {
-                            ui.painter().circle_filled(r.center(), 5.0, ACCENT);
-                        } else {
-                            ui.painter().circle_stroke(r.center(), 5.0, Stroke::new(1.5, MUTED));
-                        }
-                        if resp.on_hover_text(if l.visible { "Hide" } else { "Show" }).clicked() {
-                            l.visible = !l.visible;
-                        }
-                        // thumbnail
-                        let (r, resp) = ui.allocate_exact_size(egui::vec2(30.0, 30.0), egui::Sense::click());
-                        match &l.kind {
-                            LayerKind::Fill { values } => paint_swatch(ui.painter(), r, values),
-                            LayerKind::Paint { .. } => {
-                                let p = ui.painter();
-                                p.rect_filled(r, CornerRadius::same(4), Color32::from_gray(70));
-                                for k in 0..3u8 {
-                                    let y = r.top() + 8.0 + k as f32 * 7.0;
-                                    p.line_segment([egui::pos2(r.left() + 6.0, y + 4.0), egui::pos2(r.right() - 6.0, y - 2.0)], Stroke::new(2.0, Color32::from_gray(150 + k * 30)));
-                                }
-                            }
-                            LayerKind::Folder { .. } => {
-                                let p = ui.painter();
-                                let body = egui::Rect::from_min_max(egui::pos2(r.left() + 2.0, r.top() + 9.0), egui::pos2(r.right() - 2.0, r.bottom() - 4.0));
-                                let tab = egui::Rect::from_min_max(egui::pos2(r.left() + 2.0, r.top() + 5.0), egui::pos2(r.left() + 13.0, r.top() + 11.0));
-                                p.rect_filled(tab, CornerRadius::same(2), ACCENT_DIM);
-                                p.rect_filled(body, CornerRadius::same(3), ACCENT_DIM);
-                                p.rect_stroke(body, CornerRadius::same(3), Stroke::new(1.0, ACCENT), egui::StrokeKind::Inside);
-                            }
-                        }
-                        if resp.clicked() {
-                            select = Some((id, false));
-                        }
-                        // name + what it is
-                        let sub = match (&l.kind, &l.mask) {
-                            (LayerKind::Paint { .. }, None) => "Paint".to_string(),
-                            (LayerKind::Paint { .. }, Some(_)) => "Paint · masked".to_string(),
-                            (LayerKind::Fill { .. }, Some(m)) => match &m.generator {
-                                Some(g) => format!("Fill · {} mask", g.kind.label().to_lowercase()),
-                                None => "Fill · painted mask".to_string(),
-                            },
-                            (LayerKind::Fill { .. }, None) => "Fill · everywhere".to_string(),
-                            (LayerKind::Folder { .. }, m) => format!("Folder · {kids} item{}{}", if kids == 1 { "" } else { "s" }, if m.is_some() { " · masked" } else { "" }),
-                        };
-                        let resp = ui
-                            .vertical(|ui| {
-                                let name = RichText::new(&l.name).strong().color(if shown { Color32::WHITE } else { MUTED });
-                                ui.add(egui::Label::new(name).selectable(false));
-                                ui.add(egui::Label::new(RichText::new(sub).size(11.0).color(MUTED)).selectable(false));
-                            })
-                            .response
-                            .interact(egui::Sense::click());
-                        if resp.clicked() {
-                            select = Some((id, false));
-                        }
-                        // mask thumbnail
-                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                            if let Some(m) = &l.mask {
-                                let (r, resp) = ui.allocate_exact_size(egui::vec2(26.0, 26.0), egui::Sense::click());
-                                let p = ui.painter();
-                                p.rect_filled(r, CornerRadius::same(3), Color32::from_gray(20));
-                                p.rect_filled(egui::Rect::from_min_max(r.center_top(), r.right_bottom()), CornerRadius::same(3), Color32::from_gray(225));
-                                if m.generator.is_some() {
-                                    p.circle_filled(r.center(), 4.0, ACCENT);
-                                }
-                                let active = selected && paint_mask;
-                                p.rect_stroke(r, CornerRadius::same(3), Stroke::new(if active { 2.0 } else { 1.0 }, if active { ACCENT } else { MUTED }), egui::StrokeKind::Outside);
-                                if resp.on_hover_text("Select the mask to paint on it").clicked() {
-                                    select = Some((id, true));
-                                }
-                            }
-                            ui.label(RichText::new(format!("{:.0}%", l.opacity * 100.0)).size(11.0).color(MUTED));
-                        });
-                    });
-                });
-            if self.doc.layers[i].mask.as_ref().and_then(|m| m.generator.as_ref()).is_some_and(|g| g.kind == GeneratorKind::EdgeWear) {
-                self.anchors.entry("edge_wear_row").or_insert(row.response.rect);
-            }
-            if select.is_none() && row.response.interact(egui::Sense::click()).clicked() {
-                select = Some((id, false));
-            }
-            ui.add_space(2.0);
         }
-        if let Some((id, mask)) = select {
-            self.select(Some(id), mask);
+    }
+
+    fn command_palette(&mut self, ctx: &egui::Context, rs: &RenderState) {
+        if std::mem::take(&mut self.ui.pending_theme) {
+            ds::apply(ctx, self.ui.prefs.theme);
         }
-
-        ui.horizontal_wrapped(|ui| {
-            let sel = self.selected.and_then(|id| self.doc.index_of(id));
-            // up / down move among siblings, so folders stay intact
-            if ui.add_enabled(self.can_nudge(1), egui::Button::new("Up")).clicked() {
-                self.nudge_selected(1);
-            }
-            if ui.add_enabled(self.can_nudge(-1), egui::Button::new("Down")).clicked() {
-                self.nudge_selected(-1);
-            }
-            if ui.add_enabled(sel.is_some(), egui::Button::new("Duplicate")).clicked() {
-                self.duplicate_selected(rs);
-            }
-            if ui.add_enabled(sel.is_some(), egui::Button::new("Delete")).on_hover_text("A folder is deleted with its contents").clicked() {
-                self.delete_selected();
-            }
-        });
-        ui.horizontal_wrapped(|ui| {
-            let sel = self.selected.and_then(|id| self.doc.layer(id)).map(|l| l.parent.is_some());
-            if ui.add_enabled(sel.is_some(), egui::Button::new("Group")).on_hover_text("Put the selection in a new folder").clicked() {
-                self.group_selected();
-            }
-            if ui.add_enabled(sel == Some(true), egui::Button::new("Out of folder")).clicked() {
-                self.move_selected_out();
-            }
-            let targets = self.folder_targets();
-            ui.add_enabled_ui(sel.is_some() && !targets.is_empty(), |ui| {
-                ui.menu_button("Into folder", |ui| {
-                    for (fid, path) in targets {
-                        if ui.button(path).clicked() {
-                            self.move_selected_into(fid);
-                            ui.close();
-                        }
-                    }
-                });
-            });
-        });
-
-        ui.add_space(8.0);
-        self.properties(ui, rs);
-    }
-
-    fn add_smart(&mut self, rs: &RenderState, name: &str, material: &str, kind: GeneratorKind, amount: f32) {
-        let mut l = self.doc.new_fill_layer(name);
-        let values = material_preset(material);
-        l.channels.metallic.enabled = values.metallic > 0.0 || material == "Steel";
-        l.channels.height.enabled = values.height.abs() > 0.01;
-        l.channels.normal.enabled = false;
-        l.kind = LayerKind::Fill { values };
-        let res = self.doc.mint();
-        self.ts.new_mask(&rs.device, &rs.queue, res, true);
-        let mut g = Generator::new(kind);
-        g.amount = amount;
-        if kind == GeneratorKind::EdgeWear {
-            g.noise_scale = 20.0;
-            g.noise_amount = 0.8;
-            g.softness = 0.05;
-        }
-        l.mask = Some(Mask { res, generator: Some(g), invert: false, enabled: true, parts: Vec::new(), effects: Vec::new() });
-        self.insert_layer(l);
-    }
-
-    pub(super) fn insert_layer(&mut self, mut l: Layer) {
-        let at = self.selected.and_then(|id| self.doc.index_of(id)).map(|i| i + 1).unwrap_or(self.doc.layers.len());
-        let id = l.id;
-        // lands next to the selection, in the same folder
-        l.parent = self.selected.and_then(|s| self.doc.layer(s)).and_then(|s| s.parent);
-        self.doc.layers.insert(at, l);
-        self.doc.normalize_folders();
-        self.select(Some(id), false);
-    }
-
-    pub(super) fn duplicate_selected(&mut self, rs: &RenderState) {
-        let Some(i) = self.selected.and_then(|id| self.doc.index_of(id)) else { return };
-        if self.doc.layers[i].is_folder() {
-            let id = self.doc.layers[i].id;
-            self.duplicate_tree(rs, id);
+        if !self.ui.palette.open {
             return;
         }
-        let mut l = self.doc.layers[i].clone();
-        l.id = self.doc.mint();
-        l.name = format!("{} copy", l.name);
-        if let LayerKind::Paint { res } = &mut l.kind {
-            let new = self.doc.mint();
-            self.ts.duplicate_layer(&rs.device, &rs.queue, *res, new);
-            *res = new;
+        let cmds = self.commands();
+        if let Some(id) = ds::command_palette(ctx, &mut self.ui.palette, &cmds) {
+            self.run_command(rs, &id);
         }
-        if let Some(m) = &mut l.mask {
-            let new = self.doc.mint();
-            self.ts.duplicate_mask(&rs.device, &rs.queue, m.res, new);
-            m.res = new;
-        }
-        let id = l.id;
-        self.doc.layers.insert(i + 1, l);
-        self.select(Some(id), false);
     }
 
-    fn properties(&mut self, ui: &mut egui::Ui, rs: &RenderState) {
-        let Some(i) = self.selected.and_then(|id| self.doc.index_of(id)) else {
-            ui.label(RichText::new("Select a layer to edit it.").color(MUTED));
+    pub(super) fn set_lighting(&mut self, rs: &RenderState, id: &str) {
+        if self.env.source == id {
             return;
-        };
-        let id = self.doc.layers[i].id;
-        section(ui, "Properties");
-
-        let mut name = match &self.renaming {
-            Some((rid, n)) if *rid == id => n.clone(),
-            _ => self.doc.layers[i].name.clone(),
-        };
-        let r = ui.add(egui::TextEdit::singleline(&mut name).desired_width(f32::INFINITY).font(egui::TextStyle::Heading));
-        if r.changed() {
-            self.renaming = Some((id, name.clone()));
         }
-        if r.lost_focus() {
-            if let Some((_, n)) = self.renaming.take() {
-                if !n.trim().is_empty() {
-                    self.doc.layers[i].name = n.trim().to_string();
-                }
-            }
-        }
-
-        // Layer / Mask tabs. The active tab is also what the brush paints.
-        let has_mask = self.doc.layers[i].mask.is_some();
-        ui.horizontal(|ui| {
-            if ui.add(egui::Button::new("Layer").selected(!self.paint_mask).min_size(egui::vec2(90.0, 24.0))).clicked() {
-                self.paint_mask = false;
-            }
-            let label = if has_mask { "Mask" } else { "Mask (none)" };
-            if ui.add(egui::Button::new(label).selected(self.paint_mask).min_size(egui::vec2(90.0, 24.0))).clicked() {
-                self.paint_mask = true;
-            }
-        });
-        ui.add_space(4.0);
-        if self.paint_mask {
-            self.mask_tab(ui, rs, i);
-        } else {
-            self.layer_tab(ui, i);
+        match Environment::lighting(&rs.device, &rs.queue, id) {
+            Ok(e) => self.env = e,
+            Err(e) => self.notify_error("Couldn't load that lighting", &format!("{e:#}")),
         }
     }
 
-    fn layer_tab(&mut self, ui: &mut egui::Ui, i: usize) {
-        let image_bases = self.image_bases();
-        let mut save_smart = false;
-        let seed = &mut self.doc.variants.seed;
-        let l = &mut self.doc.layers[i];
-        let is_folder = l.is_folder();
-        card(ui, CARD, |ui| {
-            ui.horizontal(|ui| {
-                ui.label("Opacity");
-                ui.add(egui::Slider::new(&mut l.opacity, 0.0..=1.0).custom_formatter(|v, _| format!("{:.0}%", v * 100.0)));
-            });
-            // texture variants (export_variants over MCP): group tag, recorded decals, live seed preview
-            ui.horizontal(|ui| {
-                ui.label("Variant group").on_hover_text("Variants can switch every layer and decal of a group on or off");
-                ui.add(egui::TextEdit::singleline(&mut l.variant.group).desired_width(110.0).hint_text("none"));
-                ui.label("Seed").on_hover_text("Preview a variant seed: random part subsets (lit windows) and generator noise follow it. 0 = authored look");
-                ui.add(egui::DragValue::new(seed).range(0..=99999));
-            });
-            if !l.variant.decals.is_empty() {
-                let list: Vec<String> = l.variant.decals.iter().map(|d| format!("{}{}{}", if d.enabled { "" } else { "(off) " }, d.name, if d.group.is_empty() { String::new() } else { format!(" [{}]", d.group) })).collect();
-                ui.label(RichText::new(format!("Decals: {}", list.join(", "))).size(11.5).color(MUTED));
-            }
-        });
-        match &mut l.kind {
-            LayerKind::Fill { values } => {
-                section(ui, "Fill material");
-                card(ui, CARD, |ui| {
-                    ui.horizontal_wrapped(|ui| {
-                        for (name, v) in material_presets() {
-                            if swatch_button(ui, &v, 20.0).on_hover_text(name).clicked() {
-                                *values = v;
-                            }
-                        }
-                    });
-                    ui.add_space(4.0);
-                    material_grid(ui, "fill values", values, None);
-                });
-                section(ui, "Image fill");
-                card(ui, CARD, |ui| image_fill_editor(ui, &mut l.image, &mut l.channels, &image_bases));
-            }
-            LayerKind::Paint { .. } => {
-                card(ui, CARD, |ui| {
-                    ui.label(RichText::new("Paint layer").strong());
-                    ui.label(RichText::new("Holds whatever you paint. Choose the brush material on the left.").color(MUTED));
-                });
-            }
-            LayerKind::Folder { .. } => {
-                card(ui, CARD, |ui| {
-                    ui.label(RichText::new("Folder").strong());
-                    ui.label(RichText::new("Its contents are composited as a group, then blended onto the layers below with the folder's opacity, channels and mask (the mask multiplies every layer inside).").color(MUTED));
-                    if ui.button("Save as smart material...").on_hover_text("Write this folder to a .pigsmart file you can apply to other models").clicked() {
-                        save_smart = true;
-                    }
-                });
-            }
-        }
-        section(ui, "Channels");
-        card(ui, CARD, |ui| {
-            ui.label(RichText::new("Which channels this layer affects and how it blends onto the layers below.").size(11.5).color(MUTED));
-            egui::Grid::new("channels").num_columns(3).spacing([8.0, 6.0]).show(ui, |ui| {
-                for c in Channel::ALL {
-                    let s = l.channels.get_mut(c);
-                    ui.checkbox(&mut s.enabled, c.label());
-                    egui::ComboBox::from_id_salt(("blend", c.index())).width(120.0).selected_text(s.blend.label()).show_ui(ui, |ui| {
-                        let modes = if is_folder { pigment_core::folders::folder_blend_modes(c) } else { c.blend_modes() };
-                        for m in modes {
-                            ui.selectable_value(&mut s.blend, *m, m.label());
-                        }
-                    });
-                    ui.add(egui::DragValue::new(&mut s.opacity).range(0.0..=1.0).speed(0.01).custom_formatter(|v, _| format!("{:.0}%", v * 100.0)));
-                    ui.end_row();
-                }
-            });
-        });
-        if save_smart {
-            self.save_smart_dialog();
-        }
-    }
-
-    fn mask_tab(&mut self, ui: &mut egui::Ui, rs: &RenderState, i: usize) {
-        let mut add: Option<(bool, Option<GeneratorKind>)> = None;
-        let mut removed = false;
-        let baked = self.ts.baked;
-        let l = &mut self.doc.layers[i];
-        match &mut l.mask {
-            None => {
-                card(ui, CARD, |ui| {
-                    ui.label(RichText::new("No mask: the layer shows everywhere.").strong());
-                    ui.label(RichText::new("A mask decides where this layer appears. Paint it by hand, or let a generator find edges or crevices.").color(MUTED));
-                    ui.add_space(4.0);
-                    ui.horizontal_wrapped(|ui| {
-                        if ui.button("Black mask (paint to reveal)").clicked() {
-                            add = Some((false, None));
-                        }
-                        if ui.button("White mask (paint to hide)").clicked() {
-                            add = Some((true, None));
-                        }
-                    });
-                    ui.horizontal_wrapped(|ui| {
-                        if ui.button("Edge wear generator").clicked() {
-                            add = Some((true, Some(GeneratorKind::EdgeWear)));
-                        }
-                        if ui.button("Dirt generator").clicked() {
-                            add = Some((true, Some(GeneratorKind::Dirt)));
-                        }
-                    });
-                });
-            }
-            Some(m) => {
-                card(ui, CARD, |ui| {
-                    ui.horizontal(|ui| {
-                        ui.checkbox(&mut m.enabled, "Enabled");
-                        ui.checkbox(&mut m.invert, "Invert");
-                    });
-                    ui.label(RichText::new("The brush now paints this mask: white reveals, black hides (X swaps).").size(11.5).color(MUTED));
-                });
-                section(ui, "Generator");
-                let top = ui.cursor().min;
-                card(ui, CARD, |ui| {
-                    let mut kind = m.generator.as_ref().map(|g| g.kind);
-                    egui::ComboBox::from_id_salt("generator kind")
-                        .width(200.0)
-                        .selected_text(kind.map(|k| k.label()).unwrap_or("None (hand-painted)"))
-                        .show_ui(ui, |ui| {
-                            ui.selectable_value(&mut kind, None, "None (hand-painted)");
-                            for k in GeneratorKind::ALL {
-                                ui.selectable_value(&mut kind, Some(k), k.label());
-                            }
+    fn cheatsheet(&mut self, ctx: &egui::Context) {
+        let groups: [(&str, &[(&str, &str)]); 4] = [
+            ("Viewport", &[("Right-drag / Alt+left-drag", "Orbit"), ("Middle-drag", "Pan"), ("Wheel", "Zoom (towards the cursor)"), ("F", "Frame model or selected parts"), ("M", "Material / base colour view")]),
+            ("Tools", &[("B", "Paint"), ("E", "Eraser"), ("G", "Fill a part"), ("D", "Decal"), ("P", "Pick parts (Advanced)"), ("[  ]", "Brush size"), ("X", "Swap mask black / white"), ("Esc", "Back to the brush")]),
+            ("Project", &[("Ctrl+N", "New project"), ("Ctrl+O", "Open project"), ("Ctrl+Shift+O", "Open model"), ("Ctrl+S", "Save"), ("Ctrl+E", "Export"), ("Ctrl+Z / Ctrl+Y", "Undo / redo")]),
+            ("Interface", &[("Ctrl+K", "Command palette"), ("Ctrl+Tab", "Simple / Advanced"), ("?", "This sheet"), ("Ctrl + / Ctrl -", "Interface size")]),
+        ];
+        let (_, dismissed) = ds::modal(ctx, "cheatsheet", "Keyboard shortcuts", 680.0, |ui| {
+            ui.columns(2, |cols| {
+                for (k, (title, rows)) in groups.iter().enumerate() {
+                    let ui = &mut cols[k % 2];
+                    ds::section(ui, title);
+                    for (keys, what) in rows.iter() {
+                        ui.horizontal(|ui| {
+                            ui.scope(|ui| {
+                                ui.set_width(150.0);
+                                ds::kbd(ui, keys);
+                            });
+                            ui.label(ds::text(*what, font::SMALL));
                         });
-                    if kind != m.generator.as_ref().map(|g| g.kind) {
-                        m.generator = kind.map(Generator::new);
                     }
-                    match &mut m.generator {
-                        None => {
-                            ui.label(RichText::new("Hand-painted mask only.").color(MUTED));
-                        }
-                        Some(g) => {
-                            if !baked && g.kind.uses_bakes() {
-                                ui.colored_label(WARN, "Bake mesh maps first (Texture set & baking, left).");
-                            }
-                            let what = match g.kind {
-                                GeneratorKind::EdgeWear => "Finds convex edges (curvature), breaks them up with noise, avoids occluded areas.",
-                                GeneratorKind::Dirt => "Finds crevices and occluded areas (AO + concave curvature), broken up with noise.",
-                                GeneratorKind::Grunge => "Blotchy multi-scale noise in world space: discolouration, damp patches, roughness breakup.",
-                                GeneratorKind::Streaks => "Vertical streaks along world up, heavier under overhangs: rain, leaks, rust runs.",
-                                GeneratorKind::Stripes => "Diagonal hazard stripes in world space. Amount = stripe width, Scale = stripes per metre.",
-                                GeneratorKind::Spots => "Warped blobs: rust spots, paint splotches, stains.",
-                                GeneratorKind::Scratches => "Thin sharp lines: scratches and scuffs.",
-                                GeneratorKind::PanelLines => "A grid of seams on every face. Use with a dark, negative-height fill for engraved panels.",
-                                GeneratorKind::Gradient => "Rises from the bottom of the model: grime, splash and rust near the ground. Amount = how high.",
-                                GeneratorKind::Leaks => "Drip streaks running down walls from under sills, AC units and ledges (drip bake). Needs a bake.",
-                                GeneratorKind::Puddles => "Standing water on flat, rain-exposed ground: gutters, cavities and low spots. Use low roughness + darker colour.",
-                                GeneratorKind::Moss => "Moss and grime build-up on up-facing ledges and in occluded crevices.",
-                                GeneratorKind::Tiles => "Bricks, square tiles or hexagons with per-cell jitter. Amount = fraction of cells; invert for mortar.",
-                                GeneratorKind::WindowGrid => "A regular grid of windows on walls; Amount = fraction lit. Use with an emissive fill.",
-                            };
-                            let (scale_label, aux_label, aux_range, shape_label, shape_range) = weather_slider_labels(g.kind);
-                            let pattern = !matches!(g.kind, GeneratorKind::EdgeWear | GeneratorKind::Dirt);
-                            ui.label(RichText::new(what).size(11.5).color(MUTED));
-                            egui::Grid::new("generator").num_columns(2).spacing([10.0, 6.0]).show(ui, |ui| {
-                                ui.label("Amount");
-                                ui.add(egui::Slider::new(&mut g.amount, 0.0..=1.0));
-                                ui.end_row();
-                                ui.label("Sharpness");
-                                let mut sharp = 1.0 - g.softness / 0.5;
-                                if ui.add(egui::Slider::new(&mut sharp, 0.0..=1.0)).changed() {
-                                    g.softness = (1.0 - sharp) * 0.5;
-                                }
-                                ui.end_row();
-                                ui.label(scale_label.unwrap_or(if pattern { "Scale (per metre)" } else { "Breakup scale" }));
-                                ui.add(egui::Slider::new(&mut g.noise_scale, 0.2..=64.0).logarithmic(true));
-                                ui.end_row();
-                                if let Some(label) = shape_label {
-                                    ui.label(label);
-                                    ui.add(egui::Slider::new(&mut g.curvature_weight, shape_range));
-                                    ui.end_row();
-                                }
-                                if let Some(label) = aux_label {
-                                    ui.label(label);
-                                    ui.add(egui::Slider::new(&mut g.ao_influence, aux_range));
-                                    ui.end_row();
-                                }
-                                if g.kind == GeneratorKind::Tiles {
-                                    ui.label("Pattern");
-                                    egui::ComboBox::from_id_salt("tile variant").selected_text(GeneratorKind::TILE_VARIANTS[(g.variant as usize).min(2)]).show_ui(ui, |ui| {
-                                        for (i, v) in GeneratorKind::TILE_VARIANTS.iter().enumerate() {
-                                            ui.selectable_value(&mut g.variant, i as u32, *v);
-                                        }
-                                    });
-                                    ui.end_row();
-                                }
-                                ui.label("Breakup amount");
-                                ui.add(egui::Slider::new(&mut g.noise_amount, 0.0..=1.5));
-                                ui.end_row();
-                                if !pattern && shape_label.is_none() {
-                                    ui.label("Curvature weight");
-                                    ui.add(egui::Slider::new(&mut g.curvature_weight, 0.0..=2.0));
-                                    ui.end_row();
-                                }
-                                if g.kind.uses_bakes() && aux_label.is_none() {
-                                    ui.label("AO influence");
-                                    ui.add(egui::Slider::new(&mut g.ao_influence, 0.0..=1.5));
-                                    ui.end_row();
-                                }
-                                ui.label("Seed");
-                                ui.horizontal(|ui| {
-                                    ui.add(egui::DragValue::new(&mut g.seed).range(0..=999));
-                                    if ui.small_button("New").clicked() {
-                                        g.seed = (g.seed * 7919 + 17) % 1000;
-                                    }
-                                });
-                                ui.end_row();
-                            });
-                            ui.label(RichText::new("Paint black on the mask to protect areas from the generator.").size(11.5).color(MUTED));
-                        }
-                    }
-                });
-                let gen_rect = egui::Rect::from_min_max(top, egui::pos2(ui.max_rect().right(), ui.cursor().min.y));
-                if gen_rect.height() > 10.0 {
-                    self.anchors.insert("generator", gen_rect);
                 }
-                if m.generator.is_some() {
-                    section(ui, "More effects");
-                    card(ui, CARD, |ui| {
-                        ui.label(RichText::new("Combine more generators, e.g. dirt x ground gradient = grime only low down.").size(11.5).color(MUTED));
-                        let mut drop: Option<usize> = None;
-                        for (k, e) in m.effects.iter_mut().enumerate() {
-                            ui.horizontal(|ui| {
-                                egui::ComboBox::from_id_salt(("eff op", k)).width(110.0).selected_text(e.op.label()).show_ui(ui, |ui| {
-                                    for o in MaskOp::ALL {
-                                        ui.selectable_value(&mut e.op, o, o.label());
-                                    }
-                                });
-                                let mut kind = e.generator.kind;
-                                egui::ComboBox::from_id_salt(("eff kind", k)).width(120.0).selected_text(kind.label()).show_ui(ui, |ui| {
-                                    for g in GeneratorKind::ALL {
-                                        ui.selectable_value(&mut kind, g, g.label());
-                                    }
-                                });
-                                if kind != e.generator.kind {
-                                    e.generator = Generator::new(kind);
-                                }
-                                if ui.small_button("x").on_hover_text("Remove this effect").clicked() {
-                                    drop = Some(k);
-                                }
-                            });
-                            egui::Grid::new(("eff grid", k)).num_columns(2).show(ui, |ui| {
-                                ui.label("Amount");
-                                ui.add(egui::Slider::new(&mut e.generator.amount, 0.0..=1.0));
-                                ui.end_row();
-                                ui.label("Scale");
-                                ui.add(egui::Slider::new(&mut e.generator.noise_scale, 0.2..=64.0).logarithmic(true));
-                                ui.end_row();
-                                ui.label("Breakup");
-                                ui.add(egui::Slider::new(&mut e.generator.noise_amount, 0.0..=1.5));
-                                ui.end_row();
-                            });
-                        }
-                        if let Some(k) = drop {
-                            m.effects.remove(k);
-                        }
-                        if m.effects.len() < MAX_MASK_EFFECTS && ui.button("+ Add effect").clicked() {
-                            m.effects.push(MaskEffect { generator: Generator::new(GeneratorKind::Gradient), op: MaskOp::Multiply });
-                        }
-                    });
-                }
-                section(ui, "Parts");
-                card(ui, CARD, |ui| {
-                    ui.label(if m.parts.is_empty() {
-                        RichText::new("Whole model. Limit this layer to chosen pieces (glass, frame, buttons...).").size(11.5).color(MUTED)
-                    } else {
-                        RichText::new(format!("Only {} selected part(s): {:?}", m.parts.len(), m.parts)).size(11.5)
-                    });
-                    ui.horizontal(|ui| {
-                        let label = if self.part_pick { "Done picking" } else { "Pick parts in the viewport" };
-                        if ui.add(egui::Button::new(label).selected(self.part_pick)).clicked() {
-                            self.part_pick = !self.part_pick;
-                        }
-                        if !m.parts.is_empty() && ui.button("Whole model").clicked() {
-                            m.parts.clear();
-                        }
-                    });
-                });
-                ui.add_space(4.0);
-                if ui.button("Remove mask").clicked() {
-                    removed = true;
-                }
+            });
+            ui.add_space(space::MD);
+            if ui.add(Btn::secondary("Close")).clicked() {
+                self.ui.cheatsheet = false;
             }
+        });
+        if dismissed {
+            self.ui.cheatsheet = false;
         }
-        if removed {
-            self.doc.layers[i].mask = None;
-            self.paint_mask = false;
+    }
+
+    /// Big drop target while files are dragged over the window.
+    fn drop_overlay(&mut self, ctx: &egui::Context) {
+        let hovering = ctx.input(|i| !i.raw.hovered_files.is_empty());
+        if !hovering {
+            return;
         }
-        if let Some((white, generator)) = add {
-            let res = self.doc.mint();
-            self.ts.new_mask(&rs.device, &rs.queue, res, white);
-            self.doc.layers[i].mask = Some(Mask { res, generator: generator.map(Generator::new), invert: false, enabled: true, parts: Vec::new(), effects: Vec::new() });
-            self.brush.mask_white = !white;
-        }
+        let p = ds::theme(ctx).p;
+        let screen = ctx.content_rect();
+        let painter = ctx.layer_painter(egui::LayerId::new(egui::Order::Foreground, egui::Id::NULL.with("drop overlay")));
+        painter.rect_filled(screen, egui::CornerRadius::ZERO, p.scrim);
+        let r = screen.shrink(space::XXXL * 2.0);
+        painter.rect(r, egui::CornerRadius::same(ds::radius::XL), p.accent.gamma_multiply(0.12), Stroke::new(2.0, p.accent), egui::StrokeKind::Inside);
+        Icon::Open.paint(&painter, Rect::from_center_size(r.center() - vec2(0.0, 40.0), vec2(icon::XL, icon::XL)), p.accent);
+        painter.text(r.center() + vec2(0.0, 10.0), Align2::CENTER_CENTER, "Drop to open", ds::fonts::semibold(font::DISPLAY), p.text);
+        painter.text(r.center() + vec2(0.0, 44.0), Align2::CENTER_CENTER, "Models (OBJ, glTF, GLB), .pigment projects, HDRIs, smart materials or a PNG to use as a decal", ds::fonts::regular(font::BODY), p.text_secondary);
     }
 
     // ------------------------------------------------------------ viewport
 
-    fn viewport_ui(&mut self, ui: &mut egui::Ui, rs: &RenderState) {
+    pub(super) fn viewport_ui(&mut self, ui: &mut egui::Ui, rs: &RenderState) {
         let rect = ui.available_rect_before_wrap();
         let response = ui.allocate_rect(rect, egui::Sense::click_and_drag());
         self.anchors.insert("viewport", rect);
+        self.ui.viewport_rect = rect;
         let ppp = self.ppp;
         let viewport_px = Vec2::new((rect.width() * ppp).round(), (rect.height() * ppp).round());
         let to_px = |p: egui::Pos2| Vec2::new((p.x - rect.min.x) * ppp, (p.y - rect.min.y) * ppp);
 
         let (alt, delta, scroll, pinch, pressed, down, released, latest) = ui.input(|i| {
-            (
-                i.modifiers.alt,
-                i.pointer.delta(),
-                i.smooth_scroll_delta(),
-                i.zoom_delta(),
-                i.pointer.primary_pressed(),
-                i.pointer.primary_down(),
-                i.pointer.primary_released(),
-                i.pointer.latest_pos(),
-            )
+            (i.modifiers.alt, i.pointer.delta(), i.smooth_scroll_delta(), i.zoom_delta(), i.pointer.primary_pressed(), i.pointer.primary_down(), i.pointer.primary_released(), i.pointer.latest_pos())
         });
         self.hover = response.hover_pos();
         let d = Vec2::new(delta.x, delta.y);
+        let tool = self.tool();
+        let click = pressed && response.hovered() && !alt;
+        let locked = self.selected.is_some_and(|id| self.ui.locked.contains(&id));
 
-        // part picking: a click toggles the part under the cursor in the layer's mask
-        if self.part_pick && pressed && response.hovered() && !alt {
-            if let Some(p) = latest {
-                match self.part_at(to_px(p), viewport_px) {
-                    Some(part) => match self.toggle_part(rs, part) {
-                        Ok(msg) => self.set_status(msg, false),
-                        Err(e) => self.set_status(e, true),
-                    },
-                    None => self.set_status("Nothing under the cursor", false),
-                }
-            }
-        }
-        // decal tool: drag a box, release to stick the image there (stays active for more)
-        let decal_mode = self.decal_tool.is_some() || self.part_pick;
-        if let Some((path, start)) = self.decal_tool.clone() {
-            if pressed && response.hovered() && !alt {
-                self.decal_tool = Some((path.clone(), latest));
-            }
-            if let (Some(a), Some(b)) = (start, latest) {
-                let r = egui::Rect::from_two_pos(a, b);
-                ui.painter().rect_stroke(r, CornerRadius::ZERO, Stroke::new(1.5, ACCENT), egui::StrokeKind::Middle);
-                ui.painter().text(r.left_top() + egui::vec2(4.0, -4.0), egui::Align2::LEFT_BOTTOM, path.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default(), egui::FontId::proportional(12.0), ACCENT);
-                if released {
-                    if r.width() > 4.0 && r.height() > 4.0 {
-                        let (p0, p1) = (to_px(r.min), to_px(r.max));
-                        match self.project_decal(rs, &path, [p0.x, p0.y, p1.x, p1.y], viewport_px, false) {
-                            Ok(()) => self.set_status(format!("Decal placed: {} (Ctrl+Z to undo, Esc to stop placing)", path.display()), false),
+        match tool {
+            Tool::Pick if click => {
+                if let Some(p) = latest {
+                    match self.part_at(to_px(p), viewport_px) {
+                        Some(part) => match self.toggle_part(rs, part) {
+                            Ok(msg) => self.set_status(msg, false),
                             Err(e) => self.set_status(e, true),
-                        }
+                        },
+                        None => self.set_status("Nothing under the cursor", false),
                     }
-                    self.decal_tool = Some((path, None));
                 }
             }
+            Tool::Fill if click => {
+                if let Some(p) = latest {
+                    match (self.part_at(to_px(p), viewport_px), self.ui.lib_current.clone()) {
+                        (Some(part), Some(item)) => self.apply_library(rs, &item, Some(part)),
+                        (Some(_), None) => {
+                            self.ui.toasts.push(ToastKind::Info, "Choose a material first", "Click a material in the Materials panel, then click a part.");
+                            self.ui.prefs.layout_mut().open(PanelId::Library);
+                        }
+                        (None, _) => self.set_status("Click on the model to fill one of its parts", false),
+                    }
+                }
+            }
+            Tool::Decal => self.decal_input(ui, rs, &response, rect, viewport_px, click, released),
+            _ => {}
         }
 
         // painting
-        if !decal_mode && pressed && response.hovered() && !alt && self.stroke.is_none() {
-            if let Some(p) = latest {
+        let paints = matches!(tool, Tool::Paint | Tool::Erase);
+        if paints && click && self.stroke.is_none() {
+            if locked {
+                self.ui.toasts.push(ToastKind::Warn, "This layer is locked", "Unlock it in the Layers panel to paint on it.");
+            } else if let Some(p) = latest {
                 self.begin_stroke(rs, to_px(p), viewport_px);
             }
         } else if (down || released) && self.stroke.is_some() {
-            // also on release: the last moves and the release can arrive in one frame
             if let Some(p) = latest {
                 let spacing = (self.brush.size * ppp * self.brush.spacing).max(1.0);
                 let pts = self.stroke.as_mut().map(|s| s.sampler.move_to(to_px(p), spacing)).unwrap_or_default();
@@ -1292,7 +1145,7 @@ impl PigmentApp {
             self.end_stroke(rs);
         }
 
-        // camera: Alt+LMB / RMB orbit, MMB pan, wheel / Alt+RMB zoom
+        // camera: Alt+LMB / RMB orbit, MMB pan, wheel zooms towards the cursor
         if alt && response.dragged_by(egui::PointerButton::Primary) {
             self.camera.orbit(d);
         }
@@ -1307,53 +1160,82 @@ impl PigmentApp {
             }
         }
         if response.hovered() {
-            if scroll.y != 0.0 {
-                self.camera.zoom(scroll.y / 50.0);
-            }
-            if pinch != 1.0 {
-                self.camera.zoom(pinch.ln() / 0.105);
+            let steps = if scroll.y != 0.0 { scroll.y / 50.0 } else if pinch != 1.0 { pinch.ln() / 0.105 } else { 0.0 };
+            if steps != 0.0 {
+                self.zoom_towards(steps, self.hover.map(to_px), viewport_px);
             }
         }
 
         self.ensure_composited(rs);
         let size = [viewport_px.x as u32, viewport_px.y as u32];
         if let Some(tex) = self.viewport.render(rs, size, &self.camera, &self.view, self.mesh_gpu.as_ref(), &self.env, &self.ts) {
-            let uv = egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0));
-            ui.painter().image(tex, rect, uv, Color32::WHITE);
+            let uv = Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0));
+            ui.painter().image(tex, rect, uv, egui::Color32::WHITE);
         }
-
-        // brush cursor: ring = size, inner ring = hardness, dot = what you paint
-        if let Some(h) = self.hover.filter(|_| !alt) {
-            let r = self.brush.size * 0.5;
-            let on_mask = matches!(self.paint_target(), Ok(Target::Mask(_))) || self.selected.and_then(|id| self.doc.layer(id)).is_some_and(|l| !l.is_paint());
-            let col = if self.brush.erase { Color32::from_rgb(120, 190, 255) } else { Color32::from_white_alpha(230) };
-            let p = ui.painter();
-            p.circle_stroke(h, r + 1.0, Stroke::new(1.0, Color32::from_black_alpha(160)));
-            p.circle_stroke(h, r, Stroke::new(1.5, col));
-            p.circle_stroke(h, r * self.brush.hardness.max(0.02), Stroke::new(1.0, Color32::from_white_alpha(70)));
-            let dot = if on_mask {
-                if self.brush.mask_white != self.brush.erase { Color32::WHITE } else { Color32::BLACK }
-            } else {
-                srgb32(self.brush.values.base_color)
-            };
-            let dp = h + egui::vec2(r * 0.72, -r * 0.72);
-            p.circle_filled(dp, 5.5, dot);
-            p.circle_stroke(dp, 5.5, Stroke::new(1.0, Color32::from_gray(120)));
-            ui.ctx().set_cursor_icon(egui::CursorIcon::Crosshair);
-        }
-
+        self.cursor_overlay(ui, rect, alt, tool);
         self.viewport_overlays(ui, rect, rs);
     }
 
-    fn viewport_overlays(&mut self, ui: &mut egui::Ui, rect: egui::Rect, rs: &RenderState) {
-        let glass = egui::Frame::new().fill(Color32::from_black_alpha(160)).corner_radius(CornerRadius::same(6)).inner_margin(egui::Margin::same(4));
+    /// Zoom, keeping the point under the cursor roughly where it is.
+    fn zoom_towards(&mut self, steps: f32, cursor: Option<Vec2>, viewport_px: Vec2) {
+        let before = self.camera.distance;
+        self.camera.zoom(steps);
+        let Some(c) = cursor else { return };
+        let moved = before - self.camera.distance;
+        if moved.abs() < 1e-6 {
+            return;
+        }
+        let ndc = Vec2::new(c.x / viewport_px.x * 2.0 - 1.0, 1.0 - c.y / viewport_px.y * 2.0);
+        let (right, up) = self.camera.basis();
+        let aspect = viewport_px.x / viewport_px.y.max(1.0);
+        let t = (self.camera.fov_y * 0.5).tan();
+        let shift = right * (ndc.x * t * aspect) + up * (ndc.y * t);
+        self.camera.target += shift * moved;
+    }
+
+    fn cursor_overlay(&mut self, ui: &mut egui::Ui, rect: Rect, alt: bool, tool: Tool) {
+        let Some(h) = self.hover.filter(|_| !alt) else { return };
+        let p = ds::pal(ui);
+        let painter = ui.painter().with_clip_rect(rect);
+        match tool {
+            Tool::Paint | Tool::Erase => {
+                let r = self.brush.size * 0.5;
+                let on_mask = matches!(self.paint_target(), Ok(Target::Mask(_))) || self.selected.and_then(|id| self.doc.layer(id)).is_some_and(|l| !l.is_paint());
+                let col = if self.brush.erase { p.info } else { p.text };
+                painter.circle_stroke(h, r + 1.0, Stroke::new(1.0, p.shadow));
+                painter.circle_stroke(h, r, Stroke::new(1.5, col));
+                painter.circle_stroke(h, r * self.brush.hardness.max(0.02), Stroke::new(1.0, col.gamma_multiply(0.35)));
+                let dot = if on_mask {
+                    if self.brush.mask_white != self.brush.erase { p.text } else { p.bg }
+                } else {
+                    ds::srgb(self.brush.values.base_color)
+                };
+                let dp = h + vec2(r * 0.72, -r * 0.72);
+                painter.circle_filled(dp, 5.5, dot);
+                painter.circle_stroke(dp, 5.5, Stroke::new(1.0, p.border_strong));
+                ui.ctx().set_cursor_icon(egui::CursorIcon::Crosshair);
+            }
+            Tool::Fill | Tool::Pick => {
+                let ic = if tool == Tool::Fill { Icon::Bucket } else { Icon::Target };
+                painter.circle_filled(h + vec2(14.0, 14.0), 12.0, p.glass);
+                ic.paint(&painter, Rect::from_center_size(h + vec2(14.0, 14.0), vec2(icon::SM, icon::SM)), p.accent);
+                ui.ctx().set_cursor_icon(egui::CursorIcon::PointingHand);
+            }
+            Tool::Decal => ui.ctx().set_cursor_icon(egui::CursorIcon::Crosshair),
+        }
+    }
+
+    fn viewport_overlays(&mut self, ui: &mut egui::Ui, rect: Rect, rs: &RenderState) {
+        let p = ds::pal(ui);
+        let glass = ds::glass_frame(&p);
+        let simple = self.ui.prefs.mode == Mode::Simple;
         // view-mode chips, top left
-        let chips = egui::Rect::from_min_size(rect.left_top() + egui::vec2(10.0, 10.0), egui::vec2(rect.width() - 220.0, 30.0));
+        let chips = Rect::from_min_size(rect.left_top() + vec2(space::MD, space::MD), vec2((rect.width() - 240.0).max(120.0), size::CONTROL_H + space::XS));
         ui.scope_builder(egui::UiBuilder::new().max_rect(chips), |ui| {
             glass.show(ui, |ui| {
                 ui.horizontal(|ui| {
-                    ui.spacing_mut().item_spacing.x = 2.0;
-                    for (m, short) in [
+                    ui.spacing_mut().item_spacing.x = space::XXS;
+                    let all: &[(ViewMode, &str)] = &[
                         (ViewMode::Material, "Material"),
                         (ViewMode::BaseColor, "Color"),
                         (ViewMode::Roughness, "Rough"),
@@ -1366,285 +1248,56 @@ impl PigmentApp {
                         (ViewMode::Opacity, "Alpha"),
                         (ViewMode::Coat, "Coat"),
                         (ViewMode::UvChecker, "UVs"),
-                    ] {
-                        ui.selectable_value(&mut self.view.mode, m, RichText::new(short).size(12.0)).on_hover_text(m.label());
+                    ];
+                    for (m, short) in all.iter().take(if simple { 3 } else { all.len() }) {
+                        let on = self.view.mode == *m;
+                        if ui.add(Btn::ghost(*short).small().selected(on)).on_hover_text(m.label()).clicked() {
+                            self.view.mode = *m;
+                        }
                     }
                 });
             });
         });
         // lighting, top right
-        let light = egui::Rect::from_min_size(egui::pos2(rect.right() - 200.0, rect.top() + 10.0), egui::vec2(190.0, 30.0));
+        let light = Rect::from_min_size(pos2(rect.right() - 220.0, rect.top() + space::MD), vec2(212.0, size::CONTROL_H + space::XS));
         ui.scope_builder(egui::UiBuilder::new().max_rect(light).layout(egui::Layout::right_to_left(egui::Align::Min)), |ui| {
             glass.show(ui, |ui| {
-                ui.menu_button(RichText::new(format!("Lighting: {}", self.env.name)).size(12.0), |ui| {
-                    ui.set_min_width(250.0);
-                    egui::Grid::new("light").num_columns(2).show(ui, |ui| {
-                        ui.label("Exposure");
-                        ui.add(egui::Slider::new(&mut self.view.exposure, -4.0..=4.0).suffix(" EV"));
-                        ui.end_row();
-                        ui.label("Rotate");
-                        ui.add(egui::Slider::new(&mut self.view.env_rotation, -std::f32::consts::PI..=std::f32::consts::PI));
-                        ui.end_row();
-                    });
-                    ui.checkbox(&mut self.view.show_env, "Show environment as background");
-                    ui.separator();
-                    ui.checkbox(&mut self.view.bloom.enabled, "Bloom (glow from emission and highlights)");
-                    ui.add_enabled_ui(self.view.bloom.enabled, |ui| {
-                        egui::Grid::new("bloom").num_columns(2).show(ui, |ui| {
-                            ui.label("Threshold");
-                            ui.add(egui::Slider::new(&mut self.view.bloom.threshold, 0.0..=4.0));
-                            ui.end_row();
-                            ui.label("Intensity");
-                            ui.add(egui::Slider::new(&mut self.view.bloom.intensity, 0.0..=2.0));
-                            ui.end_row();
-                            ui.label("Radius");
-                            ui.add(egui::Slider::new(&mut self.view.bloom.radius, 0.0..=1.0));
-                            ui.end_row();
-                        });
-                    });
-                    ui.separator();
-                    ui.horizontal(|ui| {
-                        for (id, label) in pigment_core::envmath::PRESETS {
-                            if ui.selectable_label(self.env.source == id, label).clicked() && self.env.source != id {
-                                if let Some(e) = Environment::preset(&rs.device, &rs.queue, id) {
-                                    self.env = e;
-                                }
-                            }
-                        }
-                    });
-                    // game skies (assets/sky, baked by tools/sky/make_sky.py)
-                    ui.horizontal(|ui| {
-                        for (id, label) in pigment_core::envmath::SKIES {
-                            let found = pigment_core::envmath::sky_path(id).is_some();
-                            let r = ui.add_enabled(found, egui::Button::selectable(self.env.source == id, label));
-                            if r.clicked() && self.env.source != id {
-                                if let Ok(e) = Environment::lighting(&rs.device, &rs.queue, id) {
-                                    self.env = e;
-                                }
-                            }
-                        }
-                    });
-                    if ui.button("Load HDRI (.hdr / .exr)…").clicked() {
-                        if let Some(p) = rfd::FileDialog::new().add_filter("HDR images", &["hdr", "exr"]).pick_file() {
-                            self.load_env(rs, &p);
-                        }
-                    }
+                ui.menu_button(ds::text(format!("Lighting: {}", self.env.name), font::SMALL), |ui| {
+                    ui.set_min_width(260.0);
+                    super::panels::misc::lighting_controls(self, ui, rs);
                 });
             });
         });
-        // controls hint, bottom left
-        let hint = "Left-drag paint   ·   Right-drag orbit   ·   Middle-drag pan   ·   Wheel zoom   ·   [ ] size   ·   F frame";
-        ui.painter().text(rect.left_bottom() + egui::vec2(12.0, -12.0), egui::Align2::LEFT_BOTTOM, hint, egui::FontId::proportional(12.0), Color32::from_white_alpha(140));
-    }
-
-    // ------------------------------------------------------------ windows
-
-    fn dialogs(&mut self, ctx: &egui::Context, rs: &RenderState) {
-        if let Some(p) = self.pending.clone() {
-            egui::Window::new("Unsaved changes").collapsible(false).resizable(false).anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0]).show(ctx, |ui| {
-                ui.label("This project has unsaved changes. What would you like to do?");
-                ui.horizontal(|ui| {
-                    if ui.button("Save first").clicked() {
-                        self.save(rs, false);
-                        self.pending = None;
-                        if !self.modified {
-                            self.run_pending(rs, p.clone());
-                        }
-                    }
-                    if ui.button("Discard changes").clicked() {
-                        self.pending = None;
-                        self.run_pending(rs, p.clone());
-                    }
-                    if ui.button("Cancel").clicked() {
-                        self.pending = None;
-                    }
-                });
-            });
+        // axis gizmo, bottom right
+        let g = pos2(rect.right() - 44.0, rect.bottom() - 44.0);
+        let painter = ui.painter().with_clip_rect(rect);
+        painter.circle_filled(g, 30.0, p.glass);
+        let view = self.camera.view();
+        let mut axes: Vec<(glam::Vec3, egui::Color32, &str)> = vec![(glam::Vec3::X, p.danger, "X"), (glam::Vec3::Y, p.success, "Y"), (glam::Vec3::Z, p.info, "Z")];
+        axes.sort_by(|a, b| view.transform_vector3(a.0).z.total_cmp(&view.transform_vector3(b.0).z));
+        for (a, c, l) in axes {
+            let v = view.transform_vector3(a);
+            let tip = g + vec2(v.x, -v.y) * 22.0;
+            painter.line_segment([g, tip], Stroke::new(2.0, c));
+            painter.circle_filled(tip, 7.0, c);
+            painter.text(tip, Align2::CENTER_CENTER, l, ds::fonts::semibold(font::CAPTION), p.on_accent);
         }
-
-        if self.show_export {
-            let mut open = true;
-            egui::Window::new("Export textures").open(&mut open).collapsible(false).resizable(false).show(ctx, |ui| {
-                let presets = export::presets();
-                let current = presets.iter().find(|p| p.id == self.doc.export_preset).cloned().unwrap_or_else(|| presets[0].clone());
-                egui::Grid::new("export").num_columns(2).spacing([10.0, 8.0]).show(ui, |ui| {
-                    ui.label("Target");
-                    egui::ComboBox::from_id_salt("preset").selected_text(current.label).show_ui(ui, |ui| {
-                        for p in &presets {
-                            ui.selectable_value(&mut self.doc.export_preset, p.id.to_string(), p.label);
-                        }
-                    });
-                    ui.end_row();
-                    ui.label("Name");
-                    ui.text_edit_singleline(&mut self.export_name);
-                    ui.end_row();
-                    ui.label("Folder");
-                    ui.horizontal(|ui| {
-                        let shown = self.export_dir.as_ref().map(|d| d.display().to_string()).unwrap_or_else(|| "(choose a folder)".into());
-                        ui.label(RichText::new(shown).color(MUTED));
-                        if ui.button("Choose…").clicked() {
-                            if let Some(d) = rfd::FileDialog::new().pick_folder() {
-                                self.export_dir = Some(d);
-                            }
-                        }
-                    });
-                    ui.end_row();
-                    ui.label("Size");
-                    ui.label(format!("{0} × {0} px", self.ts.res));
-                    ui.end_row();
-                    ui.label("PNG compression");
-                    egui::ComboBox::from_id_salt("png compression").selected_text(self.export_compression.id()).show_ui(ui, |ui| {
-                        for c in export::Compression::ALL {
-                            ui.selectable_value(&mut self.export_compression, c, c.id());
-                        }
-                    });
-                    ui.end_row();
-                });
-                ui.add_space(4.0);
-                card(ui, CARD, |ui| {
-                    for o in &current.outputs {
-                        ui.label(RichText::new(format!("{}_{}.png", self.export_name, o.suffix)).monospace().size(12.0));
-                    }
-                });
-                ui.add_space(4.0);
-                let ready = self.export_dir.is_some() && !self.export_name.trim().is_empty();
-                if ui.add_enabled(ready, egui::Button::new(RichText::new("Export").strong()).min_size(egui::vec2(120.0, 28.0))).clicked() {
-                    self.export(rs);
-                }
-            });
-            self.show_export = open;
-        }
-    }
-}
-
-/// Slider labels for the weathering / pattern generators that reuse the
-/// generic parameter slots: (scale, ao_influence slot, its range,
-/// curvature_weight slot, its range). `None` = the generic meaning.
-type SliderLabels = (Option<&'static str>, Option<&'static str>, std::ops::RangeInclusive<f32>, Option<&'static str>, std::ops::RangeInclusive<f32>);
-fn weather_slider_labels(kind: GeneratorKind) -> SliderLabels {
-    match kind {
-        GeneratorKind::Leaks => (Some("Streaks per metre"), Some("Damp under overhangs"), 0.0..=1.5, Some("Drip length (m)"), 0.1..=8.0),
-        GeneratorKind::Puddles => (Some("Puddles per metre"), Some("Pooling in corners (AO)"), 0.0..=1.5, Some("Pooling in cavities"), 0.0..=2.0),
-        GeneratorKind::Moss => (Some("Clump scale"), Some("Growth in crevices (AO)"), 0.0..=1.5, Some("Growth in cavities"), 0.0..=2.0),
-        GeneratorKind::Tiles => (Some("Rows per metre"), Some("Mortar width"), 0.0..=0.5, Some("Cell aspect (w/h)"), 0.25..=6.0),
-        GeneratorKind::WindowGrid => (Some("Cell height (m)"), Some("Frame width"), 0.0..=0.45, Some("Cell aspect (w/h)"), 0.1..=4.0),
-        _ => (None, None, 0.0..=1.5, None, 0.0..=2.0),
-    }
-}
-
-// ------------------------------------------------------------------ image fills
-
-/// Tiling images for a fill layer: tile set picker, projection, transform and
-/// one image per channel.
-fn image_fill_editor(ui: &mut egui::Ui, image: &mut Option<ImageFill>, channels: &mut Channels<ChannelSettings>, bases: &[PathBuf]) {
-    use pigment_core::image_fill::{list_tile_sets, ImageChannel};
-    let mut pick: Option<String> = None;
-    ui.horizontal(|ui| {
-        let text = if image.is_some() { "Change tile set" } else { "Use a tile set..." };
-        egui::ComboBox::from_id_salt("tile set").width(160.0).selected_text(text).show_ui(ui, |ui| {
-            for s in list_tile_sets(Path::new("assets/tiles")) {
-                if ui.selectable_label(false, &s).clicked() {
-                    pick = Some(format!("assets/tiles/{s}"));
-                }
-            }
-            if ui.button("Browse folder...").clicked() {
-                if let Some(d) = rfd::FileDialog::new().set_title("Tile set folder (base_color, roughness, height, normal)").pick_folder() {
-                    pick = Some(d.to_string_lossy().to_string());
-                }
-            }
-        });
-        if image.is_some() && ui.button("Remove").on_hover_text("Back to flat values").clicked() {
-            *image = None;
-        }
-    });
-    if let Some(dir) = pick {
-        match ImageFill::from_tile_set(&dir, bases) {
-            Ok(imgs) => {
-                let f = image.get_or_insert_with(ImageFill::default);
-                f.images = imgs;
-                for (c, _) in f.images.iter() {
-                    channels.get_mut(c.channel()).enabled = true;
-                }
-            }
-            Err(e) => log::warn!("{e}"),
-        }
-    }
-    let Some(f) = image else {
-        ui.label(RichText::new("Drive base colour, roughness, height and normal from tiling images (brick, concrete...) instead of the flat values above.").size(11.5).color(MUTED));
-        return;
-    };
-    ui.horizontal(|ui| {
-        ui.label("Projection");
-        ui.selectable_value(&mut f.projection, Projection::Uv, "UV");
-        ui.selectable_value(&mut f.projection, Projection::Triplanar, "Triplanar").on_hover_text("World-space box projection: ignores UVs, sized in metres");
-    });
-    egui::Grid::new("image fill").num_columns(2).spacing([8.0, 6.0]).show(ui, |ui| {
-        match f.projection {
-            Projection::Uv => {
-                ui.label("Tiling");
-                ui.horizontal(|ui| {
-                    ui.add(egui::DragValue::new(&mut f.tiling[0]).speed(0.05).range(0.01..=512.0).prefix("u "));
-                    ui.add(egui::DragValue::new(&mut f.tiling[1]).speed(0.05).range(0.01..=512.0).prefix("v "));
-                });
-                ui.end_row();
-            }
-            Projection::Triplanar => {
-                ui.label("Tile size");
-                ui.add(egui::DragValue::new(&mut f.tile_size).speed(0.01).range(0.01..=100.0).suffix(" m"));
-                ui.end_row();
-                ui.label("Blend sharpness");
-                ui.add(egui::Slider::new(&mut f.blend_sharpness, 1.0..=16.0));
-                ui.end_row();
-            }
-        }
-        ui.label("Offset");
-        ui.horizontal(|ui| {
-            ui.add(egui::DragValue::new(&mut f.offset[0]).speed(0.01).prefix("u "));
-            ui.add(egui::DragValue::new(&mut f.offset[1]).speed(0.01).prefix("v "));
-        });
-        ui.end_row();
-        ui.label("Rotation");
-        ui.add(egui::Slider::new(&mut f.rotation, -180.0..=180.0).suffix("°"));
-        ui.end_row();
-        ui.label("Tint");
-        srgb_edit(ui, &mut f.tint);
-        ui.end_row();
-        ui.label("Roughness range");
-        ui.horizontal(|ui| {
-            ui.add(egui::DragValue::new(&mut f.roughness_range[0]).speed(0.01).range(0.0..=1.0));
-            ui.add(egui::DragValue::new(&mut f.roughness_range[1]).speed(0.01).range(0.0..=1.0));
-        });
-        ui.end_row();
-        ui.label("Height scale");
-        ui.add(egui::DragValue::new(&mut f.height_scale).speed(0.01).range(-4.0..=4.0));
-        ui.end_row();
-        ui.label("Normal strength");
-        ui.add(egui::Slider::new(&mut f.normal_strength, 0.0..=3.0));
-        ui.end_row();
-    });
-    ui.add_space(4.0);
-    egui::Grid::new("image fill channels").num_columns(3).spacing([6.0, 4.0]).show(ui, |ui| {
-        for c in ImageChannel::ALL {
-            ui.label(c.label());
-            let slot = f.images.get_mut(c);
-            let name = slot.as_deref().map(|p| Path::new(p).iter().rev().take(2).collect::<Vec<_>>().into_iter().rev().map(|s| s.to_string_lossy()).collect::<Vec<_>>().join("/"));
-            ui.label(RichText::new(name.clone().unwrap_or_else(|| "flat value".into())).color(if name.is_some() { Color32::WHITE } else { MUTED })).on_hover_text(slot.clone().unwrap_or_default());
-            ui.horizontal(|ui| {
-                if ui.small_button("...").on_hover_text("Choose image").clicked() {
-                    if let Some(p) = rfd::FileDialog::new().add_filter("Images", &["png", "jpg", "jpeg", "exr", "hdr"]).pick_file() {
-                        *slot = Some(p.to_string_lossy().to_string());
-                        channels.get_mut(c.channel()).enabled = true;
-                    }
-                }
-                if slot.is_some() && ui.small_button("x").on_hover_text("Use the flat value").clicked() {
-                    *slot = None;
-                }
-            });
-            ui.end_row();
-        }
-    });
-    let missing = f.missing(bases);
-    if !missing.is_empty() {
-        ui.label(RichText::new(format!("Not found: {}", missing.join(", "))).size(11.5).color(WARN));
+        // empty-state hint for the current tool, bottom left
+        let hint = match self.tool() {
+            Tool::Paint => "Left-drag to paint · Right-drag to orbit · Wheel to zoom · F to frame",
+            Tool::Erase => "Left-drag to erase · E switches back to the brush",
+            Tool::Fill => "Click a part of the model to fill it",
+            Tool::Pick => "Click parts to add / remove them from the layer's mask",
+            Tool::Decal => match self.ui.decal.mode {
+                DecalMode::Stamp => "Click the model to stick the decal there",
+                DecalMode::Box => "Drag a box over the model to project the decal",
+                DecalMode::Part => "Click a part to fit the decal to it",
+                DecalMode::Scatter => "Press Scatter in the Decals panel",
+            },
+        };
+        let gal = painter.layout_no_wrap(hint.to_string(), ds::fonts::regular(font::SMALL), p.text_secondary);
+        let hr = Rect::from_min_size(rect.left_bottom() + vec2(space::MD, -space::MD - gal.size().y - space::MD), gal.size() + vec2(space::LG * 2.0, space::MD));
+        painter.rect_filled(hr, egui::CornerRadius::same(ds::radius::PILL), p.glass);
+        painter.galley(hr.min + vec2(space::LG, space::XS), gal, p.text_secondary);
     }
 }

@@ -29,6 +29,7 @@ image = { version = "0.25", default-features = false, features = ["png", "hdr", 
 env_logger = "0.11"
 pollster = "1"
 serde_json.workspace = true
+serde.workspace = true
 base64 = "0.22"
 
 [dev-dependencies]

@@ -1,10 +1,11 @@
-//! The quick-start guide: one step at a time, a glowing outline around the
-//! thing to use, and automatic progress when the user has done it.
+//! The quick-start guide ("Learn in 2 minutes"): contextual coach marks, one
+//! step at a time, a glowing outline around the thing to use, and automatic
+//! progress when the user has done it. It never blocks the window: it sits
+//! next to what it points at and can be closed any time.
 
+use super::design::{self as ds, font, space, Btn};
 use super::*;
-use egui::{Color32, CornerRadius, RichText, Stroke};
-
-const ACCENT: Color32 = Color32::from_rgb(236, 142, 64);
+use egui::Stroke;
 
 pub struct Step {
     pub title: &'static str,
@@ -23,13 +24,13 @@ pub const STEPS: [Step; 6] = [
     },
     Step {
         title: "Paint on it",
-        body: "Pick a colour from the presets on the left, then hold the LEFT mouse button on the crate and drag.",
+        body: "Pick a colour in the Brush panel (or press the button below), then hold the LEFT mouse button on the crate and drag.",
         anchor: "presets",
         show_me: Some("Pick orange paint for me"),
     },
     Step {
         title: "Undo",
-        body: "Made a mess? Press Ctrl+Z to undo (Ctrl+Y redoes).",
+        body: "Made a mess? Press Ctrl+Z, or the undo arrow at the top. Ctrl+Y redoes.",
         anchor: "edit_menu",
         show_me: None,
     },
@@ -47,8 +48,8 @@ pub const STEPS: [Step; 6] = [
     },
     Step {
         title: "Use it in your game",
-        body: "File → Export textures saves PNGs ready for Unreal, Unity or Godot.",
-        anchor: "file_menu",
+        body: "Export saves PNGs for Blender, Unreal, Unity or Godot in one click.",
+        anchor: "export_button",
         show_me: Some("Open export"),
     },
 ];
@@ -156,101 +157,114 @@ impl PigmentApp {
         }
     }
 
+    /// Start the guide on the demo crate (Advanced mode shows the layers it uses).
+    pub(super) fn start_tour(&mut self, rs: &RenderState) {
+        self.ui.welcome = false;
+        if self.edge_wear_layer().is_none() {
+            self.request(rs, Pending::Demo);
+        }
+        self.ui.prefs.mode = super::prefs::Mode::Advanced;
+        for p in [super::dock::PanelId::Layers, super::dock::PanelId::Brush, super::dock::PanelId::Mask] {
+            let l = self.ui.prefs.layout_mut();
+            if !l.contains(p) {
+                l.open(p);
+            }
+        }
+        self.tour_start(true);
+    }
+
     pub(super) fn tour_ui(&mut self, ctx: &egui::Context, viewport: egui::Rect) {
         if !self.tour.open {
             return;
         }
+        let p = ds::theme(ctx).p;
+        let screen = ctx.content_rect();
+        let mut target = viewport;
         // glowing outline around the thing to use
         if let Some(step) = STEPS.get(self.tour.step) {
             // the generator settings only exist once the Edge wear layer is selected: point at its row until then
             let anchor = self.anchors.get(step.anchor).or_else(|| if step.anchor == "generator" { self.anchors.get("edge_wear_row") } else { None });
             if let Some(r) = anchor {
                 let t = ctx.input(|i| i.time) as f32;
-                let a = (150.0 + 100.0 * (t * 4.0).sin()) as u8;
-                let painter = ctx.layer_painter(egui::LayerId::new(egui::Order::Foreground, egui::Id::unique("tour glow")));
-                let r = if step.anchor == "viewport" { r.shrink(6.0) } else { r.expand(4.0) };
-                painter.rect_stroke(r, CornerRadius::same(8), Stroke::new(3.0, Color32::from_rgba_unmultiplied(236, 142, 64, a)), egui::StrokeKind::Outside);
+                let a = 0.55 + 0.4 * (t * 4.0).sin();
+                let painter = ctx.layer_painter(egui::LayerId::new(egui::Order::Foreground, egui::Id::NULL.with("tour glow")));
+                let r = if step.anchor == "viewport" { r.shrink(space::SM) } else { r.expand(space::XS) };
+                painter.rect_stroke(r, egui::CornerRadius::same(ds::radius::LG), Stroke::new(3.0, p.accent.gamma_multiply(a)), egui::StrokeKind::Outside);
+                target = r;
             }
         }
-        let width = 330.0;
-        let pos = egui::pos2(viewport.right() - width - 16.0, viewport.bottom() - 16.0);
+        // a coach mark next to the target: below it if there's room, else in the viewport corner
+        let width = 320.0;
+        let below = egui::pos2(target.left().clamp(screen.left() + space::LG, screen.right() - width - space::LG), target.bottom() + space::MD);
+        let pos = if step_points_at_viewport(self.tour.step) || below.y > screen.bottom() - 220.0 {
+            egui::pos2(viewport.right() - width - space::XL, viewport.bottom() - space::XL - 190.0)
+        } else {
+            below
+        };
         let mut close = false;
         let mut finish = false;
-        egui::Area::new(egui::Id::unique("quick start"))
-            .fixed_pos(pos)
-            .pivot(egui::Align2::LEFT_BOTTOM)
-            .order(egui::Order::Foreground)
-            .show(ctx, |ui| {
-                egui::Frame::new()
-                    .fill(Color32::from_rgb(34, 35, 39))
-                    .stroke(Stroke::new(1.0, ACCENT))
-                    .corner_radius(CornerRadius::same(10))
-                    .inner_margin(egui::Margin::same(14))
-                    .shadow(egui::Shadow { offset: [0, 4], blur: 16, spread: 0, color: Color32::from_black_alpha(120) })
-                    .show(ui, |ui| {
-                        ui.set_width(width - 28.0);
-                        match STEPS.get(self.tour.step) {
-                            Some(step) => {
-                                ui.horizontal(|ui| {
-                                    ui.label(RichText::new(format!("QUICK START  ·  {} of {}", self.tour.step + 1, STEPS.len())).size(11.0).color(ACCENT).strong());
-                                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                                        if ui.small_button("Close").clicked() {
-                                            close = true;
-                                        }
-                                    });
-                                });
-                                // progress dots
-                                ui.horizontal(|ui| {
-                                    for k in 0..STEPS.len() {
-                                        let (r, _) = ui.allocate_exact_size(egui::vec2(10.0, 10.0), egui::Sense::hover());
-                                        let c = if k < self.tour.step { ACCENT } else if k == self.tour.step { Color32::WHITE } else { Color32::from_gray(70) };
-                                        ui.painter().circle_filled(r.center(), 4.0, c);
-                                    }
-                                });
-                                ui.add_space(4.0);
-                                ui.label(RichText::new(step.title).size(18.0).strong());
-                                ui.label(RichText::new(step.body).size(14.0));
-                                ui.add_space(6.0);
-                                ui.horizontal(|ui| {
-                                    if let Some(label) = step.show_me {
-                                        if ui.add(egui::Button::new(RichText::new(label).strong()).fill(Color32::from_rgb(92, 58, 32))).clicked() {
-                                            self.tour_show_me();
-                                        }
-                                    }
-                                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                                        if ui.small_button("Skip").clicked() {
-                                            let next = self.tour.step + 1;
-                                            self.tour_go(next);
-                                        }
-                                        if self.tour.step > 0 && ui.small_button("Back").clicked() {
-                                            let prev = self.tour.step - 1;
-                                            self.tour_go(prev);
-                                        }
-                                    });
-                                });
+        egui::Area::new(egui::Id::NULL.with("quick start")).fixed_pos(pos).order(egui::Order::Foreground).show(ctx, |ui| {
+            ds::overlay_frame(&p).stroke(Stroke::new(1.0, p.accent)).show(ui, |ui| {
+                ui.set_width(width - space::LG * 2.0);
+                match STEPS.get(self.tour.step) {
+                    Some(step) => {
+                        ui.horizontal(|ui| {
+                            ui.label(ds::caption(ui, &format!("Learn in 2 minutes  ·  {} of {}", self.tour.step + 1, STEPS.len())).color(p.accent));
+                            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                                if ui.add(ds::IconBtn::new(ds::Icon::Close, "Close the guide").size(ds::size::CONTROL_H_SM)).clicked() {
+                                    close = true;
+                                }
+                            });
+                        });
+                        ui.horizontal(|ui| {
+                            for k in 0..STEPS.len() {
+                                let (r, _) = ui.allocate_exact_size(egui::vec2(space::MD, space::MD), egui::Sense::hover());
+                                let c = if k < self.tour.step { p.accent } else if k == self.tour.step { p.text } else { p.border_strong };
+                                ui.painter().circle_filled(r.center(), 3.5, c);
                             }
-                            None => {
-                                ui.label(RichText::new("You're all set!").size(18.0).strong());
-                                ui.label("That's the whole loop: paint, layer, wear, export.");
-                                ui.add_space(4.0);
-                                ui.label(RichText::new("Try next:").strong());
-                                ui.label("• + Add layer → Rust, for rust in the crevices");
-                                ui.label("• File → New project from mesh… to paint your own model");
-                                ui.label("• Help → Quick start guide brings this back");
-                                ui.add_space(6.0);
-                                if ui.button(RichText::new("Done").strong()).clicked() {
-                                    finish = true;
+                        });
+                        ui.label(ds::strong(step.title, font::HEADING));
+                        ui.add(egui::Label::new(ds::text(step.body, font::BODY)).wrap());
+                        ui.add_space(space::SM);
+                        ui.horizontal(|ui| {
+                            if let Some(label) = step.show_me {
+                                if ui.add(Btn::primary(label).small()).clicked() {
+                                    self.tour_show_me();
                                 }
                             }
+                            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                                if ui.add(Btn::ghost("Skip").small()).clicked() {
+                                    let next = self.tour.step + 1;
+                                    self.tour_go(next);
+                                }
+                                if self.tour.step > 0 && ui.add(Btn::ghost("Back").small()).clicked() {
+                                    let prev = self.tour.step - 1;
+                                    self.tour_go(prev);
+                                }
+                            });
+                        });
+                    }
+                    None => {
+                        ui.label(ds::strong("You're all set!", font::HEADING));
+                        ui.label(ds::text("That's the whole loop: paint, layer, wear, export.", font::BODY));
+                        ui.add_space(space::XS);
+                        ds::hint(ui, "Try next: the Materials panel for rust, concrete or car paint; Ctrl+K to find any action; ? for shortcuts.");
+                        ui.add_space(space::SM);
+                        if ui.add(Btn::primary("Done").small()).clicked() {
+                            finish = true;
                         }
-                    });
+                    }
+                }
             });
+        });
         if close || finish {
             self.tour.open = false;
-            if let Some(m) = marker() {
-                let _ = std::fs::create_dir_all(m.parent().unwrap());
-                let _ = std::fs::write(m, "1");
-            }
+            self.ui.prefs.tour_done = true;
+            let _ = self.ui.prefs.save();
         }
     }
+}
+
+fn step_points_at_viewport(step: usize) -> bool {
+    STEPS.get(step).is_some_and(|s| s.anchor == "viewport")
 }
