@@ -137,7 +137,16 @@ impl Session {
         if spec.kind == SheetKind::Atlas {
             let (d, q) = (&self.rs.device, &self.rs.queue);
             let m = crate::render::io::read_material(d, q, &self.app.ts);
-            let img = image::RgbaImage::from_raw(m.size, m.size, m.color).ok_or("bad colour buffer")?;
+            let mut img = image::RgbaImage::from_raw(m.size, m.size, m.color).ok_or("bad colour buffer")?;
+            // seam padding copies the nearest cell into the empty space between
+            // cells; outside every cell rectangle the atlas is transparent
+            let n = m.size as f32;
+            let rects: Vec<[u32; 4]> = spec.cells.iter().map(|c| [(c.uv[0] * n).floor() as u32, (c.uv[1] * n).floor() as u32, (c.uv[2] * n).ceil() as u32, (c.uv[3] * n).ceil() as u32]).collect();
+            for (x, y, p) in img.enumerate_pixels_mut() {
+                if !rects.iter().any(|r| x >= r[0] && x < r[2] && y >= r[1] && y < r[3]) {
+                    p[3] = 0;
+                }
+            }
             let p = dir.join(format!("{name}_BaseColorAlpha.png"));
             img.save(&p).map_err(|e| format!("couldn't write {}: {e}", p.display()))?;
             files.push(p.to_string_lossy().to_string());

@@ -1,0 +1,717 @@
+{
+  "format": 1,
+  "resolution": 2048,
+  "mesh": "mesh/mesh.obj",
+  "layers": [
+    {
+      "id": 4,
+      "name": "Base",
+      "visible": true,
+      "opacity": 1.0,
+      "kind": {
+        "type": "fill",
+        "values": {
+          "base_color": [
+            0.045,
+            0.044,
+            0.04
+          ],
+          "roughness": 0.95,
+          "metallic": 0.0,
+          "height": -0.6,
+          "normal": [
+            0.0,
+            0.0
+          ],
+          "emissive": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "emissive_strength": 0.0,
+          "opacity": 1.0,
+          "transmission": 0.0
+        }
+      },
+      "channels": {
+        "base_color": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "roughness": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "metallic": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "height": {
+          "enabled": true,
+          "blend": "add",
+          "opacity": 1.0
+        },
+        "normal": {
+          "enabled": false,
+          "blend": "normal_combine",
+          "opacity": 1.0
+        },
+        "emissive": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "opacity": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "transmission": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        }
+      }
+    },
+    {
+      "id": 7,
+      "name": "Joint moss",
+      "visible": true,
+      "opacity": 0.8,
+      "kind": {
+        "type": "fill",
+        "values": {
+          "base_color": [
+            0.05,
+            0.08,
+            0.03
+          ],
+          "roughness": 0.9,
+          "metallic": 0.0,
+          "height": 0.0,
+          "normal": [
+            0.0,
+            0.0
+          ],
+          "emissive": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "emissive_strength": 0.0,
+          "opacity": 1.0,
+          "transmission": 0.0
+        }
+      },
+      "channels": {
+        "base_color": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "roughness": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "metallic": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "height": {
+          "enabled": false,
+          "blend": "add",
+          "opacity": 1.0
+        },
+        "normal": {
+          "enabled": false,
+          "blend": "normal_combine",
+          "opacity": 1.0
+        },
+        "emissive": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "opacity": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "transmission": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        }
+      },
+      "mask": {
+        "res": 8,
+        "generator": {
+          "kind": "moss",
+          "amount": 0.35,
+          "softness": 0.1,
+          "noise_scale": 3.0,
+          "noise_amount": 0.8,
+          "seed": 2,
+          "ao_influence": 0.8,
+          "curvature_weight": 1.0
+        },
+        "invert": false,
+        "enabled": true
+      }
+    },
+    {
+      "id": 9,
+      "name": "Slabs",
+      "visible": true,
+      "opacity": 1.0,
+      "kind": {
+        "type": "fill",
+        "values": {
+          "base_color": [
+            0.3,
+            0.295,
+            0.285
+          ],
+          "roughness": 0.82,
+          "metallic": 0.0,
+          "height": 0.25,
+          "normal": [
+            0.0,
+            0.0
+          ],
+          "emissive": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "emissive_strength": 0.0,
+          "opacity": 1.0,
+          "transmission": 0.0
+        }
+      },
+      "channels": {
+        "base_color": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "roughness": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "metallic": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "height": {
+          "enabled": true,
+          "blend": "add",
+          "opacity": 1.0
+        },
+        "normal": {
+          "enabled": false,
+          "blend": "normal_combine",
+          "opacity": 1.0
+        },
+        "emissive": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "opacity": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "transmission": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        }
+      },
+      "mask": {
+        "res": 10,
+        "generator": {
+          "kind": "tiles",
+          "amount": 1.0,
+          "softness": 0.012,
+          "noise_scale": 2.0,
+          "noise_amount": 0.6,
+          "seed": 3,
+          "ao_influence": 0.035,
+          "curvature_weight": 1.0,
+          "variant": 1
+        },
+        "invert": false,
+        "enabled": true
+      }
+    },
+    {
+      "id": 11,
+      "name": "Slab tone",
+      "visible": true,
+      "opacity": 0.8,
+      "kind": {
+        "type": "fill",
+        "values": {
+          "base_color": [
+            0.23,
+            0.225,
+            0.215
+          ],
+          "roughness": 0.85,
+          "metallic": 0.0,
+          "height": 0.0,
+          "normal": [
+            0.0,
+            0.0
+          ],
+          "emissive": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "emissive_strength": 0.0,
+          "opacity": 1.0,
+          "transmission": 0.0
+        }
+      },
+      "channels": {
+        "base_color": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "roughness": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "metallic": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "height": {
+          "enabled": false,
+          "blend": "add",
+          "opacity": 1.0
+        },
+        "normal": {
+          "enabled": false,
+          "blend": "normal_combine",
+          "opacity": 1.0
+        },
+        "emissive": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "opacity": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "transmission": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        }
+      },
+      "mask": {
+        "res": 12,
+        "generator": {
+          "kind": "tiles",
+          "amount": 0.35,
+          "softness": 0.012,
+          "noise_scale": 2.0,
+          "noise_amount": 0.3,
+          "seed": 7,
+          "ao_influence": 0.035,
+          "curvature_weight": 1.0,
+          "variant": 1
+        },
+        "invert": false,
+        "enabled": true
+      }
+    },
+    {
+      "id": 13,
+      "name": "Slab grain",
+      "visible": true,
+      "opacity": 0.5,
+      "kind": {
+        "type": "fill",
+        "values": {
+          "base_color": [
+            0.38,
+            0.37,
+            0.355
+          ],
+          "roughness": 0.35,
+          "metallic": 0.0,
+          "height": 0.1,
+          "normal": [
+            0.0,
+            0.0
+          ],
+          "emissive": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "emissive_strength": 0.0,
+          "opacity": 1.0,
+          "transmission": 0.0
+        }
+      },
+      "channels": {
+        "base_color": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "roughness": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "metallic": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "height": {
+          "enabled": true,
+          "blend": "add",
+          "opacity": 1.0
+        },
+        "normal": {
+          "enabled": false,
+          "blend": "normal_combine",
+          "opacity": 1.0
+        },
+        "emissive": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "opacity": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "transmission": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        }
+      },
+      "mask": {
+        "res": 14,
+        "generator": {
+          "kind": "spots",
+          "amount": 0.25,
+          "softness": 0.05,
+          "noise_scale": 90.0,
+          "noise_amount": 0.2,
+          "seed": 11,
+          "ao_influence": 0.3,
+          "curvature_weight": 1.0
+        },
+        "invert": false,
+        "enabled": true
+      }
+    },
+    {
+      "id": 15,
+      "name": "Chips",
+      "visible": true,
+      "opacity": 0.9,
+      "kind": {
+        "type": "fill",
+        "values": {
+          "base_color": [
+            0.17,
+            0.165,
+            0.16
+          ],
+          "roughness": 0.35,
+          "metallic": 0.0,
+          "height": -0.3,
+          "normal": [
+            0.0,
+            0.0
+          ],
+          "emissive": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "emissive_strength": 0.0,
+          "opacity": 1.0,
+          "transmission": 0.0
+        }
+      },
+      "channels": {
+        "base_color": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "roughness": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "metallic": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "height": {
+          "enabled": true,
+          "blend": "add",
+          "opacity": 1.0
+        },
+        "normal": {
+          "enabled": false,
+          "blend": "normal_combine",
+          "opacity": 1.0
+        },
+        "emissive": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "opacity": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "transmission": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        }
+      },
+      "mask": {
+        "res": 16,
+        "generator": {
+          "kind": "scratches",
+          "amount": 0.04,
+          "softness": 0.02,
+          "noise_scale": 2.5,
+          "noise_amount": 0.0,
+          "seed": 17,
+          "ao_influence": 0.0,
+          "curvature_weight": 1.0
+        },
+        "invert": false,
+        "enabled": true
+      }
+    },
+    {
+      "id": 17,
+      "name": "Stains",
+      "visible": true,
+      "opacity": 0.45,
+      "kind": {
+        "type": "fill",
+        "values": {
+          "base_color": [
+            0.13,
+            0.1,
+            0.07
+          ],
+          "roughness": 0.95,
+          "metallic": 0.0,
+          "height": 0.0,
+          "normal": [
+            0.0,
+            0.0
+          ],
+          "emissive": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "emissive_strength": 0.0,
+          "opacity": 1.0,
+          "transmission": 0.0
+        }
+      },
+      "channels": {
+        "base_color": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "roughness": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "metallic": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "height": {
+          "enabled": false,
+          "blend": "add",
+          "opacity": 1.0
+        },
+        "normal": {
+          "enabled": false,
+          "blend": "normal_combine",
+          "opacity": 1.0
+        },
+        "emissive": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "opacity": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "transmission": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        }
+      },
+      "mask": {
+        "res": 18,
+        "generator": {
+          "kind": "grunge",
+          "amount": 0.35,
+          "softness": 0.3,
+          "noise_scale": 1.4,
+          "noise_amount": 0.0,
+          "seed": 19,
+          "ao_influence": 0.2,
+          "curvature_weight": 1.0
+        },
+        "invert": false,
+        "enabled": true
+      }
+    },
+    {
+      "id": 19,
+      "name": "Gum",
+      "visible": true,
+      "opacity": 0.8,
+      "kind": {
+        "type": "fill",
+        "values": {
+          "base_color": [
+            0.16,
+            0.155,
+            0.15
+          ],
+          "roughness": 0.5,
+          "metallic": 0.0,
+          "height": 0.15,
+          "normal": [
+            0.0,
+            0.0
+          ],
+          "emissive": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "emissive_strength": 0.0,
+          "opacity": 1.0,
+          "transmission": 0.0
+        }
+      },
+      "channels": {
+        "base_color": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "roughness": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "metallic": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "height": {
+          "enabled": true,
+          "blend": "add",
+          "opacity": 1.0
+        },
+        "normal": {
+          "enabled": false,
+          "blend": "normal_combine",
+          "opacity": 1.0
+        },
+        "emissive": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "opacity": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "transmission": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        }
+      },
+      "mask": {
+        "res": 20,
+        "generator": {
+          "kind": "spots",
+          "amount": 0.025,
+          "softness": 0.02,
+          "noise_scale": 9.0,
+          "noise_amount": 0.2,
+          "seed": 23,
+          "ao_influence": 0.3,
+          "curvature_weight": 1.0
+        },
+        "invert": false,
+        "enabled": true
+      }
+    }
+  ],
+  "bake": {
+    "ao_samples": 128,
+    "curvature_radius": 0.05,
+    "curvature_strength": 1.0,
+    "ao_distance": 0.3
+  },
+  "export_preset": "separate",
+  "next_id": 21,
+  "tile": {
+    "size_m": [
+      2.0,
+      2.0
+    ],
+    "wrap": [
+      true,
+      true
+    ],
+    "kind": "tile"
+  }
+}
