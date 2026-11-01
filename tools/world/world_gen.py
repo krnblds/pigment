@@ -718,12 +718,64 @@ def generate(cfg, town, out_dir, log=print):
         "spawn": place["spawn"],
         "metrics": {},
     }
+    world["instances"] = clear_carriageways(world, log)
     world["metrics"] = metrics(world, net, hf)
     with open(os.path.join(out_dir, "world.json"), "w", encoding="utf-8") as f:
         json.dump(world, f, separators=(",", ":"))
     log(f"world.json: {os.path.getsize(os.path.join(out_dir, 'world.json')) / 1e6:.1f} MB; data stage {time.time() - t0:.0f} s")
     log("METRICS " + json.dumps(world["metrics"]))
     return world, net, hf
+
+
+def clear_carriageways(world, log, margin=0.5, dz=3.0):
+    """Last safety pass: drop anything standing on a carriageway (between the curbs,
+    within dz metres of the deck height) or inside a junction's paved box. Signals,
+    lamps, poles and signs are kerbside by construction and are left alone."""
+    import numpy as np
+    keep_kinds = {"signal", "lamp", "pole", "sign"}
+    pts, half, zz = [], [], []
+    for r in world["roads"]:
+        P = np.asarray(r["points"], float)
+        hw = r["carriageway"] / 2 + margin
+        for a, b in zip(P[:-1], P[1:]):
+            n = max(1, int(np.linalg.norm(b[:2] - a[:2]) / 0.75))
+            for t in np.linspace(0.0, 1.0, n, endpoint=False):
+                q = a + (b - a) * t
+                pts.append(q[:2]); half.append(hw); zz.append(q[2])
+    pts = np.asarray(pts); half = np.asarray(half); zz = np.asarray(zz)
+    jp = np.asarray([j["pos"][:2] for j in world["junctions"]]) if world["junctions"] else np.zeros((0, 2))
+    jr = np.asarray([max((j.get("geom") or {}).get("halves") or [8.0]) for j in world["junctions"]])
+    cell = 16.0
+    grid = {}
+    for k, q in enumerate(pts):
+        grid.setdefault((int(q[0] // cell), int(q[1] // cell)), []).append(k)
+    kept, dropped = [], {}
+    for inst in world["instances"]:
+        if inst.get("kind") in keep_kinds:
+            kept.append(inst)
+            continue
+        x, y, z = inst["pos"]
+        hit = False
+        gx, gy = int(x // cell), int(y // cell)
+        for ix in (gx - 1, gx, gx + 1):
+            for iy in (gy - 1, gy, gy + 1):
+                for k in grid.get((ix, iy), ()):
+                    if abs(z - zz[k]) < dz and (pts[k, 0] - x) ** 2 + (pts[k, 1] - y) ** 2 < half[k] ** 2:
+                        hit = True
+                        break
+                if hit:
+                    break
+            if hit:
+                break
+        if not hit and len(jp):
+            d = np.hypot(jp[:, 0] - x, jp[:, 1] - y)
+            hit = bool(np.any(d < jr))
+        if hit:
+            dropped[inst.get("asset")] = dropped.get(inst.get("asset"), 0) + 1
+        else:
+            kept.append(inst)
+    log(f"clear_carriageways: dropped {sum(dropped.values())} " + ", ".join(f"{k} {v}" for k, v in sorted(dropped.items())))
+    return kept
 
 
 def metrics(world, net, hf):
