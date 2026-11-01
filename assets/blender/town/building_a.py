@@ -24,6 +24,7 @@ GF = 4.2  # ground floor height
 FH = 3.2  # upper floor height
 ROOF = GF + 5 * FH  # 20.2, roof deck
 TOP = 21.0  # parapet top
+GROUND_UV = 2.5  # ground-floor wall texel density vs the rest
 F = Facade(W, D)
 fy = -D / 2
 
@@ -51,11 +52,13 @@ for s in (-1, 1):
     box("shutter_rail", (0.07, 0.1, SH - 0.02), F.pos("S", SU + s * (SW / 2 - 0.045), 0.3, SH / 2), bevel=0.008)
 # the shutter housing doubles as the shop's fascia: a lightbox sign the full
 # width of the shopfront (the shop sign decal goes on its front face)
-uv_boost(box("shop_sign", (SW + 0.3, 0.4, 0.8), F.pos("S", SU, -0.198, SH + 0.44), bevel=0.02, segments=2), 3)
+uv_boost(box("shop_sign", (SW + 0.3, 0.4, 0.8), F.pos("S", SU, -0.198, SH + 0.44), bevel=0.02, segments=2), 7, (0, -1, 0))
 # stair door with a small canopy and an intercom
 box("stair_door", (DW - 0.02, 0.06, DH - 0.02), F.pos("S", DU, 0.25, 0.01 + (DH - 0.02) / 2), bevel=0.008)
 box("stair_canopy", (1.7, 0.7, 0.08), F.pos("S", DU, -0.348, DH + 0.3), bevel=0.012)
 box("intercom", (0.16, 0.06, 0.26), F.pos("S", DU + 0.82, -0.028, 1.4), bevel=0.008)
+# enamel notice plate on the pier between the shop and the stair door (eye height)
+uv_boost(box("plate", (0.46, 0.012, 0.23), F.pos("S", 1.7, -0.007, 1.62), bevel=0.002), 24, (0, -1, 0))
 
 # string course over the ground floor and a cornice under the parapet
 box("band", (W + 0.16, D + 0.16, 0.25), (0, 0, GF), bevel=0.02)
@@ -91,14 +94,16 @@ for side, i, u in acs:
     zb = GF + i * FH + (0.9 if side == "S" else 0.95)
     ac_unit(F, side, u, zb - 0.70, name="ac")
 
-cut(shell, cuts)
+# split at the string course: the ground floor gets denser UVs for street-level decals
+ground, shell = cut_split(shell, cuts, GF)
+uv_boost(finish(ground, 0.03, 2, angle=40), GROUND_UV)
 finish(shell, 0.03, 2, angle=40)
 
 # --- blade sign box on the front right corner (blank: neon goes on later) ---
 sx, sy0 = W / 2 - 0.45, fy - 0.15
 box("sign_box", (0.3, 1.2, 6.0), (sx, sy0 - 0.6, 10.0), bevel=0.03, segments=3)
 for s in (-1, 1):
-    uv_boost(box("sign_face", (0.012, 1.08, 5.88), (sx + s * 0.158, sy0 - 0.6, 10.0), bevel=0.002), 2)
+    uv_boost(box("sign_face", (0.012, 1.08, 5.88), (sx + s * 0.158, sy0 - 0.6, 10.0), bevel=0.002), 4.6, (s, 0, 0))
 for z in (7.6, 10.0, 12.4):
     box("sign_bracket", (0.1, 0.18, 0.1), (sx, fy - 0.07, z), bevel=0.01)
 
@@ -126,7 +131,7 @@ cyl("pipe", 0.05, ROOF - 1.0, (1.12, D / 2 + 0.09, (ROOF - 1.0) / 2 + 0.5), vert
 # --- rooftop billboard over the front: 6.4 x 3.2 m panel in its own frame, on posts ---
 bx, by, bz0 = 0.0, -3.4, ROOF + 2.3  # centre x, panel plane y, bottom of the panel
 PW, PH = 6.4, 3.2
-uv_boost(box("billboard_panel", (PW, 0.08, PH), (bx, by, bz0 + PH / 2), bevel=0.004), 2)
+uv_boost(box("billboard_panel", (PW, 0.08, PH), (bx, by, bz0 + PH / 2), bevel=0.004), 2, (0, -1, 0))
 holed("billboard_frame", (PW + 0.44, 0.26, PH + 0.44), [(0, 0, PW - 0.04, PH - 0.04)], (bx, by + 0.04, bz0 + PH / 2), bevel=0.02)
 for k in (-1, 0, 1):
     px = bx + k * 2.6
@@ -148,7 +153,7 @@ for s_ in (-1, 1):
 # --- wall-mounted billboard on the blank back wall: frame on four brackets, two gooseneck lamps ---
 wx, wz0, WPW, WPH = 0.4, 9.0, 6.4, 3.2      # centre x, bottom, panel size
 wy = D / 2 + 0.42                            # panel plane, clear of the pipes on the wall
-uv_boost(box("wall_billboard_panel", (WPW, 0.08, WPH), (wx, wy, wz0 + WPH / 2), bevel=0.004), 2)
+uv_boost(box("wall_billboard_panel", (WPW, 0.08, WPH), (wx, wy, wz0 + WPH / 2), bevel=0.004), 2, (0, 1, 0))
 holed("wall_billboard_frame", (WPW + 0.4, 0.24, WPH + 0.4), [(0, 0, WPW - 0.04, WPH - 0.04)], (wx, wy - 0.03, wz0 + WPH / 2), bevel=0.02)
 for bxk in (-2.3, 2.3):
     for bzk in (wz0 + 0.5, wz0 + WPH - 0.5):

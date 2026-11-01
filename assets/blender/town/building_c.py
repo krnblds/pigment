@@ -25,6 +25,7 @@ TOP = ROOF + 0.8
 CW = 10.0  # crown footprint
 CTOP = TOP + 4.4  # 35.8
 CDECK = CTOP - 0.6
+GROUND_UV = 2.5  # ground-floor wall texel density vs the rest
 F = Facade(W, D)
 NOTCH = 0.5  # corner channel cutter (removes a 0.25 x 0.25 m notch)
 
@@ -49,14 +50,16 @@ for s in (-1, 1):
 box("canopy", (LW + 2.0, 2.2, 0.25), F.pos("S", 0, -1.098, LH + 0.4), bevel=0.02)
 box("canopy_led", (LW + 1.9, 0.05, 0.06), F.pos("S", 0, -2.23, LH + 0.4), bevel=0.0)
 # corporate fascia standing on the canopy's front edge (the lobby logo goes on it)
-uv_boost(box("lobby_fascia", (LW, 0.2, 0.9), F.pos("S", 0, -2.0, LH + 0.535 + 0.45), bevel=0.02), 3)
+uv_boost(box("lobby_fascia", (LW, 0.2, 0.9), F.pos("S", 0, -2.0, LH + 0.535 + 0.45), bevel=0.02), 8, (0, -1, 0))
 # a wall sign box left of the lobby (security / kiosk notice)
-uv_boost(box("lobby_sign", (2.9, 0.15, 0.5), F.pos("S", -5.1, -0.078, 3.2), bevel=0.015), 3)
+uv_boost(box("lobby_sign", (2.9, 0.15, 0.5), F.pos("S", -5.1, -0.078, 3.2), bevel=0.015), 15, (0, -1, 0))
 for u in (-2.0, 2.0):
     box("canopy_light", (0.8, 0.8, 0.04), F.pos("S", u, -1.1, LH + 0.255), bevel=0.006)
 # lobby side windows and a service door
 for side in ("E", "W"):
     window(F, cuts, side, -2.5, 1.0, 3.5, 2.6, mullions=1, sill=False, name="lobby_side")
+# enamel notice plate on the lobby recess's side wall beside the doors (eye height)
+uv_boost(box("plate", (0.012, 0.46, 0.23), (LW / 2 - 0.007, -(D / 2) + 0.65, 1.62), bevel=0.002), 26, (-1, 0, 0))
 box("service_door", (1.2, 0.08, 2.3), F.pos("N", 3.0, -0.03, 1.16), bevel=0.01, rot=(0, 0, math.pi))
 
 # --- repeated floors: ribbon windows on every side ---
@@ -67,7 +70,9 @@ for i in range(NF):
 for side, i, u in [("S", 1, -4.0), ("S", 4, 3.0), ("S", 6, -1.5), ("E", 2, 1.0), ("W", 5, -3.0)]:
     ac_unit(F, side, u, GF + i * FH + 0.85 - 0.75, name="ac")
 
-cut(shell, cuts)
+# split at the string course: the ground floor gets denser UVs for street-level decals
+ground, shell = cut_split(shell, cuts, GF)
+uv_boost(finish(ground, 0.03, 2, angle=40), GROUND_UV)
 finish(shell, 0.03, 2, angle=40)
 
 # proud floor-slab bands, notched at the corners so the light channels run through
@@ -104,7 +109,8 @@ finish(crown, 0.03, 2, angle=40)
 CPW, CPH, CPZ = 8.0, 3.6, TOP + 0.35   # panel size, bottom
 for side in "SENW":
     r = CF.rot(side)
-    uv_boost(box("crown_panel", (CPW, 0.08, CPH), CF.pos(side, 0, -0.3, CPZ + CPH / 2), bevel=0.004, rot=(0, 0, r)), 2)
+    uv_boost(box("crown_panel", (CPW, 0.08, CPH), CF.pos(side, 0, -0.3, CPZ + CPH / 2), bevel=0.004, rot=(0, 0, r)), 2,
+             Matrix.Rotation(r, 3, "Z") @ Vector((0, -1, 0)))
     holed("crown_frame", (CPW + 0.4, 0.2, CPH + 0.4), [(0, 0, CPW - 0.04, CPH - 0.04)], CF.pos(side, 0, -0.27, CPZ + CPH / 2), r, bevel=0.02)
     for u in (-3.0, 0.0, 3.0):
         for z in (CPZ + 0.5, CPZ + CPH - 0.5):

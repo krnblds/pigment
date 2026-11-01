@@ -22,6 +22,7 @@ W, D = 16.0, 12.0
 GF, FH = 4.5, 3.2
 ROOF = GF + 3 * FH  # 14.1
 TOP = 15.0
+GROUND_UV = 2.5  # ground-floor wall texel density vs the rest
 F = Facade(W, D)
 
 shell = raw_box((W, D, TOP), (0, 0, TOP / 2))
@@ -49,7 +50,7 @@ def shopfront(u, name, door_right=True):
 
 def sign_box(u, name):
     """Fascia sign box over a bay mouth (the shop sign decal goes on its front)."""
-    uv_boost(box(f"{name}_sign", (BW - 0.2, 0.25, 0.85), F.pos("S", u, -0.123, 3.93), bevel=0.02), 3)
+    uv_boost(box(f"{name}_sign", (BW - 0.2, 0.25, 0.85), F.pos("S", u, -0.123, 3.93), bevel=0.02), 8, (0, -1, 0))
 
 
 # ramen shop: noren flaps on a rod over the door, two paper lanterns at the bay mouth
@@ -74,6 +75,8 @@ box("stair_door", (1.2, 0.06, 2.4), F.pos("S", bays[3] - 0.6, BD - 0.03, 1.21), 
 box("mailboxes", (1.0, 0.25, 0.7), F.pos("S", bays[3] + 0.9, BD - 0.128, 1.45), bevel=0.012)
 box("intercom", (0.16, 0.06, 0.26), F.pos("S", bays[3] + 0.25, BD - 0.03, 1.4), bevel=0.008)
 sign_box(bays[3], "stair")
+# enamel notice plate on the bay's side wall beside the stair door (eye height)
+uv_boost(box("plate", (0.012, 0.46, 0.23), (bays[3] - BW / 2 + 0.007, -(D / 2 - BD) - 0.45, 1.62), bevel=0.002), 30, (1, 0, 0))
 # arcade soffit light boxes
 for u in bays:
     box("soffit_light", (1.6, 0.25, 0.08), F.pos("S", u, 1.0, BH - 0.038), bevel=0.01)
@@ -88,7 +91,9 @@ for i in range(3):
 for side, i, u in [("S", 0, -4.0), ("S", 1, 3.5), ("S", 2, -1.0), ("S", 2, 5.5), ("E", 1, 2.0), ("W", 0, -3.0)]:
     ac_unit(F, side, u, GF + i * FH + 0.9 - 0.75, name="ac")
 
-cut(shell, cuts)
+# split at the string course: the ground floor gets denser UVs for street-level decals
+ground, shell = cut_split(shell, cuts, GF)
+uv_boost(finish(ground, 0.03, 2, angle=40), GROUND_UV)
 finish(shell, 0.03, 2, angle=40)
 
 box("band_ground", (W + 0.16, D + 0.16, 0.22), (0, 0, GF), bevel=0.02)
@@ -102,7 +107,7 @@ finish(cap, 0.015)
 # --- roof billboard: 8 x 4 m panel in a separate frame, on posts, facing -Y ---
 bx, by, bz0 = 2.2, -3.6, ROOF + 2.3  # centre x, panel plane y, bottom of the panel
 PW, PH = 8.0, 4.0
-uv_boost(box("billboard_panel", (PW, 0.08, PH), (bx, by, bz0 + PH / 2), bevel=0.004), 2)
+uv_boost(box("billboard_panel", (PW, 0.08, PH), (bx, by, bz0 + PH / 2), bevel=0.004), 2, (0, -1, 0))
 holed("billboard_frame", (PW + 0.44, 0.26, PH + 0.44), [(0, 0, PW - 0.04, PH - 0.04)], (bx, by + 0.04, bz0 + PH / 2), bevel=0.02)
 for k in (-1, 0, 1):
     px = bx + k * 3.2

@@ -172,6 +172,27 @@ def cut(o, cutters):
     return o
 
 
+def cut_split(shell, cuts, z, gap=0.002):
+    """cut(shell, cuts), returned as two pieces split at height z: (ground
+    floor, upper floors). The seam hides behind the string course at z; the
+    ground floor gets its own UV island so street-level decals (posters,
+    graffiti) can be given more texture space with uv_boost."""
+    lower = shell.copy()
+    lower.data = shell.data.copy()
+    lower.name = shell.name + "_ground"
+    bpy.context.scene.collection.objects.link(lower)
+    big = 400.0
+    copies = []
+    for c in cuts:
+        d = c.copy()
+        d.data = c.data.copy()
+        bpy.context.scene.collection.objects.link(d)
+        copies.append(d)
+    cut(lower, copies + [cutter((big, big, big), (0, 0, z + big / 2))])
+    cut(shell, cuts + [cutter((big, big, big), (0, 0, z + gap - big / 2))])
+    return lower, shell
+
+
 def cutter(size, loc=(0, 0, 0), rot=(0, 0, 0)):
     return raw_box(size, loc, rot)
 
@@ -322,17 +343,32 @@ def _welded_components(me):
     return len(used)
 
 
-def uv_boost(o, k):
-    """Give piece o k times the texel density of the rest (signage faces that
-    carry readable decals: billboard panels, sign boxes, fascias)."""
+def uv_boost(o, k, facing=None):
+    """Give piece o k times the texel density of the rest: signage faces that
+    carry readable decals (billboard panels, sign boxes, fascias, plates).
+    facing: only the faces whose normal points that way (world direction),
+    e.g. a sign box's front, so its back and sides don't take texture space."""
     o["uvw"] = float(k)
+    if facing is not None:
+        o["uvw_dir"] = [float(x) for x in facing]
     return o
 
 
+def _face_weights(o):
+    k = float(o.get("uvw", 1.0))
+    d = o.get("uvw_dir")
+    if d is None:
+        return [k] * len(o.data.polygons)
+    d = Vector(d).normalized()
+    return [k if p.normal.dot(d) > 0.9 else 1.0 for p in o.data.polygons]
+
+
 def _boost_uvs(me):
-    """Scale the UVs of boosted faces (attribute "uvw" != 1) about each
-    connected piece's UV centre; pack_islands then lays everything out again
-    with these relative sizes."""
+    """Scale whole UV islands whose faces are mostly boosted (face attribute
+    "uvw" > 1) about their own centre; pack_islands then lays everything out
+    again with these relative sizes."""
+    from bpy_extras.mesh_utils import mesh_linked_uv_islands
+
     a = me.attributes.get("uvw")
     if a is None:
         return
@@ -340,33 +376,32 @@ def _boost_uvs(me):
     if all(abs(x - 1.0) < 1e-6 for x in w):
         return
     uv = me.uv_layers[0].data
-    n, vcomp = _components(me)
-    groups = {}
-    for p in me.polygons:
-        if abs(w[p.index] - 1.0) > 1e-6:
-            groups.setdefault(vcomp[p.vertices[0]], []).append(p)
-    for comp, polys in groups.items():
-        loops = [li for p in polys for li in p.loop_indices]
+    n = 0
+    for island in mesh_linked_uv_islands(me):
+        area = sum(me.polygons[i].area for i in island)
+        boosted = [i for i in island if w[i] > 1.0 + 1e-6]
+        if not boosted or sum(me.polygons[i].area for i in boosted) < 0.5 * area:
+            continue
+        k = max(w[i] for i in boosted)
+        loops = [li for i in island for li in me.polygons[i].loop_indices]
         cu = sum(uv[li].uv.x for li in loops) / len(loops)
         cv = sum(uv[li].uv.y for li in loops) / len(loops)
-        k = w[polys[0].index]
         for li in loops:
             uv[li].uv = (cu + (uv[li].uv.x - cu) * k, cv + (uv[li].uv.y - cv) * k)
-    print(f"UV boost: {len(groups)} pieces")
+        n += 1
+    print(f"UV boost: {n} islands")
 
 
 def export(name, centre_xy=True, max_tris=80000, max_parts=240, close=(), view=(-1.0, -1.45, 0.75)):
     """close: extra preview shots [(suffix, centre, radius, view_dir)] in final coordinates."""
     for o in parts:
-        # per-face UV weight survives the join as a face attribute
-        k = float(o.get("uvw", 1.0))
-        a = o.data.attributes.get("uvw") or o.data.attributes.new("uvw", "FLOAT", "FACE")
-        a.data.foreach_set("value", [k] * len(o.data.polygons))
-    for o in parts:
         bpy.ops.object.select_all(action="DESELECT")
         bpy.context.view_layer.objects.active = o
         for m in list(o.modifiers):
             bpy.ops.object.modifier_apply(modifier=m.name)
+        # per-face UV weight (after the bevel) survives the join as a face attribute
+        a = o.data.attributes.get("uvw") or o.data.attributes.new("uvw", "FLOAT", "FACE")
+        a.data.foreach_set("value", _face_weights(o))
     bpy.ops.object.select_all(action="DESELECT")
     for o in parts:
         o.select_set(True)
