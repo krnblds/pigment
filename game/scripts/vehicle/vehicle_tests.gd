@@ -668,8 +668,13 @@ func _drive_test() -> void:
 	car.tc_on = true
 	res["checks"] = checks
 	var ok := true
+	# the feel windows (0-100, top speed, stopping, skidpad) are the Tsubame's targets; other fleet
+	# vehicles (--vehicle=) must only pass the stability checks
+	var tsubame: bool = String(car.P.get("id", "tsubame")) == "tsubame"
 	for k in checks:
-		ok = ok and checks[k]
+		if tsubame or k in ["map_drive_no_rollover", "reset_upright", "lane_change_no_spin", "handbrake_turn_rotates"]:
+			ok = ok and checks[k]
+	res["vehicle"] = car.P.get("id", "?")
 	res["pass"] = ok
 	print("DRIVETEST ", JSON.stringify(res))
 	if main.args.has("drive-out"):

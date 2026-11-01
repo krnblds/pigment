@@ -8,6 +8,7 @@ extends Node3D
 ##                      lane change, handbrake turn, rollover, reset (scripts/vehicle/vehicle_tests.gd)
 ##   --curb-test        kerbs / barriers / guard rails at several angles and speeds: never stuck or flipped
 ##   --dry / --wet      road grip regardless of the rain (default: wet while it rains)
+##   --vehicle=<id>     drive a fleet vehicle (hayate, mame, hakobi, kago, kaiun, tsubame)
 ##   --no-gi            start with SDFGI off      --no-rain   start without rain
 ##   --no-town          skip the town (empty ground)
 ##   --no-traffic       no traffic          --traffic=<n>  fixed number of moving cars (default: adaptive 24-80)
@@ -62,7 +63,14 @@ func _ready() -> void:
 	car = Car.new()
 	car.name = "Car"
 	add_child(car)
-	car.setup(_car_path(CAR_GLB), _car_path(CAR_JSON))
+	# --vehicle=<fleet id>: drive another fleet car (assets/vehicles/<id>/<id>.glb + .json, physics from
+	# data/vehicles/<id>.json or its class defaults); default: the Tsubame from assets/car/
+	var vid := String(args.get("vehicle", ""))
+	var vglb := "res://assets/vehicles/%s/%s.glb" % [vid, vid]
+	if vid != "" and FileAccess.file_exists(vglb):
+		car.setup(vglb, "res://assets/vehicles/%s/%s.json" % [vid, vid], vid)
+	else:
+		car.setup(_car_path(CAR_GLB), _car_path(CAR_JSON))
 	car.town = town
 	car.place(town.spawn_transform() if town.layout else Transform3D(Basis(), Vector3(0, 2, 0)))
 	town.collision_focus = car         # collision streams around the car, visuals around the camera
