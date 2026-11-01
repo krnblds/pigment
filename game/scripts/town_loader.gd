@@ -305,6 +305,12 @@ func material(nm: String) -> Material:
 			_mat_cache[nm] = rm
 			return rm
 	var d: Dictionary = layout.materials.get(nm, {})
+	# interior-mapped windows (docs/agents/interiors/NOTES.md): kit buildings and tower facades
+	var im := _interior_material(nm, d)
+	if im:
+		im.resource_name = nm
+		_mat_cache[nm] = im
+		return im
 	var m: BaseMaterial3D
 	match d.get("type", "flat"):
 		"pigment":
@@ -431,7 +437,161 @@ func _proxy_material() -> ShaderMaterial:
 		return _proxy_mat
 	_proxy_mat = ShaderMaterial.new()
 	_proxy_mat.shader = load("res://scripts/proxy_building.gdshader")
+	if not _headless:
+		_interior_params(_proxy_mat, "proxy")
 	return _proxy_mat
+
+
+# ------------------------------------------------------------------ interiors
+## Interior-mapped windows: Pigment's interior atlas (res://assets/interiors/, tools/interiors/interiors.py)
+## as a Texture2DArray, the room table, and per kit asset a window map + pane table. Missing files
+## leave the old materials in place.
+const INTERIOR_DIR := "res://assets/interiors/"
+const INTERIOR_SHADER := preload("res://scripts/interior_window.gdshader")
+const FACADE_SHADER := preload("res://scripts/interior_facade.gdshader")
+## room picks per building kind: ground floor (shops), upper floors by light colour (warm / cool / screen)
+const INTERIOR_SETS := {
+	"apartments": {"ground": ["ramen_kitchen", "pachinko_parlour", "implant_clinic", "karaoke_box", "konbini", "memory_pawn", "bar_counter"],
+		"warm": ["apartment_holo", "apartment_kitchen", "neon_bedroom", "capsule_hotel", "evicted_room", "unplug_hideout", "apartment_holo_person", "apartment_kitchen"],
+		"cool": ["noctis_clinic", "gym", "hydroponics", "capsule_hotel", "dreamlink_lease", "implant_clinic"],
+		"screen": ["apartment_holo", "dreamlink_lease", "meridian_office", "apartment_holo_person"]},
+	"corporate": {"ground": [],
+		"warm": ["hoshikawa_office", "hoshikawa_office", "office_cubicles"],
+		"cool": ["office_cubicles", "server_room", "hoshikawa_office", "meridian_office"],
+		"screen": ["meridian_office", "server_room"]},
+	"tower": {"ground": [],
+		"warm": ["hoshikawa_office", "office_cubicles", "hydroponics"],
+		"cool": ["office_cubicles", "server_room", "server_room", "hydroponics"],
+		"screen": ["meridian_office", "server_room"]},
+	"proxy": {"ground": [],
+		"warm": ["apartment_holo", "apartment_kitchen", "hoshikawa_office", "neon_bedroom"],
+		"cool": ["office_cubicles", "server_room", "gym"],
+		"screen": ["meridian_office", "dreamlink_lease"]},
+}
+## tower facade styles: pane size (tools/town_textures.py FACADE_WINDOW)
+const FACADE_PANES := {"glass_blue": Vector2(1.86, 3.4), "glass_dark": Vector2(1.86, 3.4), "concrete_warm": Vector2(1.5, 2.6), "panel_cyan": Vector2(1.5, 2.6)}
+var interiors_enabled := true             ## false: plain Pigment materials (A/B, perf); set before load_town
+var _interiors: Dictionary = {}           ## {tex, rooms, index: name -> i, dims, cell} or {"none": true}
+var _pane_texs := {}
+
+
+func _interior_data() -> Dictionary:
+	if not _interiors.is_empty():
+		return _interiors
+	_interiors = {"none": true}
+	var jp := INTERIOR_DIR + "interiors.json"
+	if not interiors_enabled or not FileAccess.file_exists(jp) or not ResourceLoader.exists(INTERIOR_DIR + "interiors_atlas.png"):
+		return _interiors
+	var j = JSON.parse_string(FileAccess.get_file_as_string(jp))
+	var tex = load(INTERIOR_DIR + "interiors_atlas.png")
+	if not (j is Dictionary) or not (tex is Texture2DArray):
+		push_warning("interiors: %sinteriors_atlas.png is not a Texture2DArray (re-import game/assets/interiors)" % INTERIOR_DIR)
+		return _interiors
+	var index := {}
+	var dims := PackedVector4Array()
+	for i in j.rooms.size():
+		var r: Dictionary = j.rooms[i]
+		index[r.name] = i
+		dims.append(Vector4(r.size[0], r.size[1], r.size[2], r.eye))
+	_interiors = {"tex": tex, "rooms": j.rooms, "index": index, "dims": dims, "cell": float(j.cell)}
+	return _interiors
+
+
+func _interior_params(m: ShaderMaterial, kind: String) -> bool:
+	var data := _interior_data()
+	if data.has("none"):
+		return false
+	m.set_shader_parameter("interior_rooms", data.tex)
+	var dims: PackedVector4Array = data.dims.duplicate()
+	while dims.size() < 32:
+		dims.append(Vector4(4, 3, 4, 4))
+	m.set_shader_parameter("interior_dims", dims)
+	m.set_shader_parameter("interior_count", data.rooms.size())
+	m.set_shader_parameter("interior_cell", data.cell)
+	var sets: Dictionary = INTERIOR_SETS[kind]
+	for list in ["ground", "warm", "cool", "screen"]:
+		var ids := PackedInt32Array()
+		for nm in sets[list]:
+			if data.index.has(nm) and ids.size() < 8:
+				ids.append(data.index[nm])
+		var n := ids.size()
+		while ids.size() < 8:
+			ids.append(0)
+		m.set_shader_parameter("rooms_" + list, ids)
+		m.set_shader_parameter("n_" + list, n)
+	return true
+
+
+## Pane table of a kit asset (<asset>_panes.json from Pigment's export_window_map) as an RGBAF
+## texture: x = pane, rows: centre + width, right + height, outward normal, centre uv.
+func _pane_texture(asset: String) -> Array:
+	if _pane_texs.has(asset):
+		return _pane_texs[asset]
+	_pane_texs[asset] = []
+	var jp := INTERIOR_DIR + asset + "_panes.json"
+	if not FileAccess.file_exists(jp) or not ResourceLoader.exists(INTERIOR_DIR + asset + "_WindowMap.png"):
+		return []
+	var j = JSON.parse_string(FileAccess.get_file_as_string(jp))
+	var panes: Array = j.panes
+	var data := PackedFloat32Array()
+	data.resize(panes.size() * 4 * 4)
+	for i in panes.size():
+		var p: Dictionary = panes[i]
+		var rows := [[p.center[0], p.center[1], p.center[2], p.size[0]], [p.right[0], p.right[1], p.right[2], p.size[1]],
+				[p.normal[0], p.normal[1], p.normal[2], 0.0], [p.uv_center[0], p.uv_center[1], 0.0, 0.0]]
+		for r in 4:
+			for c in 4:
+				data[(r * panes.size() + i) * 4 + c] = float(rows[r][c])
+	var img := Image.create_from_data(panes.size(), 4, false, Image.FORMAT_RGBAF, data.to_byte_array())
+	_pane_texs[asset] = [ImageTexture.create_from_image(img), load(INTERIOR_DIR + asset + "_WindowMap.png"), panes.size()]
+	return _pane_texs[asset]
+
+
+func _interior_material(nm: String, d: Dictionary) -> ShaderMaterial:
+	if not interiors_enabled or _headless:
+		return null
+	var kind: String = d.get("type", "flat")
+	if kind == "pigment" and String(d.get("folder", "")).begins_with("building_"):
+		var folder: String = d.folder
+		var asset := folder.split("__")[0]
+		var panes := _pane_texture(asset)
+		if panes.is_empty():
+			return null
+		var m := ShaderMaterial.new()
+		m.shader = INTERIOR_SHADER
+		if not _interior_params(m, "corporate" if asset == "building_c" else "apartments"):
+			return null
+		var base: String = dir + "textures/" + folder + "/"
+		m.set_shader_parameter("albedo_tex", _tex(base + "albedo.png"))
+		m.set_shader_parameter("orm_tex", _tex(base + "orm.png"))
+		var n := _tex(base + "normal.png")
+		m.set_shader_parameter("use_normal", n != null)
+		m.set_shader_parameter("normal_tex", n)
+		var e := _tex(base + "emission.png")
+		m.set_shader_parameter("use_emission", e != null)
+		m.set_shader_parameter("emission_tex", e)
+		m.set_shader_parameter("emission_energy", float(d.get("emissive_scale", 1.0)) * 1.3)
+		m.set_shader_parameter("roughness_mul", lerpf(1.0, 0.85, _wet))
+		m.set_shader_parameter("alpha_scissor", 0.15 if d.get("opacity", false) else 0.0)
+		m.set_shader_parameter("pane_tex", panes[0])
+		m.set_shader_parameter("window_map", panes[1])
+		m.set_shader_parameter("pane_count", panes[2])
+		return m
+	if kind == "image" and nm.begins_with("WorldFacade_"):
+		var style := nm.trim_prefix("WorldFacade_")
+		var albedo := _tex(dir + String(d.image))
+		if albedo == null:
+			return null
+		var m := ShaderMaterial.new()
+		m.shader = FACADE_SHADER
+		if not _interior_params(m, "tower"):
+			return null
+		m.set_shader_parameter("albedo_tex", albedo)
+		m.set_shader_parameter("roughness", float(d.get("roughness", 0.5)))
+		m.set_shader_parameter("pane_size", FACADE_PANES.get(style, Vector2(1.86, 3.4)))
+		m.set_shader_parameter("lit_fraction", 0.12 if style == "glass_dark" else 0.2)
+		return m
+	return null
 
 
 # ------------------------------------------------------------------ instances
