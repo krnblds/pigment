@@ -525,6 +525,12 @@ def decals():
                                                                     ("HOSHIKAWA UTILITIES", INK, 0.42), ("DO NOT CLIMB", RED, 0.5)], border=INK, radius=10, noise=16, seed=37, long_side=512)
     D["mast_cabinet"] = lambda: card(600, 360, (250, 200, 20, 255), [("高電圧 DANGER", INK, 1.0), ("HIGH VOLTAGE 6.6 kV", INK, 0.6), ("LINE 7-G · DO NOT OPEN", RED, 0.45)],
                                      border=INK, radius=8, noise=16, seed=38, long_side=512)
+    D["waste_tag"] = lambda: card(400, 560, (245, 245, 240, 255), [(eye_icon(MER_BG, scale=0.3), None, 1.0), ("MERIDIAN", MER_BG, 0.5), ("WASTE ID", MER_BG, 0.45),
+                                                                    ("CITIZEN 4471-K", INK, 0.4, MONO), ("SORTING ERROR", RED, 0.4), ("-3 PTS", RED, 0.55, BLACK)],
+                                  border=MER_BG, radius=14, noise=20, seed=41, long_side=512)
+    D["bollard_plate"] = lambda: card(300, 450, (40, 42, 46, 255), [("B-7G", (230, 230, 225, 255), 1.0, BLACK), ("042", (230, 230, 225, 255), 0.7, MONO),
+                                                                    ("HOSHIKAWA", (200, 200, 195, 255), 0.4), ("CIVIL WORKS", (200, 200, 195, 255), 0.4)],
+                                      border=(200, 200, 195, 255), radius=10, noise=16, seed=42, long_side=256)
     # puddles
     for k in range(3):
         D[f"puddle_{'abc'[k]}"] = (lambda kk: lambda: puddle(kk + 11, *((1200, 900), (1400, 900), (1600, 650))[kk]))(k)

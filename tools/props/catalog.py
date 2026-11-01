@@ -87,8 +87,8 @@ PROPS = {
                      clearance=0.4, facing="road", yaw_jitter=0)),
     "bollard": dict(
         category="street_furniture", title="Steel bollard with LED ring",
-        desc="0.95 m domed steel bollard, retro-reflective band and a cyan LED ring.",
-        res=512, embed=512, lod1=None,
+        desc="0.96 m removable steel bollard: cast collar and foot, turned grooves, key lock, ID plate, retro-reflective band, cyan LED ring in a recessed throat, domed cap with a MERIDIAN sensor eye.",
+        res=1024, embed=512, lod1=0.5,
         scatter=dict(slots=["curb", "corner"], density=dens(2.5, downtown=5.0, luxury=5.0, commercial=3.0, slum=0.5, industrial=1.5),
                      offset=-0.35, spacing=1.6, clearance=0.25, facing="road", yaw_jitter=0, along=[0.3, 4.0], cluster=[2, 5], cluster_radius=1.6, cluster_line=True)),
     "guard_rail": dict(
@@ -193,8 +193,8 @@ PROPS = {
     # ------------------------------------------------------------------ clutter
     "trash_bag_pile": dict(
         category="clutter", title="Trash bag pile",
-        desc="Four tied bin bags (black and blue).",
-        res=512, embed=512, lod1=None,
+        desc="Five tied bin bags (black, blue, translucent white) slumped together, a burnable-day sticker and a MERIDIAN waste tag, a can, a cup and a flattened box.",
+        res=1024, embed=512, lod1=0.4,
         scatter=dict(slots=["frontage", "alley", "curb"], density=dens(2.0, slum=8.0, market=6.0, industrial=3.0, luxury=0.0, downtown=0.5),
                      offset=0.4, spacing=4.0, clearance=0.8, facing="random", yaw_jitter=180)),
     "trash_bin": dict(

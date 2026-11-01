@@ -136,6 +136,7 @@ GROUP = {
     "stencil": (None, V([0.58, 0.45, 0.3], 0.8)),
     "bag": (None, V([0.025, 0.025, 0.03], 0.22)),
     "bag_blue": (None, V([0.05, 0.14, 0.38], 0.28)),
+    "bag_white": (None, V([0.7, 0.71, 0.68], 0.32, 0.0, opacity=0.92)),
     "hole": (None, V([0.004, 0.004, 0.004], 0.95)),
     "noren": (None, V([0.04, 0.06, 0.2], 0.92)),
     "canvas": (None, V([0.72, 0.1, 0.08], 0.85)),
@@ -187,7 +188,7 @@ EMISSIVE = {"screen", "ad", "led", "cam_eye", "lens_red", "lens_amber", "lens_gr
 SEE_THROUGH = {"glass", "smoke_glass", "holo", "water"}
 PAINTED = {"paint", "paint2", "plastic", "dish", "hazard"}
 METAL_BARE = {"galv", "steel", "dark_metal", "iron", "steel_rust", "rebar", "brass", "copper", "fins", "grille", "grate", "wire"}
-SOFT = {"leaves", "frond", "soil", "bag", "bag_blue", "noren", "canvas", "meat", "coconut", "palm_crown", "water"}
+SOFT = {"leaves", "frond", "soil", "bag", "bag_blue", "bag_white", "noren", "canvas", "meat", "coconut", "palm_crown", "water"}
 
 PAINTS = {
     "signal_yellow": V([0.78, 0.6, 0.06], 0.45),
@@ -532,13 +533,25 @@ def r_street_name_sign(t):
 
 @recipe
 def r_bollard(t):
-    t.base(paint="graphite", led=[0.1, 0.9, 1.0])
-    t.weather(wear=0.6, rust=0.2, wet=0.6)
+    t.base(paint="graphite", paint2="graphite", led=[0.1, 0.9, 1.0])
+    for c in ("hazard_yellow", "pearl"):
+        t.fill(f"paint {c}", t.g("paint"), values=PAINTS[c], variant="colours", visible=False)
+    t.weather(wear=0.6, rust=0.35, wet=0.6)
+    t.fill("Bumper scuffs", t.g("paint"), values=V([0.55, 0.55, 0.53], 0.45, 0.7),
+           gen={"generator": "scratches", "amount": 0.45, "scale": 3.0,
+                "effects": [{"generator": "gradient", "op": "multiply", "amount": 0.55, "softness": 0.25}]}, opacity=0.7, channels=NO_HEIGHT)
+    t.fill("Tyre rubber", t.g("paint", "paint2"), values=V([0.02, 0.02, 0.02], 0.8),
+           gen={"generator": "spots", "amount": 0.18, "scale": 6.0, "softness": 0.4,
+                "effects": [{"generator": "gradient", "op": "multiply", "amount": 0.7, "softness": 0.2}]}, opacity=0.6, channels=NO_HEIGHT)
     t.decals_layer()
+    t.on_part("bollard_plate", "id_plate", "+z", margin=0.04)
+    t.at(DEC + "meridian_sticker.png", [0.0, 0.52, 0.107], [0, 0, 1], 0.07, wear=0.3)
+    t.at(STORY + "graffiti_unplug.png", [0.0, 0.4, -0.107], [0, 0, -1], 0.18, fade=0.3, wear_style="grunge", name="tag", variant="tags", enabled=False)
     t.top_grime(0.3)
-    t.colour_variants("paint", ["hazard_yellow", "pearl"], "graphite")
+    t.default_variant = "graphite"
     t.variant("yellow", 3, enable=["paint hazard_yellow"])
     t.variant("pearl", 5, enable=["paint pearl"])
+    t.variant("tagged", 7, enable=["tags"])
 
 
 @recipe
@@ -789,13 +802,26 @@ def r_vending_machine(t):
 
 @recipe
 def r_trash_bag_pile(t):
+    bags = t.g("bag", "bag_blue", "bag_white")
     t.base()
-    t.fill("Plastic crinkle", t.g("bag", "bag_blue"), values={"roughness": 0.55},
+    t.fill("Plastic crinkle", bags, values={"roughness": 0.55},
            gen={"generator": "grunge", "amount": 0.5, "scale": 12.0, "softness": 0.2}, opacity=0.8, channels=ROUGH_ONLY)
-    t.weather(wear=0.6, rust=0, wet=0.8)
-    t.fill("Rain on bags", t.g("bag", "bag_blue"), values={"roughness": 0.05},
+    t.fill("Stretch marks", bags, values=V([0.12, 0.12, 0.13], 0.4),
+           gen={"generator": "streaks", "amount": 0.35, "scale": 9.0, "softness": 0.3, "breakup": 0.7}, opacity=0.35, channels=NO_HEIGHT)
+    t.weather(wear=0.6, rust=0.3, wet=0.8)
+    t.fill("Leaking juice", bags, values=V([0.09, 0.07, 0.03], 0.15),
+           gen={"generator": "leaks", "amount": 0.35, "scale": 3.0, "breakup": 0.7, "drip_length": 0.5, "softness": 0.2}, opacity=0.6, channels=NO_HEIGHT)
+    t.fill("Rain on bags", bags, values={"roughness": 0.05},
            gen={"generator": "spots", "amount": 0.4, "scale": 18.0, "softness": 0.1}, opacity=0.8, channels=ROUGH_ONLY)
+    t.fill("Soggy cardboard", t.g("cardboard"), values=V([0.25, 0.17, 0.09], 0.6),
+           gen={"generator": "grunge", "amount": 0.55, "scale": 3.0, "softness": 0.35}, opacity=0.8, channels=NO_HEIGHT)
     t.decals_layer()
+    t.on_part("bin_burnable", "sticker_burnable", "+z", margin=0.03)
+    t.on_part("waste_tag", "waste_tag", "+z", margin=0.03)
+    t.at(STORY + "stencil_eye_crossed.png", [0.28, 0.42, 0.05], [0.3, 0.2, 0.93], 0.14, tint=[0.95, 0.95, 0.95], fade=0.4, name="tag", variant="tags",
+         enabled=False)
+    t.top_grime(0.3)
+    t.variant("tagged", 3, enable=["tags"])
 
 
 @recipe
