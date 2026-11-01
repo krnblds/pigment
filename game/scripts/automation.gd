@@ -435,6 +435,12 @@ static func _spots(w: Dictionary) -> Array:
 			spots.append({"name": "lookout", "eye": eye, "at": city, "fov": 40.0})
 			break
 	spots.append_array(_road_spots(w, dc))
+	# ground spots (tools/world/ground_masks.py): a forest floor, a beach, a scree / rock slope
+	var gp := "res://assets/world/ground_spots.json"
+	if FileAccess.file_exists(gp):
+		var gs = JSON.parse_string(FileAccess.get_file_as_string(gp))
+		for g in (gs if gs is Array else []):
+			spots.append({"name": g.name, "eye": _g(g.eye), "at": _g(g.at), "fov": float(g.get("fov", 55.0))})
 	return spots
 
 
