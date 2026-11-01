@@ -180,7 +180,7 @@ def asphalt_floor(size=80):
     nt.links.new(wet.outputs["Result"], dark.inputs["Factor"])
     nt.links.new(dark.outputs["Result"], b.inputs["Base Color"])
     rough = nt.nodes.new("ShaderNodeMapRange")
-    rough.inputs["To Min"].default_value = 0.38
+    rough.inputs["To Min"].default_value = 0.62
     rough.inputs["To Max"].default_value = 0.02
     nt.links.new(wet.outputs["Result"], rough.inputs["Value"])
     nt.links.new(rough.outputs["Result"], b.inputs["Roughness"])
@@ -262,14 +262,14 @@ def night_street():
         p.data.materials.append(m)
     bpy.ops.mesh.primitive_plane_add(size=1, location=(0, 9.2, 4.0), rotation=(math.radians(90), 0, 0))
     wall = bpy.context.object
-    wall.scale = (40, 9, 1)
+    wall.scale = (70, 12, 1)
     wm = bpy.data.materials.new("Wall")
     wm.use_nodes = True
     wm.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (0.02, 0.02, 0.025, 1)
     wall.data.materials.append(wm)
     RC.neon_tube("NeonLow", (-16, 8.6, 0.6), (16, 8.6, 0.6), (0.1, 0.85, 1.0), 25, 0.03)
     RC.neon_tube("NeonHigh", (-16, 8.6, 6.9), (16, 8.6, 6.9), (1.0, 0.1, 0.6), 20, 0.03)
-    RC.strip_light("Fill", (0, -14, 5), (10, 2), (math.radians(65), 0, 0), (0.6, 0.7, 1.0), 160)
+    RC.strip_light("Fill", (0, -22, 6), (10, 2), (math.radians(72), 0, 0), (0.6, 0.7, 1.0), 260)
     RC.strip_light("RimMagenta", (-14, 2, 3), (0.5, 10), (0, math.radians(-75), 0), (1.0, 0.12, 0.6), 600)
 
 
@@ -289,7 +289,7 @@ def lineup():
         infos[vid] = json.load(open(os.path.join(ROOT, "assets", "vehicles", vid, f"{vid}.json")))
     # a staggered row, every car turned 3/4 to the camera, small to big
     n = len(names)
-    sp = 3.75
+    sp = 3.55
     allobjs = []
     for k, vid in enumerate(names):
         x = (k - (n - 1) / 2) * sp
@@ -303,8 +303,8 @@ def lineup():
         allobjs += objs
     # soft key from the front-left and a cool fill, low: reflection lines along the bodies
     RC.strip_light("Key", (-9.0, -9.0, 3.2), (6.0, 1.2), (math.radians(68), 0, math.radians(-45)), (0.85, 0.9, 1.0), 900)
-    RC.strip_light("Key2", (9.0, -9.0, 2.6), (6.0, 1.0), (math.radians(70), 0, math.radians(45)), (1.0, 0.6, 0.35), 500)
-    cam = RC.camera("LineupCam", (0.0, -14.8, 1.3), (0.0, 0.6, 1.3), 26)
+    RC.strip_light("Key2", (9.0, -9.0, 2.6), (6.0, 1.0), (math.radians(70), 0, math.radians(45)), (1.0, 0.6, 0.35), 90)
+    cam = RC.camera("LineupCam", (0.0, -19.0, 1.25), (0.0, 0.6, 1.15), 30)
     RC.shoot(cam, os.path.join(OUT, "fleet_lineup_night.png"))
 
 

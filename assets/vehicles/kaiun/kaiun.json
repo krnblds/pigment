@@ -1,0 +1,248 @@
+{
+ "name": "Ishimaru Kaiun 2t box truck",
+ "id": "kaiun",
+ "class": "truck",
+ "units": "metres",
+ "coords": "glTF: +Y up, the car faces +Z, +X is the car's left side",
+ "origin": "ground level under the centre of the body",
+ "nodes": {
+  "body": "Body",
+  "wheels": [
+   "Wheel_FL",
+   "Wheel_FR",
+   "Wheel_RL",
+   "Wheel_RR"
+  ],
+  "calipers": [
+   "Caliper_FL",
+   "Caliper_FR",
+   "Caliper_RL",
+   "Caliper_RR"
+  ],
+  "collider": "Collider",
+  "lights": [
+   "Headlight_L",
+   "Headlight_R",
+   "Taillight_L",
+   "Taillight_R"
+  ]
+ },
+ "wheel_radius": 0.368,
+ "wheel_width": 0.195,
+ "track": 1.5,
+ "wheelbase": 3.05,
+ "wheel_positions": {
+  "Wheel_FL": [
+   0.75,
+   0.368,
+   2.1
+  ],
+  "Wheel_FR": [
+   -0.75,
+   0.368,
+   2.1
+  ],
+  "Wheel_RL": [
+   0.75,
+   0.368,
+   -0.95
+  ],
+  "Wheel_RR": [
+   -0.75,
+   0.368,
+   -0.95
+  ]
+ },
+ "lights": {
+  "Headlight_L": {
+   "position": [
+    0.66,
+    0.735,
+    2.8625
+   ],
+   "direction": [
+    0,
+    0,
+    1
+   ],
+   "color": [
+    1.0,
+    0.93,
+    0.8
+   ]
+  },
+  "Headlight_R": {
+   "position": [
+    -0.66,
+    0.735,
+    2.8625
+   ],
+   "direction": [
+    0,
+    0,
+    1
+   ],
+   "color": [
+    1.0,
+    0.93,
+    0.8
+   ]
+  },
+  "Taillight_L": {
+   "position": [
+    0.8,
+    0.59,
+    -2.83
+   ],
+   "direction": [
+    0,
+    0,
+    -1
+   ],
+   "color": [
+    1.0,
+    0.05,
+    0.03
+   ]
+  },
+  "Taillight_R": {
+   "position": [
+    -0.8,
+    0.59,
+    -2.83
+   ],
+   "direction": [
+    0,
+    0,
+    -1
+   ],
+   "color": [
+    1.0,
+    0.05,
+    0.03
+   ]
+  }
+ },
+ "mass_kg": 3900,
+ "center_of_mass": [
+  0.0,
+  0.95,
+  0.6
+ ],
+ "suspension_suggestion": {
+  "rest_length": 0.18,
+  "travel": 0.14,
+  "stiffness": 70.0,
+  "max_force": 30000.0,
+  "damping_compression": 1.4,
+  "damping_relaxation": 2.0,
+  "friction_slip": 2.2
+ },
+ "dimensions": {
+  "length": 5.6,
+  "width": 2.352,
+  "height": 2.92,
+  "width_box": 1.95,
+  "width_cab": 1.76,
+  "height_box": 2.95
+ },
+ "triangles": {
+  "lod0": 72972,
+  "lod0_body": 40200,
+  "lod0_wheel": 5278,
+  "lod0_caliper": 276,
+  "lod1": 12520,
+  "lod2": 1965,
+  "collider": 148,
+  "lod0_wheel_rear": 10556
+ },
+ "rear_dual_wheels": true,
+ "files": {
+  "lod0": "kaiun.glb",
+  "lod1": "kaiun_lod1.glb",
+  "lod2": "kaiun_lod2.glb",
+  "json": "kaiun.json"
+ },
+ "textures": {
+  "body": 2048,
+  "wheel": 1024,
+  "lod1_body": 1024,
+  "lod2_body": 256,
+  "format": "webp"
+ },
+ "materials": {
+  "Body": "one material per variant (kaiun_<variant>), switched through KHR_materials_variants; glass, lenses and hidden parts are see-through via base-colour alpha (alphaMode BLEND): in Godot use transparency = Alpha Depth Pre-Pass on it.",
+  "Wheel": "kaiun_wheel: tyre, rim, disc and caliper (shared by every variant)"
+ },
+ "variants": [
+  {
+   "name": "white",
+   "index": 0,
+   "label": "plain white box truck",
+   "kind": "civilian",
+   "weight": 1.0,
+   "material": "kaiun_white"
+  },
+  {
+   "name": "logistics",
+   "index": 1,
+   "label": "Hoshikawa Dynamics logistics",
+   "kind": "corporate",
+   "weight": 1.0,
+   "material": "kaiun_logistics"
+  },
+  {
+   "name": "dreamlink",
+   "index": 2,
+   "label": "DREAMLINK pod freight",
+   "kind": "corporate",
+   "weight": 0.8,
+   "material": "kaiun_dreamlink"
+  },
+  {
+   "name": "noctis",
+   "index": 3,
+   "label": "NOCTIS collection truck",
+   "kind": "corporate",
+   "weight": 0.6,
+   "material": "kaiun_noctis"
+  },
+  {
+   "name": "recycle",
+   "index": 4,
+   "label": "Shigen Recycle",
+   "kind": "corporate",
+   "weight": 0.7,
+   "material": "kaiun_recycle"
+  },
+  {
+   "name": "tsuru",
+   "index": 5,
+   "label": "Tsuru Express freight",
+   "kind": "corporate",
+   "weight": 0.8,
+   "material": "kaiun_tsuru"
+  },
+  {
+   "name": "rusty",
+   "index": 6,
+   "label": "beaten-up truck, rust and graffiti",
+   "kind": "beater",
+   "weight": 0.5,
+   "material": "kaiun_rusty"
+  }
+ ],
+ "default_variant": "white",
+ "traffic": {
+  "class": "truck",
+  "spawn_weight": 0.7,
+  "player": false
+ },
+ "notes": [
+  "Calipers are separate nodes (Caliper_XX, same origin as Wheel_XX): steer them with the wheel but don't spin them. LOD2 has no calipers.",
+  "Collider is a convex hull (extras: collider=convex, hidden=true): use it as a ConvexPolygonShape3D and hide the mesh.",
+  "Headlight_* / Taillight_* empties: put a SpotLight3D / OmniLight3D there; their local -Z is the beam direction.",
+  "Variants: glTF KHR_materials_variants on Body (all LODs). Godot does not apply the extension by itself: tools/vehicles/godot/vehicle_variants.gd reads it at import and offers set_variant(root, name).",
+  "Metallic flake is not in glTF; the clearcoat is (KHR_materials_clearcoat)."
+ ]
+}

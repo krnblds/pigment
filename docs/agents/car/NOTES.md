@@ -27,6 +27,8 @@ Other proof images:
 
 ## Pipeline (all deterministic, all scripted)
 
+> **Since the fleet workstream:** the builder is the parametric vehicle kit in `tools/vehicles/`, and this car is `tools/vehicles/specs/tsubame.py`. It rebuilds identically: `tsubame_parts.json` equals the old `car_parts.json`. The `tools/car/*` commands below still work as wrappers. Intermediates are now in `assets/vehicles/tsubame/src/` and `scenes/vehicles/tsubame/`, and `assets/car/` is still exported (security livery). See `docs/agents/fleet/NOTES.md` for the variants (civilian, executive, Hinode Taxi, beater) and LOD2 in `assets/vehicles/tsubame/`.
+
 | step | command | output |
 |---|---|---|
 | model | `blender -b --factory-startup --python tools/car/build_car.py [-- --preview DIR]` | `assets/car/src/car_body.glb`, `car_wheel.glb`, `car_parts.json`, `car_info.json`, `car_model.blend` |

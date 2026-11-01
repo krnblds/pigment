@@ -82,6 +82,7 @@ def triangulate(objs):
         m.keep_custom_normals = True
         dg = bpy.context.evaluated_depsgraph_get()
         me = bpy.data.meshes.new_from_object(o.evaluated_get(dg), preserve_all_data_layers=True, depsgraph=dg)
+        me.validate(clean_customdata=False)
         old = o.data
         o.modifiers.clear()
         o.data = me
@@ -248,6 +249,7 @@ def export_vehicle(vid, fmt, legacy=True):
     mw = BP.apply_pigment_material(wheels[0], os.path.join(tex, f"{vid}_wheel"), f"{vid}_wheel", flake=False)
     mw.name = f"{vid}_wheel"
     finish_material(mw)
+    legacy_mats = (mats[0].copy(), mw.copy()) if vid == "tsubame" and legacy else None   # keeps transmission (PNG)
     if fmt == "WEBP":
         for m in mats + [mw]:
             drop_transmission(m)
@@ -260,7 +262,7 @@ def export_vehicle(vid, fmt, legacy=True):
                 del o[k]
     tmp = tempfile.mkdtemp(prefix=f"{vid}_glb_")
     imgs = Images(tmp)
-    for m in mats + [mw]:
+    for m in mats + [mw] + list(legacy_mats or ()):
         imgs.remember(m)
     lamps = [sc.objects[n] for n in ("Headlight_L", "Headlight_R", "Taillight_L", "Taillight_R")]
     col = sc.objects["Collider"]
@@ -316,7 +318,7 @@ def export_vehicle(vid, fmt, legacy=True):
         json.dump(info, f, indent=1)
 
     if vid == "tsubame" and legacy:
-        export_legacy(sc, body, wheels, calipers, col, lamps, mats[0], mw, imgs)
+        export_legacy(sc, body, wheels, calipers, col, lamps, legacy_mats[0], legacy_mats[1], imgs)
     shutil.rmtree(tmp, ignore_errors=True)
     return info
 
@@ -330,6 +332,7 @@ def export_legacy(sc, body, wheels, calipers, col, lamps, mat_security, mw, imgs
     imgs.point([mat_security], 2048)
     imgs.point([mw], 1024)
     use_material([body], mat_security)
+    use_material(wheels, mw)
     export(os.path.join(out, "car.glb"), [body] + wheels + [col] + lamps, "AUTO")
     lod, undo = lod_swap(sc, "LOD1")
     lb = lod["Body"]
@@ -344,6 +347,7 @@ def export_legacy(sc, body, wheels, calipers, col, lamps, mat_security, mw, imgs
     keep = ["name", "units", "coords", "origin", "nodes", "wheel_radius", "wheel_width", "track", "wheelbase", "wheel_positions",
             "lights", "mass_kg", "center_of_mass", "suspension_suggestion", "dimensions", "triangles"]
     info = {k: info[k] for k in keep}
+    info["dimensions"] = {k: v for k, v in info["dimensions"].items() if k not in ("width", "height")}
     info["triangles"].pop("lod2", None)
     info["livery"] = "security"
     info["files"] = {"lod0": "car.glb", "lod1": "car_lod1.glb"}

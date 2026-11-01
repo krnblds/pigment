@@ -1,0 +1,251 @@
+{
+ "name": "Kanzaki Mame K3 kei hatchback",
+ "id": "mame",
+ "class": "kei",
+ "units": "metres",
+ "coords": "glTF: +Y up, the car faces +Z, +X is the car's left side",
+ "origin": "ground level under the centre of the body",
+ "nodes": {
+  "body": "Body",
+  "wheels": [
+   "Wheel_FL",
+   "Wheel_FR",
+   "Wheel_RL",
+   "Wheel_RR"
+  ],
+  "calipers": [
+   "Caliper_FL",
+   "Caliper_FR",
+   "Caliper_RL",
+   "Caliper_RR"
+  ],
+  "collider": "Collider",
+  "lights": [
+   "Headlight_L",
+   "Headlight_R",
+   "Taillight_L",
+   "Taillight_R"
+  ]
+ },
+ "wheel_radius": 0.272,
+ "wheel_width": 0.15,
+ "track": 1.29,
+ "wheelbase": 2.33,
+ "wheel_positions": {
+  "Wheel_FL": [
+   0.645,
+   0.272,
+   1.135
+  ],
+  "Wheel_FR": [
+   -0.645,
+   0.272,
+   1.135
+  ],
+  "Wheel_RL": [
+   0.645,
+   0.272,
+   -1.195
+  ],
+  "Wheel_RR": [
+   -0.645,
+   0.272,
+   -1.195
+  ]
+ },
+ "lights": {
+  "Headlight_L": {
+   "position": [
+    0.52,
+    0.645,
+    1.6536
+   ],
+   "direction": [
+    0,
+    0,
+    1
+   ],
+   "color": [
+    1.0,
+    0.93,
+    0.8
+   ]
+  },
+  "Headlight_R": {
+   "position": [
+    -0.52,
+    0.645,
+    1.6536
+   ],
+   "direction": [
+    0,
+    0,
+    1
+   ],
+   "color": [
+    1.0,
+    0.93,
+    0.8
+   ]
+  },
+  "Taillight_L": {
+   "position": [
+    0.66,
+    0.84,
+    -1.6575
+   ],
+   "direction": [
+    0,
+    0,
+    -1
+   ],
+   "color": [
+    1.0,
+    0.05,
+    0.03
+   ]
+  },
+  "Taillight_R": {
+   "position": [
+    -0.66,
+    0.84,
+    -1.6575
+   ],
+   "direction": [
+    0,
+    0,
+    -1
+   ],
+   "color": [
+    1.0,
+    0.05,
+    0.03
+   ]
+  }
+ },
+ "mass_kg": 720,
+ "center_of_mass": [
+  0.0,
+  0.5,
+  0.08
+ ],
+ "suspension_suggestion": {
+  "rest_length": 0.13,
+  "travel": 0.13,
+  "stiffness": 26.0,
+  "max_force": 5200.0,
+  "damping_compression": 0.8,
+  "damping_relaxation": 1.2,
+  "friction_slip": 2.4
+ },
+ "dimensions": {
+  "length": 3.433,
+  "width": 1.805,
+  "height": 1.465
+ },
+ "triangles": {
+  "lod0": 62713,
+  "lod0_body": 46513,
+  "lod0_wheel": 3774,
+  "lod0_caliper": 276,
+  "lod1": 10100,
+  "lod2": 1239,
+  "collider": 468
+ },
+ "files": {
+  "lod0": "mame.glb",
+  "lod1": "mame_lod1.glb",
+  "lod2": "mame_lod2.glb",
+  "json": "mame.json"
+ },
+ "textures": {
+  "body": 2048,
+  "wheel": 1024,
+  "lod1_body": 1024,
+  "lod2_body": 256,
+  "format": "webp"
+ },
+ "materials": {
+  "Body": "one material per variant (mame_<variant>), switched through KHR_materials_variants; glass, lenses and hidden parts are see-through via base-colour alpha (alphaMode BLEND): in Godot use transparency = Alpha Depth Pre-Pass on it.",
+  "Wheel": "mame_wheel: tyre, rim, disc and caliper (shared by every variant)"
+ },
+ "variants": [
+  {
+   "name": "cream",
+   "index": 0,
+   "label": "civilian, cream",
+   "kind": "civilian",
+   "weight": 1.2,
+   "material": "mame_cream"
+  },
+  {
+   "name": "mint",
+   "index": 1,
+   "label": "civilian, mint",
+   "kind": "civilian",
+   "weight": 1.0,
+   "material": "mame_mint"
+  },
+  {
+   "name": "cherry",
+   "index": 2,
+   "label": "civilian, cherry red",
+   "kind": "civilian",
+   "weight": 1.0,
+   "material": "mame_cherry"
+  },
+  {
+   "name": "sky",
+   "index": 3,
+   "label": "civilian, sky blue",
+   "kind": "civilian",
+   "weight": 0.9,
+   "material": "mame_sky"
+  },
+  {
+   "name": "silver",
+   "index": 4,
+   "label": "civilian, silver",
+   "kind": "civilian",
+   "weight": 1.0,
+   "material": "mame_silver"
+  },
+  {
+   "name": "tsuru",
+   "index": 5,
+   "label": "Tsuru Express courier",
+   "kind": "corporate",
+   "weight": 0.8,
+   "material": "mame_tsuru"
+  },
+  {
+   "name": "inspector",
+   "index": 6,
+   "label": "MERIDIAN score inspector",
+   "kind": "corporate",
+   "weight": 0.5,
+   "material": "mame_inspector"
+  },
+  {
+   "name": "rusty",
+   "index": 7,
+   "label": "beaten-up kei, rust and UNPLUG tag",
+   "kind": "beater",
+   "weight": 0.7,
+   "material": "mame_rusty"
+  }
+ ],
+ "default_variant": "cream",
+ "traffic": {
+  "class": "kei",
+  "spawn_weight": 2.2,
+  "player": false
+ },
+ "notes": [
+  "Calipers are separate nodes (Caliper_XX, same origin as Wheel_XX): steer them with the wheel but don't spin them. LOD2 has no calipers.",
+  "Collider is a convex hull (extras: collider=convex, hidden=true): use it as a ConvexPolygonShape3D and hide the mesh.",
+  "Headlight_* / Taillight_* empties: put a SpotLight3D / OmniLight3D there; their local -Z is the beam direction.",
+  "Variants: glTF KHR_materials_variants on Body (all LODs). Godot does not apply the extension by itself: tools/vehicles/godot/vehicle_variants.gd reads it at import and offers set_variant(root, name).",
+  "Metallic flake is not in glTF; the clearcoat is (KHR_materials_clearcoat)."
+ ]
+}

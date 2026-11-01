@@ -1,0 +1,251 @@
+{
+ "name": "Kanzaki Hayate RS sports coupe",
+ "id": "hayate",
+ "class": "sports",
+ "units": "metres",
+ "coords": "glTF: +Y up, the car faces +Z, +X is the car's left side",
+ "origin": "ground level under the centre of the body",
+ "nodes": {
+  "body": "Body",
+  "wheels": [
+   "Wheel_FL",
+   "Wheel_FR",
+   "Wheel_RL",
+   "Wheel_RR"
+  ],
+  "calipers": [
+   "Caliper_FL",
+   "Caliper_FR",
+   "Caliper_RL",
+   "Caliper_RR"
+  ],
+  "collider": "Collider",
+  "lights": [
+   "Headlight_L",
+   "Headlight_R",
+   "Taillight_L",
+   "Taillight_R"
+  ]
+ },
+ "wheel_radius": 0.322,
+ "wheel_width": 0.235,
+ "track": 1.555,
+ "wheelbase": 2.5,
+ "wheel_positions": {
+  "Wheel_FL": [
+   0.7775,
+   0.322,
+   1.3
+  ],
+  "Wheel_FR": [
+   -0.7775,
+   0.322,
+   1.3
+  ],
+  "Wheel_RL": [
+   0.7775,
+   0.322,
+   -1.2
+  ],
+  "Wheel_RR": [
+   -0.7775,
+   0.322,
+   -1.2
+  ]
+ },
+ "lights": {
+  "Headlight_L": {
+   "position": [
+    0.66,
+    0.51,
+    2.0885
+   ],
+   "direction": [
+    0,
+    0,
+    1
+   ],
+   "color": [
+    1.0,
+    0.93,
+    0.8
+   ]
+  },
+  "Headlight_R": {
+   "position": [
+    -0.66,
+    0.51,
+    2.0885
+   ],
+   "direction": [
+    0,
+    0,
+    1
+   ],
+   "color": [
+    1.0,
+    0.93,
+    0.8
+   ]
+  },
+  "Taillight_L": {
+   "position": [
+    0.61,
+    0.645,
+    -2.2392
+   ],
+   "direction": [
+    0,
+    0,
+    -1
+   ],
+   "color": [
+    1.0,
+    0.05,
+    0.03
+   ]
+  },
+  "Taillight_R": {
+   "position": [
+    -0.61,
+    0.645,
+    -2.2392
+   ],
+   "direction": [
+    0,
+    0,
+    -1
+   ],
+   "color": [
+    1.0,
+    0.05,
+    0.03
+   ]
+  }
+ },
+ "mass_kg": 1340,
+ "center_of_mass": [
+  0.0,
+  0.42,
+  -0.0
+ ],
+ "suspension_suggestion": {
+  "rest_length": 0.12,
+  "travel": 0.1,
+  "stiffness": 48.0,
+  "max_force": 10000.0,
+  "damping_compression": 1.1,
+  "damping_relaxation": 1.7,
+  "friction_slip": 3.2
+ },
+ "dimensions": {
+  "length": 4.422,
+  "width": 2.119,
+  "height": 1.19
+ },
+ "triangles": {
+  "lod0": 71290,
+  "lod0_body": 48034,
+  "lod0_wheel": 5538,
+  "lod0_caliper": 276,
+  "lod1": 10916,
+  "lod2": 2295,
+  "collider": 354
+ },
+ "files": {
+  "lod0": "hayate.glb",
+  "lod1": "hayate_lod1.glb",
+  "lod2": "hayate_lod2.glb",
+  "json": "hayate.json"
+ },
+ "textures": {
+  "body": 2048,
+  "wheel": 1024,
+  "lod1_body": 1024,
+  "lod2_body": 256,
+  "format": "webp"
+ },
+ "materials": {
+  "Body": "one material per variant (hayate_<variant>), switched through KHR_materials_variants; glass, lenses and hidden parts are see-through via base-colour alpha (alphaMode BLEND): in Godot use transparency = Alpha Depth Pre-Pass on it.",
+  "Wheel": "hayate_wheel: tyre, rim, disc and caliper (shared by every variant)"
+ },
+ "variants": [
+  {
+   "name": "purple",
+   "index": 0,
+   "label": "midnight purple candy",
+   "kind": "civilian",
+   "weight": 1.0,
+   "material": "hayate_purple"
+  },
+  {
+   "name": "red",
+   "index": 1,
+   "label": "racing red",
+   "kind": "civilian",
+   "weight": 1.0,
+   "material": "hayate_red"
+  },
+  {
+   "name": "pearl_stripes",
+   "index": 2,
+   "label": "pearl white, twin stripes",
+   "kind": "civilian",
+   "weight": 0.8,
+   "material": "hayate_pearl_stripes"
+  },
+  {
+   "name": "lime",
+   "index": 3,
+   "label": "lime yellow",
+   "kind": "civilian",
+   "weight": 0.6,
+   "material": "hayate_lime"
+  },
+  {
+   "name": "gunmetal",
+   "index": 4,
+   "label": "gunmetal",
+   "kind": "civilian",
+   "weight": 0.8,
+   "material": "hayate_gunmetal"
+  },
+  {
+   "name": "racing",
+   "index": 5,
+   "label": "Kanzaki Racing #27",
+   "kind": "street",
+   "weight": 0.4,
+   "material": "hayate_racing"
+  },
+  {
+   "name": "pursuit",
+   "index": 6,
+   "label": "Hoshikawa Security pursuit",
+   "kind": "police",
+   "weight": 0.4,
+   "material": "hayate_pursuit"
+  },
+  {
+   "name": "rusty",
+   "index": 7,
+   "label": "street beater, primer and tags",
+   "kind": "beater",
+   "weight": 0.4,
+   "material": "hayate_rusty"
+  }
+ ],
+ "default_variant": "purple",
+ "traffic": {
+  "class": "sports",
+  "spawn_weight": 0.7,
+  "player": true
+ },
+ "notes": [
+  "Calipers are separate nodes (Caliper_XX, same origin as Wheel_XX): steer them with the wheel but don't spin them. LOD2 has no calipers.",
+  "Collider is a convex hull (extras: collider=convex, hidden=true): use it as a ConvexPolygonShape3D and hide the mesh.",
+  "Headlight_* / Taillight_* empties: put a SpotLight3D / OmniLight3D there; their local -Z is the beam direction.",
+  "Variants: glTF KHR_materials_variants on Body (all LODs). Godot does not apply the extension by itself: tools/vehicles/godot/vehicle_variants.gd reads it at import and offers set_variant(root, name).",
+  "Metallic flake is not in glTF; the clearcoat is (KHR_materials_clearcoat)."
+ ]
+}
