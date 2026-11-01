@@ -16,6 +16,9 @@ pub struct Environment {
     pub sh: [Vec3; 9],
     pub sampler: wgpu::Sampler,
     pub name: String,
+    /// What it was built from: a preset id (`studio`, `night`, ...) or an
+    /// image path. Lets callers skip rebuilding an unchanged environment.
+    pub source: String,
 }
 
 fn to_f16(v: f32) -> u16 {
@@ -27,12 +30,23 @@ impl Environment {
         Self::from_image(device, queue, &EnvImage::studio(ENV_WIDTH), "Studio")
     }
 
+    /// A built-in lighting preset by name (see `envmath::PRESETS`).
+    pub fn preset(device: &wgpu::Device, queue: &wgpu::Queue, name: &str) -> Option<Self> {
+        let id = envmath::preset_id(name)?;
+        let label = envmath::PRESETS.iter().find(|(i, _)| *i == id).map(|(_, l)| *l).unwrap_or(id);
+        let mut env = Self::from_image(device, queue, &EnvImage::preset(id, ENV_WIDTH)?, label);
+        env.source = id.to_string();
+        Some(env)
+    }
+
     pub fn load(device: &wgpu::Device, queue: &wgpu::Queue, path: &Path) -> anyhow::Result<Self> {
         let img = image::open(path)?.to_rgb32f();
         let img = image::imageops::resize(&img, ENV_WIDTH, ENV_WIDTH / 2, image::imageops::FilterType::Triangle);
         let env = EnvImage::from_rgb32f(img.width(), img.height(), img.as_raw());
         let name = path.file_stem().map(|s| s.to_string_lossy().to_string()).unwrap_or_default();
-        Ok(Self::from_image(device, queue, &env, &name))
+        let mut env = Self::from_image(device, queue, &env, &name);
+        env.source = path.to_string_lossy().to_string();
+        Ok(env)
     }
 
     pub fn from_image(device: &wgpu::Device, queue: &wgpu::Queue, env: &EnvImage, name: &str) -> Self {
@@ -92,7 +106,8 @@ impl Environment {
         let lut_data: Vec<u16> = lut.iter().flat_map(|[a, b]| [to_f16(*a), to_f16(*b), 0, 0]).collect();
         gpu::upload(queue, &brdf_lut, bytemuck::cast_slice(&lut_data));
 
-        Self { prefiltered, brdf_lut, sh: env.irradiance_sh9(), sampler, name: name.to_string() }
+        let source = envmath::preset_id(name).unwrap_or_default().to_string();
+        Self { prefiltered, brdf_lut, sh: env.irradiance_sh9(), sampler, name: name.to_string(), source }
     }
 }
 
