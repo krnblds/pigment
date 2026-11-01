@@ -736,7 +736,7 @@ impl PigmentApp {
             return;
         }
         self.ts.new_mask(&rs.device, &rs.queue, res, false);
-        self.doc.layers[i].mask = Some(Mask { res, generator: None, invert: false, enabled: true, parts: Vec::new(), effects: Vec::new() });
+        self.doc.layers[i].mask = Some(Mask { res, generator: None, invert: false, enabled: true, parts: Vec::new(), effects: Vec::new(), filters: Vec::new() });
         self.paint_mask = true;
         self.brush.mask_white = true;
         self.brush.erase = false;
@@ -1082,7 +1082,7 @@ mod tests {
         let i = app.doc.layers.len() - 1;
         let mres = app.doc.mint();
         app.ts.new_mask(&rs.device, &rs.queue, mres, true);
-        app.doc.layers[i].mask = Some(Mask { res: mres, generator: Some(Generator::new(GeneratorKind::Dirt)), invert: false, enabled: true, parts: Vec::new(), effects: Vec::new() });
+        app.doc.layers[i].mask = Some(Mask { res: mres, generator: Some(Generator::new(GeneratorKind::Dirt)), invert: false, enabled: true, parts: Vec::new(), effects: Vec::new(), filters: Vec::new() });
         app.selected = Some(app.doc.layers[i].id);
         app.paint_mask = true;
         app.brush.mask_white = false;

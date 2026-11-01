@@ -307,7 +307,7 @@ mod tests {
         let dir = tmp("mask");
         let mut doc = Document::new_default();
         let res = doc.mint();
-        doc.layers[1].mask = Some(Mask { res, generator: None, invert: false, enabled: true, parts: Vec::new(), effects: Vec::new() });
+        doc.layers[1].mask = Some(Mask { res, generator: None, invert: false, enabled: true, parts: Vec::new(), effects: Vec::new(), filters: Vec::new() });
         let px: Vec<u8> = (0..16).map(|i| i * 16).collect();
         write_mask(&dir, res, 4, &px).unwrap();
         write_mask(&dir, 999, 4, &px).unwrap();

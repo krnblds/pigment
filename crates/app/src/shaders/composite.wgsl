@@ -76,6 +76,7 @@ struct LayerParams {
     gc3: vec4<f32>,           // ... of mask effect c
     ground: vec4<f32>,        // height blend mode (0 off, 1 above, 2 below), contrast, offset; |w| = height gain, w > 0: height follows the generator profile
     jit: vec4<f32>,           // per-instance jitter: value, hue, saturation, roughness
+    ext: vec4<f32>,           // x = 1: l_mask is the precomputed (filtered) mask; y = anchor input (0 bake, 1 height, 2 mask, 3 colour); z = relief radius (texels); w = relief strength
 };
 @group(2) @binding(7) var<uniform> lp: LayerParams;
 // Image fills bind their tiling images in the channel slots above
@@ -85,6 +86,9 @@ struct LayerParams {
 // Selected-parts bitsets of every visible layer, packed back to back
 // (layer: words misc.y .. misc.y + misc.z; bit k = part id k).
 @group(2) @binding(11) var<storage, read> part_bits: array<u32>;
+// The anchor a generator reads (Generator::input; filters.rs): r = height,
+// g = the anchor layer's mask x coverage, b = colour luminance.
+@group(2) @binding(15) var anchor_tex: texture_2d<f32>;
 
 struct Acc {
     @location(0) color: vec4<f32>,
@@ -185,10 +189,45 @@ fn ridged(p: vec3<f32>) -> f32 {
     return 1.0 - abs(fbm(p) * 2.0 - 1.0);
 }
 
+// ---------- anchors (filters.rs) ----------
+// One channel of the anchor at texel t, read through the padding map so
+// lookups that leave a UV island stay on it.
+fn anchor_at(t: vec2<i32>) -> f32 {
+    let size = i32(sh.res.x);
+    let a = textureLoad(anchor_tex, src_texel(clamp(t, vec2<i32>(0), vec2<i32>(size - 1))), 0);
+    let mode = u32(lp.ext.y + 0.5);
+    if (mode == 1u) { return a.r; }
+    if (mode == 2u) { return a.g; }
+    return a.b;
+}
+
+// The anchor value minus its local average (two rings): > 0 on raised rims
+// and inside painted shapes' edges, < 0 in dents and just outside shapes.
+fn anchor_relief(t: vec2<i32>) -> f32 {
+    let r = max(lp.ext.z, 1.0);
+    var sum = 0.0;
+    for (var k = 0; k < 8; k++) {
+        let a = f32(k) * 0.7853982;
+        let d = vec2<f32>(cos(a), sin(a));
+        sum += anchor_at(t + vec2<i32>(round(d * r))) + anchor_at(t + vec2<i32>(round(d * r * 0.5)));
+    }
+    return anchor_at(t) - sum / 16.0;
+}
+
+// The mesh bakes a generator sees: with an anchor input, the anchor's relief
+// is added to the curvature (raised = convex edge, dent = cavity).
+fn bake_in(t: vec2<i32>) -> vec4<f32> {
+    var b = textureLoad(bakes, t, 0);
+    if (lp.ext.y > 0.5) {
+        b.g = clamp(b.g + anchor_relief(t) * lp.ext.w, 0.0, 1.0);
+    }
+    return b;
+}
+
 fn gen_eval(t: vec2<i32>, kind: u32, gp: vec4<f32>, gp2: vec4<f32>, gp3: vec4<f32>) -> f32 {
-    if (kind >= 15u) { return gen_ground(t, kind, gp, gp2, gp3); }  // gen_ground.wgsl
-    if (kind >= 10u) { return gen_weather(t, kind, gp, gp2); }  // gen_weather.wgsl
-    let bk = textureLoad(bakes, t, 0);
+    if (kind >= 15u && kind < 20u) { return gen_ground(t, kind, gp, gp2, gp3); }  // gen_ground.wgsl
+    if (kind >= 10u && kind < 15u) { return gen_weather(t, kind, gp, gp2); }  // gen_weather.wgsl
+    let bk = bake_in(t);
     let ao = bk.r;
     let curv = bk.g;
     let pw = textureLoad(position, t, 0).xyz;                 // world, metres
@@ -261,6 +300,13 @@ fn gen_eval(t: vec2<i32>, kind: u32, gp: vec4<f32>, gp2: vec4<f32>, gp3: vec4<f3
             // ground gradient: 1 at the bottom of the model, 0 at the top
             let yr = (pw.y - sh.bmin.y) / max(sh.bmax.y - sh.bmin.y, 1e-4);
             v = 1.0 - yr;
+        }
+        case 20u: {
+            // anchor: an anchor channel as the mask (height mapped -1..1 -> 0..1)
+            if (lp.ext.y > 0.5) {
+                v = anchor_at(t);
+                if (lp.ext.y < 1.5) { v = v * 0.5 + 0.5; }
+            }
         }
         default: {}
     }
@@ -427,6 +473,23 @@ fn image_fill(t: vec2<i32>) -> ImgTap {
     return o;
 }
 
+// The layer's mask at t: painted pixels x generator x selected parts,
+// inverted if asked; or the precomputed (filtered) mask when ext.x is set.
+fn eval_mask(t: vec2<i32>) -> f32 {
+    var mask = 1.0;
+    if (lp.flags.y == 1u) {
+        mask = textureLoad(l_mask, t, 0).r;
+        if (lp.ext.x > 0.5) { return mask; }
+        if (lp.flags.z != 0u) { mask *= generator(t); }
+        if (lp.misc.x == 1u) {
+            // selection is looked up at the padded source texel so seams stay clean
+            mask *= part_selected(src_texel(t));
+        }
+        if (lp.flags.w == 1u) { mask = 1.0 - mask; }
+    }
+    return mask;
+}
+
 @fragment
 fn fs_layer(f: FullOut) -> Acc {
     let t = vec2<i32>(f.pos.xy);
@@ -471,15 +534,11 @@ fn fs_layer(f: FullOut) -> Acc {
         if ((lp.img.x & 8u) != 0u) { n = vec4<f32>(im.n, 1.0); }
     }
 
-    var mask = 1.0;
-    if (lp.flags.y == 1u) {
-        mask = textureLoad(l_mask, t, 0).r;
-        if (lp.flags.z != 0u) { mask *= generator(t); }
-        if (lp.misc.x == 1u) {
-            // selection is looked up at the padded source texel so seams stay clean
-            mask *= part_selected(src_texel(t));
-        }
-        if (lp.flags.w == 1u) { mask = 1.0 - mask; }
+    var mask = eval_mask(t);
+    // a precomputed mask skipped the generator: run it for its side channels
+    // (shape profile, instance id) when the ground options need them
+    if (lp.ext.x > 0.5 && lp.flags.x == 1u && lp.flags.z != 0u && lp.flags.y == 1u && (lp.ground.w > 0.0 || any(lp.jit != vec4<f32>(0.0)))) {
+        _ = generator(t);
     }
 
     // ground options (gen_ground.wgsl): the fill's height follows the

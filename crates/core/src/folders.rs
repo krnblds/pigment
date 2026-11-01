@@ -83,6 +83,8 @@ impl Document {
             jitter: None,
             height_profile: false,
             height_gain: 1.0,
+            filters: Vec::new(),
+            anchor: None,
         }
     }
 

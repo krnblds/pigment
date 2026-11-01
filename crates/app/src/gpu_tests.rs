@@ -340,7 +340,7 @@ fn edge_wear_generator_masks_a_fill_layer() {
     s.ts.new_mask(d, q, mres, true);
     let mut g = Generator::new(GeneratorKind::EdgeWear);
     g.noise_amount = 0.0;
-    wear.mask = Some(Mask { res: mres, generator: Some(g), invert: false, enabled: true, parts: Vec::new(), effects: Vec::new() });
+    wear.mask = Some(Mask { res: mres, generator: Some(g), invert: false, enabled: true, parts: Vec::new(), effects: Vec::new(), filters: Vec::new() });
     doc.layers.push(wear);
     s.ts.ensure_resources(d, q, &doc);
     s.ts.composite(d, q, &doc, None);
@@ -408,7 +408,7 @@ fn perf_targets() {
         let mut l = if i % 2 == 0 { doc.new_paint_layer(&format!("p{i}")) } else { doc.new_fill_layer(&format!("f{i}")) };
         if i % 4 == 1 {
             let m = doc.mint();
-            l.mask = Some(Mask { res: m, generator: Some(Generator::new(GeneratorKind::EdgeWear)), invert: false, enabled: true, parts: Vec::new(), effects: Vec::new() });
+            l.mask = Some(Mask { res: m, generator: Some(Generator::new(GeneratorKind::EdgeWear)), invert: false, enabled: true, parts: Vec::new(), effects: Vec::new(), filters: Vec::new() });
         }
         doc.layers.push(l);
     }
@@ -646,3 +646,6 @@ fn folders_composite_as_sub_stacks() {
 
 #[path = "gpu_tests_weather.rs"]
 mod weather;
+
+#[path = "gpu_tests_filters.rs"]
+mod filters;

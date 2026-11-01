@@ -11,6 +11,7 @@ pub mod decal;
 pub mod document;
 pub mod envmath;
 pub mod export;
+pub mod filters;
 pub mod folders;
 pub mod foliage;
 pub mod foliage_set;

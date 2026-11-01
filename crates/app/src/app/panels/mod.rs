@@ -9,6 +9,7 @@ use super::*;
 use std::collections::BTreeMap;
 
 pub mod decals;
+pub mod filters;
 pub mod foliage;
 pub mod layers;
 pub mod library;
