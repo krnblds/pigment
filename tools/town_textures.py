@@ -227,8 +227,8 @@ def street(asset):
          {"tool": "bake", "args": {"curvature_radius": 0.004, "ao_distance": 0.1}},
          fill("Cracks", "Grime", road, {"generator": "scratches", "amount": 0.1, "scale": 1.2}, opacity=0.8),
          # rain water fills the low spots of the asphalt and the gutters along the curb
-         fill("Wet rim", None, road, {"generator": "puddles", "amount": 0.62, "scale": 0.35, "breakup": 0.5, "curvature_weight": 1.5, "softness": 0.12}, values={"base_color": [0.1, 0.1, 0.105], "roughness": 0.12}, opacity=0.6, channels={"height": False, "metallic": False}),
-         fill("Puddles", None, road, {"generator": "puddles", "amount": 0.45, "scale": 0.35, "breakup": 0.5, "curvature_weight": 1.5, "softness": 0.04}, values={"base_color": [0.07, 0.07, 0.075], "roughness": 0.015, "height": -0.05}),
+         fill("Wet rim", None, road, {"generator": "puddles", "amount": 0.5, "scale": 0.35, "breakup": 0.5, "curvature_weight": 1.5, "softness": 0.12}, values={"base_color": [0.1, 0.1, 0.105], "roughness": 0.12}, opacity=0.6, channels={"height": False, "metallic": False}),
+         fill("Puddles", None, road, {"generator": "puddles", "amount": 0.33, "scale": 0.35, "breakup": 0.5, "curvature_weight": 1.5, "softness": 0.04}, values={"base_color": [0.07, 0.07, 0.075], "roughness": 0.015, "height": -0.05}),
          fill("Curbs", "Concrete", curb),
          fill("Paving", "Concrete", walk),
          fill("Paving joints", "Panel seam", walk, {"generator": "panel_lines", "amount": 0.02, "scale": 1.5}),

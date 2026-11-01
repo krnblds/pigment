@@ -58,6 +58,7 @@ BUILDING_VIEWS = {
 }
 STREET_VIEWS = {
     "road": {"yaw": 25, "pitch": 35, "zoom": 1.5, "width": 800, "height": 640, "exposure": -0.3},
+    "road_rough": {"yaw": 25, "pitch": 35, "zoom": 1.5, "width": 800, "height": 640, "view": "roughness"},
 }
 
 
@@ -84,8 +85,8 @@ def street_after(lines):
         if l["tool"] == "add_layer" and l["args"].get("name") == "Puddles":
             road = l["args"]["mask"]["parts"]
             gen = {"generator": "puddles", "scale": 0.35, "breakup": 0.5, "curvature_weight": 1.5}
-            out.append(layer("Wet rim", road, dict(gen, amount=0.62, softness=0.12), {"base_color": [0.1, 0.1, 0.105], "roughness": 0.12}, 0.6))
-            out.append({"tool": "add_layer", "args": {"name": "Puddles", "mask": dict(gen, parts=road, amount=0.45, softness=0.04),
+            out.append(layer("Wet rim", road, dict(gen, amount=0.5, softness=0.12), {"base_color": [0.1, 0.1, 0.105], "roughness": 0.12}, 0.6))
+            out.append({"tool": "add_layer", "args": {"name": "Puddles", "mask": dict(gen, parts=road, amount=0.33, softness=0.04),
                                                       "values": {"base_color": [0.07, 0.07, 0.075], "roughness": 0.015, "height": -0.05}}})
         else:
             out.append(l)
