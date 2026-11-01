@@ -243,6 +243,11 @@ impl Session {
 
     /// Apply the optional layer fields of `a` to layer `i`.
     fn configure(&mut self, i: usize, a: &Value) -> Res<()> {
+        // mask.parts_where: a part shape query, resolved to ids now
+        let where_ids: Option<Vec<u32>> = match a.get("mask").and_then(|m| m.get("parts_where")) {
+            Some(w) => Some(self.query_ids(w, "mask.parts_where.")?),
+            None => None,
+        };
         let rs = &self.rs;
         let app = &mut self.app;
         if let Some(n) = s(a, "name") {
@@ -361,6 +366,18 @@ impl Session {
                     ids.sort_unstable();
                     ids.dedup();
                     mask.parts = ids;
+                }
+                if let Some(w) = where_ids {
+                    // with `parts` too: the union; alone: replaces the selection
+                    if m.get("parts").is_none() {
+                        mask.parts.clear();
+                    }
+                    mask.parts.extend(w.into_iter().filter(|&id| id < MAX_SELECTABLE_PARTS));
+                    mask.parts.sort_unstable();
+                    mask.parts.dedup();
+                    if mask.parts.is_empty() {
+                        return Err("`mask.parts_where` matched no parts (an empty selection would mean the whole model); loosen the query or check list_parts".into());
+                    }
                 }
                 if let Some(effs) = m.get("effects").and_then(Value::as_array) {
                     if effs.len() > MAX_MASK_EFFECTS {
@@ -910,6 +927,17 @@ impl Session {
         Ok(json!({ "total_parts": info.len(), "matched": hits.len(), "returned": parts.len(), "offset": offset, "parts": parts }))
     }
 
+    /// Ids matching a part query object (filters + sort/order/limit/offset).
+    fn query_ids(&self, w: &Value, path: &str) -> Res<Vec<u32>> {
+        if !w.is_object() {
+            return Err(format!("`{}` must be an object of part filters (see list_parts), got {w}", path.trim_end_matches('.')));
+        }
+        let mut q = w.clone();
+        q["ids_only"] = json!(true);
+        let r = self.query_parts(&q, path)?;
+        Ok(r["parts"].as_array().map(|a| a.iter().filter_map(|x| x.as_u64().map(|x| x as u32)).collect()).unwrap_or_default())
+    }
+
     /// `pick_parts` by shape: `shape` holds a part query (see list_parts).
     pub fn pick_parts_by_shape(&self, shape: &Value) -> Res<Value> {
         if !shape.is_object() {
@@ -1135,6 +1163,17 @@ mod tests {
         assert!(e.contains("`layer` = \"Nope\"") && e.contains("Paint"), "{e}");
         let e = s.add_layer(&json!({ "material": "steel" })).unwrap_err();
         assert!(e.contains("`material` = \"steel\"") && e.contains("Steel"), "{e}");
+        // a mask can take the shape query directly
+        let q = json!({ "sort": "area", "limit": 2 });
+        s.add_layer(&json!({ "name": "Where", "mask": { "parts_where": q } })).unwrap();
+        let picked: Vec<u64> = s.pick_parts(&json!({ "shape": q })).unwrap()["parts"].as_array().unwrap().iter().map(|x| x.as_u64().unwrap()).collect();
+        let mut got: Vec<u64> = s.layers().as_array().unwrap().iter().find(|l| l["name"] == "Where").unwrap()["mask"]["parts"].as_array().unwrap().iter().map(|x| x.as_u64().unwrap()).collect();
+        got.sort();
+        let mut want = picked.clone();
+        want.sort();
+        assert_eq!(got, want);
+        assert!(s.add_layer(&json!({ "mask": { "parts_where": { "min_area": 1e9 } } })).unwrap_err().contains("matched no parts"));
+        s.delete_layer(&json!({ "layer": "Where" })).unwrap();
         // project info
         s.add_layer(&json!({ "name": "Glow", "material": "Neon green", "mask": { "parts": [biggest] } })).unwrap();
         let info = s.project_info();

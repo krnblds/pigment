@@ -130,6 +130,8 @@ fn mask_schema() -> Value {
     gen_fields["invert"] = json!({ "type": "boolean" });
     gen_fields["parts"] = json!({ "type": "array", "items": { "type": "integer", "minimum": 0 },
         "description": "part ids from list_parts / pick_parts: limit the layer to those mesh pieces ([] = whole model)" });
+    gen_fields["parts_where"] = json!({ "type": "object", "properties": list_parts_props(), "additionalProperties": false,
+        "description": "select parts by shape instead of ids (same filters as list_parts, e.g. {\"max_thickness\": 0.02, \"min_area\": 0.5}); resolved to ids when set; combined with `parts` as a union" });
     gen_fields["effects"] = json!({ "type": "array", "maxItems": 2, "description": "up to 2 more generators combined in order",
         "items": { "type": "object", "properties": effect, "required": ["generator"], "additionalProperties": false } });
     json!({ "type": ["string", "object", "null"], "properties": gen_fields, "additionalProperties": false,
@@ -213,6 +215,9 @@ fn batch(session: &mut Option<Session>, args: &Value) -> Result<Vec<Value>, Stri
         let a = c.get("args").cloned().unwrap_or(json!({}));
         let t0 = Instant::now();
         let r = if tool == "batch" { Err("batch: `calls` can't contain another batch".to_string()) } else { call(session, tool, &a) };
+        if let Some(s) = session.as_ref() {
+            let _ = s.rs.device.poll(eframe::egui_wgpu::wgpu::PollType::Wait { submission_index: None, timeout: None });
+        }
         let ms = (t0.elapsed().as_secs_f64() * 10000.0).round() / 10.0;
         match r {
             Ok(content) => {
@@ -355,6 +360,10 @@ fn run_script(session: &mut Option<Session>, path: &str, keep_going: bool, check
         }
         let t0 = Instant::now();
         let r = call(session, &tool, &a);
+        // wait for the step's GPU work so its time isn't billed to the next step
+        if let Some(s) = session.as_ref() {
+            let _ = s.rs.device.poll(eframe::egui_wgpu::wgpu::PollType::Wait { submission_index: None, timeout: None });
+        }
         let ms = t0.elapsed().as_secs_f64() * 1000.0;
         match r {
             Ok(content) => {
