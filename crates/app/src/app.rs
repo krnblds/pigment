@@ -26,6 +26,8 @@ use std::time::Instant;
 
 pub mod automation;
 mod tour;
+#[cfg(test)]
+mod image_fill_tests;
 mod ui;
 
 /// Things the quick-start guide watches for.

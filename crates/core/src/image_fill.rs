@@ -221,8 +221,12 @@ impl ImageFill {
             'stems: for stem in c.stems() {
                 for ext in ["png", "jpg", "jpeg", "exr", "hdr"] {
                     if found.join(format!("{stem}.{ext}")).is_file() {
-                        let given = dir.trim_end_matches(['/', '\\']);
-                        *images.get_mut(c) = Some(format!("{given}/{stem}.{ext}"));
+                        let p = Path::new(dir).join(format!("{stem}.{ext}"));
+                        let mut text = p.to_string_lossy().to_string();
+                        if !p.is_absolute() {
+                            text = text.replace('\\', "/"); // portable relative paths in project files
+                        }
+                        *images.get_mut(c) = Some(text);
                         break 'stems;
                     }
                 }
