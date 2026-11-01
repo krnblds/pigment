@@ -88,8 +88,8 @@ def building_calls(out, res):
     calls = town_script("building_a", out, res)
     calls += [
         # moss tufts and patches where the moss generator is strong (ledges, sills), denser in crevices
-        {"tool": "scatter_foliage", "args": {"layer": "Moss & weeds", "cells": [{"cell": "moss", "weight": 3}, {"cell": "moss_patch", "weight": 2}], "density": 70, "facing": "up", "mask": "Ledge moss", "mask_threshold": 0.35, "seed": 11, "scale": [0.8, 1.4]}},
-        {"tool": "scatter_foliage", "args": {"layer": "Moss & weeds", "cells": ["moss", "moss_patch"], "density": 60, "facing": "up", "ao": [0, 0.7], "seed": 12, "scale": [0.7, 1.2]}},
+        {"tool": "scatter_foliage", "args": {"layer": "Moss & weeds", "cells": [{"cell": "moss", "weight": 3}, {"cell": "moss_patch", "weight": 2}], "density": 30, "facing": "up", "mask": "Ledge moss", "mask_threshold": 0.45, "seed": 11, "scale": [0.8, 1.4]}},
+        {"tool": "scatter_foliage", "args": {"layer": "Moss & weeds", "cells": ["moss", "moss_patch"], "density": 40, "facing": "up", "ao": [0, 0.5], "seed": 12, "scale": [0.7, 1.2]}},
         # weeds on the roof and the ledges, only in the corners (low AO)
         {"tool": "scatter_foliage", "args": {"layer": "Moss & weeds", "cells": [{"cell": "weed", "weight": 2}, {"cell": "grass", "weight": 3}], "count": 900, "facing": "up", "ao": [0, 0.62], "seed": 13, "scale": [0.6, 1.1], "align": 0.8}},
         # ivy up the east wall (x = +4.39, the street side)
@@ -97,7 +97,7 @@ def building_calls(out, res):
         # hanging plants under the balconies
         {"tool": "scatter_foliage", "args": {"layer": "Hanging plants", "cells": ["hanging_vine", "fern"], "count": 40, "facing": "down", "min_up": -1, "max_up": -0.8, "region": {"min": [-6, 2, -8], "max": [-4.3, 20, 8]}, "seed": 14, "scale": [0.8, 1.3], "mount": "hanging"}},
         {"tool": "render", "args": {"yaw": 62, "pitch": 6, "target": [4.4, 4.5, 0], "distance": 15, "width": 1200, "height": 900, "lighting": "night_rain", "exposure": 2.2, "path": rel(os.path.join(ROOT, "docs/agents/foliage/viewport_ivy_wall.png"))}},
-        {"tool": "render", "args": {"yaw": 35, "pitch": 38, "target": [0, 22, 0], "distance": 15, "width": 1200, "height": 900, "exposure": 0.3, "path": rel(os.path.join(ROOT, "docs/agents/foliage/viewport_roof_moss.png"))}},
+        {"tool": "render", "args": {"yaw": -140, "pitch": 40, "target": [0, 20, 0], "distance": 13, "width": 1200, "height": 900, "lighting": "studio", "exposure": 0, "path": rel(os.path.join(ROOT, "docs/agents/foliage/viewport_roof_moss.png"))}},
         {"tool": "save_project", "args": {"path": rel(os.path.join(out, "projects", "building_a_foliage.pigment"))}},
         {"tool": "send_to_blender", "args": {"dir": rel(os.path.join(out, "building_a")), "name": "building_a"}},
     ]
@@ -108,7 +108,7 @@ def street_calls(out, res):
     calls = town_script("street_segment", out, res)
     calls += [
         # grass and weeds in the asphalt cracks (the Cracks layer's scratches generator)
-        {"tool": "scatter_foliage", "args": {"layer": "Crack grass", "cells": [{"cell": "grass", "weight": 3}, {"cell": "weed", "weight": 1}], "count": 1200, "parts": [0], "facing": "up", "mask": "Cracks", "mask_threshold": 0.3, "seed": 21, "scale": [0.45, 0.9], "align": 0.9}},
+        {"tool": "scatter_foliage", "args": {"layer": "Crack grass", "cells": [{"cell": "grass", "weight": 3}, {"cell": "weed", "weight": 1}], "count": 1500, "parts": [0], "facing": "up", "mask": "Cracks", "mask_threshold": 0.6, "seed": 21, "scale": [0.45, 0.9], "align": 0.9}},
         # and along the paving joints and curbs
         {"tool": "scatter_foliage", "args": {"layer": "Crack grass", "cells": ["grass", "moss", "moss_patch"], "count": 900, "parts": [2, 4], "facing": "up", "mask": "Paving joints", "mask_threshold": 0.3, "seed": 22, "scale": [0.5, 0.9]}},
         {"tool": "scatter_foliage", "args": {"layer": "Fallen leaves", "cells": ["maple_leaf", "ginkgo_leaf", "cherry_petals"], "count": 260, "facing": "up", "seed": 23, "scale": [0.8, 1.3]}},

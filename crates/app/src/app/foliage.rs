@@ -149,7 +149,7 @@ pub struct FoliageState {
     pub generated: HashMap<LayerId, Generated>,
     pub atlases: HashMap<String, Arc<AtlasMeta>>,
     /// The foliage layers the viewport batches were built from.
-    synced: Option<Vec<(LayerId, FoliageSet)>>,
+    synced: Option<Vec<u64>>,
     pub brush: FoliageBrush,
     /// Foliage cell editor: the cell being edited (atlas projects).
     pub edit_cell: usize,
@@ -291,18 +291,37 @@ impl PigmentApp {
 
     /// Rebuild the viewport's card batches when the foliage layers changed.
     pub(super) fn sync_foliage_gpu(&mut self, rs: &RenderState) {
-        let now: Vec<(LayerId, FoliageSet)> = self
+        // cheap per-frame check: a signature of every visible foliage layer
+        // (cloning and comparing tens of thousands of cards each frame is not)
+        let sig: Vec<u64> = self
             .doc
             .layers
             .iter()
             .filter(|l| self.doc.effectively_visible(l.id))
-            .filter_map(|l| l.foliage().map(|f| (l.id, f.clone())))
+            .filter_map(|l| l.foliage().map(|f| (l.id, f)))
+            .map(|(id, f)| {
+                use std::hash::{Hash, Hasher};
+                let mut h = std::collections::hash_map::DefaultHasher::new();
+                id.hash(&mut h);
+                f.atlas.hash(&mut h);
+                f.cells.hash(&mut h);
+                f.wind.to_bits().hash(&mut h);
+                f.instances.len().hash(&mut h);
+                // every card's position (an edit moves or replaces cards)
+                for i in &f.instances {
+                    for v in i.p.iter().chain(&i.y) {
+                        v.to_bits().hash(&mut h);
+                    }
+                }
+                h.finish()
+            })
             .collect();
-        if self.foliage.synced.as_ref() == Some(&now) {
+        if self.foliage.synced.as_ref() == Some(&sig) {
             return;
         }
+        let now: Vec<FoliageSet> = self.doc.layers.iter().filter(|l| self.doc.effectively_visible(l.id)).filter_map(|l| l.foliage().cloned()).collect();
         let mut batches: HashMap<String, Vec<GpuCard>> = HashMap::new();
-        for (_, set) in &now {
+        for set in &now {
             if set.instances.is_empty() {
                 continue;
             }
@@ -334,7 +353,7 @@ impl PigmentApp {
             }
         }
         self.viewport.foliage.set_batches(&rs.device, batches.into_iter().collect());
-        self.foliage.synced = Some(now);
+        self.foliage.synced = Some(sig);
     }
 
     /// Topmost foliage layer named `name` (or any), created on top if missing.
