@@ -12,15 +12,21 @@ story decal recorded (see tools/make_story_decals.py for the world), then
     scenes/town/textures/<asset>__<variant>/<asset>_BaseColor.png ...
     scenes/town/textures/<asset>__<variant>/variant.json   (emissive_scale, decals shown)
 
-Signage is zoned: corporate (Hoshikawa / Meridian / Dreamlink / Noctis)
-billboards high up and all over building_c (the corporate tower);
-street-economy shops (memory pawn, implant repair, score reset, capsule
-hotel, noodles, clinic) at ground level; authority plates by the doors;
-resistance graffiti, UNPLUG posters and MISSING posters at street level.
-Lit windows are a seeded random subset of the glass parts per variant.
+Signage follows real-world placement rules (see "story signage" below and
+docs/agents/decalfix/NOTES.md): corporate (Hoshikawa / Meridian / Dreamlink /
+Noctis) billboards only on framed billboard panels (rooftop, back wall,
+building_c's crown); street-economy shops (memory pawn, implant repair, score
+reset, capsule hotel, noodles, clinic) on the fascia / sign boxes over the
+ground-floor entrances; authority plates on the enamel plates by the doors;
+resistance graffiti, UNPLUG and MISSING posters on blank street-level wall.
+Every decal is an exact world-space box decal on one flat surface;
+tools/decal_audit.py checks every variant. Lit windows are a seeded random
+subset of the glass parts per variant.
 
     python tools/town_textures.py [asset ...]        (all assets by default)
     PIGMENT_MCP=path/to/pigment-mcp.exe python tools/town_textures.py building_a
+    PIG_TMP=dir                                       (scratch scripts and previews; default %TEMP%/pig)
+    python tools/decal_audit.py                       (then audit the placements)
 """
 import json
 import os

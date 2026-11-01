@@ -7,6 +7,7 @@ then renders Pigment close-ups aimed at world points:
     python tools/decalfix_proof.py building_a soba out_dir  name:yaw:pitch:x:y:z:distance ...
 """
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -42,7 +43,7 @@ def main(asset, variant, out_dir, shots):
     for s in shots:
         name, yaw, pitch, x, y, z, dist = s.split(":")
         L.append({"tool": "render", "args": {"yaw": float(yaw), "pitch": float(pitch), "target": [float(x), float(y), float(z)], "distance": float(dist),
-                                             "width": 960, "height": 640, "exposure": -0.2, "lighting": "night", "bloom": True,
+                                             "width": 960, "height": 640, "exposure": float(os.environ.get("PROOF_EV", "-0.2")), "lighting": os.environ.get("PROOF_LIGHT", "night"), "bloom": True,
                                              "path": str((out_dir / f"{name}.png").resolve()).replace("\\", "/")}})
     T.TMP.mkdir(parents=True, exist_ok=True)
     T.run(L, f"proof_{asset}_{variant}")
