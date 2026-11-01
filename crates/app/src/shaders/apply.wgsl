@@ -15,11 +15,16 @@ struct Brush {
     emissive: vec4<f32>,    // linear rgb x strength
     enabled3: vec4<f32>,    // emissive, decal mode (1/0)
     extra: vec4<f32>,       // opacity value, transmission value, opacity on, transmission on
+    coat: vec4<f32>,        // clearcoat, coat roughness, flake values
+    coat_on: vec4<f32>,     // clearcoat, coat roughness, flake on
 };
 @group(0) @binding(7) var<uniform> brush: Brush;
 @group(0) @binding(8) var decal_col: texture_2d<f32>;   // decal colour per texel (decal mode)
 @group(0) @binding(9) var b_opacity: texture_2d<f32>;
 @group(0) @binding(10) var b_transmission: texture_2d<f32>;
+@group(0) @binding(11) var b_coat: texture_2d<f32>;
+@group(0) @binding(12) var b_coat_rough: texture_2d<f32>;
+@group(0) @binding(13) var b_flake: texture_2d<f32>;
 
 struct LayerOut {
     @location(0) color: vec4<f32>,
@@ -79,6 +84,9 @@ fn fs_apply(f: FullOut) -> LayerOut {
 struct ExtraOut {
     @location(0) opacity: vec4<f32>,
     @location(1) transmission: vec4<f32>,
+    @location(2) coat: vec4<f32>,
+    @location(3) coat_rough: vec4<f32>,
+    @location(4) flake: vec4<f32>,
 };
 
 @fragment
@@ -92,6 +100,15 @@ fn fs_apply_extra(f: FullOut) -> ExtraOut {
     o.opacity = vec4<f32>(a.x, a.w, 0.0, 1.0);
     let tr = apply1(brush.extra.w, vec4<f32>(bt.r), bt.g, vec4<f32>(brush.extra.y), m);
     o.transmission = vec4<f32>(tr.x, tr.w, 0.0, 1.0);
+    let bcw = textureLoad(b_coat, t, 0);
+    let bcr = textureLoad(b_coat_rough, t, 0);
+    let bfk = textureLoad(b_flake, t, 0);
+    let cw = apply1(brush.coat_on.x, vec4<f32>(bcw.r), bcw.g, vec4<f32>(brush.coat.x), m);
+    o.coat = vec4<f32>(cw.x, cw.w, 0.0, 1.0);
+    let cr = apply1(brush.coat_on.y, vec4<f32>(bcr.r), bcr.g, vec4<f32>(brush.coat.y), m);
+    o.coat_rough = vec4<f32>(cr.x, cr.w, 0.0, 1.0);
+    let fk = apply1(brush.coat_on.z, vec4<f32>(bfk.r), bfk.g, vec4<f32>(brush.coat.z), m);
+    o.flake = vec4<f32>(fk.x, fk.w, 0.0, 1.0);
     return o;
 }
 

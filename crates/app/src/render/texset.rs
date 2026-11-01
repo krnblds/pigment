@@ -14,7 +14,7 @@ use std::collections::{HashMap, HashSet};
 use wgpu::util::DeviceExt;
 
 /// Paint layer channel formats, indexed by `Channel`.
-pub const LAYER_FORMATS: [wgpu::TextureFormat; 8] = [
+pub const LAYER_FORMATS: [wgpu::TextureFormat; 11] = [
     wgpu::TextureFormat::Rgba8UnormSrgb, // base colour + coverage
     wgpu::TextureFormat::Rg8Unorm,       // roughness + coverage
     wgpu::TextureFormat::Rg8Unorm,       // metallic + coverage
@@ -23,7 +23,15 @@ pub const LAYER_FORMATS: [wgpu::TextureFormat; 8] = [
     wgpu::TextureFormat::Rgba16Float,    // emission (linear HDR) + coverage
     wgpu::TextureFormat::Rg8Unorm,       // opacity + coverage
     wgpu::TextureFormat::Rg8Unorm,       // transmission + coverage
+    wgpu::TextureFormat::Rg8Unorm,       // clearcoat + coverage
+    wgpu::TextureFormat::Rg8Unorm,       // clearcoat roughness + coverage
+    wgpu::TextureFormat::Rg8Unorm,       // metallic flake + coverage
 ];
+/// Layer channels bound before the part-selection buffer (opacity,
+/// transmission at 9, 10); the coat channels follow it (12, 13, 14).
+pub const PRE_COAT_LAYER_CHANNELS: usize = 8;
+/// Final clearcoat map: R = coat weight, G = coat roughness, B = flake.
+pub const COAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
 /// Layer channels written by the brush's main apply pass (the rest go
 /// through a second pass: the main one is at the 32-byte attachment limit).
 pub const MAIN_LAYER_CHANNELS: usize = 6;
@@ -44,7 +52,7 @@ const LAYER_UNIFORM_STRIDE: u64 = 512;
 const PARTS: wgpu::TextureFormat = wgpu::TextureFormat::R16Uint;
 
 pub struct LayerTex {
-    pub ch: [Tex; 8],
+    pub ch: [Tex; 11],
 }
 
 impl LayerTex {
@@ -89,6 +97,12 @@ struct LayerParams {
     img_tint: [f32; 4],
     /// roughness range lo, hi, normal strength
     img_amt: [f32; 4],
+    /// fill coat, coat roughness, flake
+    coat_fill: [f32; 4],
+    /// blend ids: coat, coat roughness, flake
+    coat_blend: [u32; 4],
+    /// layer x channel opacity: coat, coat roughness, flake
+    coat_opacity: [f32; 4],
 }
 
 fn layer_params(l: &Layer, variant_seed: u32) -> LayerParams {
@@ -105,6 +119,9 @@ fn layer_params(l: &Layer, variant_seed: u32) -> LayerParams {
     let (oe, be) = ch(Channel::Emissive);
     let (oo, bo) = ch(Channel::Opacity);
     let (ot, bt) = ch(Channel::Transmission);
+    let (ocw, bcw) = ch(Channel::Coat);
+    let (ocr, bcr) = ch(Channel::CoatRoughness);
+    let (ofk, bfk) = ch(Channel::Flake);
     let mut p = LayerParams {
         flags: [0, 0, 0, 0],
         blend: [bc, br, bm, bh],
@@ -128,6 +145,9 @@ fn layer_params(l: &Layer, variant_seed: u32) -> LayerParams {
         img_xf2: [0.0; 4],
         img_tint: [0.0; 4],
         img_amt: [0.0; 4],
+        coat_fill: [0.0, 0.03, 0.0, 0.0],
+        coat_blend: [bcw, bcr, bfk, 0],
+        coat_opacity: [ocw, ocr, ofk, 0.0],
     };
     image_fill_params(l, &mut p);
     if let LayerKind::Fill { values } = &l.kind {
@@ -140,6 +160,7 @@ fn layer_params(l: &Layer, variant_seed: u32) -> LayerParams {
         let e = values.emissive.map(srgb_to_linear);
         let k = values.emissive_strength.max(0.0);
         p.fill_emissive = [e[0] * k, e[1] * k, e[2] * k, 1.0];
+        p.coat_fill = [values.coat.clamp(0.0, 1.0), values.coat_roughness.clamp(0.0, 1.0), values.flake.clamp(0.0, 1.0), 0.0];
     }
     if let Some(m) = l.mask.as_ref().filter(|m| m.enabled) {
         p.flags[1] = 1;
@@ -177,6 +198,7 @@ fn folder_params(l: &Layer, variant_seed: u32) -> LayerParams {
     let ids: Vec<u32> = Channel::ALL.iter().map(|c| folder_blend(*c, l.channels.get(*c).blend).gpu_id()).collect();
     p.blend = [ids[0], ids[1], ids[2], ids[3]];
     p.blend2 = [ids[4], ids[5], ids[6], ids[7]];
+    p.coat_blend = [ids[8], ids[9], ids[10], 0];
     p
 }
 
@@ -235,6 +257,8 @@ pub struct TexSet {
     pub material: [Tex; 4],
     /// Final emission (linear HDR), mipmapped like the material.
     pub emissive: Tex,
+    /// Final clearcoat (coat, coat roughness, flake), mipmapped.
+    pub coat: Tex,
     pub position: Tex,
     pub wnormal: Tex,
     pub nearest: Tex,
@@ -272,6 +296,7 @@ struct Pipes {
     folder: wgpu::RenderPipeline,
     finalize: wgpu::RenderPipeline,
     finalize_emissive: wgpu::RenderPipeline,
+    finalize_coat: wgpu::RenderPipeline,
     uv: wgpu::RenderPipeline,
     jfa_init: wgpu::RenderPipeline,
     jfa_step: wgpu::RenderPipeline,
@@ -303,6 +328,10 @@ impl Pipes {
                 gpu::ntex(10),
                 // part-selection bitsets
                 gpu::storage_entry(11),
+                // clearcoat, coat roughness, flake
+                gpu::ntex(12),
+                gpu::ntex(13),
+                gpu::ntex(14),
             ],
         );
         let full_layout = gpu::layout(device, "composite", &[&shared_bgl, &acc_bgl, &layer_bgl]);
@@ -329,6 +358,7 @@ impl Pipes {
             folder: gpu::fullscreen(device, "composite folder", &folder_mod, "fs_folder", &folder_layout, &acc_targets),
             finalize: gpu::fullscreen(device, "finalize", &comp, "fs_finalize", &fin_layout, &mat_targets),
             finalize_emissive: gpu::fullscreen(device, "finalize emissive", &comp, "fs_finalize_emissive", &fin_layout, &[gpu::target(EMISSIVE, None)]),
+            finalize_coat: gpu::fullscreen(device, "finalize coat", &comp, "fs_finalize_coat", &fin_layout, &[gpu::target(COAT, None)]),
             uv: gpu::pipeline(
                 device,
                 gpu::PipeDesc {
@@ -393,6 +423,7 @@ impl TexSet {
         let mip = gpu::mip_count(res);
         let material = [0, 1, 2, 3].map(|i| Tex::new(device, "material", res, res, MATERIAL_FORMATS[i], gpu::rw_usage(), mip));
         let emissive = Tex::new(device, "material emissive", res, res, EMISSIVE, gpu::rw_usage(), mip);
+        let coat = Tex::new(device, "material coat", res, res, COAT, gpu::rw_usage(), mip);
         let position = Tex::target(device, "position map", res, POSITION);
         let wnormal = Tex::target(device, "world normal map", res, WNORMAL);
         let nearest = Tex::target(device, "nearest map", res, NEAREST);
@@ -437,6 +468,7 @@ impl TexSet {
             acc,
             material,
             emissive,
+            coat,
             position,
             wnormal,
             nearest,
@@ -701,9 +733,11 @@ impl TexSet {
                 }));
                 // image-fill sampler (binding 8), then opacity, transmission (bindings 9, 10)
                 res.push(wgpu::BindingResource::Sampler(&self.tiles.sampler));
-                res.extend(lt.ch[MAIN_LAYER_CHANNELS..].iter().map(|t| wgpu::BindingResource::TextureView(&t.view)));
+                res.extend(lt.ch[MAIN_LAYER_CHANNELS..PRE_COAT_LAYER_CHANNELS].iter().map(|t| wgpu::BindingResource::TextureView(&t.view)));
                 // part-selection bitsets (binding 11)
                 res.push(self.part_buf.as_entire_binding());
+                // clearcoat, coat roughness, flake (bindings 12, 13, 14)
+                res.extend(lt.ch[PRE_COAT_LAYER_CHANNELS..].iter().map(|t| wgpu::BindingResource::TextureView(&t.view)));
                 gpu::bind_group(device, "layer", &self.p.layer_bgl, &res)
             })
             .collect();
@@ -789,7 +823,16 @@ impl TexSet {
             pass.set_bind_group(1, &self.acc[0].bg, &[]);
             pass.draw(0..3, 0..1);
         }
-        for t in self.material.iter().chain(std::iter::once(&self.emissive)) {
+        {
+            let c0 = self.coat.mip_view(0);
+            let mut pass = gpu::pass(&mut enc, "finalize coat", &[&c0], None);
+            scissor(&mut pass, frect);
+            pass.set_pipeline(&self.p.finalize_coat);
+            pass.set_bind_group(0, &self.shared_bg, &[]);
+            pass.set_bind_group(1, &self.acc[0].bg, &[]);
+            pass.draw(0..3, 0..1);
+        }
+        for t in self.material.iter().chain([&self.emissive, &self.coat]) {
             self.mipgen.generate(device, &mut enc, t, frect);
         }
         queue.submit([enc.finish()]);
