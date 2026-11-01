@@ -65,7 +65,7 @@ def view_of_tower_crown(name_prefix="tower_", crown="billboard"):
     t = towers[0]
     x, y, z = t["pos"]
     h = t["height"]
-    cam = [x + 0.0, y - 140.0, z + h * 0.75]
+    cam = [x + 0.0, y - 75.0, z + h * 0.85]
     return {"pos": gd(cam), "look": gd([x, y, z + h * 0.92]), "fov": 50, "tower": t["id"] if "id" in t else t.get("mesh")}
 
 

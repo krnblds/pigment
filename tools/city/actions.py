@@ -145,7 +145,7 @@ def _decal_fast_path(ctx, lines, scan):
         return None
     proj = next((s["args"]["path"] for s in lines if s.get("tool") == "save_project"), None)
     ev = next((s for s in lines if s.get("tool") == "export_variants"), None)
-    if not proj or not ev or not (ROOT / proj).is_file():
+    if not proj or not ev or not (ROOT / proj).exists():        # a .pigment project is a folder
         return None
     stems = {Path(c).stem for c in changed}
     only = []
@@ -483,4 +483,4 @@ def run_decal_audit():
     return run
 
 
-_run_pigment = impl(_run_pigment_factory, also=(_decal_fast_path,))
+_run_pigment = impl(_run_pigment_factory)      # the fast path is not part of the key: it never writes a full build
