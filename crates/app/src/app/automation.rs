@@ -522,14 +522,34 @@ impl Session {
     /// thinnest axis, on the side away from the model's centre) and return the
     /// viewport rect (0..1) covering it, shrunk to the image's aspect for
     /// `fit = "contain"` or stretched for `"fill"`.
-    fn aim_at_part(&mut self, part: u32, image: &Path, fit: &str, margin: f32) -> Res<Vec<f32>> {
+    fn aim_at_part(&mut self, part: u32, image: &Path, fit: &str, margin: f32, facing: Option<&str>) -> Res<Vec<f32>> {
         let info = *self.app.parts.info.get(part as usize).ok_or_else(|| format!("no part {part}"))?;
-        let (lo, hi) = (glam::Vec3::from(info.min), glam::Vec3::from(info.max));
+        self.aim_at_box(glam::Vec3::from(info.min), glam::Vec3::from(info.max), image, fit, margin, facing)
+    }
+
+    /// `aim_at_part` for any world-space box (e.g. an area of a big wall that
+    /// is one part with the rest of the building). `facing` ("+x", "-z", ...)
+    /// overrides the side the camera looks from.
+    fn aim_at_box(&mut self, lo: glam::Vec3, hi: glam::Vec3, image: &Path, fit: &str, margin: f32, facing: Option<&str>) -> Res<Vec<f32>> {
         let c = (lo + hi) * 0.5;
         let size = hi - lo;
-        let axis = if size.x <= size.y && size.x <= size.z { 0 } else if size.y <= size.z { 1 } else { 2 };
         let (mc, _) = self.app.mesh.bounding_sphere();
-        let outward = if c[axis] >= mc[axis] { 1.0 } else { -1.0 };
+        let (axis, outward) = match facing {
+            Some(f) => {
+                let f = f.to_ascii_lowercase();
+                let axis = match f.trim_start_matches(['+', '-']) {
+                    "x" => 0,
+                    "y" => 1,
+                    "z" => 2,
+                    _ => return Err(format!("facing `{f}`: use +x, -x, +y, -y, +z or -z")),
+                };
+                (axis, if f.starts_with('-') { -1.0 } else { 1.0 })
+            }
+            None => {
+                let axis = if size.x <= size.y && size.x <= size.z { 0 } else if size.y <= size.z { 1 } else { 2 };
+                (axis, if c[axis] >= mc[axis] { 1.0 } else { -1.0 })
+            }
+        };
         let cam = &mut self.app.camera;
         cam.target = c;
         // OrbitCamera: eye = target + (sin yaw cos p, sin p, cos yaw cos p) * d
@@ -661,10 +681,24 @@ impl Session {
     /// record, no undo step, no history commit).
     fn decal_impl(&mut self, a: &Value, replay: bool) -> Res<Value> {
         let image = PathBuf::from(req(a, "image")?);
-        let rect: Vec<f32> = match a.get("part").and_then(Value::as_u64) {
+        let (fit, margin, facing) = (s(a, "fit").unwrap_or("contain"), f(a, "margin").unwrap_or(0.05), s(a, "facing"));
+        let rect: Vec<f32> = match (a.get("part").and_then(Value::as_u64), a.get("box")) {
             // aim at a mesh part's outward face and fit the image to it
-            Some(part) => self.aim_at_part(part as u32, &image, s(a, "fit").unwrap_or("contain"), f(a, "margin").unwrap_or(0.05))?,
-            None => {
+            (Some(part), _) => self.aim_at_part(part as u32, &image, fit, margin, facing)?,
+            // or at a world-space box: {min, max} or {center, size}
+            (None, Some(b)) => {
+                let v3 = |k: &str| -> Option<glam::Vec3> {
+                    let a = b.get(k)?.as_array()?;
+                    (a.len() == 3).then(|| glam::Vec3::new(a[0].as_f64().unwrap_or(0.0) as f32, a[1].as_f64().unwrap_or(0.0) as f32, a[2].as_f64().unwrap_or(0.0) as f32))
+                };
+                let (lo, hi) = match (v3("min"), v3("max"), v3("center"), v3("size")) {
+                    (Some(lo), Some(hi), _, _) => (lo.min(hi), lo.max(hi)),
+                    (_, _, Some(c), Some(sz)) => (c - sz.abs() * 0.5, c + sz.abs() * 0.5),
+                    _ => return Err("`box` needs {min: [x,y,z], max: [x,y,z]} or {center, size}".into()),
+                };
+                self.aim_at_box(lo, hi, &image, fit, margin, facing)?
+            }
+            (None, None) => {
                 let r: Vec<f32> = a.get("rect").and_then(Value::as_array).ok_or("missing `rect` ([x0, y0, x1, y1] in 0..1) or `part`")?.iter().filter_map(|v| v.as_f64().map(|x| x as f32)).collect();
                 if r.len() != 4 {
                     return Err("`rect` needs 4 numbers".into());
@@ -1147,5 +1181,25 @@ mod tests {
         let manifest = std::fs::read_to_string(out.join("box.pigment/project.json")).unwrap();
         assert!(manifest.contains("\"swapped\"") && manifest.contains("\"decals\""));
         std::fs::remove_dir_all(out).ok();
+    }
+
+    /// Decals aimed at a world-space box (an area of a wall that is part of a bigger piece).
+    #[test]
+    fn decal_on_a_world_box() {
+        let Ok(mut s) = Session::new() else { return };
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        s.new_project(&json!({ "mesh": root.join("assets/ammo_box.glb"), "resolution": 512, "material": "Matte black" })).unwrap();
+        s.add_layer(&json!({ "kind": "paint", "name": "Signs" })).unwrap();
+        let (c, r) = s.app.mesh.bounding_sphere();
+        let img = root.join("assets/decals/neon_open.png");
+        let glow = |s: &mut Session| -> usize {
+            let im = s.render(&json!({ "view": "emission", "width": 256, "height": 256 })).unwrap();
+            image::load_from_memory(&im.png).unwrap().to_luma8().pixels().filter(|p| p.0[0] > 60).count()
+        };
+        let e = s.project_decal(&json!({ "image": img, "box": { "center": [c.x, c.y, c.z], "size": [r, r, r] }, "facing": "up" }));
+        assert!(e.unwrap_err().contains("facing"));
+        s.project_decal(&json!({ "image": img, "box": { "center": [c.x, c.y, c.z], "size": [r, r, r] }, "facing": "+y", "emissive_strength": 5.0 })).unwrap();
+        assert!(glow(&mut s) > 300, "decal from above landed on the top");
+        assert!(s.project_decal(&json!({ "image": img, "box": { "min": [0, 0] } })).is_err());
     }
 }

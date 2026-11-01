@@ -83,6 +83,8 @@ fn tools() -> Value {
                   "part": { "type": "integer", "description": "instead of rect + camera: put the image on this mesh part's outward face (see list_parts)" },
                   "fit": { "type": "string", "enum": ["contain", "fill"], "description": "with `part`: keep the image's aspect (contain, default) or stretch (fill)" },
                   "margin": { "type": "number", "description": "with `part`: border as a fraction (default 0.05)" },
+                  "box": { "type": "object", "description": "instead of rect/part: a world-space box {min: [x,y,z], max: [x,y,z]} or {center, size}; the image goes on the surface seen through its broad face (for areas of big walls)" },
+                  "facing": { "type": "string", "enum": ["+x", "-x", "+y", "-y", "+z", "-z"], "description": "with part/box: look at this side (default: the thinnest axis, away from the model centre)" },
                   "yaw": { "type": "number" }, "pitch": { "type": "number" }, "zoom": { "type": "number" },
                   "tint": { "type": "array", "items": { "type": "number" } }, "material": { "type": "string", "description": "preset for roughness/metallic (default plain paint)" },
                   "emissive_strength": { "type": "number" }, "height": { "type": "number" }, "opacity": { "type": "number" },
