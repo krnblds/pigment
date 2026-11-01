@@ -5,6 +5,7 @@
 
 pub mod blend;
 pub mod bridge;
+pub mod brush;
 pub mod camera;
 pub mod curvature;
 pub mod decal;

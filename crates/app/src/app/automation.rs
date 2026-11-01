@@ -11,6 +11,7 @@ use serde_json::{json, Value};
 
 type Res<T> = Result<T, String>;
 
+mod brush_tools;
 mod decal_tools;
 mod filter_tools;
 mod foliage_tools;
@@ -204,6 +205,7 @@ impl Session {
             "tile_sets": pigment_core::image_fill::list_tile_sets(Path::new("assets/tiles")).iter().map(|n| format!("assets/tiles/{n}")).collect::<Vec<_>>(),
             "image_projections": ["uv", "triplanar"],
             "foliage": self.foliage_library(),
+            "brush_tips": self.brush_tips(),
         })
     }
 
@@ -975,23 +977,36 @@ impl Session {
         b.size = f(a, "size").unwrap_or(40.0);
         b.opacity = f(a, "opacity").unwrap_or(1.0);
         b.hardness = f(a, "hardness").unwrap_or(0.6);
-        b.spacing = 0.1;
+        b.spacing = f(a, "spacing").unwrap_or(0.1).clamp(0.01, 4.0);
         b.erase = a.get("erase").and_then(Value::as_bool).unwrap_or(false);
         b.mask_white = s(a, "mask_value").unwrap_or("white") != "black";
+        // brush engine: every call starts from the defaults, so scripts replay exactly
+        let px = Vec2::new(self.size[0] as f32, self.size[1] as f32);
+        let pressures = brush_tools::configure_brush(&mut self.app, &self.rs, a, pts.len(), px)?;
         self.app.ppp = 1.0;
         self.draw();
-        let px = Vec2::new(self.size[0] as f32, self.size[1] as f32);
         let to_px = |p: Vec2| p * px;
+        // clone source: the UV under a viewport point (camera of this call)
+        if let Some(src) = a.get("clone_source") {
+            let v = src.as_array().filter(|v| v.len() == 2).ok_or("`clone_source` must be [x, y] in 0..1 (a viewport point on the model)")?;
+            let p = Vec2::new(v[0].as_f64().unwrap_or(0.0) as f32, v[1].as_f64().unwrap_or(0.0) as f32);
+            let uv = self.app.uv_at_px(to_px(p), px).ok_or("`clone_source` is not on the model")?;
+            self.app.brush.clone_source = Some(uv);
+            self.app.brush.clone_offset = None;
+        }
+        if self.app.brush.tool == super::BrushTool::Clone && self.app.brush.clone_source.is_none() {
+            return Err("tool \"clone\" needs `clone_source` ([x, y] viewport point to copy from)".into());
+        }
+        self.app.brush.pressure = pressures[0];
         self.app.begin_stroke(&self.rs, to_px(pts[0]), px);
         if self.app.stroke.is_none() {
             return Err(self.status().err().unwrap_or_else(|| "couldn't start the stroke".into()));
         }
-        let spacing = (self.app.brush.size * self.app.brush.spacing).max(1.0);
-        for p in &pts[1..] {
-            let stamps = self.app.stroke.as_mut().map(|st| st.sampler.move_to(to_px(*p), spacing)).unwrap_or_default();
-            self.app.apply_stamps(&self.rs, stamps);
+        for (k, p) in pts.iter().enumerate().skip(1) {
+            self.app.stroke_to(&self.rs, to_px(*p), pressures[k]);
         }
         self.app.end_stroke(&self.rs);
+        self.app.brush.pressure = 1.0;
         self.settle();
         Ok(json!({ "painted_on": self.app.doc.layers[i].name, "mask": on_mask }))
     }

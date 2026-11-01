@@ -1168,9 +1168,14 @@ impl PigmentApp {
             _ => {}
         }
 
-        // painting
+        // painting (brush tools first: stencil transform, clone source, path, line)
         let paints = matches!(tool, Tool::Paint | Tool::Erase);
-        if paints && click && self.stroke.is_none() {
+        self.read_pen(ui);
+        let consumed = paints && self.stroke.is_none() && self.brush_tool_input(ui, rs, &response, rect, viewport_px, latest, click, alt);
+        if paints {
+            self.brush_overlay(ui, rect);
+        }
+        if paints && click && !consumed && self.stroke.is_none() {
             if locked {
                 self.ui.toasts.push(ToastKind::Warn, "This layer is locked", "Unlock it in the Layers panel to paint on it.");
             } else if let Some(p) = latest {
@@ -1178,9 +1183,7 @@ impl PigmentApp {
             }
         } else if (down || released) && self.stroke.is_some() {
             if let Some(p) = latest {
-                let spacing = (self.brush.size * ppp * self.brush.spacing).max(1.0);
-                let pts = self.stroke.as_mut().map(|s| s.sampler.move_to(to_px(p), spacing)).unwrap_or_default();
-                self.apply_stamps(rs, pts);
+                self.stroke_to(rs, to_px(p), self.brush.pressure);
             }
         }
         if (released || !down) && self.stroke.is_some() {

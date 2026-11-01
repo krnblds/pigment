@@ -25,13 +25,14 @@ impl Panel for BrushPanel {
         PanelId::Brush
     }
 
-    fn ui(&mut self, app: &mut PigmentApp, ui: &mut egui::Ui, _rs: &RenderState) {
+    fn ui(&mut self, app: &mut PigmentApp, ui: &mut egui::Ui, rs: &RenderState) {
         let p = ds::pal(ui);
         let painting_mask = matches!(app.paint_target(), Ok(Target::Mask(_)));
         ds::slider_row_ex(ui, "Size", &mut app.brush.size, 2.0..=800.0, ds::Unit::Suffix(" px", 0), true, Some("[ and ] change it"));
         ds::slider_row(ui, "Strength", &mut app.brush.opacity, 0.0..=1.0, ds::Unit::Percent);
         ds::slider_row(ui, "Hardness", &mut app.brush.hardness, 0.0..=1.0, ds::Unit::Percent);
         ds::slider_row(ui, "Spacing", &mut app.brush.spacing, 0.02..=1.0, ds::Unit::Percent);
+        super::brush::brush_engine_ui(app, ui, rs);
         if painting_mask {
             ds::card(ui, |ui| {
                 ui.label(ds::strong("You're painting a mask", font::BODY));

@@ -8,6 +8,7 @@ use super::dock::PanelId;
 use super::*;
 use std::collections::BTreeMap;
 
+pub mod brush;
 pub mod decals;
 pub mod filters;
 pub mod foliage;

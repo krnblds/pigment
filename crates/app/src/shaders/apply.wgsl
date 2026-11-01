@@ -17,6 +17,8 @@ struct Brush {
     extra: vec4<f32>,       // opacity value, transmission value, opacity on, transmission on
     coat: vec4<f32>,        // clearcoat, coat roughness, flake values
     coat_on: vec4<f32>,     // clearcoat, coat roughness, flake on
+    stroke: vec4<f32>,      // x = stroke opacity cap for flow strokes (0 = none)
+    tool: vec4<f32>,        // x = 0 paint, 1 clone, 2 smudge; yz = source offset (texels); w = smudge taps
 };
 @group(0) @binding(7) var<uniform> brush: Brush;
 @group(0) @binding(8) var decal_col: texture_2d<f32>;   // decal colour per texel (decal mode)
@@ -48,10 +50,66 @@ fn apply1(enabled: f32, bv: vec4<f32>, ba: f32, v: vec4<f32>, m: f32) -> vec4<f3
     return over(bv, ba, v, m);
 }
 
+// Stroke mask, capped at the stroke opacity when dabs add up (flow).
+fn stroke_at(t: vec2<i32>) -> f32 {
+    let m = textureLoad(stroke_mask, t, 0).r;
+    if (brush.stroke.x > 0.0) { return min(m, brush.stroke.x); }
+    return m;
+}
+
+// Clone: the pre-stroke texel at t + offset. Smudge: the average of the
+// pre-stroke texels behind t along the stroke (offset = -direction x length).
+fn tool_src(tex: texture_2d<f32>, t: vec2<i32>) -> vec4<f32> {
+    let size = vec2<i32>(textureDimensions(tex));
+    let off = brush.tool.yz;
+    if (brush.tool.x < 1.5) {
+        return textureLoad(tex, clamp(t + vec2<i32>(round(off)), vec2<i32>(0), size - 1), 0);
+    }
+    let n = max(i32(brush.tool.w), 1);
+    var sum = vec4<f32>(0.0);
+    for (var k = 0; k <= n; k++) {
+        sum += textureLoad(tex, clamp(t + vec2<i32>(round(off * f32(k) / f32(n))), vec2<i32>(0), size - 1), 0);
+    }
+    return sum / f32(n + 1);
+}
+
+// Clone / smudge on one channel: the source's value, weighted by its coverage.
+fn tool1(enabled: f32, bv: vec4<f32>, ba: f32, s: vec4<f32>, sa: f32, m: f32) -> vec4<f32> {
+    if (enabled < 0.5 || m <= 0.0) { return vec4<f32>(bv.xyz, ba); }
+    return over(bv, ba, s, m * sa);
+}
+
+fn apply_tool(t: vec2<i32>, m: f32) -> LayerOut {
+    let bc = textureLoad(b_color, t, 0);
+    let br = textureLoad(b_rough, t, 0);
+    let bm = textureLoad(b_metal, t, 0);
+    let bh = textureLoad(b_height, t, 0);
+    let bn = textureLoad(b_normal, t, 0);
+    let be = textureLoad(b_emissive, t, 0);
+    let sc = tool_src(b_color, t);
+    let sr = tool_src(b_rough, t);
+    let sm = tool_src(b_metal, t);
+    let sh = tool_src(b_height, t);
+    let sn = tool_src(b_normal, t);
+    let se = tool_src(b_emissive, t);
+    var o: LayerOut;
+    o.color = tool1(brush.enabled.x, bc, bc.a, vec4<f32>(sc.rgb, 1.0), sc.a, m);
+    let r = tool1(brush.enabled.y, vec4<f32>(br.r), br.g, vec4<f32>(sr.r), sr.g, m);
+    o.rough = vec4<f32>(r.x, r.w, 0.0, 1.0);
+    let mm = tool1(brush.enabled.z, vec4<f32>(bm.r), bm.g, vec4<f32>(sm.r), sm.g, m);
+    o.metal = vec4<f32>(mm.x, mm.w, 0.0, 1.0);
+    let h = tool1(brush.enabled.w, vec4<f32>(bh.r), bh.g, vec4<f32>(sh.r), sh.g, m);
+    o.height = vec4<f32>(h.x, h.w, 0.0, 1.0);
+    o.normal = tool1(brush.enabled2.x, bn, bn.a, vec4<f32>(sn.rgb, 1.0), sn.a, m);
+    o.emissive = tool1(brush.enabled3.x, be, be.a, vec4<f32>(se.rgb, 1.0), se.a, m);
+    return o;
+}
+
 @fragment
 fn fs_apply(f: FullOut) -> LayerOut {
     let t = vec2<i32>(f.pos.xy);
-    let m = textureLoad(stroke_mask, t, 0).r;
+    let m = stroke_at(t);
+    if (brush.tool.x > 0.5) { return apply_tool(t, m); }
     let bc = textureLoad(b_color, t, 0);
     let br = textureLoad(b_rough, t, 0);
     let bm = textureLoad(b_metal, t, 0);
@@ -92,7 +150,7 @@ struct ExtraOut {
 @fragment
 fn fs_apply_extra(f: FullOut) -> ExtraOut {
     let t = vec2<i32>(f.pos.xy);
-    let m = textureLoad(stroke_mask, t, 0).r;
+    let m = stroke_at(t);
     let bo = textureLoad(b_opacity, t, 0);
     let bt = textureLoad(b_transmission, t, 0);
     var o: ExtraOut;
@@ -116,7 +174,8 @@ fn fs_apply_extra(f: FullOut) -> ExtraOut {
 @fragment
 fn fs_apply_mask(f: FullOut) -> @location(0) vec4<f32> {
     let t = vec2<i32>(f.pos.xy);
-    let m = textureLoad(stroke_mask, t, 0).r;
+    let m = stroke_at(t);
     let b = textureLoad(b_color, t, 0).r;
+    if (brush.tool.x > 0.5) { return vec4<f32>(mix(b, tool_src(b_color, t).r, m), 0.0, 0.0, 1.0); }
     return vec4<f32>(mix(b, brush.enabled2.z, m), 0.0, 0.0, 1.0);
 }

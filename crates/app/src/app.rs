@@ -8,15 +8,14 @@
 
 use crate::render::bake::Baker;
 use crate::render::env::Environment;
-use crate::render::paint::{BrushGpu, DecalGpu, Painter, Snapshot, StampGpu, Target, ViewGpu};
+use crate::render::paint::{BrushGpu, DecalGpu, FxGpu, Painter, Snapshot, StampGpu, Target, ViewGpu};
 use crate::render::texset::TexSet;
 use crate::render::viewport::{ViewMode, ViewSettings, Viewport};
 use crate::render::{io, MeshGpu};
 use eframe::egui;
 use eframe::egui_wgpu::RenderState;
-use glam::Vec2;
+use glam::{Vec2, Vec3};
 use pigment_core::blend::{normal_from_tilt, srgb_to_linear};
-use pigment_core::stroke::StrokeSampler;
 use pigment_core::tiles::{ScreenBins, TileSet};
 use pigment_core::undo::{Entry, UndoStack};
 use pigment_core::*;
@@ -27,6 +26,7 @@ use std::time::Instant;
 pub mod automation;
 mod folders_ui;
 mod bridge;
+mod brush_tools;
 mod decals;
 mod foliage;
 mod tour;
@@ -77,6 +77,56 @@ struct Brush {
     channels: [bool; 11],
     erase: bool,
     mask_white: bool,
+    /// Brush engine: flow, jitter, pressure curves, angle, lazy mouse (`spacing` above wins).
+    dynamics: pigment_core::brush::BrushDynamics,
+    /// Brush tip id from the library (None = round falloff).
+    tip: Option<String>,
+    /// The tip library: (id, label), in GPU array order.
+    tips: Vec<(String, String)>,
+    tool: BrushTool,
+    symmetry: pigment_core::brush::Symmetry,
+    stencil: Option<StencilState>,
+    /// Clone tool: the source point (UV), and the offset fixed by the first stroke after it.
+    clone_source: Option<Vec2>,
+    clone_offset: Option<Vec2>,
+    /// Smudge: how far the colour is dragged, in brush diameters.
+    smudge: f32,
+    /// Current pen pressure (1 for a mouse).
+    pressure: f32,
+    /// Path tool: clicks add points (viewport px), Enter paints them.
+    path_mode: bool,
+    path: Vec<Vec2>,
+    /// Where the last stroke ended (Shift-click draws a line from here).
+    last_end: Option<Vec2>,
+    /// The stencil image as an egui texture (overlay), by path.
+    stencil_tex: Option<(PathBuf, egui::TextureHandle)>,
+}
+
+/// What the brush does with its dabs.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum BrushTool {
+    #[default]
+    Paint,
+    /// Copy pixels from a source point (Alt-click), keeping the offset.
+    Clone,
+    /// Drag the existing pixels along the stroke.
+    Smudge,
+}
+
+/// A screen-space image the brush paints through.
+#[derive(Clone, Debug, PartialEq)]
+pub struct StencilState {
+    pub path: PathBuf,
+    /// Centre, fraction of the viewport (0..1).
+    pub center: Vec2,
+    /// Degrees.
+    pub rotation: f32,
+    /// Image height as a fraction of the viewport height.
+    pub scale: f32,
+    pub opacity: f32,
+    pub invert: bool,
+    /// Image size in pixels (aspect).
+    pub size: [u32; 2],
 }
 
 impl Default for Brush {
@@ -90,16 +140,39 @@ impl Default for Brush {
             channels: [true, true, true, false, false, false, false, false, false, false, false],
             erase: false,
             mask_white: true,
+            dynamics: Default::default(),
+            tip: None,
+            tips: Vec::new(),
+            tool: BrushTool::Paint,
+            symmetry: Default::default(),
+            stencil: None,
+            clone_source: None,
+            clone_offset: None,
+            smudge: 0.5,
+            pressure: 1.0,
+            path_mode: false,
+            path: Vec::new(),
+            last_end: None,
+            stencil_tex: None,
         }
     }
 }
 
 struct Stroke {
-    sampler: StrokeSampler,
+    /// Brush engine dabs (spacing, pressure, jitter, angle, lazy mouse).
+    dabs: pigment_core::brush::DabGenerator,
     bins: ScreenBins,
+    /// Screen bins of the mesh moved by each extra symmetry transform.
+    sym_bins: Vec<ScreenBins>,
     tiles: TileSet,
     target: Target,
     view: ViewGpu,
+    viewport_px: Vec2,
+    /// Clone source offset (texels), smudge: the UV of the last dab.
+    tool_off: Vec2,
+    last_uv: Option<(Vec2, Vec2)>,
+    /// Last pointer position (px).
+    last_px: Vec2,
 }
 
 #[derive(Clone)]
@@ -245,6 +318,7 @@ impl PigmentApp {
             ui: ui::UiState::new(prefs),
             foliage: Default::default(),
         };
+        app.load_brush_tips(rs);
         app.new_project(rs, Mesh::demo_crate(96), None, Document::demo());
         app.export_name = "DemoCrate".into();
         app.ui.welcome = app.ui.prefs.show_welcome && app.ui.prefs.dir.is_some();
@@ -778,6 +852,8 @@ impl PigmentApp {
             extra: [b.values.opacity.clamp(0.0, 1.0), b.values.transmission.clamp(0.0, 1.0), on(6), on(7)],
             coat: [b.values.coat.clamp(0.0, 1.0), b.values.coat_roughness.clamp(0.0, 1.0), b.values.flake.clamp(0.0, 1.0), 0.0],
             coat_on: [on(8), on(9), on(10), 0.0],
+            stroke: [0.0; 4],
+            tool: [0.0; 4],
         }
     }
 
@@ -806,28 +882,191 @@ impl PigmentApp {
             eye: [eye.x, eye.y, eye.z, 1.0],
             viewport: [viewport_px.x, viewport_px.y, self.camera.near(), 0.0],
         };
-        let bins = ScreenBins::build(self.wrap_mesh.as_ref().unwrap_or(&self.mesh), vp, viewport_px, Some(eye));
-        let mut s = Stroke { sampler: StrokeSampler::default(), bins, tiles: TileSet::default(), target, view };
-        let stamps = s.sampler.begin(pos_px);
+        let base = self.wrap_mesh.as_ref().unwrap_or(&self.mesh);
+        let bins = ScreenBins::build(base, vp, viewport_px, Some(eye));
+        // symmetry: a texel at p is painted when T p is under the brush, so
+        // the triangles to mark are the mesh moved by each T
+        let (lo, hi) = self.mesh.bounds();
+        let transforms = self.brush.symmetry.transforms((lo + hi) * 0.5);
+        let sym_bins: Vec<ScreenBins> = transforms
+            .iter()
+            .skip(1)
+            .map(|t| {
+                let mut m = base.clone();
+                for v in &mut m.vertices {
+                    v.position = t.transform_point3(Vec3::from(v.position)).into();
+                    v.normal = t.transform_vector3(Vec3::from(v.normal)).into();
+                }
+                ScreenBins::build(&m, vp, viewport_px, Some(eye))
+            })
+            .collect();
+        let mut fx = FxGpu::default();
+        for (k, t) in transforms.iter().enumerate() {
+            fx.sym[k] = t.to_cols_array_2d();
+        }
+        fx.info[0] = transforms.len() as f32;
+        fx.info[1] = self.flow_mode() as u32 as f32;
+        if let Some(st) = &self.brush.stencil {
+            let h = st.scale * viewport_px.y * 0.5;
+            let w = h * st.size[0] as f32 / st.size[1].max(1) as f32;
+            let (sn, c) = st.rotation.to_radians().sin_cos();
+            fx.info[2] = 1.0;
+            fx.info[3] = st.opacity.clamp(0.0, 1.0);
+            fx.stencil = [st.center.x * viewport_px.x, st.center.y * viewport_px.y, c, sn];
+            fx.stencil2 = [w, h, st.invert as u32 as f32, 0.0];
+        }
+        self.painter.set_fx(&rs.queue, &fx);
+        let dyn_ = pigment_core::brush::BrushDynamics { spacing: self.brush.spacing, ..self.brush.dynamics.clone() };
+        let diameter = self.brush.size * self.ppp;
+        let mut s = Stroke {
+            dabs: pigment_core::brush::DabGenerator::new(dyn_, diameter),
+            bins,
+            sym_bins,
+            tiles: TileSet::default(),
+            target,
+            view,
+            viewport_px,
+            tool_off: Vec2::ZERO,
+            last_uv: None,
+            last_px: pos_px,
+        };
+        // clone: the offset from the stroke start to the source, kept until a new source is set
+        if self.brush.tool == BrushTool::Clone {
+            match (self.brush.clone_offset, self.brush.clone_source) {
+                (Some(o), _) => s.tool_off = o * self.ts.res as f32,
+                (None, Some(src)) => {
+                    if let Some(uv) = self.uv_at_px(pos_px, viewport_px) {
+                        let o = src - uv;
+                        self.brush.clone_offset = Some(o);
+                        s.tool_off = o * self.ts.res as f32;
+                    }
+                }
+                (None, None) => self.set_status("Clone: Alt-click the model to set the source first", true),
+            }
+        }
+        let dabs = s.dabs.begin(pigment_core::brush::InputPoint { pos: pos_px, pressure: self.brush.pressure, tilt: Vec2::ZERO });
         self.stroke = Some(s);
-        self.apply_stamps(rs, stamps);
+        self.apply_dabs(rs, dabs);
     }
 
-    fn apply_stamps(&mut self, rs: &RenderState, points: Vec<Vec2>) {
-        if points.is_empty() {
+    /// Flow strokes: dabs add up towards the stroke opacity.
+    fn flow_mode(&self) -> bool {
+        let d = &self.brush.dynamics;
+        d.flow < 0.999 || d.pressure_flow.enabled || d.jitter.flow > 0.0
+    }
+
+    /// The UV under a viewport pixel.
+    pub(super) fn uv_at_px(&self, px: Vec2, viewport_px: Vec2) -> Option<Vec2> {
+        let vp = self.camera.view_proj(viewport_px.x / viewport_px.y.max(1.0));
+        let ndc = Vec2::new(px.x / viewport_px.x * 2.0 - 1.0, 1.0 - px.y / viewport_px.y * 2.0);
+        let far = vp.inverse().project_point3(Vec3::new(ndc.x, ndc.y, 1.0));
+        let eye = self.camera.eye();
+        pigment_core::brush::uv_at(&self.mesh, eye, (far - eye).normalize())
+    }
+
+    /// Continue the stroke to a pointer sample (pressure 0..1).
+    pub(super) fn stroke_to(&mut self, rs: &RenderState, pos_px: Vec2, pressure: f32) {
+        let Some(s) = self.stroke.as_mut() else { return };
+        s.last_px = pos_px;
+        let dabs = s.dabs.move_to(pigment_core::brush::InputPoint { pos: pos_px, pressure, tilt: Vec2::ZERO });
+        self.apply_dabs(rs, dabs);
+    }
+
+    /// Load the brush tip library (assets/brushes) onto the GPU.
+    pub(super) fn load_brush_tips(&mut self, rs: &RenderState) {
+        let Some(dir) = panels::decals::asset_dir("brushes") else { return };
+        let Ok(text) = std::fs::read_to_string(dir.join("index.json")) else { return };
+        let Ok(v) = serde_json::from_str::<serde_json::Value>(&text) else { return };
+        let mut names = Vec::new();
+        let mut data = Vec::new();
+        for t in v["tips"].as_array().into_iter().flatten() {
+            let (Some(id), Some(file)) = (t["id"].as_str(), t["file"].as_str()) else { continue };
+            let Ok(img) = image::open(dir.join(file)) else { continue };
+            let g = img.to_luma8();
+            let g = image::imageops::resize(&g, crate::render::paint::TIP_SIZE, crate::render::paint::TIP_SIZE, image::imageops::FilterType::Triangle);
+            names.push((id.to_string(), t["label"].as_str().unwrap_or(id).to_string()));
+            data.push(g.into_raw());
+        }
+        if !data.is_empty() {
+            self.painter.set_tips(&rs.device, &rs.queue, &data);
+            self.brush.tips = names;
+        }
+    }
+
+    /// Paint through `path` (an image) as a screen-space stencil; None removes it.
+    pub(super) fn set_stencil(&mut self, rs: &RenderState, st: Option<StencilState>) -> Result<(), String> {
+        if let Some(st) = &st {
+            let same = self.brush.stencil.as_ref().is_some_and(|o| o.path == st.path);
+            if !same {
+                let img = image::open(&st.path).map_err(|e| format!("stencil image {}: {e}", st.path.display()))?.to_rgba8();
+                let (w, h) = img.dimensions();
+                self.painter.set_stencil_image(&rs.device, &rs.queue, img.as_raw(), w, h);
+            }
+        }
+        self.brush.stencil = st;
+        Ok(())
+    }
+
+    fn apply_dabs(&mut self, rs: &RenderState, dabs: Vec<pigment_core::brush::Dab>) {
+        if dabs.is_empty() {
             return;
         }
+        let tip = self.brush.tip.as_ref().and_then(|t| self.brush.tips.iter().position(|(id, _)| id == t)).map(|k| k as f32 + 1.0).unwrap_or(0.0);
+        let additive = self.flow_mode();
+        let mut brush = self.brush_gpu();
+        if additive {
+            brush.stroke[0] = self.brush.opacity.max(1e-3);
+        }
         let ppp_radius = self.brush_radius_px();
+        // smudge: drag along the stroke direction in UV space (texels)
+        if self.brush.tool == BrushTool::Smudge {
+            let last = dabs.last().unwrap().pos;
+            let vpx = self.stroke.as_ref().map(|s| s.viewport_px).unwrap_or(Vec2::ONE);
+            let uv = self.uv_at_px(last, vpx);
+            let res = self.ts.res as f32;
+            let diameter = ppp_radius * 2.0 * self.brush.smudge;
+            if let Some(s) = self.stroke.as_mut() {
+                if let (Some((a, pa)), Some(b)) = (s.last_uv, uv) {
+                    let d = (b - a) * res;
+                    let dpx = (last - pa).length();
+                    if d.length() > 0.5 && dpx > 0.5 {
+                        // texels per screen pixel here, so the drag is `smudge` diameters on screen
+                        let len = (diameter * d.length() / dpx).clamp(1.0, 256.0);
+                        s.tool_off = -d.normalize() * len;
+                    }
+                }
+                if let Some(b) = uv {
+                    s.last_uv = Some((b, last));
+                }
+            }
+        }
+        if let Some(s) = self.stroke.as_ref() {
+            match self.brush.tool {
+                BrushTool::Paint => {}
+                BrushTool::Clone => brush.tool = [1.0, s.tool_off.x, s.tool_off.y, 0.0],
+                BrushTool::Smudge => brush.tool = [2.0, s.tool_off.x, s.tool_off.y, (s.tool_off.length() / 2.0).clamp(2.0, 24.0)],
+            }
+            if self.brush.tool != BrushTool::Paint && s.tool_off == Vec2::ZERO {
+                return; // nothing to copy yet (no clone source / no smudge direction)
+            }
+        }
+        let points: Vec<Vec2> = dabs.iter().map(|d| d.pos).collect();
+        let _ = points;
         let (opacity, hardness) = (self.brush.opacity, self.brush.hardness);
-        let brush = self.brush_gpu();
         let Some(stroke) = self.stroke.as_mut() else { return };
         let t0 = Instant::now();
         let mut frame_tiles = TileSet::default();
-        let stamps: Vec<StampGpu> = points
+        let reach = if tip > 0.0 { std::f32::consts::SQRT_2 } else { 1.0 };
+        let stamps: Vec<StampGpu> = dabs
             .iter()
-            .map(|p| {
-                stroke.bins.mark_stamp(*p, ppp_radius, &mut frame_tiles);
-                StampGpu { center_radius: [p.x, p.y, ppp_radius, opacity], params: [hardness, 0.0, 0.0, 0.0] }
+            .map(|d| {
+                let r = ppp_radius * d.size;
+                stroke.bins.mark_stamp(d.pos, r * reach, &mut frame_tiles);
+                for b in &stroke.sym_bins {
+                    b.mark_stamp(d.pos, r * reach, &mut frame_tiles);
+                }
+                let w = if additive { d.opacity } else { opacity * d.opacity };
+                StampGpu { center_radius: [d.pos.x, d.pos.y, r, w], params: [hardness, d.angle, tip, d.flow] }
             })
             .collect();
         stroke.tiles.union(&frame_tiles);
@@ -953,6 +1192,9 @@ impl PigmentApp {
 
     fn end_stroke(&mut self, rs: &RenderState) {
         let Some(stroke) = self.stroke.take() else { return };
+        self.brush.last_end = Some(stroke.last_px);
+        // back to plain stamping (decals and fills share the stamp pass)
+        self.painter.set_fx(&rs.queue, &FxGpu::default());
         if let Some(snap) = self.painter.end(&rs.device, &rs.queue, &stroke.tiles) {
             self.ts.unsaved.insert(stroke.target.res());
             let what = match stroke.target {
@@ -1038,8 +1280,7 @@ mod tests {
         draw(app, rs);
         app.begin_stroke(rs, from, Vec2::new(800.0, 800.0));
         for i in 1..=6 {
-            let pts = app.stroke.as_mut().unwrap().sampler.move_to(from.lerp(to, i as f32 / 6.0), 6.0);
-            app.apply_stamps(rs, pts);
+            app.stroke_to(rs, from.lerp(to, i as f32 / 6.0), 1.0);
         }
         app.end_stroke(rs);
     }
