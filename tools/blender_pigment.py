@@ -8,6 +8,13 @@ Pigment's "separate" export preset writes, for base name N:
     N_Normal_OpenGL.png    tangent space, OpenGL (+Y up), which Blender expects natively
     N_Height.png           L16, 0.5 = neutral (Non-Color)
     N_Emissive.png         sRGB RGB, black = no emission (optional)
+    N_Opacity.png          L8 alpha, 255 = solid, 0 = cut away (only when not solid)
+    N_Transmission.png     L8, 255 = clear glass (only when the material has any)
+
+Opacity drives the Principled BSDF's Alpha (cut-outs, partly see-through
+glass) and Transmission its Transmission Weight (refracting glass). The
+material is then switched to a see-through render method for EEVEE; Cycles
+needs no settings.
 
 Usage inside Blender:
     exec(open(r".../tools/blender_pigment.py").read())
@@ -18,7 +25,7 @@ import os
 
 import bpy
 
-__all__ = ["apply_pigment_material", "PIGMENT_MAPS"]
+__all__ = ["apply_pigment_material", "configure_see_through", "PIGMENT_MAPS"]
 
 # key -> (file suffix, is_color)
 PIGMENT_MAPS = {
@@ -29,6 +36,8 @@ PIGMENT_MAPS = {
     "Normal": ("_Normal_OpenGL.png", False),
     "Height": ("_Height.png", False),
     "Emissive": ("_Emissive.png", True),
+    "Opacity": ("_Opacity.png", False),
+    "Transmission": ("_Transmission.png", False),
 }
 
 
@@ -71,6 +80,69 @@ def _sock(sockets, *names):
         if s is not None:
             return s
     raise KeyError(f"socket {names} not found in {[s.identifier for s in sockets]}")
+
+
+def _input(node, *names, kind=None):
+    """An input socket by name / identifier, else the first enabled one of `kind`
+    (socket type, e.g. "VALUE") whose name contains names[0]; None if absent."""
+    try:
+        return _sock(node.inputs, *names)
+    except KeyError:
+        pass
+    key = names[0].lower().split()[0]
+    for s in node.inputs:
+        if (kind is None or s.type == kind) and key in s.name.lower() and getattr(s, "enabled", True):
+            return s
+    return None
+
+
+def _set_enum(obj, prop, *wanted):
+    """Set an enum property to the first supported value; ignore if missing."""
+    if not hasattr(obj, prop):
+        return None
+    try:
+        items = [i.identifier for i in obj.bl_rna.properties[prop].enum_items]
+    except (KeyError, AttributeError):
+        items = []
+    for w in wanted:
+        if not items or w in items:
+            try:
+                setattr(obj, prop, w)
+                return w
+            except (TypeError, ValueError):
+                continue
+    return None
+
+
+def _set_attr(obj, prop, value):
+    if hasattr(obj, prop):
+        try:
+            setattr(obj, prop, value)
+            return True
+        except (TypeError, AttributeError, ValueError):
+            pass
+    return False
+
+
+def configure_see_through(mat, alpha=True, transmission=False):
+    """Material settings for cut-outs / glass (Blender 4.2+ EEVEE Next, 5.x).
+
+    Dithered is the 5.x default render method: it handles alpha cut-outs and
+    sorts correctly; refraction is on for transmissive glass (thin slab
+    panes). Blender's older blend_method / shadow_method are set only where
+    they still exist. Cycles reads the node tree directly.
+    """
+    if alpha or transmission:
+        _set_enum(mat, "surface_render_method", "DITHERED")
+        _set_enum(mat, "blend_method", "HASHED", "BLEND")           # pre-4.2
+        _set_enum(mat, "shadow_method", "HASHED")                   # pre-4.2
+        _set_attr(mat, "use_transparent_shadow", True)
+        _set_attr(mat, "use_backface_culling", False)
+    if transmission:
+        _set_attr(mat, "use_raytrace_refraction", True)             # 4.2+
+        _set_attr(mat, "use_screen_refraction", True)               # pre-4.2
+        _set_enum(mat, "thickness_mode", "SLAB")                    # window panes are thin
+        _set_attr(mat, "use_thickness_from_shadow", False)
 
 
 def _load_image(path, is_color):
@@ -116,7 +188,7 @@ def apply_pigment_material(obj, folder, name, emission_strength=8.0, use_height=
     uvn.uv_map = uv_name
 
     tex = {}
-    order = ["BaseColor", "AO", "Metallic", "Roughness", "Emissive", "Normal", "Height"]
+    order = ["BaseColor", "AO", "Metallic", "Roughness", "Emissive", "Opacity", "Transmission", "Normal", "Height"]
     y = 800
     for key in order:
         if not have[key]:
@@ -157,6 +229,21 @@ def apply_pigment_material(obj, folder, name, emission_strength=8.0, use_height=
     if "Emissive" in tex:
         links.new(_sock(tex["Emissive"].outputs, "Color"), _sock(bsdf.inputs, "Emission Color"))
         _sock(bsdf.inputs, "Emission Strength").default_value = float(emission_strength)
+
+    # Opacity -> Alpha, Transmission -> Transmission Weight (looked up by
+    # name, then by type, so a renamed socket in a later Blender still wires)
+    if "Opacity" in tex:
+        a = _input(bsdf, "Alpha", kind="VALUE")
+        if a is not None:
+            links.new(_sock(tex["Opacity"].outputs, "Color"), a)
+    if "Transmission" in tex:
+        t = _input(bsdf, "Transmission Weight", "Transmission", kind="VALUE")
+        if t is not None:
+            links.new(_sock(tex["Transmission"].outputs, "Color"), t)
+        ior = _input(bsdf, "IOR", kind="VALUE")
+        if ior is not None:
+            ior.default_value = 1.5
+    configure_see_through(mat, alpha="Opacity" in tex, transmission="Transmission" in tex)
 
     normal_out = None
     if "Normal" in tex:

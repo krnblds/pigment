@@ -8,13 +8,14 @@ Blender and save the Pigment project.
     python tools/town_textures.py [asset ...]
 """
 import json
+import os
 import random
 import subprocess
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-MCP = ROOT / "target" / "showcase" / "release" / "pigment-mcp.exe"
+MCP = Path(os.environ.get("PIGMENT_MCP", ROOT / "target" / "showcase" / "release" / "pigment-mcp.exe"))
 OUT = ROOT / "scenes" / "town"
 DECALS = "assets/decals/"
 TMP = Path.home() / "AppData" / "Local" / "Temp" / "pig"

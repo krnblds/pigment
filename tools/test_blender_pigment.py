@@ -18,7 +18,9 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 OUT_DIR = os.path.join(os.environ.get("TEMP", tempfile.gettempdir()), "pig")
 MAP_DIR = os.path.join(OUT_DIR, "maps")
 MAP_DIR_NOEMIT = os.path.join(OUT_DIR, "maps_noemit")
+MAP_DIR_GLASS = os.path.join(OUT_DIR, "maps_glass")
 os.makedirs(MAP_DIR, exist_ok=True)
+os.makedirs(MAP_DIR_GLASS, exist_ok=True)
 os.makedirs(MAP_DIR_NOEMIT, exist_ok=True)
 
 ns = {"__name__": "blender_pigment"}
@@ -70,6 +72,13 @@ for d, with_emit in ((MAP_DIR, True), (MAP_DIR_NOEMIT, False)):
     save_png(os.path.join(d, "dummy_Height.png"), grey(0.5 + 0.3 * (radial - 0.5)), depth="16", mode="BW")
     if with_emit:
         save_png(os.path.join(d, "dummy_Emissive.png"), emiss)
+# glass + cut-out set: opacity grid (holes) and transmission on half of it
+for k in ("BaseColor", "Roughness"):
+    src = os.path.join(MAP_DIR, f"dummy_{k}.png")
+    open(os.path.join(MAP_DIR_GLASS, f"dummy_{k}.png"), "wb").write(open(src, "rb").read())
+holes = (((xx * 16) % 1 > 0.25) & ((yy * 16) % 1 > 0.25)).astype(np.float32)
+save_png(os.path.join(MAP_DIR_GLASS, "dummy_Opacity.png"), grey(np.where(xx < 0.5, 1.0 - holes, 0.35)), mode="BW")
+save_png(os.path.join(MAP_DIR_GLASS, "dummy_Transmission.png"), grey((xx >= 0.5).astype(np.float32)), mode="BW")
 print("maps:", sorted(os.listdir(MAP_DIR)))
 
 # ------------------------------------------------------------------ scene
@@ -151,6 +160,25 @@ assert not any(l.to_socket.name == "Emission Color" for l in mat2.node_tree.link
 assert not any(n.type == "BUMP" for n in mat2.node_tree.nodes)
 assert has_link(mat2, "ShaderNodeNormalMap", P, "Normal")
 print("\nno-emissive/no-height variant OK:", len(mat2.node_tree.links), "links")
+
+# no opacity / transmission maps -> nothing wired to Alpha / Transmission
+assert not any(l.to_socket.name in ("Alpha", "Transmission Weight") for l in mat2.node_tree.links)
+
+# glass / cut-out variant: Opacity -> Alpha, Transmission -> Transmission Weight
+cube3 = bpy.data.objects.new("Cube3", cube.data.copy())
+bpy.context.scene.collection.objects.link(cube3)
+cube3.location = (-3.5, 0, 0)
+mat3 = apply_pigment_material(cube3, MAP_DIR_GLASS, "dummy")
+assert has_link(mat3, "Pigment Opacity", P, "Alpha"), link_list(mat3)
+assert has_link(mat3, "Pigment Transmission", P, "Transmission Weight"), link_list(mat3)
+if hasattr(mat3, "surface_render_method"):
+    assert mat3.surface_render_method == "DITHERED", mat3.surface_render_method
+if hasattr(mat3, "use_raytrace_refraction"):
+    assert mat3.use_raytrace_refraction
+for n in mat3.node_tree.nodes:
+    if n.label in ("Pigment Opacity", "Pigment Transmission"):
+        assert n.image.colorspace_settings.name != "sRGB" or n.image.colorspace_settings.is_data, n.label
+print("glass/cut-out variant OK")
 
 # rebuild the full material for the render
 mat = apply_pigment_material(cube, MAP_DIR, "dummy", emission_strength=8.0, use_height=True, height_scale=0.02)
