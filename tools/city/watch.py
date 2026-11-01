@@ -22,7 +22,7 @@ def _sources(g, ids):
     import fnmatch
     exact, globs = set(), []
     for n in g.nodes.values():
-        for o in n.outputs + n.mutable:
+        for o in n.outputs:      # mutable outputs (decal images...) are also hand-edited sources: watched
             o = hashing.split_projection(o)[0]
             if o.endswith(".pigment"):
                 continue
@@ -45,9 +45,9 @@ def _sources(g, ids):
             for f in hashing.expand(pat):
                 if not produced(paths.rel(f)):
                     files.add(str(f))
-        for o in nd.outputs:            # Pigment projects: edited in the app
+        for o in nd.outputs:            # Pigment projects (folders): edited in the app
             if o.endswith(".pigment"):
-                files.add(str(paths.absp(o)))
+                files |= {str(f) for f in hashing.expand(o)}
     for p in paths.MODELS.glob("*/*.toml"):
         files.add(str(p))
     return files
@@ -92,8 +92,9 @@ def watch(a):
         print(f"\n[{time.strftime('%H:%M:%S')}] changed: {', '.join(rels[:6])}{' ...' if len(rels) > 6 else ''}")
         if any(r.startswith("city/models/") for r in rels):
             g, ids = load()
-        for r in rels:
-            if r.endswith(".pigment"):
+        projects = {r[:r.index(".pigment") + 8] for r in rels if ".pigment" in r}
+        for r in sorted(projects):
+            if True:
                 nid = pins.node_for_project(g, r)
                 if nid and pins.project_edited(g.nodes[nid], r):
                     pins.pin(nid, r)

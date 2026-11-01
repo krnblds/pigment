@@ -46,10 +46,11 @@ def node_for_project(g, rel_project):
 def project_edited(node, rel_project) -> bool:
     """True when the project on disk is not the one the last build of this node wrote."""
     st = cache.read_stamp(node.id) or {}
-    rec = (st.get("outputs") or {}).get(rel_project)
-    if rec is None:
+    rec = {k: v for k, v in (st.get("outputs") or {}).items() if k == rel_project or k.startswith(rel_project + "/")}
+    if not rec:
         return False
-    return hashing.stat_cache().file_hash(paths.absp(rel_project)) != rec
+    now = {paths.rel(f): hashing.stat_cache().file_hash(f) for f in hashing.expand(rel_project)}
+    return now != rec
 
 
 def export_lines(script_lines, project):
