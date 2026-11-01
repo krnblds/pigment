@@ -208,6 +208,76 @@ pub fn preset_id(name: &str) -> Option<&'static str> {
     PRESETS.iter().find(|(id, label)| n == *id || n == label.to_ascii_lowercase().replace(' ', "")).map(|(id, _)| *id)
 }
 
+/// Game skies baked by `tools/sky/make_sky.py` into `assets/sky/<id>_2k.hdr`
+/// (same equirect convention as Pigment, so no rotation): (id, display name).
+pub const SKIES: [(&str, &str); 4] = [("night_rain", "Night rain sky"), ("night_moon", "Moon sky"), ("dusk", "Dusk sky"), ("predawn", "Pre-dawn sky")];
+
+/// Canonical sky id for a user-facing name: `night_rain`, `sky:dusk`,
+/// `sky_predawn`, `Night rain sky`, `pre-dawn` ...
+pub fn sky_id(name: &str) -> Option<&'static str> {
+    let n = name.trim().to_ascii_lowercase().replace([' ', '-', '_', ':'], "");
+    let n = n.strip_prefix("sky").unwrap_or(&n);
+    let n = n.strip_suffix("sky").unwrap_or(n);
+    SKIES.iter().find(|(id, label)| n == id.replace('_', "") || n == label.to_ascii_lowercase().replace([' ', '-'], "").trim_end_matches("sky")).map(|(id, _)| *id)
+}
+
+/// Any lighting name: a built-in preset id or a game sky id.
+pub fn lighting_id(name: &str) -> Option<&'static str> {
+    preset_id(name).or_else(|| sky_id(name))
+}
+
+/// Folders searched for the baked skies, in order: `$PIGMENT_SKY_DIR`,
+/// `assets/sky` under the working directory and its parents, under the
+/// executable's folder and its parents, and the source checkout.
+pub fn sky_dirs() -> Vec<std::path::PathBuf> {
+    let mut dirs = Vec::new();
+    if let Some(d) = std::env::var_os("PIGMENT_SKY_DIR") {
+        dirs.push(std::path::PathBuf::from(d));
+    }
+    let mut roots = Vec::new();
+    if let Ok(d) = std::env::current_dir() {
+        roots.push(d);
+    }
+    if let Some(d) = std::env::current_exe().ok().and_then(|e| e.parent().map(|p| p.to_path_buf())) {
+        roots.push(d);
+    }
+    for r in roots {
+        dirs.extend(r.ancestors().map(|a| a.join("assets").join("sky")));
+    }
+    dirs.push(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("..").join("..").join("assets").join("sky"));
+    dirs
+}
+
+/// The baked HDR for a sky (`<id>_2k.hdr`, else `_4k` / `_8k`), if found.
+pub fn sky_path(name: &str) -> Option<std::path::PathBuf> {
+    let id = sky_id(name)?;
+    sky_dirs().into_iter().flat_map(|d| ["2k", "4k", "8k"].map(|r| d.join(format!("{id}_{r}.hdr")))).find(|p| p.is_file())
+}
+
+impl EnvImage {
+    /// Load an equirect `.hdr` / `.exr`, resampled to `width` x `width / 2`.
+    pub fn load(path: &std::path::Path, width: u32) -> anyhow::Result<EnvImage> {
+        let img = image::open(path)?.to_rgb32f();
+        let img = if img.width() == width { img } else { image::imageops::resize(&img, width, width / 2, image::imageops::FilterType::Triangle) };
+        Ok(EnvImage::from_rgb32f(img.width(), img.height(), img.as_raw()))
+    }
+
+    /// A built-in preset or a baked game sky (see `lighting_id`).
+    pub fn lighting(name: &str, width: u32) -> anyhow::Result<EnvImage> {
+        if let Some(e) = EnvImage::preset(name, width) {
+            return Ok(e);
+        }
+        let id = sky_id(name).ok_or_else(|| anyhow::anyhow!("unknown lighting `{name}` ({})", lighting_names()))?;
+        let p = sky_path(id).ok_or_else(|| anyhow::anyhow!("sky `{id}` not found: bake assets/sky/{id}_2k.hdr with tools/sky/make_sky.py or set PIGMENT_SKY_DIR"))?;
+        EnvImage::load(&p, width)
+    }
+}
+
+/// All lighting names, for error messages.
+pub fn lighting_names() -> String {
+    PRESETS.iter().chain(SKIES.iter()).map(|(id, _)| *id).collect::<Vec<_>>().join(", ")
+}
+
 /// Soft-edged rectangular light around `dir` (angular half-size `half`), 0..1.
 fn soft_rect(d: Vec3, dir: Vec3, half: Vec2) -> f32 {
     let along = d.dot(dir);
@@ -355,6 +425,51 @@ mod tests {
         let b = Vec3::new(r[0], r[1], r[2]);
         assert!((a - b).length() <= 0.02 * a.length() + 1e-3, "{a} vs {b}");
         std::fs::remove_file(p).ok();
+    }
+
+    #[test]
+    fn game_skies_resolve_and_load() {
+        assert_eq!(sky_id("night_rain"), Some("night_rain"));
+        assert_eq!(sky_id("sky:dusk"), Some("dusk"));
+        assert_eq!(sky_id("Sky_Predawn"), Some("predawn"));
+        assert_eq!(sky_id("pre-dawn"), Some("predawn"));
+        assert_eq!(sky_id("Night rain sky"), Some("night_rain"));
+        assert_eq!(sky_id("Moon sky"), Some("night_moon"));
+        assert_eq!(sky_id("night"), None, "`night` stays the built-in preset");
+        assert_eq!(lighting_id("night"), Some("night"));
+        assert_eq!(lighting_id("dusk"), Some("dusk"));
+        assert!(lighting_id("disco").is_none());
+        assert!(EnvImage::lighting("disco", 64).is_err());
+        // the baked skies are committed in assets/sky: they load, and they look like the
+        // art direction: warm horizon, dark overhead, dark ground
+        for (id, _) in SKIES {
+            let p = sky_path(id).unwrap_or_else(|| panic!("{id}: assets/sky/{id}_2k.hdr missing"));
+            assert!(p.to_string_lossy().ends_with(&format!("{id}_2k.hdr")));
+            let e = EnvImage::lighting(id, 256).unwrap();
+            assert_eq!((e.width, e.height), (256, 128));
+            let at = |v: f32| {
+                let row = ((v * e.height as f32) as usize).min(e.height as usize - 1);
+                e.data[row * e.width as usize..(row + 1) * e.width as usize].iter().map(|c| Vec3::from(*c)).sum::<Vec3>() / e.width as f32
+            };
+            let (zenith, horizon, ground) = (at(0.02), at(0.49), at(0.9));
+            assert!(horizon.x > 2.0 * zenith.x, "{id}: horizon {horizon} vs zenith {zenith}");
+            assert!(horizon.x > horizon.z, "{id}: the horizon glow is warm ({horizon})");
+            assert!(ground.length() < 0.5 * horizon.length(), "{id}: ground {ground}");
+        }
+        // night is the darkest, dusk the brightest
+        let mean = |id: &str| EnvImage::lighting(id, 128).unwrap().data.iter().map(|c| Vec3::from(*c).length()).sum::<f32>();
+        assert!(mean("night_rain") < mean("dusk"));
+        // the HDR uses Pigment's convention: the MERIDIAN district (Blender azimuth 60 deg,
+        // glTF direction (cos 60, 0, -sin 60)) is brighter low on the horizon than the opposite side
+        let e = EnvImage::lighting("night_rain", 256).unwrap();
+        let px = |d: Vec3| {
+            let uv = uv_from_dir(d.normalize());
+            let (x, y) = ((uv.x * 256.0) as usize % 256, ((uv.y * 128.0) as usize).min(127));
+            Vec3::from(e.data[y * 256 + x])
+        };
+        let a = 60f32.to_radians();
+        let dt = Vec3::new(a.cos(), 0.12, -a.sin());
+        assert!(px(dt).length() > 1.3 * px(Vec3::new(-dt.x, 0.12, -dt.z)).length());
     }
 
     #[test]

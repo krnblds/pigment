@@ -1412,6 +1412,18 @@ impl PigmentApp {
                             }
                         }
                     });
+                    // game skies (assets/sky, baked by tools/sky/make_sky.py)
+                    ui.horizontal(|ui| {
+                        for (id, label) in pigment_core::envmath::SKIES {
+                            let found = pigment_core::envmath::sky_path(id).is_some();
+                            let r = ui.add_enabled(found, egui::Button::selectable(self.env.source == id, label));
+                            if r.clicked() && self.env.source != id {
+                                if let Ok(e) = Environment::lighting(&rs.device, &rs.queue, id) {
+                                    self.env = e;
+                                }
+                            }
+                        }
+                    });
                     if ui.button("Load HDRI (.hdr / .exr)…").clicked() {
                         if let Some(p) = rfd::FileDialog::new().add_filter("HDR images", &["hdr", "exr"]).pick_file() {
                             self.load_env(rs, &p);

@@ -10,3 +10,8 @@ scenes/car/textures/
 scenes/props/textures/
 docs/agents/props/tiles/
 scenes/props/projects/
+# large sky bakes (python: blender -b --factory-startup --python tools/sky/make_sky.py -- --res 8k)
+assets/sky/*_4k.hdr
+assets/sky/*_8k.hdr
+game/sky/*_4k.hdr*
+game/sky/*_8k.hdr*

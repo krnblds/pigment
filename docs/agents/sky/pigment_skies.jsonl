@@ -1,0 +1,6 @@
+{"tool": "open_project", "args": {"path": "scenes/town/projects/building_a.pigment"}}
+{"tool": "render", "args": {"yaw": 200, "pitch": -14, "zoom": 0.8, "width": 400, "height": 560, "background": true, "lighting": "night", "exposure": 0.0, "path": "docs/agents/sky/pigment/p_0_night.png"}}
+{"tool": "render", "args": {"yaw": 200, "pitch": -14, "zoom": 0.8, "width": 400, "height": 560, "background": true, "lighting": "night_rain", "exposure": 1.5, "path": "docs/agents/sky/pigment/p_1_night_rain.png"}}
+{"tool": "render", "args": {"yaw": 200, "pitch": -14, "zoom": 0.8, "width": 400, "height": 560, "background": true, "lighting": "night_moon", "exposure": 1.5, "path": "docs/agents/sky/pigment/p_2_night_moon.png"}}
+{"tool": "render", "args": {"yaw": 200, "pitch": -14, "zoom": 0.8, "width": 400, "height": 560, "background": true, "lighting": "dusk", "exposure": 0.3, "path": "docs/agents/sky/pigment/p_3_dusk.png"}}
+{"tool": "render", "args": {"yaw": 200, "pitch": -14, "zoom": 0.8, "width": 400, "height": 560, "background": true, "lighting": "predawn", "exposure": 1.0, "path": "docs/agents/sky/pigment/p_4_predawn.png"}}

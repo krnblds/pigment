@@ -39,6 +39,20 @@ impl Environment {
         Some(env)
     }
 
+    /// A built-in preset or a baked game sky (`night_rain`, `dusk`, ...; see
+    /// `envmath::SKIES`). `source` is the canonical id either way.
+    pub fn lighting(device: &wgpu::Device, queue: &wgpu::Queue, name: &str) -> anyhow::Result<Self> {
+        if let Some(env) = Self::preset(device, queue, name) {
+            return Ok(env);
+        }
+        let id = envmath::sky_id(name).ok_or_else(|| anyhow::anyhow!("unknown lighting `{name}` ({})", envmath::lighting_names()))?;
+        let label = envmath::SKIES.iter().find(|(i, _)| *i == id).map(|(_, l)| *l).unwrap_or(id);
+        let img = EnvImage::lighting(id, ENV_WIDTH)?;
+        let mut env = Self::from_image(device, queue, &img, label);
+        env.source = id.to_string();
+        Ok(env)
+    }
+
     pub fn load(device: &wgpu::Device, queue: &wgpu::Queue, path: &Path) -> anyhow::Result<Self> {
         let img = image::open(path)?.to_rgb32f();
         let img = image::imageops::resize(&img, ENV_WIDTH, ENV_WIDTH / 2, image::imageops::FilterType::Triangle);

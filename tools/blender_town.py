@@ -1371,6 +1371,14 @@ def build(root=None, export_junctions=False, quick=False):
     moon.color = (0.6, 0.7, 1.0)
     mo = put(moon, (0, 0, 80), name="Moon")
     mo.rotation_euler = (math.radians(55), 0, math.radians(35))
+    # ---- baked city sky + fog box (tools/sky/make_sky.py); TOWN_SKY = None keeps the flat world
+    sky = globals().get("TOWN_SKY", "night_rain")
+    if sky:
+        src = os.path.join(root, "tools", "sky", "make_sky.py")
+        if os.path.isfile(src):
+            sky_ns = {"__name__": "make_sky", "__file__": src}
+            exec(compile(open(src, encoding="utf-8").read(), src, "exec"), sky_ns)
+            sky_ns["apply_sky"](sc, sky)
 
     # ---- default camera: street level, looking into the Y fork
     cam = bpy.data.objects.get("TownCam")
