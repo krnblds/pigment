@@ -616,6 +616,9 @@ pub struct Document {
     /// Variant seed and stored variant definitions (see `variants`).
     #[serde(default, skip_serializing_if = "crate::variants::Variants::is_empty")]
     pub variants: crate::variants::Variants,
+    /// Flat seamless tile / trim sheet / decal atlas project (see `tile`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tile: Option<crate::tile::TileSpec>,
 }
 
 fn default_preset() -> String {
@@ -633,6 +636,7 @@ impl Default for Document {
             export_preset: default_preset(),
             next_id: 1,
             variants: Default::default(),
+            tile: None,
         }
     }
 }
