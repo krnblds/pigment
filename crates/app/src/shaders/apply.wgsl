@@ -14,9 +14,12 @@ struct Brush {
     enabled2: vec4<f32>,    // normal, erase(1/0), mask value
     emissive: vec4<f32>,    // linear rgb x strength
     enabled3: vec4<f32>,    // emissive, decal mode (1/0)
+    extra: vec4<f32>,       // opacity value, transmission value, opacity on, transmission on
 };
 @group(0) @binding(7) var<uniform> brush: Brush;
 @group(0) @binding(8) var decal_col: texture_2d<f32>;   // decal colour per texel (decal mode)
+@group(0) @binding(9) var b_opacity: texture_2d<f32>;
+@group(0) @binding(10) var b_transmission: texture_2d<f32>;
 
 struct LayerOut {
     @location(0) color: vec4<f32>,
@@ -68,6 +71,27 @@ fn fs_apply(f: FullOut) -> LayerOut {
     o.normal = apply1(brush.enabled2.x, bn, bn.a, vec4<f32>(brush.normal.xyz * 0.5 + 0.5, 1.0), m);
     let be = textureLoad(b_emissive, t, 0);
     o.emissive = apply1(brush.enabled3.x, be, be.a, vec4<f32>(emit, 1.0), m);
+    return o;
+}
+
+// Opacity and transmission: a second pass (the main one is at the
+// colour-attachment byte limit). Value + coverage, like roughness.
+struct ExtraOut {
+    @location(0) opacity: vec4<f32>,
+    @location(1) transmission: vec4<f32>,
+};
+
+@fragment
+fn fs_apply_extra(f: FullOut) -> ExtraOut {
+    let t = vec2<i32>(f.pos.xy);
+    let m = textureLoad(stroke_mask, t, 0).r;
+    let bo = textureLoad(b_opacity, t, 0);
+    let bt = textureLoad(b_transmission, t, 0);
+    var o: ExtraOut;
+    let a = apply1(brush.extra.z, vec4<f32>(bo.r), bo.g, vec4<f32>(brush.extra.x), m);
+    o.opacity = vec4<f32>(a.x, a.w, 0.0, 1.0);
+    let tr = apply1(brush.extra.w, vec4<f32>(bt.r), bt.g, vec4<f32>(brush.extra.y), m);
+    o.transmission = vec4<f32>(tr.x, tr.w, 0.0, 1.0);
     return o;
 }
 

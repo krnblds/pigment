@@ -29,7 +29,7 @@ pub fn read_layer(device: &wgpu::Device, queue: &wgpu::Queue, ts: &TexSet, res: 
         .enumerate()
         .map(|(i, v)| if i % 4 == 3 { unorm16(v) } else { unorm16(v / 16.0) })
         .collect();
-    Some(LayerPixels { size: ts.res, color: rb(0), roughness: rb(1), metallic: rb(2), height, normal: rb(4), emissive })
+    Some(LayerPixels { size: ts.res, color: rb(0), roughness: rb(1), metallic: rb(2), height, normal: rb(4), emissive, opacity: rb(6), transmission: rb(7) })
 }
 
 pub fn upload_layer(device: &wgpu::Device, queue: &wgpu::Queue, ts: &mut TexSet, res: ResId, px: &LayerPixels) {
@@ -58,6 +58,8 @@ pub fn upload_layer(device: &wgpu::Device, queue: &wgpu::Queue, ts: &mut TexSet,
         })
         .collect();
     gpu::upload(queue, &l.ch[5], bytemuck::cast_slice(&e));
+    gpu::upload(queue, &l.ch[6], &px.opacity);
+    gpu::upload(queue, &l.ch[7], &px.transmission);
     ts.layers.insert(res, l);
 }
 

@@ -19,7 +19,7 @@ pub fn headless_render_state() -> Option<RenderState> {
         ..Default::default()
     }))
     .ok()?;
-    let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor::default())).ok()?;
+    let (device, queue) = pollster::block_on(adapter.request_device(&crate::render::gpu::device_descriptor(&adapter))).ok()?;
     let format = wgpu::TextureFormat::Rgba8UnormSrgb;
     let renderer = eframe::egui_wgpu::Renderer::new(&device, format, Default::default());
     Some(RenderState {
@@ -163,7 +163,8 @@ impl Session {
         json!({
             "materials": material_presets().into_iter().map(|(n, v)| json!({
                 "name": n, "base_color": v.base_color, "roughness": v.roughness, "metallic": v.metallic, "height": v.height,
-                "emissive": v.emissive, "emissive_strength": v.emissive_strength
+                "emissive": v.emissive, "emissive_strength": v.emissive_strength,
+                "opacity": v.opacity, "transmission": v.transmission
             })).collect::<Vec<_>>(),
             "smart_materials": smart_material_names(),
             "generators": GeneratorKind::ALL.iter().map(|k| json!({ "id": k.id(), "label": k.label(), "uses_bakes": k.uses_bakes() })).collect::<Vec<_>>(),
@@ -249,6 +250,7 @@ impl Session {
                 l.channels.height.enabled = true;
             }
             l.channels.emissive.enabled = values.emissive_strength > 0.0;
+            (l.channels.opacity.enabled, l.channels.transmission.enabled) = values.is_see_through();
         }
         if let Some(vals) = a.get("values") {
             let l = &mut app.doc.layers[i];
@@ -279,6 +281,16 @@ impl Session {
             }
             let glows = v.emissive_strength > 0.0;
             l.channels.emissive.enabled = glows;
+            // opacity / transmission: on when given or not neutral
+            if let Some(x) = f(vals, "opacity") {
+                v.opacity = x.clamp(0.0, 1.0);
+            }
+            if let Some(x) = f(vals, "transmission") {
+                v.transmission = x.clamp(0.0, 1.0);
+            }
+            let (see, trans) = v.is_see_through();
+            l.channels.opacity.enabled |= see || vals.get("opacity").is_some();
+            l.channels.transmission.enabled |= trans || vals.get("transmission").is_some();
             if height_set {
                 l.channels.height.enabled = true;
             }
@@ -583,10 +595,17 @@ impl Session {
                 return Err(format!("unknown material `{name}`"));
             }
             b.values = material_preset(name);
-            b.channels = [true, true, true, b.values.height.abs() > 1e-3, false, b.values.emissive_strength > 0.0];
+            let (see, trans) = b.values.is_see_through();
+            b.channels = [true, true, true, b.values.height.abs() > 1e-3, false, b.values.emissive_strength > 0.0, see, trans];
+        }
+        if let Some(vals) = a.get("values") {
+            apply_material_values(&mut b.values, vals);
+            let (see, trans) = b.values.is_see_through();
+            b.channels[6] |= see || vals.get("opacity").is_some();
+            b.channels[7] |= trans || vals.get("transmission").is_some();
         }
         if let Some(chs) = a.get("channels").and_then(Value::as_array) {
-            b.channels = [false; 6];
+            b.channels = [false; 8];
             for c in chs.iter().filter_map(Value::as_str) {
                 b.channels[channel(c)?.index()] = true;
             }
@@ -659,7 +678,7 @@ impl Session {
                 b.values.base_color[k] = x.as_f64().unwrap_or(1.0) as f32;
             }
         }
-        b.channels = [true, true, true, false, false, false];
+        b.channels = [true, true, true, false, false, false, false, false];
         if let Some(e) = f(a, "emissive_strength") {
             b.values.emissive = b.values.base_color;
             b.values.emissive_strength = e;
@@ -669,8 +688,13 @@ impl Session {
             b.values.height = h;
             b.channels[3] = true;
         }
+        if let Some(vals) = a.get("values") {
+            apply_material_values(&mut b.values, vals);
+            b.channels[6] |= vals.get("opacity").is_some();
+            b.channels[7] |= vals.get("transmission").is_some();
+        }
         if let Some(chs) = a.get("channels").and_then(Value::as_array) {
-            b.channels = [false; 6];
+            b.channels = [false; 8];
             for c in chs.iter().filter_map(Value::as_str) {
                 b.channels[channel(c)?.index()] = true;
             }
@@ -736,13 +760,47 @@ impl Session {
             .unwrap()
             .outputs
             .iter()
-            .map(|o| dir.join(format!("{}_{}.png", self.app.export_name, o.suffix)).to_string_lossy().to_string())
+            .map(|o| dir.join(format!("{}_{}.png", self.app.export_name, o.suffix)))
+            // opacity / transmission maps of a solid material aren't written
+            .filter(|p| p.exists())
+            .map(|p| p.to_string_lossy().to_string())
             .collect();
         Ok(json!({ "status": msg, "files": files, "emissive_scale": scale }))
     }
 }
 
 use image::ImageEncoder;
+
+/// Brush material values from a JSON object (same keys as a fill's `values`).
+fn apply_material_values(v: &mut MaterialValues, vals: &Value) {
+    let rgb = |k: &str, out: &mut [f32; 3]| {
+        if let Some(c) = vals.get(k).and_then(Value::as_array) {
+            for (i, x) in c.iter().take(3).enumerate() {
+                out[i] = x.as_f64().unwrap_or(0.0).clamp(0.0, 1.0) as f32;
+            }
+        }
+    };
+    rgb("base_color", &mut v.base_color);
+    rgb("emissive", &mut v.emissive);
+    if let Some(x) = f(vals, "roughness") {
+        v.roughness = x.clamp(0.0, 1.0);
+    }
+    if let Some(x) = f(vals, "metallic") {
+        v.metallic = x.clamp(0.0, 1.0);
+    }
+    if let Some(x) = f(vals, "height") {
+        v.height = x.clamp(-1.0, 1.0);
+    }
+    if let Some(x) = f(vals, "emissive_strength") {
+        v.emissive_strength = x.max(0.0);
+    }
+    if let Some(x) = f(vals, "opacity") {
+        v.opacity = x.clamp(0.0, 1.0);
+    }
+    if let Some(x) = f(vals, "transmission") {
+        v.transmission = x.clamp(0.0, 1.0);
+    }
+}
 
 fn apply_generator_fields(g: &mut Generator, m: &Value) {
     if let Some(x) = f(m, "amount") {

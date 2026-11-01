@@ -310,3 +310,24 @@ pub fn readback(device: &wgpu::Device, queue: &wgpu::Queue, t: &Tex) -> Vec<u8> 
     buf.unmap();
     out
 }
+
+/// Sampled textures the layer compositor binds per shader stage (shared mesh
+/// data + accumulation + one layer's channels and mask). wgpu's default limit
+/// is 16; every desktop GPU allows far more.
+pub const SAMPLED_TEXTURES_NEEDED: u32 = 18;
+
+/// Limits Pigment asks for: wgpu's defaults, plus room for 8K viewports and
+/// the compositor's texture count (capped to what the adapter supports).
+pub fn required_limits(adapter: &wgpu::Adapter) -> wgpu::Limits {
+    let have = adapter.limits();
+    wgpu::Limits {
+        max_texture_dimension_2d: 8192u32.min(have.max_texture_dimension_2d),
+        max_sampled_textures_per_shader_stage: 32u32.min(have.max_sampled_textures_per_shader_stage),
+        ..wgpu::Limits::default()
+    }
+}
+
+/// Device descriptor for every device Pigment creates (app, headless, tests).
+pub fn device_descriptor(adapter: &wgpu::Adapter) -> wgpu::DeviceDescriptor<'static> {
+    wgpu::DeviceDescriptor { label: Some("pigment"), required_limits: required_limits(adapter), ..Default::default() }
+}

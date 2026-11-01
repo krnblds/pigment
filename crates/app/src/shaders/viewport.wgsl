@@ -103,13 +103,30 @@ fn checker(uv: vec2<f32>) -> vec3<f32> {
     return select(base * 0.9, vec3<f32>(0.9), odd == 1);
 }
 
+// Opaque pass: solid texels only (see-through ones go to fs_mesh_glass).
 @fragment
 fn fs_mesh(i: VsOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f32> {
+    let c = shade(i, front);
+    if (c.a < 0.996) { discard; }
+    return vec4<f32>(c.rgb, 1.0);
+}
+
+// Transparent pass: premultiplied colour, a = how much of what's behind is hidden.
+@fragment
+fn fs_mesh_glass(i: VsOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f32> {
+    let c = shade(i, front);
+    if (c.a >= 0.996) { discard; }
+    return c;
+}
+
+// Shaded colour (tone mapped, premultiplied by coverage) and coverage.
+fn shade(i: VsOut, front: bool) -> vec4<f32> {
     var ng = normalize(i.normal);
     if (!front) { ng = -ng; }
     let mode = i32(g.params.x);
 
-    let albedo = textureSample(m_color, m_samp, i.uv).rgb;
+    let albedo4 = textureSample(m_color, m_samp, i.uv);
+    let albedo = albedo4.rgb;
     let orm = textureSample(m_orm, m_samp, i.uv);
     let tn = textureSample(m_normal, m_samp, i.uv).xyz * 2.0 - 1.0;
 
@@ -131,6 +148,8 @@ fn fs_mesh(i: VsOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f3
         case 7: { return vec4<f32>(srgb_to_linear(vec3<f32>(textureSample(m_bakes, m_samp, i.uv).g)), 1.0); }
         case 8: { return vec4<f32>(srgb_to_linear(textureSample(m_wnormal, m_samp, i.uv).xyz * 0.5 + 0.5), 1.0); }
         case 10: { return vec4<f32>(tonemap(textureSample(m_emissive, m_samp, i.uv).rgb), 1.0); }
+        case 11: { return vec4<f32>(srgb_to_linear(vec3<f32>(albedo4.a)), 1.0); }   // opacity
+        case 12: { return vec4<f32>(srgb_to_linear(vec3<f32>(orm.a)), 1.0); }       // transmission
         case 9: {
             let l = max(dot(ng, normalize(g.eye.xyz - i.world)), 0.0);
             return vec4<f32>(checker(i.uv) * (0.25 + 0.75 * l), 1.0);
@@ -155,9 +174,17 @@ fn fs_mesh(i: VsOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f3
     let diffuse = (1.0 - fr) * (1.0 - metal) * albedo * sh_irradiance(n);
     // specular occlusion approximation (Lagarde)
     let so = clamp(pow(nv + ao, exp2(-16.0 * rough - 1.0)) - 1.0 + ao, 0.0, 1.0);
-    var color = diffuse * ao + spec * so + textureSample(m_emissive, m_samp, i.uv).rgb * g.params2.w;
-    if (!front) { color *= vec3<f32>(0.5, 0.25, 0.25); }
-    return vec4<f32>(tonemap(color), 1.0);
+    // Opacity scales everything (cut-outs vanish, reflections too). Glass
+    // (transmission) swaps diffuse for the background showing through, so it
+    // only hides what's behind by its Fresnel reflectance.
+    let alpha = albedo4.a;
+    let trans = orm.a;
+    let fr_avg = (fr.x + fr.y + fr.z) / 3.0;
+    let cover = alpha * mix(1.0, fr_avg, trans * (1.0 - metal));
+    var color = diffuse * ao * (1.0 - trans) + spec * so + textureSample(m_emissive, m_samp, i.uv).rgb * g.params2.w;
+    if (!front && cover >= 0.996) { color *= vec3<f32>(0.5, 0.25, 0.25); }
+    if (cover >= 0.996) { return vec4<f32>(tonemap(color), 1.0); }
+    return vec4<f32>(tonemap(color) * alpha, cover);
 }
 
 // Background: the environment itself, slightly blurred, or a plain gradient.

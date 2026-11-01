@@ -27,10 +27,12 @@ pub enum ViewMode {
     WorldNormal = 8,
     UvChecker = 9,
     Emissive = 10,
+    Opacity = 11,
+    Transmission = 12,
 }
 
 impl ViewMode {
-    pub const ALL: [ViewMode; 11] = [
+    pub const ALL: [ViewMode; 13] = [
         ViewMode::Material,
         ViewMode::BaseColor,
         ViewMode::Roughness,
@@ -42,6 +44,8 @@ impl ViewMode {
         ViewMode::WorldNormal,
         ViewMode::UvChecker,
         ViewMode::Emissive,
+        ViewMode::Opacity,
+        ViewMode::Transmission,
     ];
     pub fn label(self) -> &'static str {
         match self {
@@ -56,6 +60,8 @@ impl ViewMode {
             ViewMode::WorldNormal => "World normal (bake)",
             ViewMode::UvChecker => "UV checker",
             ViewMode::Emissive => "Emission",
+            ViewMode::Opacity => "Opacity",
+            ViewMode::Transmission => "Transmission",
         }
     }
 }
@@ -100,6 +106,9 @@ impl Default for ViewSettings {
 
 pub struct Viewport {
     mesh_pipe: wgpu::RenderPipeline,
+    /// See-through surfaces (opacity < 1 or glass), premultiplied-alpha
+    /// blended over the opaque pass without writing depth.
+    glass_pipe: wgpu::RenderPipeline,
     bg_pipe: wgpu::RenderPipeline,
     depth_pipe: wgpu::RenderPipeline,
     env_bgl: wgpu::BindGroupLayout,
@@ -159,6 +168,25 @@ impl Viewport {
                 cull: None,
             },
         );
+        let premultiplied = wgpu::BlendState {
+            color: wgpu::BlendComponent { src_factor: wgpu::BlendFactor::One, dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha, operation: wgpu::BlendOperation::Add },
+            alpha: wgpu::BlendComponent { src_factor: wgpu::BlendFactor::One, dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha, operation: wgpu::BlendOperation::Add },
+        };
+        let glass_pipe = gpu::pipeline(
+            device,
+            gpu::PipeDesc {
+                label: "viewport glass",
+                module: &module,
+                vs: "vs_mesh",
+                fs: Some("fs_mesh_glass"),
+                layout: &layout,
+                buffers: &mesh_layout,
+                targets: &[gpu::target(COLOR_FORMAT, Some(premultiplied))],
+                depth: Some(depth_state(false, wgpu::CompareFunction::Greater)),
+                samples: MSAA,
+                cull: None,
+            },
+        );
         let bg_pipe = gpu::pipeline(
             device,
             gpu::PipeDesc {
@@ -197,7 +225,7 @@ impl Viewport {
             anisotropy_clamp: 16,
             ..Default::default()
         });
-        Self { mesh_pipe, bg_pipe, depth_pipe, env_bgl, mat_bgl, globals, g_bg, sampler, targets: None, texture_id: None }
+        Self { mesh_pipe, glass_pipe, bg_pipe, depth_pipe, env_bgl, mat_bgl, globals, g_bg, sampler, targets: None, texture_id: None }
     }
 
     /// (Re)create the render targets for `size`. Returns true if they changed.
@@ -349,6 +377,9 @@ impl Viewport {
                 pass.set_pipeline(&self.mesh_pipe);
                 pass.set_vertex_buffer(0, m.vertices.slice(..));
                 pass.set_index_buffer(m.indices.slice(..), wgpu::IndexFormat::Uint32);
+                pass.draw_indexed(0..m.index_count, 0, 0..1);
+                // then glass and cut-outs over it (depth-tested, not written)
+                pass.set_pipeline(&self.glass_pipe);
                 pass.draw_indexed(0..m.index_count, 0, 0..1);
             }
         }

@@ -49,7 +49,7 @@ struct Brush {
     hardness: f32,
     spacing: f32, // fraction of diameter
     values: MaterialValues,
-    channels: [bool; 6],
+    channels: [bool; 8],
     erase: bool,
     mask_white: bool,
 }
@@ -62,7 +62,7 @@ impl Default for Brush {
             hardness: 0.6,
             spacing: 0.1,
             values: material_preset("Orange paint"),
-            channels: [true, true, true, false, false, false],
+            channels: [true, true, true, false, false, false, false, false],
             erase: false,
             mask_white: true,
         }
@@ -632,6 +632,7 @@ impl PigmentApp {
                 [e[0] * k, e[1] * k, e[2] * k, 1.0]
             },
             enabled3: [on(5), 0.0, 0.0, 0.0],
+            extra: [b.values.opacity.clamp(0.0, 1.0), b.values.transmission.clamp(0.0, 1.0), on(6), on(7)],
         }
     }
 
@@ -854,7 +855,7 @@ mod tests {
     fn headless() -> Option<RenderState> {
         let instance = wgpu::Instance::default();
         let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions::default())).ok()?;
-        let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor::default())).ok()?;
+        let (device, queue) = pollster::block_on(adapter.request_device(&crate::render::gpu::device_descriptor(&adapter))).ok()?;
         let format = wgpu::TextureFormat::Rgba8UnormSrgb;
         let renderer = eframe::egui_wgpu::Renderer::new(&device, format, Default::default());
         Some(RenderState {
