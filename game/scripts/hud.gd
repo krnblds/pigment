@@ -1,7 +1,7 @@
 extends CanvasLayer
 ## Speed, gear, a MERIDIAN citizen-score ticker (story flavour), controls hint and an FPS line.
 
-var car: VehicleBody3D
+var car: RigidBody3D
 var score := 612
 var _speed_label: Label
 var _unit_label: Label

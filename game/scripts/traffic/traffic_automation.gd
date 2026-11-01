@@ -51,7 +51,7 @@ func _test(seconds: float) -> void:
 		get_tree().quit(1)
 		return
 	await _traffic_ready()
-	var car: VehicleBody3D = main.car
+	var car: RigidBody3D = main.car
 	# the player out of the way: frozen and not an obstacle
 	var hero_layer := car.collision_layer
 	car.freeze = true

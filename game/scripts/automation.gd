@@ -48,7 +48,7 @@ func _ready() -> void:
 			pr.process_physics_priority = 100000 if last else -100000
 			add_child(pr)
 	var a: Dictionary = main.args
-	if a.has("drive-test"):
+	if a.has("drive-old"):
 		_drive_test.call_deferred()
 	elif a.has("autoshot"):
 		_autoshot.call_deferred(String(a.autoshot))
@@ -410,7 +410,7 @@ static func _spots(w: Dictionary) -> Array:
 
 # ------------------------------------------------------------------ physics check (headless OK)
 func _drive_test() -> void:
-	var car: VehicleBody3D = main.car
+	var car: RigidBody3D = main.car
 	var res := {}
 	print("drive test: settling")
 	await _wait(2.0)
