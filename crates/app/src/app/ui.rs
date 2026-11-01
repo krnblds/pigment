@@ -1344,13 +1344,34 @@ impl PigmentApp {
                     });
                     ui.checkbox(&mut self.view.show_env, "Show environment as background");
                     ui.separator();
+                    ui.checkbox(&mut self.view.bloom.enabled, "Bloom (glow from emission and highlights)");
+                    ui.add_enabled_ui(self.view.bloom.enabled, |ui| {
+                        egui::Grid::new("bloom").num_columns(2).show(ui, |ui| {
+                            ui.label("Threshold");
+                            ui.add(egui::Slider::new(&mut self.view.bloom.threshold, 0.0..=4.0));
+                            ui.end_row();
+                            ui.label("Intensity");
+                            ui.add(egui::Slider::new(&mut self.view.bloom.intensity, 0.0..=2.0));
+                            ui.end_row();
+                            ui.label("Radius");
+                            ui.add(egui::Slider::new(&mut self.view.bloom.radius, 0.0..=1.0));
+                            ui.end_row();
+                        });
+                    });
+                    ui.separator();
+                    ui.horizontal(|ui| {
+                        for (id, label) in pigment_core::envmath::PRESETS {
+                            if ui.selectable_label(self.env.source == id, label).clicked() && self.env.source != id {
+                                if let Some(e) = Environment::preset(&rs.device, &rs.queue, id) {
+                                    self.env = e;
+                                }
+                            }
+                        }
+                    });
                     if ui.button("Load HDRI (.hdr / .exr)…").clicked() {
                         if let Some(p) = rfd::FileDialog::new().add_filter("HDR images", &["hdr", "exr"]).pick_file() {
                             self.load_env(rs, &p);
                         }
-                    }
-                    if ui.button("Built-in studio").clicked() {
-                        self.env = Environment::studio(&rs.device, &rs.queue);
                     }
                 });
             });

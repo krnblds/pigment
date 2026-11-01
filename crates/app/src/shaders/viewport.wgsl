@@ -1,5 +1,6 @@
 // Viewport: metallic/roughness PBR lit by an HDRI (split-sum IBL + SH9
-// diffuse), ACES tone mapping, plus channel/debug views.
+// diffuse) into an HDR target (post.wgsl adds bloom and tone maps), plus
+// channel/debug views.
 
 struct Globals {
     view_proj: mat4x4<f32>,
@@ -75,24 +76,16 @@ fn sh_irradiance(n0: vec3<f32>) -> vec3<f32> {
     return max(e, vec3<f32>(0.0));
 }
 
-// ACES filmic, Hill's fit (sRGB -> ACES AP1 -> RRT/ODT -> sRGB).
-fn aces(c: vec3<f32>) -> vec3<f32> {
-    let i = mat3x3<f32>(
-        vec3<f32>(0.59719, 0.07600, 0.02840),
-        vec3<f32>(0.35458, 0.90834, 0.13383),
-        vec3<f32>(0.04823, 0.01566, 0.83777));
-    let o = mat3x3<f32>(
-        vec3<f32>(1.60475, -0.10208, -0.00327),
-        vec3<f32>(-0.53108, 1.10813, -0.07276),
-        vec3<f32>(-0.07367, -0.00605, 1.07602));
-    let v = i * c;
-    let a = v * (v + 0.0245786) - 0.000090537;
-    let b = v * (0.983729 * v + 0.4329510) + 0.238081;
-    return clamp(o * (a / b), vec3<f32>(0.0), vec3<f32>(1.0));
+// Output helpers. The viewport renders into an HDR target that `post.wgsl`
+// tone maps (and blooms). Alpha tells post how to treat the pixel:
+// 1 = scene-referred radiance (exposure applied here), 0 = display-referred
+// values (channel views), shown as they are.
+fn hdr(c: vec3<f32>) -> vec4<f32> {
+    return vec4<f32>(c * exp2(g.params.y), 1.0);
 }
 
-fn tonemap(c: vec3<f32>) -> vec3<f32> {
-    return aces(c * exp2(g.params.y));
+fn ldr(c: vec3<f32>) -> vec4<f32> {
+    return vec4<f32>(c, 0.0);
 }
 
 fn checker(uv: vec2<f32>) -> vec3<f32> {
@@ -101,6 +94,15 @@ fn checker(uv: vec2<f32>) -> vec3<f32> {
     let tint = mix(vec3<f32>(0.85, 0.55, 0.35), vec3<f32>(0.35, 0.6, 0.85), step(0.5, uv.x));
     let base = mix(tint, tint.zyx, step(0.5, uv.y));
     return select(base * 0.9, vec3<f32>(0.9), odd == 1);
+}
+
+// Multi-bounce ambient occlusion (Jimenez et al. 2016, GTAO): light bounces
+// between bright surfaces, so occlusion darkens light albedos less.
+fn ao_multibounce(ao: f32, albedo: vec3<f32>) -> vec3<f32> {
+    let a = 2.0404 * albedo - 0.3324;
+    let b = -4.7951 * albedo + 0.6417;
+    let c = 2.7552 * albedo + 0.6903;
+    return max(vec3<f32>(ao), ((ao * a + b) * ao + c) * ao);
 }
 
 @fragment
@@ -119,45 +121,62 @@ fn fs_mesh(i: VsOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f3
     let n = normalize(t * tn.x + b * tn.y + ng * tn.z);
 
     switch mode {
-        case 1: { return vec4<f32>(albedo, 1.0); }
-        case 2: { return vec4<f32>(vec3<f32>(orm.g * orm.g), 1.0); }       // roughness (shown perceptually)
-        case 3: { return vec4<f32>(vec3<f32>(orm.b * orm.b), 1.0); }       // metallic
+        case 1: { return ldr(albedo); }
+        case 2: { return ldr(vec3<f32>(orm.g * orm.g)); }       // roughness (shown perceptually)
+        case 3: { return ldr(vec3<f32>(orm.b * orm.b)); }       // metallic
         case 4: {
             let h = textureSample(m_height, m_samp, i.uv).r * 0.5 + 0.5;
-            return vec4<f32>(srgb_to_linear(vec3<f32>(h)), 1.0);
+            return ldr(srgb_to_linear(vec3<f32>(h)));
         }
-        case 5: { return vec4<f32>(srgb_to_linear(tn * 0.5 + 0.5), 1.0); }   // tangent normal
-        case 6: { return vec4<f32>(srgb_to_linear(vec3<f32>(textureSample(m_bakes, m_samp, i.uv).r)), 1.0); }
-        case 7: { return vec4<f32>(srgb_to_linear(vec3<f32>(textureSample(m_bakes, m_samp, i.uv).g)), 1.0); }
-        case 8: { return vec4<f32>(srgb_to_linear(textureSample(m_wnormal, m_samp, i.uv).xyz * 0.5 + 0.5), 1.0); }
-        case 10: { return vec4<f32>(tonemap(textureSample(m_emissive, m_samp, i.uv).rgb), 1.0); }
+        case 5: { return ldr(srgb_to_linear(tn * 0.5 + 0.5)); }   // tangent normal
+        case 6: { return ldr(srgb_to_linear(vec3<f32>(textureSample(m_bakes, m_samp, i.uv).r))); }
+        case 7: { return ldr(srgb_to_linear(vec3<f32>(textureSample(m_bakes, m_samp, i.uv).g))); }
+        case 8: { return ldr(srgb_to_linear(textureSample(m_wnormal, m_samp, i.uv).xyz * 0.5 + 0.5)); }
+        case 10: { return hdr(textureSample(m_emissive, m_samp, i.uv).rgb); }
         case 9: {
             let l = max(dot(ng, normalize(g.eye.xyz - i.world)), 0.0);
-            return vec4<f32>(checker(i.uv) * (0.25 + 0.75 * l), 1.0);
+            return ldr(checker(i.uv) * (0.25 + 0.75 * l));
         }
         default: {}
     }
 
-    // --- metallic/roughness PBR ---
+    // --- metallic/roughness PBR, split-sum image-based lighting ---
     let rough = clamp(orm.g, 0.03, 1.0);
     let metal = orm.b;
     let ao = orm.r;
     let v = normalize(g.eye.xyz - i.world);
     let nv = clamp(dot(n, v), 1e-4, 1.0);
     let f0 = mix(vec3<f32>(0.04), albedo, metal);
-    // Fresnel with roughness (Lagarde) for the diffuse/specular split
-    let fr = f0 + (max(vec3<f32>(1.0 - rough), f0) - f0) * pow(1.0 - nv, 5.0);
-    let r = reflect(-v, n);
-    let lod = rough * (g.params.w - 1.0);
-    let spec_env = env_radiance(r, lod);
-    let ab = textureSampleLevel(brdf_lut, env_samp, vec2<f32>(nv, rough), 0.0).rg;
-    let spec = spec_env * (f0 * ab.x + ab.y);
-    let diffuse = (1.0 - fr) * (1.0 - metal) * albedo * sh_irradiance(n);
-    // specular occlusion approximation (Lagarde)
+    let r0 = reflect(-v, n);
+    // Rough lobes lean towards the normal (Lagarde & de Rousiers 2014): fetch
+    // the prefiltered radiance along the lobe's dominant direction.
+    let r = normalize(mix(n, r0, (1.0 - rough) * (sqrt(1.0 - rough) + rough)));
+    // Mip m of the prefiltered map holds roughness m / (mips - 1).
+    let spec_env = env_radiance(r, rough * (g.params.w - 1.0));
+    // Clamp into the LUT's texel centres: the env sampler repeats in u.
+    let lut_uv = clamp(vec2<f32>(nv, rough), vec2<f32>(0.5 / 64.0), vec2<f32>(1.0 - 0.5 / 64.0));
+    let ab = textureSampleLevel(brdf_lut, env_samp, lut_uv, 0.0).rg;
+    let irradiance = sh_irradiance(n);
+    // Single-scattering specular with roughness-aware Fresnel, plus the energy
+    // lost to multiple scattering (Fdez-Agüera 2019) so rough metals don't
+    // darken; diffuse gets whatever energy the specular didn't take.
+    let fr = max(vec3<f32>(1.0 - rough), f0) - f0;
+    let ks = f0 + fr * pow(1.0 - nv, 5.0);
+    let fss_ess = ks * ab.x + ab.y;
+    let ems = 1.0 - (ab.x + ab.y);
+    let f_avg = f0 + (1.0 - f0) / 21.0;
+    let fms_ems = ems * fss_ess * f_avg / (1.0 - f_avg * ems);
+    let kd = albedo * (1.0 - metal) * (1.0 - fss_ess - fms_ems);
+    // Horizon occlusion (Jimenez 2016): normal-mapped reflections that dip
+    // below the geometric surface would see the inside of the mesh.
+    let horizon = clamp(1.0 + dot(r0, ng), 0.0, 1.0);
+    // Specular occlusion from the baked AO (Lagarde 2014).
     let so = clamp(pow(nv + ao, exp2(-16.0 * rough - 1.0)) - 1.0 + ao, 0.0, 1.0);
-    var color = diffuse * ao + spec * so + textureSample(m_emissive, m_samp, i.uv).rgb * g.params2.w;
+    let spec = fss_ess * spec_env * so * horizon * horizon;
+    let diffuse = (kd + fms_ems) * irradiance * ao_multibounce(ao, albedo);
+    var color = diffuse + spec + textureSample(m_emissive, m_samp, i.uv).rgb * g.params2.w;
     if (!front) { color *= vec3<f32>(0.5, 0.25, 0.25); }
-    return vec4<f32>(tonemap(color), 1.0);
+    return hdr(color);
 }
 
 // Background: the environment itself, slightly blurred, or a plain gradient.
@@ -167,8 +186,8 @@ fn fs_bg(f: FullOut) -> @location(0) vec4<f32> {
     let p = g.inv_view_proj * vec4<f32>(ndc, 1.0, 1.0);
     let d = normalize(p.xyz / p.w - g.eye.xyz);
     if (g.params2.x > 0.5) {
-        return vec4<f32>(tonemap(env_radiance(d, g.params2.y)), 1.0);
+        return hdr(env_radiance(d, g.params2.y));
     }
     let c = mix(vec3<f32>(0.035, 0.035, 0.04), vec3<f32>(0.11, 0.115, 0.13), 1.0 - f.uv.y);
-    return vec4<f32>(c, 1.0);
+    return ldr(c);
 }

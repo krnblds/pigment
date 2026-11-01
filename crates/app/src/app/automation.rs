@@ -965,7 +965,160 @@ impl Session {
         Ok(json!({ "decal": image, "on": self.app.doc.layers[i].name }))
     }
 
+    /// Lighting and post settings shared by `render`, `render_turntable` and
+    /// `render(views)`. Every setting persists for later renders until changed.
+    ///   lighting: studio | night | overcast    hdri: path to .hdr / .exr
+    ///   exposure (EV), env_rotation (degrees), background (bool)
+    ///   bloom: true | false | {enabled, threshold, intensity, radius}
+    pub fn apply_look(&mut self, a: &Value) -> Res<()> {
+        let (d, q) = (&self.rs.device, &self.rs.queue);
+        if let Some(p) = s(a, "hdri") {
+            if self.app.env.source != p {
+                self.app.env = Environment::load(d, q, Path::new(p)).map_err(|e| format!("couldn't load HDRI `{p}`: {e:#}"))?;
+                self.app.env.source = p.to_string();
+            }
+        } else if let Some(l) = s(a, "lighting") {
+            let id = pigment_core::envmath::preset_id(l).ok_or_else(|| format!("unknown lighting `{l}` (studio, night, overcast)"))?;
+            if self.app.env.source != id {
+                self.app.env = Environment::preset(d, q, id).ok_or("lighting preset failed")?;
+            }
+        }
+        if let Some(x) = f(a, "exposure") {
+            self.app.view.exposure = x;
+        }
+        if let Some(x) = f(a, "env_rotation") {
+            self.app.view.env_rotation = x.to_radians();
+        }
+        if let Some(bg) = a.get("background").and_then(Value::as_bool) {
+            self.app.view.show_env = bg;
+        }
+        let b = &mut self.app.view.bloom;
+        match a.get("bloom") {
+            Some(Value::Bool(on)) => b.enabled = *on,
+            Some(o @ Value::Object(_)) => {
+                b.enabled = o.get("enabled").and_then(Value::as_bool).unwrap_or(true);
+                if let Some(x) = f(o, "threshold") {
+                    b.threshold = x.max(0.0);
+                }
+                if let Some(x) = f(o, "intensity") {
+                    b.intensity = x.max(0.0);
+                }
+                if let Some(x) = f(o, "radius") {
+                    b.radius = x.clamp(0.0, 1.0);
+                }
+            }
+            Some(Value::Null) | None => {}
+            Some(other) => return Err(format!("`bloom` must be true/false or {{threshold, intensity, radius}}, got {other}")),
+        }
+        Ok(())
+    }
+
+    /// Draw the current camera/view and read the 8-bit image back.
+    fn grab(&mut self) -> Res<Vec<u8>> {
+        self.draw();
+        Ok(crate::render::gpu::readback(&self.rs.device, &self.rs.queue, self.app.viewport.color().ok_or("no viewport")?))
+    }
+
+    fn save_png(rgba: &[u8], w: u32, h: u32, path: Option<&str>) -> Res<Image> {
+        let mut png = Vec::new();
+        image::codecs::png::PngEncoder::new(&mut png).write_image(rgba, w, h, image::ExtendedColorType::Rgba8).map_err(|e| e.to_string())?;
+        let path = match path {
+            Some(p) => PathBuf::from(p),
+            None => std::env::temp_dir().join("pigment-mcp").join(format!("render-{}.png", std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis()).unwrap_or(0))),
+        };
+        if let Some(d) = path.parent() {
+            std::fs::create_dir_all(d).map_err(|e| e.to_string())?;
+        }
+        std::fs::write(&path, &png).map_err(|e| e.to_string())?;
+        Ok(Image { png, path })
+    }
+
+    /// Render several (label, yaw, pitch) views into one labelled contact sheet.
+    fn contact_sheet(&mut self, a: &Value, views: &[(String, f32, f32)], default_cols: usize) -> Res<Image> {
+        self.settle();
+        self.apply_look(a)?;
+        self.app.view.mode = match s(a, "view") {
+            Some(v) => view_mode(v)?,
+            None => ViewMode::Material,
+        };
+        let mut tile_args = a.clone();
+        tile_args["width"] = json!(a.get("width").and_then(Value::as_u64).unwrap_or(384));
+        tile_args["height"] = json!(a.get("height").and_then(Value::as_u64).unwrap_or(384));
+        let mut tiles = Vec::with_capacity(views.len());
+        for (label, yaw, pitch) in views {
+            tile_args["yaw"] = json!(yaw);
+            tile_args["pitch"] = json!(pitch);
+            self.set_camera(&tile_args);
+            let rgba = self.grab()?;
+            tiles.push(pigment_core::sheet::Tile { rgba, w: self.size[0], h: self.size[1], label: label.clone() });
+        }
+        let cols = a.get("columns").and_then(Value::as_u64).map(|c| c as usize).unwrap_or(default_cols);
+        let (img, w, h) = pigment_core::sheet::contact_sheet(&tiles, cols);
+        Self::save_png(&img, w, h, s(a, "path"))
+    }
+
+    /// `frames` views evenly spaced around the model (from `start_yaw`, at
+    /// `pitch`), as one contact-sheet PNG.
+    pub fn render_turntable(&mut self, a: &Value) -> Res<Image> {
+        let n = a.get("frames").and_then(Value::as_u64).unwrap_or(8).clamp(1, 36) as usize;
+        let pitch = f(a, "pitch").unwrap_or(15.0);
+        let start = f(a, "start_yaw").unwrap_or(0.0);
+        let views: Vec<(String, f32, f32)> = (0..n)
+            .map(|i| {
+                let yaw = start + 360.0 * i as f32 / n as f32;
+                (format!("YAW {}", yaw.rem_euclid(360.0).round()), yaw, pitch)
+            })
+            .collect();
+        self.contact_sheet(a, &views, n.min(4))
+    }
+
+    /// Named views (front, back, left, right, top, bottom; or "all") as one
+    /// contact sheet. Front looks at the model's +Z face (glTF front, Blender
+    /// -Y), right from +X: the same as Blender's numpad views.
+    pub fn render_views(&mut self, a: &Value) -> Res<Image> {
+        let names: Vec<String> = match a.get("views") {
+            Some(Value::String(x)) if x == "all" => ["front", "back", "left", "right", "top"].map(String::from).to_vec(),
+            Some(Value::String(x)) => x.split(',').map(|v| v.trim().to_string()).collect(),
+            Some(Value::Array(v)) => v.iter().filter_map(Value::as_str).map(String::from).collect(),
+            _ => return Err("`views` must be a list like [\"front\", \"left\", \"top\"] or \"all\"".into()),
+        };
+        let pitch = f(a, "pitch").unwrap_or(0.0);
+        let mut views = Vec::new();
+        for n in &names {
+            let (yaw, p) = match n.to_ascii_lowercase().as_str() {
+                "front" => (0.0, pitch),
+                "back" => (180.0, pitch),
+                "right" => (90.0, pitch),
+                "left" => (-90.0, pitch),
+                "top" => (0.0, 89.0),
+                "bottom" => (0.0, -89.0),
+                other => return Err(format!("unknown view `{other}` (front, back, left, right, top, bottom)")),
+            };
+            views.push((n.to_ascii_uppercase(), yaw, p));
+        }
+        if views.is_empty() {
+            return Err("no views given".into());
+        }
+        let cols = if views.len() == 5 { 3 } else { views.len().min(4) };
+        self.contact_sheet(a, &views, cols)
+    }
+
+    /// Write a lighting preset as an equirectangular Radiance .hdr, e.g. to
+    /// light a Blender world exactly like Pigment's viewport.
+    pub fn export_lighting(&mut self, a: &Value) -> Res<Value> {
+        let name = s(a, "lighting").unwrap_or("night");
+        let path = PathBuf::from(req(a, "path")?);
+        let width = a.get("width").and_then(Value::as_u64).unwrap_or(2048).clamp(64, 8192) as u32;
+        let env = pigment_core::envmath::EnvImage::preset(name, width).ok_or_else(|| format!("unknown lighting `{name}` (studio, night, overcast)"))?;
+        env.write_hdr(&path).map_err(|e| e.to_string())?;
+        Ok(json!({ "lighting": pigment_core::envmath::preset_id(name), "path": path, "width": width, "height": width / 2,
+                   "note": "equirectangular, +Y up. Blender: Environment Texture behind a Mapping node rotated -90 degrees about Z (tools/blender_lookdev.py does this)" }))
+    }
+
     pub fn render(&mut self, a: &Value) -> Res<Image> {
+        if a.get("views").is_some_and(|v| !v.is_null()) {
+            return self.render_views(a);
+        }
         self.settle();
         self.render_now(a)
     }
@@ -973,6 +1126,7 @@ impl Session {
     /// `render` without committing pending document changes.
     fn render_now(&mut self, a: &Value) -> Res<Image> {
         self.app.ensure_composited(&self.rs);
+        self.apply_look(a)?;
         self.set_camera(a);
         if let Some(v) = s(a, "view") {
             self.app.view.mode = view_mode(v)?;
@@ -1520,5 +1674,60 @@ mod tests {
         s.project_decal(&json!({ "image": img, "box": { "center": [c.x, c.y, c.z], "size": [r, r, r] }, "facing": "+y", "emissive_strength": 5.0 })).unwrap();
         assert!(glow(&mut s) > 300, "decal from above landed on the top");
         assert!(s.project_decal(&json!({ "image": img, "box": { "min": [0, 0] } })).is_err());
+    }
+
+    #[test]
+    fn bloom_lighting_presets_and_contact_sheets() {
+        let Ok(mut s) = Session::new() else { return };
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let tmp = std::env::temp_dir().join(format!("pigment-look-{}", std::process::id()));
+        s.new_project(&json!({ "mesh": root.join("assets/neon_tubes.glb"), "resolution": 512, "material": "Neon pink" })).unwrap();
+        let shot = |s: &mut Session, extra: Value| -> image::RgbaImage {
+            let mut a = json!({ "yaw": 0, "pitch": 5, "width": 320, "height": 240, "background": false, "path": tmp.join("shot.png") });
+            a.as_object_mut().unwrap().extend(extra.as_object().unwrap().clone());
+            image::load_from_memory(&s.render(&a).unwrap().png).unwrap().to_rgba8()
+        };
+        // bloom spreads the neon's light into the (dark) surroundings
+        let off = shot(&mut s, json!({ "lighting": "night", "bloom": false }));
+        let on = shot(&mut s, json!({ "bloom": { "intensity": 0.8, "radius": 0.8 } }));
+        let pinkish = |img: &image::RgbaImage| img.pixels().filter(|p| p.0[0] as i32 > p.0[1] as i32 + 25).count();
+        let (p_off, p_on) = (pinkish(&off), pinkish(&on));
+        assert!(p_on > p_off + p_off / 4, "bloom should add a pink halo ({p_off} -> {p_on} pixels)");
+        let sum = |img: &image::RgbaImage| img.pixels().map(|p| p.0[0] as u64 + p.0[1] as u64 + p.0[2] as u64).sum::<u64>();
+        assert!(sum(&on) > sum(&off));
+        // channel views never bloom
+        let e1 = shot(&mut s, json!({ "view": "emission" }));
+        let e2 = shot(&mut s, json!({ "view": "emission", "bloom": false }));
+        assert_eq!(e1.as_raw(), e2.as_raw());
+
+        // night is much darker than studio on a non-emissive material
+        s.new_project(&json!({ "mesh": root.join("assets/ammo_box.glb"), "resolution": 512, "material": "Olive drab" })).unwrap();
+        // (measured on the box only, not the gradient background)
+        let sum = |img: &image::RgbaImage| sum(&image::imageops::crop_imm(img, 110, 95, 100, 50).to_image());
+        let studio = sum(&shot(&mut s, json!({ "lighting": "studio" })));
+        let night = sum(&shot(&mut s, json!({ "lighting": "night" })));
+        let overcast = sum(&shot(&mut s, json!({ "lighting": "overcast" })));
+        assert!(night * 2 < studio && night * 2 < overcast, "night {night}, studio {studio}, overcast {overcast}");
+        assert!(s.render(&json!({ "lighting": "disco" })).is_err());
+        assert!(s.render(&json!({ "hdri": tmp.join("missing.hdr") })).is_err());
+
+        // a preset written to .hdr loads back as an HDRI
+        let hdr = tmp.join("night.hdr");
+        let r = s.export_lighting(&json!({ "lighting": "night", "path": hdr, "width": 256 })).unwrap();
+        assert_eq!(r["height"], 128);
+        let via_hdri = sum(&shot(&mut s, json!({ "hdri": hdr })));
+        assert!(via_hdri * 2 < studio, "HDRI night {via_hdri} vs studio {studio}");
+        assert_eq!(s.app.env.source, hdr.to_string_lossy());
+
+        // contact sheets: turntable and named views, tile size = width x height
+        let t = s.render_turntable(&json!({ "frames": 6, "width": 128, "height": 96, "columns": 3, "lighting": "studio", "path": tmp.join("turn.png") })).unwrap();
+        let img = image::load_from_memory(&t.png).unwrap();
+        assert_eq!((img.width(), img.height()), (3 * 128 + 16, 2 * 96 + 12));
+        let v = s.render(&json!({ "views": "all", "width": 128, "height": 128, "path": tmp.join("views.png") })).unwrap();
+        let img = image::load_from_memory(&v.png).unwrap();
+        assert_eq!((img.width(), img.height()), (3 * 128 + 16, 2 * 128 + 12));
+        assert!(v.path.exists());
+        assert!(s.render(&json!({ "views": ["front", "sideways"] })).is_err());
+        std::fs::remove_dir_all(tmp).ok();
     }
 }
