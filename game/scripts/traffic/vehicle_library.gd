@@ -49,6 +49,8 @@ class Model:
 	var tail_mesh: Mesh
 	var mass := 1250.0
 	var default_variant := ""
+	var damage := {}             ## the json's "damage" section (LOD0 panels; scripts/damage/)
+	var wheel_positions := {}
 
 	func has_police() -> bool:
 		return variants.any(func(v): return v.police)
@@ -105,6 +107,8 @@ func _load_model(vd: Dictionary, base: String) -> Model:
 		spec = JSON.parse_string(FileAccess.get_file_as_string(_res(sp, dir)))
 	m.mass = float(spec.get("mass_kg", vd.get("mass_kg", 1250.0)))
 	m.wheel_radius = float(spec.get("wheel_radius", 0.33))
+	m.damage = spec.get("damage", {})
+	m.wheel_positions = spec.get("wheel_positions", {})
 	var dims: Dictionary = spec.get("dimensions", vd.get("dimensions", {}))
 	# LOD list: [{file, max_distance}] (stand-in) or {"lod0": f, "lod1": f, "lod2": f, "json": f} with
 	# "lod_distances_m": {"lod0": 0, "lod1": 25, "lod2": 70} = where each LOD starts (fleet)
@@ -196,7 +200,7 @@ func _take_lod(m: Model, root: Node3D, max_d: float, file: String) -> void:
 			lod.wheels.append({"hub": hub, "parts": parts})
 	for n in all:
 		if n is MeshInstance3D and not _under(n, root, "Wheel_") and not _under(n, root, "Collider") and not _under(n, root, "Caliper_"):
-			lod.parts.append([n.mesh, _xf(n, root), _mats(n), n.get_meta("gltf_variants", {})])
+			lod.parts.append([n.mesh, _xf(n, root), _mats(n), n.get_meta("gltf_variants", {}), String(n.name)])
 	if not lod.parts.is_empty():
 		m.lods.append(lod)
 
