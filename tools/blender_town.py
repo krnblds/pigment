@@ -428,12 +428,15 @@ class Junction:
     continuous corner sidewalks, zebra crossings.  Local frame: centre at the
     origin, z = path level (road top at ROAD_Z), same profile as the street kit."""
 
-    def __init__(self, name, pos, z, arms, r_concave=6.0, r_convex=3.0, arc_n=14):
+    def __init__(self, name, pos, z, arms, r_concave=6.0, r_convex=3.0, arc_n=14, halves=None, min_arm=10.0):
+        """halves: carriageway half width (curb line) per arm, default ROAD_HALF
+        for every arm; arms of different widths meet at filleted corners."""
         self.name, self.pos, self.z = name, v2(pos), z
         self.arms = arms
         self.dirs = [ang_vec(a) for a in arms]
         self.arc_n = arc_n
         n = len(arms)
+        self.half = list(halves) if halves is not None else [ROAD_HALF] * n
         order = sorted(range(n), key=lambda i: arms[i] % 360)
         self.corners = []
         need = [0.0] * n
@@ -446,14 +449,14 @@ class Junction:
                 concave = theta < 180
                 r = r_concave if concave else r_convex
                 na, nb = rot90(a), -rot90(b)
-                X = self._intersect(na * ROAD_HALF, a, nb * ROAD_HALF, b)
+                X = self._intersect(na * self.half[ia], a, nb * self.half[ib], b)
                 phi = math.radians(theta if concave else 360 - theta)
                 C = X + (a + b).normalized() * (r / math.sin(phi / 2))
                 c.update(C=C, r=r, concave=concave)
                 need[ia] = max(need[ia], C.dot(a))
                 need[ib] = max(need[ib], C.dot(b))
             self.corners.append(c)
-        self.L = [max(10.0, t + 5.5) for t in need]
+        self.L = [max(min_arm, t + 5.5) for t in need]
 
     @staticmethod
     def _intersect(p, d, q, e):
@@ -467,15 +470,16 @@ class Junction:
     def corner_line(self, c, d):
         a, b = self.dirs[c["ia"]], self.dirs[c["ib"]]
         na, nb = rot90(a), -rot90(b)
-        A = a * self.L[c["ia"]] + na * (ROAD_HALF + d)
-        B = b * self.L[c["ib"]] + nb * (ROAD_HALF + d)
+        ha, hb = self.half[c["ia"]], self.half[c["ib"]]
+        A = a * self.L[c["ia"]] + na * (ha + d)
+        B = b * self.L[c["ib"]] + nb * (hb + d)
         m = self.arc_n
         if "C" not in c:
             return [A.lerp(B, i / (m + 2)) for i in range(m + 3)]
         C = c["C"]
         rd = c["r"] - d if c["concave"] else c["r"] + d
-        Ta = a * C.dot(a) + na * (ROAD_HALF + d)
-        Tb = b * C.dot(b) + nb * (ROAD_HALF + d)
+        Ta = a * C.dot(a) + na * (ha + d)
+        Tb = b * C.dot(b) + nb * (hb + d)
         a0 = math.atan2(Ta.y - C.y, Ta.x - C.x)
         a1 = math.atan2(Tb.y - C.y, Tb.x - C.x)
         sw = (a1 - a0 + math.pi) % (2 * math.pi) - math.pi

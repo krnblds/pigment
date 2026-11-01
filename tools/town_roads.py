@@ -289,6 +289,17 @@ def decal_atlas_material(tex):
     return m
 
 
+def metal_material(name="RoadMetal", col=(0.32, 0.33, 0.34), rough=0.35):
+    """Galvanised steel for guard rails and bridge railings (material slot 4)."""
+    m = bpy.data.materials.get(name) or bpy.data.materials.new(name)
+    m.use_nodes = True
+    bsdf = next(n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+    bsdf.inputs["Base Color"].default_value = (*col, 1.0)
+    bsdf.inputs["Metallic"].default_value = 0.9
+    bsdf.inputs["Roughness"].default_value = rough
+    return m
+
+
 def road_materials(tex, fallback):
     """[asphalt, trim, paving, concrete] shared by every run and junction."""
     if not tex.ok:
@@ -374,6 +385,41 @@ class SectionBuilder:
             strip(EDGE_W, WALK_Z, WALK_OUT, WALK_Z, None, MAT_PAVING, up)
             strip(WALK_OUT, WALK_Z, WALK_OUT, -1.0, None, MAT_CONCRETE, ow)
 
+    def extrude(self, pos, nrm, profile, mat, sgn=1.0, along=None, wet=0.0):
+        """Sweep a cross-section along samples. pos: [(x, y, z)] path level,
+        nrm: [(nx, ny)] unit normals, profile: [(y, dz)] in that frame.
+        Faces face (-dz, dy) * sgn in the (normal, up) plane: list a profile
+        from the road outwards. UVs: (along, distance across) in metres."""
+        n = len(pos)
+        if along is None:
+            along = [0.0]
+            for i in range(1, n):
+                along.append(along[-1] + math.hypot(pos[i][0] - pos[i - 1][0], pos[i][1] - pos[i - 1][1]))
+        acc = [0.0]
+        for (y0, z0), (y1, z1) in zip(profile, profile[1:]):
+            acc.append(acc[-1] + math.hypot(y1 - y0, z1 - z0))
+
+        def P(i, y, dz):
+            return (pos[i][0] + nrm[i][0] * y, pos[i][1] + nrm[i][1] * y, pos[i][2] + dz)
+        for k in range(len(profile) - 1):
+            (y0, z0), (y1, z1) = profile[k], profile[k + 1]
+            wl, wu = -(z1 - z0) * sgn, (y1 - y0) * sgn
+            for i in range(n - 1):
+                j = i + 1
+                vs = [self.vert(P(i, y0, z0), wet), self.vert(P(j, y0, z0), wet), self.vert(P(j, y1, z1), wet), self.vert(P(i, y1, z1), wet)]
+                uvs = [(along[i], acc[k]), (along[j], acc[k]), (along[j], acc[k + 1]), (along[i], acc[k + 1])]
+                self.quad(vs, uvs, mat, Vector((nrm[i][0] * wl, nrm[i][1] * wl, wu)))
+
+    def box(self, centre, fwd, size, mat):
+        """Box (posts): centre (x, y, z), fwd (x, y) unit, size (along, across, up)."""
+        from mathutils import Matrix
+        f = Vector((fwd[0], fwd[1], 0.0))
+        l = Vector((-fwd[1], fwd[0], 0.0))
+        m = Matrix(((f.x, l.x, 0, centre[0]), (f.y, l.y, 0, centre[1]), (0, 0, 1, centre[2]), (0, 0, 0, 1)))
+        res = bmesh.ops.create_cube(self.bm, size=1.0, matrix=m @ Matrix.Diagonal((size[0], size[1], size[2], 1)))
+        for f_ in {f_ for v in res["verts"] for f_ in v.link_faces}:
+            f_.material_index = mat
+
     def finish(self, name, mats):
         me = bpy.data.meshes.get(name)
         if me is not None:
@@ -395,12 +441,54 @@ def along_scale(length):
     return n * TILE_ALONG / max(length, 1e-6)
 
 
-def build_run(path, name, tex, mats):
-    """A road run along `path` (blender_town.Path): asphalt across (world UVs),
-    both sides' gutter / curb / sidewalk strips (along-path UVs)."""
+# Cross-section profiles. The town uses TOWN_PROFILE (curb + sidewalk on both
+# sides, 8 m carriageway). tools/world passes one per road class:
+#   half    carriageway half width (curb line / barrier face), metres
+#   side    "curb"      gutter, curb, walk edge, paving to WALK_OUT, skirt
+#           "jersey"    asphalt to the edge, concrete safety barrier (highways, bridges)
+#           "guardrail" asphalt to the edge, verge, W-beam guard rail on posts (mountain)
+#   median  width of a central concrete barrier (0 = none)
+#   step    longest sample spacing on straight, even stretches (adaptive)
+TOWN_PROFILE = {"half": ROAD_HALF, "side": "curb", "median": 0.0}
+JERSEY = [(0.0, 0.0), (0.06, 0.08), (0.2, 0.33), (0.27, 0.9), (0.5, 0.9), (0.5, -1.2)]
+METAL = 4
+
+
+def stations(path, max_step=4.0, fine=0.5, max_turn=1.5, max_dslope=0.006):
+    """Arc lengths along a path: every `fine` metres on curves and grade
+    changes, up to `max_step` apart on straight, even stretches."""
     L = path.length
-    n = max(2, int(math.ceil(L / 0.5)) + 1)
+    n = max(2, int(math.ceil(L / fine)) + 1)
     s = np.linspace(0.0, L, n)
+    if max_step <= fine:
+        return s
+    pos, t = path.at_many(s)
+    head = np.unwrap(np.arctan2(t[:, 1], t[:, 0]))
+    slope = np.gradient(pos[:, 2], s)
+    keep = [0]
+    for i in range(1, n - 1):
+        k = keep[-1]
+        if (s[i + 1] - s[k] > max_step or abs(head[i + 1] - head[k]) > math.radians(max_turn)
+                or abs(slope[i + 1] - slope[k]) > max_dslope):
+            keep.append(i)
+    keep.append(n - 1)
+    return s[keep]
+
+
+def build_run(path, name, tex, mats, profile=None):
+    """A road run along `path` (blender_town.Path): asphalt across (world UVs),
+    both sides' gutter / curb / sidewalk strips (along-path UVs), or the
+    barriers of `profile` (see above; default: the town's street)."""
+    prof = profile or TOWN_PROFILE
+    H = prof["half"]
+    side = prof.get("side", "curb")
+    L = path.length
+    if profile is None:
+        n = max(2, int(math.ceil(L / 0.5)) + 1)
+        s = np.linspace(0.0, L, n)
+    else:
+        s = stations(path, prof.get("step", 4.0))
+        n = len(s)
     pos, t = path.at_many(s)
     nrm = np.stack([-t[:, 1], t[:, 0]], axis=1)          # left
     k = along_scale(L)
@@ -413,21 +501,55 @@ def build_run(path, name, tex, mats):
         if dz[i - 1] < -1e-4 and dz[i] > 1e-4:
             sag = np.maximum(sag, np.exp(-((s - s[i]) / 7.0) ** 2))
     b = SectionBuilder(tex)
-    # asphalt: rails across the carriageway
-    ys = [-3.6, -2.7, -1.8, -0.9, 0.0, 0.9, 1.8, 2.7, 3.6]
+    # asphalt: rails across the carriageway (to the gutter, or to the barrier face)
+    edge = H - GUTTER if side == "curb" else H
+    if profile is None:
+        ys = [-3.6, -2.7, -1.8, -0.9, 0.0, 0.9, 1.8, 2.7, 3.6]
+    else:
+        m = max(2, int(math.ceil(2 * edge / 0.9)))
+        ys = [-edge + 2 * edge * k / m for k in range(m + 1)]
     grid = []
     for y in ys:
-        gut = smoothstep(2.4, 3.6, abs(y)) * 0.8
+        gut = smoothstep(H - 1.6, H - 0.4, abs(y)) * 0.8
         grid.append([b.vert((pos[i, 0] + nrm[i, 0] * y, pos[i, 1] + nrm[i, 1] * y, zs[i] + ROAD_Z), min(1.0, gut + sag[i] * 0.9)) for i in range(n)])
     for a in range(len(ys) - 1):
         for i in range(n - 1):
             vs = [grid[a][i], grid[a][i + 1], grid[a + 1][i + 1], grid[a + 1][i]]
             b.quad(vs, [(v.co.x, v.co.y) for v in vs], MAT_ASPHALT, Vector((0, 0, 1)))
+    metal = METAL if len(mats) > METAL else MAT_CONCRETE
+    P3 = [(pos[i, 0], pos[i, 1], zs[i]) for i in range(n)]
     for sgn in (1, -1):
-        offs = [-GUTTER, 0.0, CURB_W, EDGE_W, WALK_OUT]
-        rails = {d: [(pos[i, 0] + nrm[i, 0] * sgn * (ROAD_HALF + d), pos[i, 1] + nrm[i, 1] * sgn * (ROAD_HALF + d)) for i in range(n)] for d in offs}
         outward = [(nrm[i, 0] * sgn, nrm[i, 1] * sgn) for i in range(n)]
-        b.side(rails, along, zs, outward)
+        if side == "curb":
+            offs = [-GUTTER, 0.0, CURB_W, EDGE_W, WALK_OUT]
+            rails = {d: [(pos[i, 0] + nrm[i, 0] * sgn * (H + d), pos[i, 1] + nrm[i, 1] * sgn * (H + d)) for i in range(n)] for d in offs}
+            b.side(rails, along, zs, outward)
+        elif side == "jersey":
+            b.extrude(P3, outward, [(H + y, ROAD_Z + z) for y, z in JERSEY], MAT_CONCRETE, along=along)
+        else:       # guardrail: verge and skirt, W-beam on posts
+            b.extrude(P3, outward, [(H, ROAD_Z), (H + 1.1, ROAD_Z - 0.12), (H + 1.1, -1.5)], MAT_CONCRETE, along=along)
+            yb = H + 0.55
+            b.extrude(P3, outward, [(yb - 0.02, ROAD_Z + 0.82), (yb - 0.02, ROAD_Z + 0.5)], metal, along=along)
+            b.extrude(P3, outward, [(yb + 0.02, ROAD_Z + 0.5), (yb + 0.02, ROAD_Z + 0.82)], metal, along=along)
+            b.extrude(P3, outward, [(yb - 0.02, ROAD_Z + 0.82), (yb + 0.02, ROAD_Z + 0.82)], metal, along=along)
+            acc = 1.0
+            for i in range(n - 1):
+                seg = s[i + 1] - s[i]
+                while acc <= seg:
+                    f = acc / max(seg, 1e-9)
+                    px = pos[i] * (1 - f) + pos[i + 1] * f
+                    o = (nrm[i, 0] * sgn, nrm[i, 1] * sgn)
+                    z = zs[i] * (1 - f) + zs[i + 1] * f
+                    b.box((px[0] + o[0] * (yb + 0.1), px[1] + o[1] * (yb + 0.1), z + ROAD_Z + 0.3), (t[i, 0], t[i, 1]), (0.12, 0.12, 1.1), metal)
+                    acc += 2.5
+                acc -= seg
+    med = prof.get("median", 0.0)
+    if med > 0:
+        hm = med / 2
+        prof_ = [(hm, ROAD_Z), (hm - 0.06, ROAD_Z + 0.08), (hm - 0.18, ROAD_Z + 0.33), (hm * 0.4, ROAD_Z + 0.85), (-hm * 0.4, ROAD_Z + 0.85),
+                 (-hm + 0.18, ROAD_Z + 0.33), (-hm + 0.06, ROAD_Z + 0.08), (-hm, ROAD_Z)]
+        left = [(nrm[i, 0], nrm[i, 1]) for i in range(n)]
+        b.extrude(P3, left, prof_, MAT_CONCRETE, sgn=-1.0, along=along)
     return b.finish(name, mats)
 
 
@@ -514,6 +636,8 @@ class DecalBuilder:
         return (u0 + (u1 - u0) * a, v0 + (v1 - v0) * bb)
 
     def quad_grid(self, cell, kind, to_world, w, h, step=0.5):
+        if step > 0.5 and h <= 0.5:
+            step = 0.5
         """to_world(x, y) -> Vector: x across (image right), y along (image up),
         both in metres from the decal centre."""
         nx = max(1, int(math.ceil(w / step)))
@@ -535,7 +659,7 @@ class DecalBuilder:
                     lp[self.uv].uv = self.cell_uv(cell, *ab)
         self.count[kind] = self.count.get(kind, 0) + 1
 
-    def on_path(self, path, cell, kind, s, y, w, h, rot=0.0, flip=False):
+    def on_path(self, path, cell, kind, s, y, w, h, rot=0.0, flip=False, step=0.5):
         """Decal centred at arc length s, lateral y (left +), its image up along
         +s (or -s with flip), rotated by rot (radians) on the road plane."""
         ca, sa = math.cos(rot), math.sin(rot)
@@ -549,7 +673,7 @@ class DecalBuilder:
             n = Vector((-t.y, t.x))
             q = p.to_2d() + n * (y + ly)
             return Vector((q.x, q.y, p.z + ROAD_Z))
-        self.quad_grid(cell, kind, to_world, w, h)
+        self.quad_grid(cell, kind, to_world, w, h, step)
 
     def flat(self, origin, z, cell, kind, centre, fwd, w, h):
         """Decal on a flat junction: centre (2D, local), fwd = image up (2D unit)."""
@@ -571,8 +695,11 @@ class DecalBuilder:
         return me
 
 
-def scatter_run_decals(db, path, ri, rng, ends):
-    """Markings and wear along one run. ends = (junction at start?, junction at end?)."""
+def scatter_run_decals(db, path, ri, rng, ends, profile=None):
+    """Markings and wear along one run. ends = (junction at start?, junction at end?).
+    With a profile (tools/world), markings follow its lanes: see lane_decals()."""
+    if profile is not None:
+        return lane_decals(db, path, rng, ends, profile)
     L = path.length
     # edge lines: 4 m pieces, random wear variant per piece (never a fixed period)
     for y in (3.3, -3.3):
@@ -617,8 +744,68 @@ def scatter_run_decals(db, path, ri, rng, ends):
             s += rng.uniform(18, 34)
 
 
-def junction_decals(db, j, rng):
-    """Zebra crossings and stop lines at every arm mouth, wear in the middle."""
+def lane_decals(db, path, rng, ends, prof):
+    """Markings from a profile: prof["markings"] = [(y, "solid" | "dash")],
+    prof["lanes"] = [{"offset", "dir", "width", "kind"}] (an arrow in every
+    driving lane before a junction), wear decals scaled by prof["wear"]."""
+    L = path.length
+    H = prof["half"]
+    step = 2.0 if prof.get("step", 4.0) > 1.0 else 0.5
+    for y, kind in prof.get("markings", []):
+        if kind == "solid":
+            s = 0.3
+            while s < L - 0.3:
+                seg = min(4.0, L - 0.3 - s)
+                if seg > 0.2:
+                    db.on_path(path, rng.choice(["edge_line_a", "edge_line_b", "edge_line_c"]), "line", s + seg / 2, y, 0.15, seg, flip=rng.random() < 0.5, step=step)
+                s += seg
+        else:
+            gap = prof.get("dash_gap", 6.0)
+            s = 4.0
+            while s < L - 4.0:
+                db.on_path(path, "lane_dash", "line", s + 1.5, y, 0.15, 3.0, flip=rng.random() < 0.5, step=step)
+                s += 3.0 + gap
+    if L > 34:
+        for ln in prof.get("lanes", []):
+            if ln.get("kind", "drive") != "drive":
+                continue
+            if ln["dir"] > 0 and ends[1]:
+                db.on_path(path, rng.choice(["arrow_straight", "arrow_left"]), "arrow", L - 16.0, ln["offset"], 1.0, 5.0)
+            if ln["dir"] < 0 and ends[0]:
+                db.on_path(path, rng.choice(["arrow_straight", "arrow_left"]), "arrow", 16.0, ln["offset"], 1.0, 5.0, flip=True)
+    wear = prof.get("wear", 1.0)
+    span = H - 1.4
+
+    def place(kind, cells, per_m, size, rot_jit=math.pi):
+        n = max(0, int(round(L * per_m * wear * rng.uniform(0.7, 1.3))))
+        for _ in range(n):
+            cell = rng.choice(cells)
+            sz = db.tex.atlas[cell]["size_m"]
+            k = rng.uniform(*size)
+            db.on_path(path, cell, kind, rng.uniform(2.0, L - 2.0), rng.uniform(-span, span), sz[0] * k, sz[1] * k, rot=rng.uniform(-rot_jit, rot_jit))
+    if L > 6:
+        place("crack", ["crack_a", "crack_b", "crack_c"], 1 / 11.0, (0.8, 1.4))
+        place("patch", ["patch_a", "patch_b"], 1 / 32.0, (0.8, 1.3), rot_jit=0.08)
+        place("oil", ["oil_a", "oil_b"], 1 / 16.0, (0.7, 1.3))
+        place("skid", ["skid"], 1 / 70.0, (0.9, 1.2), rot_jit=0.15)
+    if prof.get("side", "curb") == "curb":
+        s = rng.uniform(8, 30)
+        while s < L - 6:
+            db.on_path(path, "manhole", "manhole", s, rng.uniform(-span, span), 0.9, 0.9, rot=rng.uniform(0, 6.3))
+            s += rng.uniform(32, 58) / max(wear, 0.3)
+        for y in (H - 0.18, -(H - 0.18)):
+            s = rng.uniform(5, 20)
+            while s < L - 4:
+                db.on_path(path, "drain", "drain", s, y, 0.36, 0.62, rot=(0 if y > 0 else math.pi))
+                s += rng.uniform(18, 34)
+
+
+def junction_decals(db, j, rng, arms=None):
+    """Zebra crossings and stop lines at every arm mouth, wear in the middle.
+    arms (tools/world): per arm {"median": half width of a central barrier};
+    widths come from j.half."""
+    if arms is not None:
+        return junction_decals_wide(db, j, rng, arms)
     o = j.pos
     for i, d in enumerate(j.dirs):
         nrm = Vector((-d.y, d.x))
@@ -639,3 +826,29 @@ def junction_decals(db, j, rng):
     if rng.random() < 0.8:
         a = rng.uniform(0, 2 * math.pi)
         db.flat(o, j.z, "manhole", "manhole", Vector((math.cos(a), math.sin(a))) * rng.uniform(0.5, 2.5), Vector((1, 0)), 0.9, 0.9)
+
+
+def junction_decals_wide(db, j, rng, arms):
+    """Multi-lane junction: a zebra across the whole mouth, a stop line across
+    the incoming (left-hand traffic: right of the outward arm) carriageway."""
+    o = j.pos
+    for i, d in enumerate(j.dirs):
+        nrm = Vector((-d.y, d.x))
+        h = j.half[i]
+        t0, t1 = j.L[i] - 4.2, j.L[i] - 1.2
+        k = -(h - 0.9)
+        while k <= h - 0.9 + 1e-6:
+            db.flat(o, j.z, "zebra_bar", "zebra", d * ((t0 + t1) / 2) + nrm * k, d if rng.random() < 0.5 else -d, 0.5, 3.0)
+            k += 1.0
+        m = arms[i].get("median", 0.0)
+        a, b = m + 0.15, h - 0.45
+        db.flat(o, j.z, "stop_line", "stop", d * (j.L[i] - 4.8) - nrm * ((a + b) / 2), d, b - a, 0.4)
+    r = max(3.0, min(j.L) - 8.0)
+    for _ in range(rng.randint(3, 6)):
+        a = rng.uniform(0, 2 * math.pi)
+        c = Vector((math.cos(a), math.sin(a))) * rng.uniform(0, r)
+        cell = rng.choice(["crack_a", "crack_b", "crack_c", "oil_a", "oil_b", "patch_a", "skid"])
+        sz = db.tex.atlas[cell]["size_m"]
+        kind = {"cr": "crack", "oi": "oil", "pa": "patch", "sk": "skid"}[cell[:2]]
+        f = rng.uniform(0, 2 * math.pi)
+        db.flat(o, j.z, cell, kind, c, Vector((math.cos(f), math.sin(f))), sz[0], sz[1])
