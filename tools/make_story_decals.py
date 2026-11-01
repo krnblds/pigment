@@ -195,50 +195,96 @@ SHOP_SIGNS = {
 # ------------------------------------------------------------------ authority plates
 
 
+def has_cjk(txt):
+    return any(ord(c) > 0x2E7F for c in txt)
+
+
+def line_font(txt, size):
+    """Bahnschrift has no Japanese glyphs: CJK lines use Yu Gothic."""
+    return font(JP_BOLD if has_cjk(txt) else BAHN, size)
+
+
+def fit_size(d, lines, max_w, max_h, gap=1.18, start=200):
+    """Largest font size (px) at which every line fits max_w and the block fits max_h."""
+    size = start
+    while size > 8:
+        widest = max(d.textlength(ln, font=line_font(ln, size)) for ln in lines)
+        if widest <= max_w and size * gap * len(lines) <= max_h:
+            return size
+        size -= 2
+    return size
+
+
 def plate(lines, bg, fg, w=1200, h=520, icon=None, sub=None):
+    """Authority plate. The text block is sized to fill the plate (it used to
+    shrink with line length alone and ended up tiny)."""
     s = SS
     img = canvas(w, h)
     d = ImageDraw.Draw(img)
     d.rounded_rectangle([0, 0, w * s, h * s], radius=24 * s, fill=bg)
     d.rounded_rectangle([18 * s, 18 * s, (w - 18) * s, (h - 18) * s], radius=16 * s, outline=fg, width=8 * s)
-    x0 = 60 * s
+    x0 = 70 * s
     if icon == "eye":
-        eye(d, 190 * s, h * s / 2, 120 * s, fg, 14 * s)
-        x0 = 360 * s
-    f = font(BAHN, int(84 * s * min(1.0, 9 / max(len(l) for l in lines))))
-    gap = 100 * s
-    y0 = h * s / 2 - gap * (len(lines) - 1) / 2 - (30 * s if sub else 0)
+        eye(d, 200 * s, (h * s) / 2 - (25 * s if sub else 0), 125 * s, fg, 14 * s)
+        x0 = 370 * s
+    sub_h = 80 * s if sub else 0
+    top, bottom = 50 * s, h * s - 50 * s - sub_h
+    size = fit_size(d, lines, w * s - x0 - 70 * s, bottom - top, start=170 * s)
+    gap = size * 1.18
+    y0 = (top + bottom) / 2 - gap * (len(lines) - 1) / 2
     for i, ln in enumerate(lines):
-        d.text((x0, y0 + i * gap), ln, font=f, fill=fg, anchor="lm")
+        d.text((x0, y0 + i * gap), ln, font=line_font(ln, size), fill=fg, anchor="lm")
     if sub:
-        d.text((x0, (h - 70) * s), sub, font=font(ARIAL_B, 30 * s), fill=fg, anchor="lm")
+        sf = font(ARIAL_B, fit_size(d, [sub], w * s - x0 - 70 * s, 50 * s, start=40 * s))
+        d.text((x0, h * s - 50 * s - sub_h / 2), sub, font=sf, fill=fg, anchor="lm")
     return noise_overlay(finish(img, 0.0), 7, 10)
 
 # ------------------------------------------------------------------ street posters
 
 
 def poster_missing(name, seed):
+    """MISSING poster: photo, name, last-seen note and tear-off phone tabs,
+    each in its own band so nothing overlaps."""
     W, H = 700, 1000
     s = SS
     rnd = random.Random(seed)
     img = canvas(W, H)
     d = ImageDraw.Draw(img)
-    d.rectangle([0, 0, W * s, H * s], fill=(236, 232, 220, 255))
-    text_c(d, (W * s / 2, 110 * s), "MISSING", font(IMPACT, 170 * s), (20, 20, 20, 255))
-    text_c(d, (W * s / 2, 210 * s), "行方不明", font(JP_BOLD, 60 * s), (190, 20, 30, 255))
-    # photo: grey head silhouette
-    d.rectangle([160 * s, 270 * s, 540 * s, 650 * s], fill=(120, 118, 112, 255))
-    d.ellipse([270 * s, 320 * s, 430 * s, 500 * s], fill=(60, 58, 55, 255))
-    d.ellipse([200 * s, 480 * s, 500 * s, 760 * s], fill=(60, 58, 55, 255))
-    d.rectangle([160 * s, 650 * s, 540 * s, 700 * s], fill=(236, 232, 220, 255))
-    text_c(d, (W * s / 2, 740 * s), name, font(BAHN, 64 * s), (20, 20, 20, 255))
-    f = font(ARIAL_B, 30 * s)
+    paper, ink, red, grey = (236, 232, 220, 255), (20, 20, 20, 255), (190, 20, 30, 255), (40, 40, 40, 255)
+    d.rectangle([0, 0, W * s, H * s], fill=paper)
+    text_c(d, (W * s / 2, 100 * s), "MISSING", font(IMPACT, 160 * s), ink)
+    text_c(d, (W * s / 2, 200 * s), "行方不明", font(JP_BOLD, 54 * s), red)
+    # photo: grey head-and-shoulders silhouette, clipped to the photo frame
+    px0, py0, px1, py1 = 180 * s, 250 * s, 520 * s, 590 * s
+    photo = Image.new("RGBA", ((px1 - px0), (py1 - py0)), (120, 118, 112, 255))
+    pd = ImageDraw.Draw(photo)
+    pw, ph = photo.size
+    pd.ellipse([pw * 0.32, ph * 0.12, pw * 0.68, ph * 0.55], fill=(60, 58, 55, 255))
+    pd.ellipse([pw * 0.1, ph * 0.5, pw * 0.9, ph * 1.3], fill=(60, 58, 55, 255))
+    img.alpha_composite(photo, (px0, py0))
+    d.rectangle([px0, py0, px1, py1], outline=(60, 58, 55, 255), width=3 * s)
+    text_c(d, (W * s / 2, 645 * s), name, font(BAHN, fit_size(d, [name], 600 * s, 70 * s, start=64 * s)), ink)
+    f = font(ARIAL_B, 27 * s)
     for i, ln in enumerate(["Last seen entering the", "MERIDIAN WELLNESS CENTRE", f"Score at disappearance: {rnd.randint(180, 330)}"]):
-        text_c(d, (W * s / 2, (810 + i * 44) * s), ln, f, (40, 40, 40, 255))
-    # tear-off tabs
-    for i in range(7):
-        x = (40 + i * 92) * s
-        d.line([x, 950 * s, x, H * s], fill=(150, 150, 140, 255), width=2 * s)
+        text_c(d, (W * s / 2, (705 + i * 38) * s), ln, f, grey)
+    # tear-off tabs: a dashed cut line, then vertical phone numbers
+    tab_top = 830 * s
+    for x in range(0, W * s, 16 * s):
+        d.line([x, tab_top, x + 9 * s, tab_top], fill=(150, 150, 140, 255), width=2 * s)
+    n = 8
+    tw = W * s / n
+    number = f"070-{rnd.randint(1000, 9999)}-{rnd.randint(1000, 9999)}"
+    tf = font(ARIAL_B, 19 * s)
+    for i in range(n):
+        if i:
+            d.line([i * tw, tab_top, i * tw, H * s], fill=(150, 150, 140, 255), width=2 * s)
+        if rnd.random() < 0.3:  # someone already took this one
+            d.rectangle([i * tw + 2 * s, tab_top + 2 * s, (i + 1) * tw - 2 * s, H * s], fill=(0, 0, 0, 0))
+            continue
+        lab = Image.new("RGBA", (int(H * s - tab_top - 16 * s), int(tw - 10 * s)), (0, 0, 0, 0))
+        ImageDraw.Draw(lab).text((lab.width / 2, lab.height / 2), number, font=tf, fill=grey, anchor="mm")
+        lab = lab.rotate(90, expand=True)
+        img.alpha_composite(lab, (int(i * tw + 5 * s), int(tab_top + 8 * s)))
     img = finish(img, 0.0)
     return noise_overlay(img, seed, 22)
 
