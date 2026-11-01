@@ -12,6 +12,7 @@ var _gpu_ms: PackedFloat32Array = []
 var _scr_ms: PackedFloat32Array = []
 var _phys_ms: PackedFloat32Array = []
 var _objs: PackedFloat32Array = []
+var _hitches: Array = []
 
 
 static func _mean(a: PackedFloat32Array) -> float:
@@ -21,8 +22,31 @@ static func _mean(a: PackedFloat32Array) -> float:
 	return s / maxf(1, a.size())
 
 
+var _pp_first := 0
+var _pp_scripts: PackedFloat32Array = []
+
+
+## Physics frame split (--bench-prof): two probes, first and last in the physics process order, time
+## the scripts' share of TIME_PHYSICS_PROCESS; the rest is the physics server step.
+class PhysProbe extends Node:
+	var auto
+	var last := false
+	func _physics_process(_dt: float) -> void:
+		if not last:
+			auto._pp_first = Time.get_ticks_usec()
+		elif auto._measure:
+			auto._pp_scripts.append((Time.get_ticks_usec() - auto._pp_first) / 1000.0)
+
+
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	if main.args.has("bench-prof"):
+		for last in [false, true]:
+			var pr := PhysProbe.new()
+			pr.auto = self
+			pr.last = last
+			pr.process_physics_priority = 100000 if last else -100000
+			add_child(pr)
 	var a: Dictionary = main.args
 	if a.has("drive-test"):
 		_drive_test.call_deferred()
@@ -49,6 +73,14 @@ func _process(delta: float) -> void:
 	if now - _beat > 2000:
 		_beat = now
 		print("  [%.1f s] fps %d  frame %.1f ms" % [now / 1000.0, Engine.get_frames_per_second(), delta * 1000.0])
+	if _measure or main.args.has("bench-prof"):
+		if delta > 0.025 and _hitches.size() < 40 and now > 2000:
+			var st: Dictionary = main.town.stats
+			_hitches.append({"t": snappedf(now / 1000.0, 0.01), "ms": snappedf(delta * 1000.0, 0.1),
+				"phys": snappedf(Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS) * 1000.0, 0.1),
+				"q": main.town._queue.size() if "_queue" in main.town else -1, "cells": st.get("cells_live", 0),
+				"lights": st.get("lights_live", 0), "shapes": st.get("shapes", 0),
+				"traffic": main.traffic.active.size() if main.traffic else 0, "measuring": _measure})
 	if _measure:
 		_frames.append(delta)
 		_draws.append(RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME))
@@ -128,9 +160,35 @@ func _measure_for(t: float) -> Dictionary:
 		# where the frame goes (averages): render-thread CPU, GPU, scripts (_process), physics tick
 		"render_cpu_ms": snappedf(_mean(_cpu_ms), 0.01), "gpu_ms": snappedf(_mean(_gpu_ms), 0.01),
 		"process_ms": snappedf(_mean(_scr_ms), 0.01), "physics_ms": snappedf(_mean(_phys_ms), 0.01),
-		"objects": int(_mean(_objs))}
+		"objects": int(_mean(_objs)),
+		"phys_active": Performance.get_monitor(Performance.PHYSICS_3D_ACTIVE_OBJECTS),
+		"phys_pairs": Performance.get_monitor(Performance.PHYSICS_3D_COLLISION_PAIRS),
+		"nodes": Performance.get_monitor(Performance.OBJECT_NODE_COUNT)}
+	if main.args.has("bench-prof"):
+		r["hitches"] = _hitches.duplicate()
+		r["physics_scripts_ms"] = snappedf(_mean(_pp_scripts), 0.01)
+		_pp_scripts.clear()
+	_hitches.clear()
+	if main.traffic and main.args.has("bench-prof"):
+		var tp: Dictionary = main.traffic.prof.duplicate()
+		var per := {}
+		for k in tp:
+			per[k] = snappedf(float(tp[k]) / maxf(1, tp.ticks), 0.1)
+		r["traffic_us_per_tick"] = per
+		var cnt := {}
+		for c in main.traffic.get_children():
+			var nm := String(c.name).rstrip("0123456789")
+			cnt[nm] = cnt.get(nm, 0) + _count_nodes(c)
+		r["traffic_nodes"] = cnt
 	print("BENCH ", JSON.stringify(r))
 	return r
+
+
+static func _count_nodes(n: Node) -> int:
+	var k := 1
+	for c in n.get_children():
+		k += _count_nodes(c)
+	return k
 
 
 func _quit() -> void:
@@ -215,9 +273,22 @@ func _road_point_near(c: Vector3, dist: float) -> Vector3:
 
 
 # ------------------------------------------------------------------ bench
+## Startup is over when 60 frames in a row took less than 25 ms (shader pipelines compiled, traffic set
+## up); returns the engine time it took. The measurements start after it, so they are not startup.
+func _settle(max_s := 30.0) -> int:
+	var ok := 0
+	var t0 := Time.get_ticks_msec()
+	while ok < 60 and Time.get_ticks_msec() - t0 < max_s * 1000.0:
+		await get_tree().process_frame
+		ok = ok + 1 if get_process_delta_time() < 0.025 else 0
+	print("settled at %.1f s" % (Time.get_ticks_msec() / 1000.0))
+	return Time.get_ticks_msec()
+
+
 func _bench_only(seconds: float) -> void:
 	_video_setup()
 	await _wait(5.0)
+	await _settle()
 	main.ap_speed = 17.0
 	_drive(true)
 	await _wait(1.0)
@@ -240,6 +311,7 @@ func _bench_spots(dir: String) -> void:
 	if FileAccess.file_exists(wp):
 		w = JSON.parse_string(FileAccess.get_file_as_string(wp))
 	await _wait(5.0)
+	out["settled_ms"] = await _settle()      # engine start to steady frames: the load time a player sees
 	var cam = main.cam
 	cam.manual = true
 	if w != null:
@@ -416,6 +488,59 @@ func _bench_matrix() -> void:
 		res["traffic_hidden"] = await _measure_for(3.0)
 		main.traffic.process_mode = Node.PROCESS_MODE_DISABLED
 		res["traffic_hidden_paused"] = await _measure_for(3.0)
+		if main.args.has("probe-traffic"):
+			# what the paused traffic still costs: its bodies / nodes, removed group by group
+			var info := []
+			for c in main.traffic.cars:
+				if not c._shape.disabled:
+					info.append([c.mode, c.freeze, c.freeze_mode, c.collision_mask, c.global_position.distance_to(main.car.global_position), c.sleeping])
+			print("PROBE cars with collision: ", info)
+			print("PROBE parked: ", main.traffic.parked.filter(func(pc): return not pc._shape.disabled).size(), " ", main.traffic.parked.map(func(pc): return [pc.mode, pc.freeze, pc.freeze_mode, int(pc.global_position.distance_to(main.car.global_position))]).slice(0, 6))
+			for c in main.traffic.cars:
+				c._shape.disabled = true
+			res["traffic_paused_cars_nocol"] = await _measure_for(3.0)
+			var colc := []
+			for c in main.traffic.cars:
+				if c.mode != 4:
+					colc.append(c)
+					c._shape.disabled = false
+					break
+			var cr: Node = main.town.get_node("Collision")
+			for b in cr.get_children():
+				if String(b.name).begins_with("Shapes"):
+					b.process_mode = Node.PROCESS_MODE_DISABLED
+			res["traffic_paused_onecar_no_shapes"] = await _measure_for(3.0)
+			for b in cr.get_children():
+				b.process_mode = Node.PROCESS_MODE_DISABLED
+			res["traffic_paused_onecar_no_towncol"] = await _measure_for(3.0)
+			for b in cr.get_children():
+				b.process_mode = Node.PROCESS_MODE_INHERIT
+			res["traffic_paused_onecar_towncol"] = await _measure_for(3.0)
+			for c in colc:
+				c._shape.disabled = true
+			var hero_xf: Transform3D = main.car.global_transform
+			main.car.freeze = true
+			res["traffic_paused_hero_frozen"] = await _measure_for(3.0)
+			main.car.freeze = false
+			main.car.global_transform = hero_xf
+			for pc in main.traffic.parked:
+				pc._shape.disabled = true
+			res["traffic_paused_parked_nocol"] = await _measure_for(3.0)
+			for pc in main.traffic.parked:
+				pc.visible = false
+			res["traffic_paused_parked_nocol_hidden"] = await _measure_for(3.0)
+			for pc in main.traffic.parked:
+				pc.physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
+			res["traffic_paused_parked_noint"] = await _measure_for(3.0)
+			var removed := []
+			for grp in [["Parked"], ["Traffic"], ["Signals", "Pedestrians"]]:
+				for c in main.traffic.get_children():
+					if String(c.name).rstrip("0123456789") in grp:
+						main.traffic.remove_child(c)
+						removed.append(c)
+				res["traffic_paused_minus_" + "_".join(grp)] = await _measure_for(3.0)
+			for c in removed:
+				main.traffic.add_child(c)
 		main.traffic.process_mode = Node.PROCESS_MODE_INHERIT
 		main.traffic.visible = true
 	var lights: Node3D = main.town.get_node_or_null("Lights")

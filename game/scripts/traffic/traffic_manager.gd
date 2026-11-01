@@ -301,6 +301,8 @@ func _place(c, l, s: float) -> void:
 	c.activate()
 	_enter_lane(c)
 	_pose(c, 0.0)
+	var cam := _cam()
+	c.update_lods(c.global_position.distance_to(cam.global_position if cam else _player_pos()))
 	c.reset_physics_interpolation()
 	active.append(c)
 	_occ_add(c)
@@ -472,6 +474,7 @@ func _housekeeping() -> void:
 		var p: Vector3 = c.global_position
 		var d := p.distance_to(pp)
 		c.far = p.distance_to(cp) > 110.0
+		c.update_lods(p.distance_to(cp))
 		c.set_collision(d < near_radius or c.mode != TrafficCar.KINEMATIC)
 		if c.mode == TrafficCar.KINEMATIC and d > ring_max + 30.0 and not _in_view(p, d):
 			_despawn(c)
@@ -479,6 +482,7 @@ func _housekeeping() -> void:
 			_despawn(c)   # last resort against gridlock; counted by the tests via max_stall
 	for p in parked:
 		p.set_collision(p.global_position.distance_to(pp) < near_radius * 1.5 or p.mode == TrafficCar.DYNAMIC)
+		p.update_lods(p.global_position.distance_to(cp))
 	_fill(false)
 	_patrol_logic(0.25)
 	_assign_lights()
@@ -923,6 +927,8 @@ func _begin_recover(c) -> void:
 	c.rec_from = c.global_transform
 	_enter_lane(c)
 	_pose(c, 0.0)
+	var cam := _cam()
+	c.update_lods(c.global_position.distance_to(cam.global_position if cam else _player_pos()))
 	c.rec_to = c.global_transform
 	c.global_transform = c.rec_from
 	c.rec_t = 0.0

@@ -13,7 +13,10 @@ const VehicleLib := preload("res://scripts/traffic/vehicle_library.gd")
 
 var model                       ## VehicleLib.Model
 var variant := 0
-var mode := OFF
+var mode := OFF:
+	set(v):
+		mode = v
+		_update_layers()
 var idx := 0                    ## pool index (AI staggering)
 var patrol := false
 
@@ -95,17 +98,19 @@ func build(m, lib, pool_index: int) -> void:
 	for li in m.lods.size():
 		var lod: Dictionary = m.lods[li]
 		var end: float = lod.max
-		var entry := {"meshes": [], "wheels": [], "srcmats": []}
+		var entry := {"meshes": [], "wheels": [], "srcmats": [], "top": [], "begin": begin, "end": end, "in": true}
 		var last: bool = li == m.lods.size() - 1
 		for p in lod.parts:
 			var mi := _mesh(p[0], p[1], begin, end, last)
 			add_child(mi)
+			entry.top.append(mi)
 			entry.meshes.append(mi)
 			entry.srcmats.append(p[2])
 		for w in lod.wheels:
 			var piv := Node3D.new()
 			piv.transform = w.hub
 			add_child(piv)
+			entry.top.append(piv)
 			var spin := Node3D.new()
 			piv.add_child(spin)
 			for p in w.parts:
@@ -148,6 +153,7 @@ func build(m, lib, pool_index: int) -> void:
 			bar_lights.append(ol)
 	visible = false
 	process_mode = Node.PROCESS_MODE_DISABLED
+	_update_layers()
 
 
 func _bar(lib, x: float, mat: Material, m) -> MeshInstance3D:
@@ -188,10 +194,45 @@ func set_variant(vi: int) -> void:
 					mi.set_surface_override_material(si, per[src[si]])
 
 
+## Keep only the LODs whose visibility range is near the camera distance in the tree (perf): every
+## node in the tree is re-transformed (and physics-interpolated) each time the car moves, ~60 nodes
+## per car with all LODs attached. The visibility ranges still do the exact switching.
+func update_lods(cam_dist: float) -> void:
+	for e in lod_nodes:
+		var want: bool = cam_dist > float(e.begin) - 40.0 and cam_dist < float(e.end) + 40.0
+		if want == e["in"]:
+			continue
+		e["in"] = want
+		for n in e.top:
+			if want:
+				add_child(n)
+			else:
+				remove_child(n)
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_PREDELETE:
+		for e in lod_nodes:
+			if not e.get("in", true):
+				for n in e.top:
+					n.free()
+
+
 func set_collision(on: bool) -> void:
 	if _shape.disabled == on:
 		_shape.set_deferred("disabled", not on)
 	near = on
+	_update_layers()
+
+
+## Only a loose (DYNAMIC) car needs the world's static collision (layer 1); lane followers and parked
+## cars are kinematic / static, which never make contacts with it, but Jolt still paired them with the
+## road and terrain. Without collision (far from the player) a car leaves all layers, so Jolt pairs it
+## with nothing (~0.5 ms per physics tick less with 60 cars). The hero (mask 1 | 2) still hits near ones.
+func _update_layers() -> void:
+	var on := near or mode == DYNAMIC
+	collision_layer = 2 if on else 0
+	collision_mask = ((1 | 2) if mode == DYNAMIC else 2) if on else 0
 
 
 func set_braking(b: bool, lib) -> void:
