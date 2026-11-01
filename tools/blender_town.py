@@ -1152,14 +1152,20 @@ def build(root=None, export_junctions=False, quick=False):
             a, b = steps[0][0], steps[-1][0]
             mid = (a + b) / 2
             dirv = (b - a).normalized()
-            half_len = (b - a).length / 2 + 0.6
+            half_len = (b - a).length / 2 + 2.5          # keep the stair foot and top open
             obstacles.append([mid + dirv * sx_ + rot90(dirv) * sy_ for sx_, sy_ in
-                              ((-half_len, -SW / 2 - 0.6), (half_len, -SW / 2 - 0.6), (half_len, SW / 2 + 0.6), (-half_len, SW / 2 + 0.6))])
+                              ((-half_len, -SW / 2 - 2.5), (half_len, -SW / 2 - 2.5), (half_len, SW / 2 + 2.5), (-half_len, SW / 2 + 2.5))])
             li = bpy.data.lights.new("StairLight", "POINT")
-            li.energy = 90
+            li.energy = 120
             li.color = (1.0, 0.7, 0.45)
             li.shadow_soft_size = 0.2
             put(li, (b.x, b.y, steps[-1][4] + 2.6), name="StairLight")
+            li = bpy.data.lights.new("StairLight", "POINT")
+            li.energy = 70
+            li.color = rng.choice([(0.4, 0.9, 1.0), (1.0, 0.35, 0.7)])
+            li.shadow_soft_size = 0.2
+            foot = a + steps[0][2] * 1.5
+            put(li, (foot.x, foot.y, steps[0][3] + 2.4), name="StairLight")
             stairs.append({"from": (a.x, a.y, steps[0][3]), "to": (b.x, b.y, steps[-1][4]), "steps": len(steps), "wall": wi})
             last.append(q)
     sme = bpy.data.meshes.new("Stairs")
@@ -1275,7 +1281,7 @@ def build(root=None, export_junctions=False, quick=False):
         b = put(K[kind].data, (cn_.x, cn_.y, base), rz, name=kind)
         mats = variants.get(kind)
         if mats:
-            mats = mats + list(K[kind].data.materials[:1])     # the kit look stays in the mix
+            mats = mats + [m for m in K[kind].data.materials[:1] if m]     # the kit look stays in the mix
             b.material_slots[0].link = "OBJECT"
             b.material_slots[0].material = rng.choice(mats)
         depth = base - lowz + 0.8

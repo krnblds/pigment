@@ -135,7 +135,7 @@ def shots(info):
     J = info["junctions"]
     runs = info["runs"]
     out = {}
-    out["overview"] = ((-78.0, -72.0, 46.0), (30.0, 40.0, 2.0), 26)
+    out["overview"] = ((-40.0, -110.0, 120.0), (15.0, 25.0, 0.0), 30)
     j2 = J["J2"]["pos"]
     p, t = runs[1].at(runs[1].length - 40)
     out["yfork"] = ((p.x - t.y * 2.2, p.y + t.x * 2.2, p.z + 1.7), (j2[0], j2[1], j2[2] + 3.5), 22)
@@ -146,21 +146,34 @@ def shots(info):
     p, t = runs[8].at(30)
     out["crossroads"] = ((p.x - t.y * 2.0, p.y + t.x * 2.0, p.z + 6.0), (j1[0], j1[1], j1[2] + 1.0), 22)
     if info["stairs"]:
-        big = [s for s in info["stairs"] if s["steps"] >= 10] or info["stairs"]
-        st = min(big, key=lambda s: Vector(s["from"]).to_2d().length)
-        a, b = Vector(st["from"]), Vector(st["to"])
-        mid = (a + b) / 2
-        d = (b - a).to_2d().normalized()
-        side = Vector((-d.y, d.x))
+        # the stair with the clearest view from its low side
+        dg = bpy.context.evaluated_depsgraph_get()
+        sc = bpy.context.scene
         lvl = info["level"]
         best = None
-        for sgn in (1, -1):
-            c = mid.to_2d() + side * sgn * 10 - d * 6
-            g = lvl(c.x, c.y)
-            if best is None or abs(g - a.z) < abs(best[1] - a.z):
-                best = (c, g)
-        c, g = best
-        out["stairs"] = ((c.x, c.y, g + 1.7), (mid.x, mid.y, mid.z + 1.0), 20)
+        for st in info["stairs"]:
+            a, b = Vector(st["from"]), Vector(st["to"])
+            mid = (a + b) / 2
+            tgt = Vector((mid.x, mid.y, mid.z + 0.5))
+            d = (b - a).to_2d().normalized()
+            for sgn in (1, -1):
+                for dist in (9.0, 12.0, 15.0):
+                    for back in (-4.0, -7.0, 0.0):
+                        c = mid.to_2d() + Vector((-d.y, d.x)) * sgn * dist + d * back
+                        g = lvl(c.x, c.y)
+                        if abs(g - a.z) > 1.0:
+                            continue
+                        loc = Vector((c.x, c.y, g + 1.7))
+                        ray = loc - tgt
+                        hit = sc.ray_cast(dg, tgt + ray.normalized() * 2.5, ray.normalized(), distance=ray.length - 2.5)
+                        if hit[0]:
+                            continue
+                        score = st["steps"] - abs(Vector(st["from"]).to_2d().length) * 0.02
+                        if best is None or score > best[0]:
+                            best = (score, tuple(loc), tuple(tgt))
+                        break
+        if best:
+            out["stairs"] = (best[1], best[2], 20)
     return out
 
 
@@ -252,6 +265,15 @@ def main():
     bpy.ops.wm.read_factory_settings(use_empty=True)
     import_kit()
     apply_kit_materials()
+    if opt("--layout"):
+        # render another layout script (e.g. an older blender_town.py) from its own camera
+        src = str(opt("--layout"))
+        exec(compile(open(src, encoding="utf-8").read(), src, "exec"), {"__name__": "layout"})
+        setup_render(int(opt("--samples", 128)), tuple(int(v) for v in str(opt("--res", "1600x900")).split("x")))
+        os.makedirs(OUT, exist_ok=True)
+        bpy.context.scene.render.filepath = os.path.join(OUT, str(opt("--out", "before")) + ".png")
+        bpy.ops.render.render(write_still=True)
+        return
     town = load_tool("blender_town", {"TOWN_NO_AUTOBUILD": True, "TOWN_ROOT": ROOT})
     info = town["build"](root=ROOT, export_junctions=bool(opt("--export-junctions")))
     print(f"built in {time.time() - t0:.0f} s")
