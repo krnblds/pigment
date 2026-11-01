@@ -21,7 +21,7 @@ MAP_DIR_NOEMIT = os.path.join(OUT_DIR, "maps_noemit")
 os.makedirs(MAP_DIR, exist_ok=True)
 os.makedirs(MAP_DIR_NOEMIT, exist_ok=True)
 
-ns = {"__name__": "blender_pigment"}
+ns = {"__name__": "blender_pigment", "__file__": os.path.join(HERE, "blender_pigment.py")}
 exec(compile(open(os.path.join(HERE, "blender_pigment.py"), encoding="utf-8").read(), "blender_pigment.py", "exec"), ns)
 apply_pigment_material = ns["apply_pigment_material"]
 
