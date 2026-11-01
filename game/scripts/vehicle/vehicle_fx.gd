@@ -374,7 +374,8 @@ func _update_audio(_delta: float, slide: float) -> void:
 		_bungee.set("rpm_position", clampf((car.rpm - idle) / maxf(lim - idle, 1.0), 0.0, 1.0))
 		_bungee.set("throttle", clampf(car.throttle_out, 0.0, 1.0))
 		_bungee.set("speed_kmh", car.speed_kmh)
-		_bungee.set("wheelspin", clampf(slide, 0.0, 1.0))
+		# its skid sample is a dry-tarmac squeal: off on a wet road
+		_bungee.set("wheelspin", clampf(slide, 0.0, 1.0) * (1.0 - clampf(car.wet, 0.0, 1.0)))
 		if car.gear != _last_gear and car.gear >= 1 and _last_gear >= 1:
 			_bungee.set("trigger_gear_up" if car.gear > _last_gear else "trigger_gear_down", true)
 		_last_gear = car.gear
@@ -406,8 +407,11 @@ func _tyres(slide: float) -> void:
 	_squeal.volume_db = linear_to_db(maxf(0.0005, sq)) - 10.0
 	_squeal.pitch_scale = 0.94 + sq * 0.12
 	_squeal.stream_paused = sq < 0.01            # silent loops don't need mixing
-	var sw := smoothstep(0.05, 0.6, s) * (1.0 - dry)
-	_wet_scrub.volume_db = linear_to_db(maxf(0.0005, sw)) - 12.0
-	_wet_scrub.pitch_scale = 0.9 + s * 0.25
+	# wet road: a steady soft hiss that rises with speed (plus a little more when sliding)
+	var wetness := 1.0 - dry
+	var sp := clampf(absf(car.speed_kmh) / 120.0, 0.0, 1.0)
+	var sw := wetness * clampf(smoothstep(0.03, 1.0, sp) * 0.8 + smoothstep(0.1, 0.8, s) * 0.3, 0.0, 1.0)
+	_wet_scrub.volume_db = linear_to_db(maxf(0.0005, sw)) - 16.0
+	_wet_scrub.pitch_scale = 0.85 + sp * 0.3
 	_wet_scrub.stream_paused = sw < 0.01
 	_intake.stream_paused = _bungee != null or car.throttle_out < 0.02
