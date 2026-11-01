@@ -49,8 +49,16 @@ mutable = ["scenes/props/textures/variants.json"]
 scripts = ["scenes/props/scripts/data_kiosk.jsonl"]
 textures = "scenes/props/textures"
 resolution = 2048
-variants = ["flagged", "dreamlink", "hacked"]
+variants = ["flagged", "dreamlink", "hacked", "platinum", "loan", "match", "attention"]
 decals = [
+  "assets/decals/ads/kiosk_attention_unlock.png",
+  "assets/decals/ads/kiosk_loan_approved.png",
+  "assets/decals/ads/kiosk_match_found.png",
+  "assets/decals/ads/kiosk_platinum_offer.png",
+  "assets/decals/ads/lightbox_hayate.png",
+  "assets/decals/ads/lightbox_matcha.png",
+  "assets/decals/ads/lightbox_platinum.png",
+  "assets/decals/ads/lightbox_volt_rush.png",
   "assets/decals/props/ad_dreamlink.png",
   "assets/decals/props/ad_meridian.png",
   "assets/decals/props/kiosk_dreamlink.png",
@@ -63,9 +71,13 @@ decals = [
 outputs = [
   "scenes/props/projects/data_kiosk.pigment",
   "scenes/props/textures/data_kiosk",
+  "scenes/props/textures/data_kiosk__attention",
   "scenes/props/textures/data_kiosk__dreamlink",
   "scenes/props/textures/data_kiosk__flagged",
   "scenes/props/textures/data_kiosk__hacked",
+  "scenes/props/textures/data_kiosk__loan",
+  "scenes/props/textures/data_kiosk__match",
+  "scenes/props/textures/data_kiosk__platinum",
 ]
 patch = []
 decal_slots = {}
@@ -102,9 +114,17 @@ lod = { lod0_tris = 680, lod1_tris = 340, lod1_from_m = 21.3, visible_to_m = 106
 
 # Where the world places it (read from scenes/world/world.json; scatter rules live in the props catalog).
 [placement]
-instances = 240
+instances = 263
 source = "tools/props/scatter.py (rules: tools/props/catalog.py)"
-districts = { corporate = 7, downtown = 68, hillside = 30, midtown = 99, old_town = 25, port = 11 }
+
+[placement.districts]
+corporate = 10
+downtown = 81
+hillside = 35
+midtown = 87
+old_town = 26
+port = 17
+yoimachi = 7
 
 [placement.scatter]
 slots = ["walk", "frontage", "plaza", "corner"]

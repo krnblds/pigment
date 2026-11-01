@@ -1,10 +1,10 @@
 {
  "lod0": "holo_pylon.glb",
- "lod0_bytes": 521720,
+ "lod0_bytes": 521704,
  "lod0_tris": 304,
  "texture": 1024,
  "lod1": "holo_pylon_lod1.glb",
- "lod1_bytes": 198280,
+ "lod1_bytes": 198264,
  "lod1_tris": 152,
  "lod1_texture": 512
 }

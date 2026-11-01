@@ -49,8 +49,31 @@ mutable = ["scenes/props/textures/variants.json"]
 scripts = ["scenes/props/scripts/bus_stop.jsonl"]
 textures = "scenes/props/textures"
 resolution = 2048
-variants = ["dreamlink", "meridian", "security", "defaced"]
+variants = [
+  "dreamlink",
+  "meridian",
+  "security",
+  "defaced",
+  "dolls",
+  "velvet_moon",
+  "intimate",
+  "matcha",
+  "platinum",
+  "hayate",
+  "breathe",
+  "volt",
+  "ramen",
+]
 decals = [
+  "assets/decals/ads/lightbox_breathe_plus.png",
+  "assets/decals/ads/lightbox_dolls.png",
+  "assets/decals/ads/lightbox_hayate.png",
+  "assets/decals/ads/lightbox_intimate.png",
+  "assets/decals/ads/lightbox_matcha.png",
+  "assets/decals/ads/lightbox_platinum.png",
+  "assets/decals/ads/lightbox_ramen_kira.png",
+  "assets/decals/ads/lightbox_velvet_moon.png",
+  "assets/decals/ads/lightbox_volt_rush.png",
   "assets/decals/props/ad_defaced.png",
   "assets/decals/props/ad_dreamlink.png",
   "assets/decals/props/ad_meridian.png",
@@ -67,10 +90,19 @@ decals = [
 outputs = [
   "scenes/props/projects/bus_stop.pigment",
   "scenes/props/textures/bus_stop",
+  "scenes/props/textures/bus_stop__breathe",
   "scenes/props/textures/bus_stop__defaced",
+  "scenes/props/textures/bus_stop__dolls",
   "scenes/props/textures/bus_stop__dreamlink",
+  "scenes/props/textures/bus_stop__hayate",
+  "scenes/props/textures/bus_stop__intimate",
+  "scenes/props/textures/bus_stop__matcha",
   "scenes/props/textures/bus_stop__meridian",
+  "scenes/props/textures/bus_stop__platinum",
+  "scenes/props/textures/bus_stop__ramen",
   "scenes/props/textures/bus_stop__security",
+  "scenes/props/textures/bus_stop__velvet_moon",
+  "scenes/props/textures/bus_stop__volt",
 ]
 patch = []
 decal_slots = {}
@@ -108,9 +140,17 @@ lod = { lod0_tris = 1210, lod1_tris = 484, lod1_from_m = 39.8, visible_to_m = 19
 
 # Where the world places it (read from scenes/world/world.json; scatter rules live in the props catalog).
 [placement]
-instances = 66
+instances = 61
 source = "tools/props/scatter.py (rules: tools/props/catalog.py)"
-districts = { corporate = 5, downtown = 17, hillside = 8, midtown = 29, old_town = 4, port = 3 }
+
+[placement.districts]
+corporate = 3
+downtown = 16
+hillside = 10
+midtown = 24
+old_town = 4
+port = 2
+yoimachi = 2
 
 [placement.scatter]
 slots = ["curb"]

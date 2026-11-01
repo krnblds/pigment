@@ -278,6 +278,7 @@ DECAL_SETS = {
     "story": ("tools/make_story_decals.py", "assets/decals/story", "Story decals: Hoshikawa, MERIDIAN, Dreamlink, Noctis, UNPLUG"),
     "props": ("tools/props/make_prop_decals.py", "assets/decals/props", "Street-prop decals: screens, ads, stickers, menus"),
     "fleet": ("tools/vehicles/decals.py", "assets/decals/fleet", "Fleet liveries, plates, badges, tyre sidewalls"),
+    "ads": ("tools/make_ad_decals.py", "assets/decals/ads", "Ads: corporate, red-light district, street flyers, defaced (the ad-saturated city)"),
 }
 
 

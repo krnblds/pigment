@@ -12,7 +12,7 @@ derived = ["district.counts", "district.settings"]
 [district]
 world = "world/shinkai_bay"
 island = "shinkai"
-counts = { buildings = 2394, towers = 65 }
+counts = { buildings = 2130, towers = 64 }
 
 [district.settings]
 name = "midtown"

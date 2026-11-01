@@ -12,13 +12,31 @@ derived = ["district.counts", "district.settings"]
 [district]
 world = "world/shinkai_bay"
 island = "tenjin_corporate"
-counts = { towers = 51, buildings = 74 }
+counts = { towers = 44, buildings = 85 }
 
 [district.settings]
 name = "corporate"
 island = "tenjin_corporate"
 style = "corporate"
 back_rows = 0.3
+crown_ads = [
+  "billboard_ad_meridian_platinum",
+  "billboard_ad_meridian_future",
+  "billboard_ad_hoshikawa_limbs",
+  "billboard_ad_hoshikawa_home",
+  "billboard_ad_hoshikawa_secure",
+  "billboard_ad_kagerou_watch",
+  "billboard_ad_kanzaki_hayate",
+  "billboard_ad_dreamlink_premium",
+  "billboard_ad_noctis_firstkiss",
+  "billboard_ad_attention_market",
+  "billboard_ad_organsure",
+  "billboard_ad_sakura_credit",
+  "billboard_ad_capsule_estate",
+  "billboard_ad_breathe_plus",
+  "billboard_ad_volt_rush",
+  "billboard_ad_platinum_defaced",
+]
 landmarks = [
   { name = "hoshikawa_hq", height = 310, footprint = [46, 46], variant = "hoshikawa", near = [1205, 1260] },
   { name = "meridian_spire", height = 265, footprint = [38, 38], variant = "meridian", near = [1335, 1175] },

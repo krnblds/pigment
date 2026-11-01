@@ -344,7 +344,7 @@ def kind_of(name, args):
     ghostly = args.get("opacity", 1.0) <= 0.5 and args.get("fade", 0) >= 0.5 and not args.get("emissive_strength")
     if stem.startswith("billboard"):
         return "ghost" if (name.startswith("ghost/") or ghostly) else "billboard"
-    if stem.startswith("blade"):
+    if stem.startswith(("blade", "banner")):          # banner_*: a lit full-colour banner on a blade face
         return "blade"
     if stem.startswith("sign"):
         return "shop"
@@ -352,7 +352,7 @@ def kind_of(name, args):
         return "logo"
     if stem.startswith("plate"):
         return "plate"
-    if stem.startswith("poster"):
+    if stem.startswith(("poster", "flyer", "sticker")):   # paper at street level (ads: assets/decals/ads)
         return "poster"
     if stem.startswith(("graffiti", "stencil")):
         return "graffiti"
@@ -488,7 +488,7 @@ def audit_asset(asset, report):
                      band=[round(bottom, 2), round(top, 2)])
         for why, p, q in problems[:3]:
             v.append(f"{why} {describe(p, parts) if p else ''} at ({q[0]:.2f}, {q[1]:.2f}, {q[2]:.2f})".replace("  ", " "))
-        story = Path(args["image"]).parent.name == "story" or Path(args["image"]).stem.startswith("logo")
+        story = Path(args["image"]).parent.name in ("story", "ads") or Path(args["image"]).stem.startswith("logo")
         if story and host is not None:
             if kind == "billboard" and not is_billboard_panel(host, parts):
                 v.append(f"billboard image on {describe(host, parts)}, not on a framed billboard panel")

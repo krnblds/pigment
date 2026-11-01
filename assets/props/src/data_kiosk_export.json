@@ -1,10 +1,10 @@
 {
  "lod0": "data_kiosk.glb",
- "lod0_bytes": 421932,
+ "lod0_bytes": 421916,
  "lod0_tris": 680,
  "texture": 1024,
  "lod1": "data_kiosk_lod1.glb",
- "lod1_bytes": 159192,
+ "lod1_bytes": 159176,
  "lod1_tris": 340,
  "lod1_texture": 512
 }
