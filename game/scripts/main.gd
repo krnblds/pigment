@@ -7,11 +7,16 @@ extends Node3D
 ##   --drive-test       physics-only check (works with --headless), prints, quits
 ##   --no-gi            start with SDFGI off      --no-rain   start without rain
 ##   --no-town          skip the town (empty ground)
+##   --no-traffic       no traffic          --traffic=<n>  fixed number of moving cars (default: adaptive 24-80)
+##   --world=<res path> traffic lane graph from a world-lanes/1 file instead of the town layout
+##   --traffic-test=<s> headless traffic test   --traffic-shots=<dir>  traffic screenshots + perf
+##   --bench-traffic    fps with 0 / 30 / 60 / 80 cars
 
 const TownLoader := preload("res://scripts/town_loader.gd")
 const Car := preload("res://scripts/car.gd")
 const ChaseCamera := preload("res://scripts/chase_camera.gd")
 const Hud := preload("res://scripts/hud.gd")
+const TrafficManager := preload("res://scripts/traffic/traffic_manager.gd")
 
 const CAR_GLB := "res://assets/car/car.glb"
 const CAR_JSON := "res://assets/car/car.json"
@@ -34,6 +39,7 @@ var _ap_turn := 0
 var _ap_via = null        ## junction centre to pass through when changing runs
 var _ap_stuck := 0.0
 var ap_speed := 15.0
+var traffic: Node3D                     ## living traffic (scripts/traffic/), --no-traffic to skip
 
 
 func _ready() -> void:
@@ -70,7 +76,23 @@ func _ready() -> void:
 	if args.has("no-gi"):
 		env.sdfgi_enabled = false
 	_road_lines = town.road_polylines() if town.layout else []
-	if args.has("autoshot") or args.has("bench") or args.has("drive-test"):
+	if not args.has("no-traffic"):
+		traffic = TrafficManager.new()
+		traffic.name = "Traffic"
+		add_child(traffic)
+		var topts := {}
+		if args.has("traffic"):
+			topts["count"] = int(args.traffic)
+		if args.has("world"):
+			topts["world"] = String(args.world)
+		if not traffic.setup(self, topts):
+			traffic.queue_free()
+			traffic = null
+	if args.has("traffic-test") or args.has("traffic-shots") or args.has("bench-traffic"):
+		var tauto := preload("res://scripts/traffic/traffic_automation.gd").new()
+		tauto.main = self
+		add_child(tauto)
+	elif args.has("autoshot") or args.has("bench") or args.has("drive-test"):
 		var auto := preload("res://scripts/automation.gd").new()
 		auto.main = self
 		add_child(auto)
@@ -385,6 +407,8 @@ func autopilot_step(_delta: float) -> void:
 	var bend := absf(tdir.signed_angle_to((pts[k] - pts[j]).normalized(), Vector3.UP)) if k != j else 0.0
 	var v: float = car.forward_speed()
 	var want := ap_speed * (1.0 - clampf(absf(ang) * 1.2 + bend * 0.8, 0.0, 0.6))
+	if traffic:
+		want = minf(want, traffic.hero_safe_speed(car))
 	car.input_throttle = clampf((want - v) * 0.35, -1.0, 1.0)
 	# wedged against something: put it back on the road
 	_ap_stuck = _ap_stuck + _delta if absf(v) < 0.5 and car.input_throttle > 0.3 else 0.0
