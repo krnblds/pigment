@@ -61,6 +61,7 @@ func _ready() -> void:
 	add_child(car)
 	car.setup(_car_path(CAR_GLB), _car_path(CAR_JSON))
 	car.place(town.spawn_transform() if town.layout else Transform3D(Basis(), Vector3(0, 2, 0)))
+	town.collision_focus = car         # collision streams around the car, visuals around the camera
 	cam = ChaseCamera.new()
 	cam.name = "ChaseCamera"
 	cam.physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
@@ -99,7 +100,7 @@ func _ready() -> void:
 		var tauto := preload("res://scripts/traffic/traffic_automation.gd").new()
 		tauto.main = self
 		add_child(tauto)
-	elif args.has("autoshot") or args.has("bench") or args.has("drive-test"):
+	elif args.has("autoshot") or args.has("bench") or args.has("bench-spots") or args.has("bench-matrix") or args.has("drive-test"):
 		var auto := preload("res://scripts/automation.gd").new()
 		auto.main = self
 		add_child(auto)
@@ -157,6 +158,12 @@ func _unhandled_input(event: InputEvent) -> void:
 		hud.show_fps = not hud.show_fps
 	elif event.is_action_pressed("quit"):
 		get_tree().quit()
+
+
+## Stream the world in around `p` right now (teleports: automation camera spots).
+func stream_now(p: Vector3) -> void:
+	if town and town.layout and town.has_method("stream_now"):
+		town.stream_now(p)
 
 
 func reset_car() -> void:
