@@ -19,7 +19,7 @@ extends RigidBody3D
 ##     (stable to a standstill: parks on hills), surface grip from the collider (asphalt, paving, kerb,
 ##     concrete, metal, grass; wet when it rains).
 ##   * drivetrain: engine torque curve, idle governor, rev limiter, engine braking, auto clutch,
-##     5-speed box (automatic by default, M toggles manual), final drive, open / limited-slip diff.
+##     5-speed automatic box (hold brake at a stop for reverse), final drive, open / limited-slip diff.
 ##   * brakes with bias and ABS, handbrake on the rear wheels; traction control, a light stability
 ##     control, speed-sensitive steering with self-aligning.
 ##   * body: a convex collider raised above the wheel line (only the tyres touch kerbs), chamfered at
@@ -56,7 +56,7 @@ var abs_on := true
 var tc_on := true
 var esc_on := true
 var steer_assist := true
-var manual := false                      ## manual gearbox (E / Q shift)
+var manual := false                      ## always false: automatic only (kept for tests / tuning)
 
 var spec := {}
 var P := {}                              ## vehicle physics parameters (vehicle_params.gd)
@@ -478,15 +478,8 @@ func forward_speed() -> float:
 func _unhandled_input(event: InputEvent) -> void:
 	if autopilot:
 		return
-	if event.is_action_pressed("shift_up"):
-		shift(1)
-	elif event.is_action_pressed("shift_down"):
-		shift(-1)
-	elif event.is_action_pressed("toggle_manual"):
-		manual = not manual
-		if not manual and gear == 0:
-			gear = 1
-	elif event.is_action_pressed("toggle_abs"):
+	# automatic only: no manual shifting. Hold S / LT at a stop to reverse, W / RT to go forward.
+	if event.is_action_pressed("toggle_abs"):
 		abs_on = not abs_on
 	elif event.is_action_pressed("toggle_tc"):
 		tc_on = not tc_on

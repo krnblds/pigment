@@ -19,6 +19,7 @@ var _eng_on: AudioStreamPlayer
 var _eng_off: AudioStreamPlayer
 var _intake: AudioStreamPlayer
 var _squeal: AudioStreamPlayer
+var _wet_scrub: AudioStreamPlayer
 var _audio := true
 const ENGINE_BASE_RPM := 1500.0         ## the engine loops are made at this rpm (4 cylinders: 50 Hz firing)
 
@@ -171,7 +172,21 @@ func _build_audio() -> void:
 	_eng_on = _player(_engine_loop(true), -6.0)
 	_eng_off = _player(_engine_loop(false), -9.0)
 	_intake = _player(_noise_loop(), -30.0)
-	_squeal = _player(_squeal_loop(), -60.0)
+	# recorded-quality loops from tools/audio/make_tyre_sounds.py; the old synth is the fallback
+	_squeal = _player(_loop_file("res://assets/audio/tyre_squeal.wav", _squeal_loop()), -60.0)
+	_wet_scrub = _player(_loop_file("res://assets/audio/tyre_wet.wav", _noise_loop()), -60.0)
+
+
+static func _loop_file(path: String, fallback: AudioStream) -> AudioStream:
+	if not ResourceLoader.exists(path):
+		return fallback
+	var w = load(path)
+	if w is AudioStreamWAV:
+		w.loop_mode = AudioStreamWAV.LOOP_FORWARD
+		w.loop_begin = 0
+		w.loop_end = int(w.get_length() * w.mix_rate)
+		return w
+	return fallback
 
 
 func _player(stream: AudioStream, db: float) -> AudioStreamPlayer:
@@ -338,8 +353,15 @@ func _update_audio(_delta: float, slide: float) -> void:
 	_eng_off.volume_db = linear_to_db(maxf(0.02, (1.0 - load) * (0.45 + loud * 0.4))) - 6.0
 	_intake.pitch_scale = clampf(0.6 + rpm / 7000.0, 0.5, 1.8)
 	_intake.volume_db = linear_to_db(maxf(0.001, car.throttle_out * loud * 0.5)) - 12.0
-	var sq := clampf(slide, 0.0, 1.0) * (0.45 if car.wet > 0.5 else 1.0)
-	_squeal.volume_db = linear_to_db(maxf(0.0005, sq)) - 6.0
-	_squeal.pitch_scale = 0.85 + sq * 0.3
+	# dry: rubber squeals once it really slides (eased in); wet: no squeal, water swish instead
+	var s := clampf(slide, 0.0, 1.0)
+	var dry := 1.0 - clampf(car.wet, 0.0, 1.0)
+	var sq := smoothstep(0.12, 0.7, s) * dry
+	_squeal.volume_db = linear_to_db(maxf(0.0005, sq)) - 10.0
+	_squeal.pitch_scale = 0.94 + sq * 0.12
 	_squeal.stream_paused = sq < 0.01            # silent loops don't need mixing
+	var sw := smoothstep(0.05, 0.6, s) * (1.0 - dry)
+	_wet_scrub.volume_db = linear_to_db(maxf(0.0005, sw)) - 12.0
+	_wet_scrub.pitch_scale = 0.9 + s * 0.25
+	_wet_scrub.stream_paused = sw < 0.01
 	_intake.stream_paused = car.throttle_out < 0.02

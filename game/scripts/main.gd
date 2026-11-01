@@ -140,12 +140,11 @@ func _setup_input() -> void:
 		"accelerate": [KEY_W, KEY_UP], "brake": [KEY_S, KEY_DOWN], "steer_left": [KEY_A, KEY_LEFT],
 		"steer_right": [KEY_D, KEY_RIGHT], "handbrake": [KEY_SPACE], "reset": [KEY_R], "camera": [KEY_C],
 		"toggle_rain": [KEY_F], "lightbar": [KEY_L], "toggle_gi": [KEY_G], "toggle_stats": [KEY_F3], "quit": [KEY_ESCAPE],
-		"shift_up": [KEY_E], "shift_down": [KEY_Q], "toggle_manual": [KEY_M], "toggle_abs": [KEY_B],
+		"toggle_abs": [KEY_B],
 		"toggle_tc": [KEY_T], "toggle_esc": [KEY_J], "toggle_steer_assist": [KEY_K],
 	}
 	var pads := {"handbrake": [JOY_BUTTON_A], "lightbar": [JOY_BUTTON_X], "reset": [JOY_BUTTON_Y], "camera": [JOY_BUTTON_RIGHT_SHOULDER],
-		"toggle_stats": [JOY_BUTTON_BACK], "shift_up": [JOY_BUTTON_B], "shift_down": [JOY_BUTTON_LEFT_SHOULDER],
-		"toggle_manual": [JOY_BUTTON_START]}
+		"toggle_stats": [JOY_BUTTON_BACK]}
 	var axes := {"accelerate": [JOY_AXIS_TRIGGER_RIGHT, 1.0], "brake": [JOY_AXIS_TRIGGER_LEFT, 1.0],
 		"steer_left": [JOY_AXIS_LEFT_X, -1.0], "steer_right": [JOY_AXIS_LEFT_X, 1.0]}
 	for action in keys:

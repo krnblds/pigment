@@ -69,7 +69,7 @@ func _draw() -> void:
 	var g: String = car.gear_label() if car.has_method("gear_label") else "D"
 	var gs := _font.get_string_size(g, HORIZONTAL_ALIGNMENT_CENTER, -1, 54)
 	draw_string(_font, c + Vector2(-gs.x * 0.5, R * 0.62), g, HORIZONTAL_ALIGNMENT_LEFT, -1, 54, MAGENTA)
-	var mode := "MAN" if car.get("manual") else "AUTO"
+	var mode := "AUTO"
 	var ms := _font.get_string_size(mode, HORIZONTAL_ALIGNMENT_CENTER, -1, 14)
 	draw_string(_font, c + Vector2(-ms.x * 0.5, R * 0.62 + 20.0), mode, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, DIM)
 	var kmh := absf(car.linear_velocity.dot(car.global_basis.z)) * 3.6
