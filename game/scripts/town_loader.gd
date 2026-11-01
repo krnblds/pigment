@@ -47,6 +47,7 @@ func load_town(wet := 1.0, map := "town") -> bool:
 	add_child(_col_root)
 	_build_lights()
 	_build_roads()
+	stats["load_ms"] = Time.get_ticks_msec() - t0
 	print("town: %d multimesh, %d mesh instances, %d collision shapes, %d lights in %d ms" % [
 			stats.multimesh, stats.mesh_instances, stats.shapes, stats.lights, Time.get_ticks_msec() - t0])
 	return true

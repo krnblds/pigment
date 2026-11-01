@@ -99,7 +99,7 @@ func _ready() -> void:
 		var tauto := preload("res://scripts/traffic/traffic_automation.gd").new()
 		tauto.main = self
 		add_child(tauto)
-	elif args.has("autoshot") or args.has("bench") or args.has("drive-test"):
+	elif args.has("autoshot") or args.has("bench") or args.has("bench-spots") or args.has("bench-matrix") or args.has("drive-test"):
 		var auto := preload("res://scripts/automation.gd").new()
 		auto.main = self
 		add_child(auto)

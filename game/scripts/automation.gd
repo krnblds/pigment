@@ -7,6 +7,18 @@ var _frames: PackedFloat32Array = []
 var _draws: PackedFloat32Array = []
 var _prims: PackedFloat32Array = []
 var _measure := false
+var _cpu_ms: PackedFloat32Array = []
+var _gpu_ms: PackedFloat32Array = []
+var _scr_ms: PackedFloat32Array = []
+var _phys_ms: PackedFloat32Array = []
+var _objs: PackedFloat32Array = []
+
+
+static func _mean(a: PackedFloat32Array) -> float:
+	var s := 0.0
+	for v in a:
+		s += v
+	return s / maxf(1, a.size())
 
 
 func _ready() -> void:
@@ -16,6 +28,8 @@ func _ready() -> void:
 		_drive_test.call_deferred()
 	elif a.has("autoshot"):
 		_autoshot.call_deferred(String(a.autoshot))
+	elif a.has("bench-spots"):
+		_bench_spots.call_deferred(String(a["bench-spots"]))
 	elif a.has("bench-matrix"):
 		_bench_matrix.call_deferred()
 	elif a.has("bench"):
@@ -39,6 +53,12 @@ func _process(delta: float) -> void:
 		_frames.append(delta)
 		_draws.append(RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME))
 		_prims.append(RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_PRIMITIVES_IN_FRAME))
+		_objs.append(RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_OBJECTS_IN_FRAME))
+		var vp := get_viewport().get_viewport_rid()
+		_cpu_ms.append(RenderingServer.viewport_get_measured_render_time_cpu(vp) + RenderingServer.get_frame_setup_time_cpu())
+		_gpu_ms.append(RenderingServer.viewport_get_measured_render_time_gpu(vp))
+		_scr_ms.append(Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0)
+		_phys_ms.append(Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS) * 1000.0)
 
 
 func _wait(t: float) -> void:
@@ -74,9 +94,17 @@ func _measure_for(t: float) -> Dictionary:
 	_frames.clear()
 	_draws.clear()
 	_prims.clear()
+	_cpu_ms.clear()
+	_gpu_ms.clear()
+	_objs.clear()
+	_scr_ms.clear()
+	_phys_ms.clear()
+	var vp := get_viewport().get_viewport_rid()
+	RenderingServer.viewport_set_measure_render_time(vp, true)
 	_measure = true
 	await _wait(t)
 	_measure = false
+	RenderingServer.viewport_set_measure_render_time(vp, false)
 	var ft := Array(_frames)
 	ft.sort()
 	var n := ft.size()
@@ -96,7 +124,11 @@ func _measure_for(t: float) -> Dictionary:
 		"draw_calls": int(draws / maxf(1, n)), "primitives_m": snappedf(prims / maxf(1, n) / 1.0e6, 0.01),
 		"vram_mb": int(Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED) / 1048576.0),
 		"resolution": "%dx%d" % [get_viewport().get_visible_rect().size.x, get_viewport().get_visible_rect().size.y],
-		"sdfgi": main.env.sdfgi_enabled}
+		"sdfgi": main.env.sdfgi_enabled,
+		# where the frame goes (averages): render-thread CPU, GPU, scripts (_process), physics tick
+		"render_cpu_ms": snappedf(_mean(_cpu_ms), 0.01), "gpu_ms": snappedf(_mean(_gpu_ms), 0.01),
+		"process_ms": snappedf(_mean(_scr_ms), 0.01), "physics_ms": snappedf(_mean(_phys_ms), 0.01),
+		"objects": int(_mean(_objs))}
 	print("BENCH ", JSON.stringify(r))
 	return r
 
@@ -193,6 +225,105 @@ func _bench_only(seconds: float) -> void:
 	_quit()
 
 
+# ------------------------------------------------------------------ fixed camera spots (open world)
+## --bench-spots=<dir> [--spot-secs=5]: downtown avenue, the arch bridge looking at the city,
+## the summit lookout looking at the skyline, then the autopilot drive. Saves one PNG per spot
+## and spots.json (fps, draw calls, primitives, VRAM, CPU/GPU ms, load time) into <dir>.
+func _bench_spots(dir: String) -> void:
+	DirAccess.make_dir_recursive_absolute(dir)
+	_video_setup()
+	var secs := float(main.args.get("spot-secs", "5"))
+	var out := {"gpu": RenderingServer.get_video_adapter_name(), "load": main.town.stats.duplicate(),
+		"startup_ms": Time.get_ticks_msec()}       # engine start to the end of main._ready()
+	var w = null
+	var wp := "res://assets/world/world.json"
+	if FileAccess.file_exists(wp):
+		w = JSON.parse_string(FileAccess.get_file_as_string(wp))
+	await _wait(5.0)
+	var cam = main.cam
+	cam.manual = true
+	if w != null:
+		for spot in _spots(w):
+			cam.fov = float(spot.get("fov", 62.0))
+			cam.global_position = spot.eye
+			cam.look_at(spot.at, Vector3.UP)
+			if main.has_method("stream_now"):
+				main.stream_now(spot.eye)
+			await _wait(4.0)                                   # stream in, fog / GI settle
+			out[spot.name] = await _measure_for(secs)
+			await _shot(dir, "spot_" + spot.name)
+	cam.manual = false
+	cam.snap()
+	main.ap_speed = 17.0
+	_drive(true)
+	await _wait(2.0)
+	out["drive"] = await _measure_for(float(main.args.get("drive-secs", "20")))
+	var f := FileAccess.open(dir.path_join("spots.json"), FileAccess.WRITE)
+	f.store_string(JSON.stringify(out, "  "))
+	f.close()
+	print("SPOTS ", JSON.stringify(out))
+	_quit()
+
+
+static func _g(p: Array) -> Vector3:          # world.json (Blender) -> Godot
+	return Vector3(p[0], p[2], -p[1])
+
+
+static func _spots(w: Dictionary) -> Array:
+	var dc := Vector2(-120, -150)
+	for d in w.get("districts", []):
+		if d.name == "downtown" and d.center != null:
+			dc = Vector2(d.center[0], d.center[1])
+	var city := Vector3(dc.x, 40.0, -dc.y)
+	var spots := []
+	# downtown avenue: the avenue sample nearest the downtown centre, looking along it
+	var best := INF
+	var av := {}
+	for r in w.roads:
+		if r["class"] != "avenue":
+			continue
+		var pts: Array = r.points
+		for i in range(1, pts.size() - 1):
+			var d := Vector2(pts[i][0], pts[i][1]).distance_to(dc)
+			if d < best:
+				best = d
+				av = {"p": _g(pts[i]), "t": (_g(pts[i + 1]) - _g(pts[i - 1])).normalized()}
+	if av:
+		var t: Vector3 = av.t
+		var side := Vector3.UP.cross(t).normalized()
+		var eye: Vector3 = av.p + Vector3.UP * 2.2 + side * 3.0
+		spots.append({"name": "avenue", "eye": eye, "at": eye + t * 60.0 + Vector3.UP * 4.0})
+	# bridge: the arch (or the first) bridge, deck point nearest its middle, looking at downtown
+	var br = null
+	for b in w.get("bridges", []):
+		if b.type == "arch":
+			br = b
+	if br == null and w.get("bridges", []).size() > 0:
+		br = w.bridges[0]
+	if br != null and br.get("arches", []).size() > 0:
+		var a: Array = br.arches[0]
+		var m: Array = a[a.size() / 2]
+		var bd := INF
+		var deck := Vector3.ZERO
+		for r in w.roads:
+			var dk: Array = r.get("deck", [])
+			for i in dk.size():
+				if dk[i]:
+					var d := Vector2(r.points[i][0], r.points[i][1]).distance_to(Vector2(m[0], m[1]))
+					if d < bd:
+						bd = d
+						deck = _g(r.points[i])
+		var eye := deck + Vector3.UP * 4.0
+		spots.append({"name": "bridge", "eye": eye, "at": city})
+	# mountain lookout: the summit plaza, looking at the skyline
+	for j in w.junctions:
+		if j.kind == "plaza":
+			var eye := _g(j.pos) + Vector3.UP * 3.0
+			spots.append({"name": "lookout", "eye": eye, "at": city, "fov": 40.0})
+			break
+	return spots
+
+
 # ------------------------------------------------------------------ physics check (headless OK)
 func _drive_test() -> void:
 	var car: VehicleBody3D = main.car
@@ -265,6 +396,16 @@ func _drive_test() -> void:
 func _bench_matrix() -> void:
 	_video_setup()
 	await _wait(6.0)
+	if main.args.has("spot") and FileAccess.file_exists("res://assets/world/world.json"):
+		for spot in _spots(JSON.parse_string(FileAccess.get_file_as_string("res://assets/world/world.json"))):
+			if spot.name == main.args.spot:
+				main.cam.manual = true
+				main.cam.fov = float(spot.get("fov", 62.0))
+				main.cam.global_position = spot.eye
+				main.cam.look_at(spot.at, Vector3.UP)
+				if main.has_method("stream_now"):
+					main.stream_now(spot.eye)
+				await _wait(4.0)
 	var env: Environment = main.env
 	var moon: DirectionalLight3D = main.get_node("Moon")
 	var vis: Node3D = main.town.get_node("Visuals")
@@ -273,7 +414,15 @@ func _bench_matrix() -> void:
 	if main.traffic:
 		main.traffic.visible = false
 		res["traffic_hidden"] = await _measure_for(3.0)
+		main.traffic.process_mode = Node.PROCESS_MODE_DISABLED
+		res["traffic_hidden_paused"] = await _measure_for(3.0)
+		main.traffic.process_mode = Node.PROCESS_MODE_INHERIT
 		main.traffic.visible = true
+	var lights: Node3D = main.town.get_node_or_null("Lights")
+	if lights:
+		lights.visible = false
+		res["town_lights_hidden"] = await _measure_for(3.0)
+		lights.visible = true
 	moon.shadow_enabled = false
 	res["no_moon_shadow"] = await _measure_for(3.0)
 	main.set_process(false)
@@ -293,5 +442,9 @@ func _bench_matrix() -> void:
 		if c.name.begins_with("building"):
 			c.visible = false
 	res["+no_buildings"] = await _measure_for(3.0)
+	env.sdfgi_enabled = false
+	res["+no_sdfgi"] = await _measure_for(3.0)
+	vis.visible = false
+	res["+no_visuals"] = await _measure_for(3.0)
 	print("MATRIX ", JSON.stringify(res, "  "))
 	_quit()
