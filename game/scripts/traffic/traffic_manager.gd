@@ -23,6 +23,7 @@ var max_count := 80
 var min_count := 24
 var target := 60
 var fixed_count := false
+var world_spawn = null           ## world.json spawn point (Godot space), if any
 var ignore_player := false       ## tests: the player is parked out of the way
 var patrol_count := 2
 var parked_per_100m := 2.6
@@ -90,6 +91,10 @@ func setup(m: Node3D, opts := {}) -> bool:
 		var w = JSON.parse_string(FileAccess.get_file_as_string(wpath))
 		if w is Dictionary:
 			graph.build_from_world(w)
+			var sp = w.get("spawn")
+			if sp is Dictionary and sp.has("pos"):
+				var q: Array = sp.pos
+				world_spawn = Vector3(q[0], q[2], -q[1]) if String(w.get("up", "y")) == "z" else Vector3(q[0], q[1], q[2])
 	elif main.town and main.town.layout:
 		var b: AABB = main.town.bounds
 		var clip := AABB(b.position + Vector3(6, -1000, 6), b.size - Vector3(12, -2000, 12))
@@ -116,6 +121,7 @@ func setup(m: Node3D, opts := {}) -> bool:
 	signals.name = "Signals"
 	add_child(signals)
 	signals.setup(graph, rng)
+	signals.demand_fn = _demand
 	_make_horn()
 	for i in max_count:
 		var c = _new_car(lib.pick(rng, false), i)
@@ -345,6 +351,17 @@ func _choose_connector(c, l, whole_group: bool) -> int:
 	return cand[0]
 
 
+## Cars within 45 m of the stop line of a junction approach (actuated signals).
+func _demand(j: int, ai: int) -> int:
+	var n := 0
+	for li in graph.junctions[j].approaches[ai].lanes:
+		var l = graph.lanes[li]
+		for c in occ.get(li, []):
+			if l.length - c.s < 45.0:
+				n += 1
+	return n
+
+
 func _unreserve(c) -> void:
 	if c.reserved >= 0:
 		var arr: Array = reserved.get(c.reserved, [])
@@ -363,6 +380,10 @@ func _rebuild_occ() -> void:
 	for c in active:
 		if c.mode == TrafficCar.KINEMATIC or c.mode == TrafficCar.RECOVER:
 			_occ_add(c)
+			if c.lc_t < 0.6 and c.lc_from >= 0:
+				if not occ.has(c.lc_from):
+					occ[c.lc_from] = []
+				occ[c.lc_from].append(c)
 	for k in occ:
 		occ[k].sort_custom(func(a, b): return a.s < b.s)
 
@@ -474,9 +495,14 @@ func _advance(c, dt: float) -> void:
 			_despawn(c)
 			return
 		c.s -= l.length
+		var old: Array = occ.get(c.lane, [])
+		old.erase(c)
 		c.lane = n
 		c.seg = 0
 		l = graph.lanes[n]
+		if not occ.has(n):
+			occ[n] = []
+		occ[n].insert(0, c)
 		_enter_lane(c)
 	if c.lc_t < 1.0:
 		c.lc_t = minf(1.0, c.lc_t + dt / c.lc_dur)
@@ -539,6 +565,14 @@ func _think(c, dt: float) -> void:
 	var lead := _leader(c, l)
 	var gap: float = lead[0]
 	var lv: float = lead[1]
+	if c.lc_t < 0.7 and c.lc_from >= 0:
+		for o in occ.get(c.lc_from, []):
+			if o != c and o.s > c.s - 1.0:
+				var g2: float = o.s - c.s - c.half_len - o.half_len
+				if g2 < gap:
+					gap = g2
+					lv = o.v
+				break
 	var reason := "leader" if gap < 60.0 else ""
 	# 2. player / loose cars in the path
 	var ob := _obstacle_ahead(c, l)
@@ -561,7 +595,7 @@ func _think(c, dt: float) -> void:
 					reason = c.wait_reason
 				if c.v < 0.5:
 					c.wait_t += dt
-			elif to_line < maxf(6.0, c.v * 1.6):
+			elif to_line < maxf(6.0, c.v * 1.6) and c.nxt >= 0 and graph.lanes[c.nxt].junction >= 0:
 				c.cleared = true
 				if c.nxt >= 0 and graph.lanes[c.nxt].junction >= 0:
 					c.reserved = c.nxt
@@ -578,7 +612,7 @@ func _think(c, dt: float) -> void:
 		c.acc = minf(c.acc, -c.v / maxf(dt, 0.05))
 	c.leader_gap = gap
 	# 5. lane changes
-	if c.lc_t >= 1.0 and l.junction < 0 and (l.left >= 0 or l.right >= 0):
+	if c.lc_t >= 1.0 and l.junction < 0 and not c.cleared and (l.left >= 0 or l.right >= 0):
 		_lane_change_logic(c, l, lead, v0)
 	# 6. lights, horn, stall bookkeeping
 	c.set_braking(c.acc < -0.6 or c.v < 0.4, lib)
@@ -729,6 +763,8 @@ func _lane_change_logic(c, l, lead: Array, v0: float) -> void:
 		if c.plan >= 0 and graph.lanes[c.plan].src != l.id and l.length - c.s < 18.0:
 			c.plan = _choose_connector(c, l, false)
 			c.nxt = c.plan
+			c.cleared = false
+			_unreserve(c)
 		return
 	var want := 0     # -1 left, +1 right
 	var mandatory := false
@@ -772,7 +808,9 @@ func _lane_change_logic(c, l, lead: Array, v0: float) -> void:
 		return     # no real gain
 	# go: the car switches lane now and slides across the offset
 	var p_old: Vector3 = c.global_position
-	occ.get(c.lane, []).erase(c)
+	c.lc_from = c.lane
+	c.cleared = false
+	_unreserve(c)
 	c.lane = target
 	c.s = s_t
 	c.seg = tl.seg_at(s_t, 0)
@@ -840,6 +878,8 @@ func _dynamic_step(c, dt: float) -> void:
 
 func _begin_recover(c) -> void:
 	var p: Vector3 = c.global_position
+	if main.car and main.car.global_position.distance_to(p) < 5.5 and c.dyn_t < 20.0:
+		return     # still being pushed around by the player
 	var upright: bool = c.global_basis.y.y > 0.7
 	# the nearest lane going the way the car now faces (or any lane if it was spun round)
 	var hit: Array = graph.nearest(p, 8.0, true, c.global_basis.z)
@@ -956,7 +996,13 @@ func _spawn_parked() -> void:
 		tmp.pts = LaneGraph.resample(pts, 1.0)
 		LaneGraph._finish_lane(tmp)
 		for side in rd.parking:
-			var sgn := -1.0 if String(side) == "left" else 1.0
+			# "left" / "right": the kerb side (town sidewalk); {roff, dir}: a parking lane of the world
+			var lane_park: bool = side is Dictionary
+			var sgn := 1.0
+			if lane_park:
+				sgn = signf(side.roff) if side.roff != 0.0 else 1.0
+			else:
+				sgn = -1.0 if String(side) == "left" else 1.0
 			var s := rng.randf_range(10.0, 30.0)
 			while s < tmp.length - 14.0 and placed < limit:
 				var m = models[rng.randi() % models.size()]
@@ -967,7 +1013,7 @@ func _spawn_parked() -> void:
 				d = d.normalized()
 				var right := d.cross(Vector3.UP)
 				# on the town's sidewalk (kerb + 1.2 m), or on the road edge for a world parking lane
-				var off: float = rd.half_width + (1.35 if graph.source == "town_layout" else -1.1)
+				var off: float = absf(side.roff) if lane_park else rd.half_width + (1.35 if graph.source == "town_layout" else -1.1)
 				var c: Vector3 = p + right * sgn * off
 				s += rng.randf_range(7.0, 34.0)
 				if _near_junction(c, 9.0):
@@ -987,6 +1033,8 @@ func _spawn_parked() -> void:
 				var y: float = hs[0]
 				var flip := rng.randf() < 0.5
 				var fz := (d if (sgn < 0.0) == (graph.drive_side == "left") else -d) * (-1.0 if flip and rng.randf() < 0.2 else 1.0)
+				if lane_park:
+					fz = d * float(side.dir)
 				var xf := Transform3D(Basis(Vector3.UP.cross(fz).normalized(), Vector3.UP, fz), Vector3(c.x, y + 0.02, c.z))
 				box.size = Vector3(m.width + 0.3, 1.2, m.length + 0.4)
 				qp.transform = Transform3D(xf.basis, xf.origin + Vector3.UP * 0.95)

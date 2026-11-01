@@ -1,7 +1,7 @@
 {
- "format": "world-lanes/1",
+ "format": "traffic-test/1",
  "coords": "godot",
- "drive_side": "left",
+ "traffic": "left-hand",
  "speed_limit": 13.9,
  "roads": [
   {
@@ -108,14 +108,26 @@
    "width": 7.0,
    "lanes": [
     {
-     "offset": -1.75,
-     "width": 3.5,
-     "dir": "forward"
-    },
-    {
      "offset": 1.75,
      "width": 3.5,
-     "dir": "backward"
+     "dir": 1
+    },
+    {
+     "offset": -1.75,
+     "width": 3.5,
+     "dir": -1
+    },
+    {
+     "offset": 4.6,
+     "width": 2.0,
+     "dir": 1,
+     "kind": "parking"
+    },
+    {
+     "offset": -4.6,
+     "width": 2.0,
+     "dir": -1,
+     "kind": "parking"
     }
    ]
   },

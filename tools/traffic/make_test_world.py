@@ -80,7 +80,8 @@ def main():
     for r in roads:
         if r["id"] == "EW00":
             r.pop("lanes_forward"), r.pop("lanes_backward")
-            r["lanes"] = [{"offset": -1.75, "width": 3.5, "dir": "forward"}, {"offset": 1.75, "width": 3.5, "dir": "backward"}]
+            r["lanes"] = [{"offset": 1.75, "width": 3.5, "dir": 1}, {"offset": -1.75, "width": 3.5, "dir": -1},
+                          {"offset": 4.6, "width": 2.0, "dir": 1, "kind": "parking"}, {"offset": -4.6, "width": 2.0, "dir": -1, "kind": "parking"}]
     junctions = []
     for name, (x, z) in J.items():
         i, k = int(name[1]), int(name[2])
@@ -96,7 +97,7 @@ def main():
             jd["control"] = "yield"
             jd["priority_roads"] = [r["id"] for r in roads if r["id"].startswith("EW") and name in (r["start"] or {}).get("junction", "") + (r["end"] or {}).get("junction", "")]
         junctions.append(jd)
-    world = {"format": "world-lanes/1", "coords": "godot", "drive_side": "left", "speed_limit": 13.9,
+    world = {"format": "traffic-test/1", "coords": "godot", "traffic": "left-hand", "speed_limit": 13.9,
              "roads": roads, "junctions": junctions}
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     with open(OUT, "w") as f:

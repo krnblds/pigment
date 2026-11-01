@@ -33,6 +33,7 @@ var stopped_at_line := false
 var lat := 0.0                  ## lateral offset (+ = travel-right), decays to 0 during a lane change
 var lat0 := 0.0
 var lc_t := 1.0                 ## lane change progress 0..1
+var lc_from := -1               ## lane it is changing out of
 var lc_dur := 3.0
 var yaw_off := 0.0
 var lc_cool := 0.0

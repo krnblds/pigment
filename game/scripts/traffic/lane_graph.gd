@@ -88,6 +88,7 @@ var roads: Array = []          ## [{name, pts, half_width, parking: [sides], lan
 var groups: Array = []         ## lane groups: PackedInt32Array of lane ids, kerb-most first
 var drive_side := "left"
 var source := ""
+var lane_key := {}             ## "road id#lane index" -> lane id (world connections)
 var grid := {}                 ## Vector2i -> PackedInt32Array of (lane id << 12 | sample index)
 
 
@@ -278,6 +279,8 @@ func add_road(name: String, centre: PackedVector3Array, lane_defs: Array, ja: in
 		# "right" offset in travel frame.  Travel-frame right offset = offset * dir.
 		by_dir[dir].append([l.id, float(d.offset) * dir])
 		rd.lanes.append(l.id)
+		if d.has("index"):
+			lane_key["%s#%d" % [name, int(d.index)]] = l.id
 	for dir in by_dir:
 		var arr: Array = by_dir[dir]
 		if arr.is_empty():
@@ -387,81 +390,172 @@ static func _clip_line(pts: PackedVector3Array, box: AABB) -> PackedVector3Array
 	return best
 
 
-## World lane format (world-lanes/1): see NOTES.md.  Accepts the dict at the top level or under
-## "traffic" / "lanes", Godot ("godot") or Blender ("blender": x, y, z-up -> x, z, -y) coordinates.
+## World data: the world workstream's world.json ("pigment-world/1", Blender coordinates) or the
+## same structure in Godot coordinates.  See docs/agents/traffic/NOTES.md for the fields used:
+##   roads[]:     id, points [[x,y,z]] (road surface), lanes [{offset (+ = LEFT of the point order),
+##                dir (+1 along the points / -1), width, kind: drive|parking}], start/end {node|junction},
+##                speed_kmh (or speed_limit m/s), half_width
+##   junctions[]: id, pos, kind (X/T/L/transition/plaza/end...), signalised | control, arms[{length,
+##                half_width, road}], connections [{from {road, lane}, to {road, lane}, turn, points?}]
+##   signals[]:   junction, controls {road, end}, pos, facing, phase (A/B/...)
+## A "traffic" dict at the top level is read instead when present (a lanes-only file).
 func build_from_world(w: Dictionary) -> void:
 	if w.has("traffic") and w.traffic is Dictionary:
 		w = w.traffic
-	source = "world"
-	drive_side = String(w.get("drive_side", "left"))
-	var blender := String(w.get("coords", "godot")).begins_with("blender")
+	source = String(w.get("format", "world"))
+	var side := String(w.get("drive_side", w.get("traffic", "left")))
+	drive_side = "right" if side.begins_with("right") else "left"
+	var coords := String(w.get("coords", "godot")).to_lower()
+	var blender: bool = coords.begins_with("blender") or String(w.get("up", "y")) == "z"
 	var conv := func(a: Array) -> Vector3:
+		var z: float = a[2] if a.size() > 2 else 0.0
+		return Vector3(a[0], z, -a[1]) if blender else Vector3(a[0], a[1], z)
+	var conv_dir := func(a: Array) -> Vector3:
+		# 2D directions are (x, y) in Blender space, (x, z) in Godot space
+		if a.size() == 2:
+			return Vector3(a[0], 0.0, -a[1]) if blender else Vector3(a[0], 0.0, a[1])
 		return Vector3(a[0], a[2], -a[1]) if blender else Vector3(a[0], a[1], a[2])
+	var default_speed := float(w.get("speed_limit", 13.9))
+	# junctions (every node: transitions and dead ends too, so road ends can refer to them)
 	for jd in w.get("junctions", []):
 		var J := Junction.new()
 		J.id = junctions.size()
 		J.name = String(jd.get("id", jd.get("name", "J%d" % J.id)))
 		J.pos = conv.call(jd.pos)
-		J.control = String(jd.get("control", "signal"))
-		J.radius = float(jd.get("radius", 10.0))
-		J.signals = jd.get("signals", [])
+		var kind := String(jd.get("kind", "X"))
+		var ctl := String(jd.get("control", ""))
+		if ctl == "":
+			if jd.get("signalised", false):
+				ctl = "signal"
+			elif kind in ["transition", "L", "end", "dead_end"]:
+				ctl = "none"
+			else:
+				ctl = "yield"
+		J.control = ctl
+		var arms: Array = jd.get("arms", [])
+		var r := float(jd.get("radius", 0.0))
+		if r <= 0.0 and not arms.is_empty():
+			r = arms.map(func(x): return float(x.get("length", 10.0))).min() * 0.6
+		J.radius = r
 		J.phases = jd.get("phases", [])
 		if jd.has("priority_roads"):
 			J.set_meta("priority_roads", jd.priority_roads)
+		elif arms.size() >= 3:
+			# the widest arms are the major road at unsignalled junctions
+			var hw: Array = arms.map(func(x): return float(x.get("half_width", 0.0)))
+			if hw.max() > hw.min() + 0.5:
+				J.set_meta("priority_roads", arms.filter(func(x): return float(x.get("half_width", 0.0)) >= hw.max() - 0.01).map(func(x): return String(x.road)))
+		J.set_meta("connections", jd.get("connections", []))
+		for sd in jd.get("signals", []):
+			J.signals.append(_signal_entry(sd, conv, conv_dir))
 		junctions.append(J)
-	var default_speed := float(w.get("speed_limit", 13.9))
+	for sd in w.get("signals", []):
+		var j := _junction_by_name(sd.get("junction"))
+		if j >= 0:
+			junctions[j].signals.append(_signal_entry(sd, conv, conv_dir))
+	# phases from the signals' phase letters
+	for J in junctions:
+		if J.phases.is_empty() and not J.signals.is_empty():
+			var by := {}
+			for sg in J.signals:
+				if sg.phase != "" and sg.road != "":
+					if not by.has(sg.phase):
+						by[sg.phase] = []
+					by[sg.phase].append(sg.road)
+			var keys := by.keys()
+			keys.sort()
+			for k in keys:
+				J.phases.append({"roads": by[k]})
 	for rd in w.get("roads", []):
 		var pts := PackedVector3Array()
 		for q in rd.get("points", rd.get("centerline", [])):
 			pts.append(conv.call(q))
 		if pts.size() < 2:
 			continue
-		var st = rd.get("start", rd.get("from"))
-		var en = rd.get("end", rd.get("to"))
-		var ja := _junction_by_name(st.get("junction") if st is Dictionary else st)
-		var jb := _junction_by_name(en.get("junction") if en is Dictionary else en)
-		var speed := float(rd.get("speed_limit", default_speed))
+		var ja := _junction_ref(rd.get("start", rd.get("from")))
+		var jb := _junction_ref(rd.get("end", rd.get("to")))
+		var speed := default_speed
+		if rd.has("speed_limit"):
+			speed = float(rd.speed_limit)
+		elif rd.has("speed_kmh"):
+			speed = float(rd.speed_kmh) / 3.6
 		var lw := float(rd.get("lane_width", 3.5))
 		var defs := []
+		var parking := []
 		if rd.has("lanes") and rd.lanes is Array:
-			for ld in rd.lanes:
+			for li in rd.lanes.size():
+				var ld: Dictionary = rd.lanes[li]
 				var dv = ld.get("dir", 1)
 				var dir := 1
 				if dv is String:
 					dir = -1 if String(dv).begins_with("b") or dv == "-1" else 1
 				else:
 					dir = -1 if float(dv) < 0.0 else 1
-				defs.append({"offset": float(ld.get("offset", 0.0)), "width": float(ld.get("width", lw)), "dir": dir,
-					"speed": float(ld.get("speed", speed))})
+				var roff := -float(ld.get("offset", 0.0))       # internal: + = right of the point order
+				var lkind := String(ld.get("kind", "drive"))
+				if lkind == "parking":
+					parking.append({"roff": roff, "dir": dir, "width": float(ld.get("width", 2.0))})
+				elif lkind == "drive":
+					defs.append({"offset": roff, "width": float(ld.get("width", lw)), "dir": dir, "speed": float(ld.get("speed", speed)),
+						"index": int(ld.get("id", li))})
 		else:
 			var nf := int(rd.get("lanes_forward", 1))
-			var nb := int(rd.get("lanes_backward", 0 if rd.get("oneway", false) else 1))
+			var nb := int(rd.get("lanes_backward", 0 if rd.get("one_way", rd.get("oneway", false)) else 1))
 			var med := float(rd.get("median", 0.0)) * 0.5
-			# drive on the left: forward lanes are left of the point order (negative offsets)
-			var s := -1.0 if drive_side == "left" else 1.0
+			# drive on the left: forward lanes are left of the point order (internal offset < 0)
+			var sg := -1.0 if drive_side == "left" else 1.0
 			if nb == 0:
 				for k in nf:
 					defs.append({"offset": (k - (nf - 1) * 0.5) * lw, "width": lw, "dir": 1, "speed": speed})
 			else:
 				for k in nf:
-					defs.append({"offset": s * (med + lw * (k + 0.5)), "width": lw, "dir": 1, "speed": speed})
+					defs.append({"offset": sg * (med + lw * (k + 0.5)), "width": lw, "dir": 1, "speed": speed})
 				for k in nb:
-					defs.append({"offset": -s * (med + lw * (k + 0.5)), "width": lw, "dir": -1, "speed": speed})
-		var hw := float(rd.get("width", 0.0)) * 0.5
+					defs.append({"offset": -sg * (med + lw * (k + 0.5)), "width": lw, "dir": -1, "speed": speed})
+			for side_name in rd.get("parking", []):
+				parking.append(side_name)
+		var hw := float(rd.get("half_width", float(rd.get("width", 0.0)) * 0.5))
 		if hw <= 0.0:
 			for d in defs:
 				hw = maxf(hw, absf(float(d.offset)) + float(d.width) * 0.5)
-		add_road(String(rd.get("id", "R%d" % roads.size())), pts, defs, ja, jb, hw, rd.get("parking", []))
-	_finish(w.get("connections", []))
+		add_road(String(rd.get("id", "R%d" % roads.size())), pts, defs, ja, jb, hw, parking)
+	# connections: per junction (world.json) and / or top level
+	var conns := []
+	for J in junctions:
+		for c in J.get_meta("connections", []):
+			conns.append([J.id, c])
+	for c in w.get("connections", []):
+		conns.append([-1, c])
+	_finish(conns, conv)
+
+
+func _junction_ref(r) -> int:
+	if r == null:
+		return -1
+	if r is Dictionary:
+		return _junction_by_name(r.get("junction", r.get("node")))
+	return _junction_by_name(r)
+
+
+func _signal_entry(sd: Dictionary, conv: Callable, conv_dir: Callable) -> Dictionary:
+	var road := ""
+	var ctl = sd.get("controls", {})
+	if ctl is Dictionary:
+		road = String(ctl.get("road", ""))
+	road = String(sd.get("road", road))
+	var f: Vector3 = conv_dir.call(sd.get("facing", [0, 1]))
+	return {"id": String(sd.get("id", "")), "pos": conv.call(sd.pos), "facing": f.normalized(),
+		"road": road, "phase": String(sd.get("phase", "")), "mast": float(sd.get("mast", 0.0)),
+		"approach": int(sd.approach) if sd.has("approach") else -1}
 
 
 # ================================================================== junction topology
-func _finish(explicit_connections: Array = []) -> void:
+func _finish(explicit_connections: Array = [], conv = null) -> void:
 	_build_approaches()
 	if explicit_connections.is_empty():
 		_build_connectors()
 	else:
-		_build_explicit_connectors(explicit_connections)
+		_build_explicit_connectors(explicit_connections, conv)
 	_build_conflicts()
 	_build_grid()
 	_build_exit_distances()
@@ -560,31 +654,43 @@ func _build_connectors() -> void:
 					_add_connector(J, ap, gin[p[0]], gout[p[1]], turn)
 
 
-func _build_explicit_connectors(conns: Array) -> void:
-	var by_name := {}
-	for r in roads.size():
-		for li in roads[r].lanes:
-			by_name[lanes[li].name] = li
-	for c in conns:
-		# lane refs: "<road id>:<f|b><kerb index>" (as named by add_road)
-		var a = by_name.get(String(c.from))
-		var b = by_name.get(String(c.to))
+## conns: [[junction id or -1, {from: {road, lane} | "R:f0", to: ..., turn?, points?}]]
+func _build_explicit_connectors(conns: Array, conv) -> void:
+	for e in conns:
+		var c: Dictionary = e[1]
+		var a = _lane_ref(c.get("from"))
+		var b = _lane_ref(c.get("to"))
 		if a == null or b == null:
-			push_warning("traffic: unknown lane in connection %s" % [c])
-			continue
+			continue          # parking lanes, roads clipped away...
 		var la: Lane = lanes[a]
-		if la.end_junction < 0:
+		var lb: Lane = lanes[b]
+		var j: int = la.end_junction if la.end_junction >= 0 else int(e[0])
+		if j < 0 or la.approach < 0:
 			continue
-		var J := junctions[la.end_junction]
+		var J := junctions[j]
 		var ap: Dictionary = J.approaches[la.approach]
-		var turn := _kerb_turn(_turn_of(ap.dir, lanes[b].dir_at_seg(0)))
+		var turn := _kerb_turn(_turn_of(ap.dir, lb.dir_at_seg(0)))
 		var tn := String(c.get("turn", ""))
 		if tn != "":
 			turn = {"straight": TURN_STRAIGHT, "left": _kerb_turn(1), "right": _kerb_turn(2), "uturn": TURN_UTURN}.get(tn, turn)
-		_add_connector(J, ap, a, b, turn)
+		var pts := PackedVector3Array()
+		if c.has("points") and conv != null:
+			for q in c.points:
+				pts.append(conv.call(q))
+		_add_connector(J, ap, a, b, turn, pts)
 
 
-func _add_connector(J: Junction, ap: Dictionary, a: int, b: int, turn: int) -> void:
+## Lane reference: {road, lane: index into the road's lanes array} or the internal name "R12:f0".
+func _lane_ref(r):
+	if r is Dictionary:
+		return lane_key.get("%s#%d" % [String(r.get("road", "")), int(r.get("lane", 0))])
+	for l in lanes:
+		if l.name == String(r):
+			return l.id
+	return null
+
+
+func _add_connector(J: Junction, ap: Dictionary, a: int, b: int, turn: int, given := PackedVector3Array()) -> void:
 	var la: Lane = lanes[a]
 	var lb: Lane = lanes[b]
 	var p0 := la.pts[la.pts.size() - 1]
@@ -592,17 +698,31 @@ func _add_connector(J: Junction, ap: Dictionary, a: int, b: int, turn: int) -> v
 	var d0 := la.dir_at_seg(la.pts.size() - 2)
 	var d1 := lb.dir_at_seg(0)
 	var dist := p0.distance_to(p3)
-	var k := dist * (0.42 if turn == TURN_STRAIGHT else 0.55)
-	var c1 := p0 + d0 * k
-	var c2 := p3 - d1 * k
-	var n := maxi(4, int(ceil(dist / 1.5)))
 	var pts := PackedVector3Array()
-	for i in n + 1:
-		var t := float(i) / n
-		var u := 1.0 - t
-		var q := p0 * (u * u * u) + c1 * (3.0 * u * u * t) + c2 * (3.0 * u * t * t) + p3 * (t * t * t)
-		q.y = lerpf(p0.y, p3.y, t * t * (3.0 - 2.0 * t))
-		pts.append(q)
+	if dist < 0.6:
+		# continuation (transition node): a short straight link
+		pts.append(p0)
+		pts.append(p0.lerp(p3, 0.5) + d0 * 0.3)
+		pts.append(p3 + d1 * 0.05)
+	elif given.size() >= 2:
+		# the world's own connector curve, joined to our (trimmed / resampled) lane ends
+		pts.append(p0)
+		for q in given:
+			if q.distance_to(p0) > 0.8 and q.distance_to(p3) > 0.8:
+				pts.append(q)
+		pts.append(p3)
+		pts = resample(pts, 1.5)
+	else:
+		var k := dist * (0.42 if turn == TURN_STRAIGHT else 0.55)
+		var c1 := p0 + d0 * k
+		var c2 := p3 - d1 * k
+		var n := maxi(4, int(ceil(dist / 1.5)))
+		for i in n + 1:
+			var t := float(i) / n
+			var u := 1.0 - t
+			var q := p0 * (u * u * u) + c1 * (3.0 * u * u * t) + c2 * (3.0 * u * t * t) + p3 * (t * t * t)
+			q.y = lerpf(p0.y, p3.y, t * t * (3.0 - 2.0 * t))
+			pts.append(q)
 	var c := _add_lane(pts, "%s:%s>%s" % [J.name, la.name, lb.name])
 	c.junction = J.id
 	c.turn = turn
@@ -631,7 +751,7 @@ func _build_conflicts() -> void:
 					continue
 				var hit := a.dst == b.dst
 				if not hit:
-					hit = _paths_close(a.pts, b.pts, 2.3)
+					hit = _paths_close(a.pts, b.pts, 3.0)
 				if hit:
 					a.conflicts.append(b.id)
 					b.conflicts.append(a.id)

@@ -58,7 +58,8 @@ func _test(seconds: float) -> void:
 	car.collision_layer = 0
 	car.collision_mask = 0
 	# parked above the middle of the map (the spawn ring is centred on the player)
-	var park := Transform3D(Basis(), car.global_position + Vector3.UP * 25.0)
+	var centre: Vector3 = car.global_position if T.world_spawn == null else T.world_spawn
+	var park := Transform3D(Basis(), centre + Vector3.UP * 25.0)
 	T.ignore_player = true
 	car.global_transform = park
 	var res := {"seconds": seconds, "graph": T.graph.summary(), "vehicles": T.lib.source, "models": T.lib.models.size()}
@@ -139,14 +140,19 @@ func _test(seconds: float) -> void:
 	car.collision_mask = 1 | 2
 	T.ignore_player = false
 	var victim = null
-	for c in T.active:
-		var l = T.graph.lanes[c.lane]
-		if c.mode == TrafficCar.KINEMATIC and l.junction < 0 and l.length - c.s > 70.0 and c.v > 4.0 and c.lc_t >= 1.0:
-			victim = c
-			break
+	var wait_v := 0.0
+	while victim == null and wait_v < 15.0:
+		for c in T.active:
+			var l = T.graph.lanes[c.lane]
+			if c.mode == TrafficCar.KINEMATIC and l.junction < 0 and l.length - c.s > 48.0 and c.v > 4.0 and c.lc_t >= 1.0:
+				victim = c
+				break
+		if victim == null:
+			await _wait(0.25)
+			wait_v += 0.25
 	if victim:
 		var l = T.graph.lanes[victim.lane]
-		var sp: float = victim.s + 32.0
+		var sp: float = victim.s + 26.0
 		var p: Vector3 = l.pos_at(sp)
 		var d: Vector3 = l.dir_at_seg(l.seg_at(sp, 0))
 		car.freeze = false
@@ -180,16 +186,25 @@ func _test(seconds: float) -> void:
 		car.place(Transform3D(Basis(Vector3.UP.cross(to.normalized()).normalized(), Vector3.UP, to.normalized()), car.global_position + Vector3.UP * 0.1))
 		main.cam.snap()
 		await get_tree().physics_frame
-		car.linear_velocity = to.normalized() * 9.0
+		car.apply_central_impulse(to.normalized() * car.mass * 8.0)     # ~8 m/s into it
 		car.input_throttle = 0.3
 		tt = 0.0
 		while tt < 16.0 and T.stats.recovered == r0:
 			await get_tree().physics_frame
 			tt += 1.0 / Engine.physics_ticks_per_second
-			if tt > 2.0:
+			if tt > 2.0 and tt < 2.1:
+				# back off: the hit car rests, then blends back onto its lane
 				car.input_throttle = 0.0
 				car.input_handbrake = true
+				var away: Vector3 = car.global_position - to.normalized() * 9.0
+				car.place(Transform3D(car.global_basis, away + Vector3.UP * 0.2))
 		res["player_bump"] = {"knocked": T.stats.knocked - k0, "recovered": T.stats.recovered - r0, "time": snappedf(tt, 0.1)}
+		var loose := []
+		for c in T.active:
+			if c.mode == TrafficCar.DYNAMIC or c.mode == TrafficCar.RECOVER:
+				loose.append({"mode": c.mode, "pos": c.global_position.snappedf(0.1), "v": snappedf(c.linear_velocity.length(), 0.01),
+					"w": snappedf(c.angular_velocity.length(), 0.01), "dyn_t": snappedf(c.dyn_t, 0.1), "rest_t": snappedf(c.rest_t, 0.1), "up": snappedf(c.global_basis.y.y, 0.01)})
+		res["loose_cars"] = loose
 		checks["bumped_and_recovers"] = T.stats.knocked > k0 and T.stats.recovered > r0
 	else:
 		checks["brakes_for_player"] = false
@@ -275,7 +290,7 @@ func _clear_viewpoint(J, target: Vector3, heights: Array, dists: Array) -> Vecto
 	q.collision_mask = 1
 	var pq := PhysicsPointQueryParameters3D.new()
 	pq.collision_mask = 1
-	var best := J.pos + Vector3(20, 12, 20)
+	var best: Vector3 = J.pos + Vector3(20, 12, 20)
 	var best_score := -1.0
 	for ap in J.approaches:
 		for side in [0.0, 0.6, -0.6]:
