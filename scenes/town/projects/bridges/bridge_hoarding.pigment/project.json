@@ -1,0 +1,1342 @@
+{
+  "format": 1,
+  "resolution": 2048,
+  "mesh": "mesh/mesh.obj",
+  "layers": [
+    {
+      "id": 4,
+      "name": "Base",
+      "visible": true,
+      "opacity": 1.0,
+      "kind": {
+        "type": "fill",
+        "values": {
+          "base_color": [
+            0.035,
+            0.05,
+            0.09
+          ],
+          "roughness": 0.55,
+          "metallic": 0.0,
+          "height": 0.0,
+          "normal": [
+            0.0,
+            0.0
+          ],
+          "emissive": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "emissive_strength": 0.0,
+          "opacity": 1.0,
+          "transmission": 0.0,
+          "coat": 0.0,
+          "coat_roughness": 0.03,
+          "flake": 0.0
+        }
+      },
+      "channels": {
+        "base_color": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "roughness": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "metallic": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "height": {
+          "enabled": false,
+          "blend": "add",
+          "opacity": 1.0
+        },
+        "normal": {
+          "enabled": false,
+          "blend": "normal_combine",
+          "opacity": 1.0
+        },
+        "emissive": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "opacity": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "transmission": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat_roughness": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "flake": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        }
+      }
+    },
+    {
+      "id": 7,
+      "name": "Panel tone",
+      "visible": true,
+      "opacity": 0.6,
+      "kind": {
+        "type": "fill",
+        "values": {
+          "base_color": [
+            0.045,
+            0.06,
+            0.1
+          ],
+          "roughness": 0.35,
+          "metallic": 0.0,
+          "height": 0.0,
+          "normal": [
+            0.0,
+            0.0
+          ],
+          "emissive": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "emissive_strength": 0.0,
+          "opacity": 1.0,
+          "transmission": 0.0,
+          "coat": 0.0,
+          "coat_roughness": 0.03,
+          "flake": 0.0
+        }
+      },
+      "channels": {
+        "base_color": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "roughness": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "metallic": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "height": {
+          "enabled": false,
+          "blend": "add",
+          "opacity": 1.0
+        },
+        "normal": {
+          "enabled": false,
+          "blend": "normal_combine",
+          "opacity": 1.0
+        },
+        "emissive": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "opacity": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "transmission": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat_roughness": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "flake": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        }
+      },
+      "mask": {
+        "res": 8,
+        "generator": {
+          "kind": "grunge",
+          "amount": 0.4,
+          "softness": 0.4,
+          "noise_scale": 0.8,
+          "noise_amount": 0.0,
+          "seed": 601,
+          "ao_influence": 0.2,
+          "curvature_weight": 1.0
+        },
+        "invert": false,
+        "enabled": true
+      }
+    },
+    {
+      "id": 9,
+      "name": "Panel seams",
+      "visible": true,
+      "opacity": 1.0,
+      "kind": {
+        "type": "paint",
+        "res": 10
+      },
+      "channels": {
+        "base_color": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "roughness": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "metallic": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "height": {
+          "enabled": true,
+          "blend": "add",
+          "opacity": 1.0
+        },
+        "normal": {
+          "enabled": true,
+          "blend": "normal_combine",
+          "opacity": 1.0
+        },
+        "emissive": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "opacity": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "transmission": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat_roughness": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "flake": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        }
+      },
+      "variant": {
+        "decals": [
+          {
+            "name": "bar",
+            "enabled": true,
+            "args": {
+              "height": -0.6,
+              "image": "assets/decals/roads/bar.png",
+              "normal": [
+                0,
+                1,
+                0
+              ],
+              "position": [
+                -1.5,
+                0,
+                0
+              ],
+              "size": [
+                0.03,
+                3.02
+              ],
+              "tint": [
+                0.02,
+                0.025,
+                0.04
+              ],
+              "values": {
+                "roughness": 0.6
+              }
+            }
+          },
+          {
+            "name": "bar",
+            "enabled": true,
+            "args": {
+              "height": -0.6,
+              "image": "assets/decals/roads/bar.png",
+              "normal": [
+                0,
+                1,
+                0
+              ],
+              "position": [
+                1.5,
+                0,
+                0
+              ],
+              "size": [
+                0.03,
+                3.02
+              ],
+              "tint": [
+                0.02,
+                0.025,
+                0.04
+              ],
+              "values": {
+                "roughness": 0.6
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": 11,
+      "name": "Graphics",
+      "visible": true,
+      "opacity": 1.0,
+      "kind": {
+        "type": "paint",
+        "res": 12
+      },
+      "channels": {
+        "base_color": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "roughness": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "metallic": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "height": {
+          "enabled": true,
+          "blend": "add",
+          "opacity": 1.0
+        },
+        "normal": {
+          "enabled": true,
+          "blend": "normal_combine",
+          "opacity": 1.0
+        },
+        "emissive": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "opacity": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "transmission": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat_roughness": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "flake": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        }
+      },
+      "variant": {
+        "decals": [
+          {
+            "name": "bar",
+            "enabled": true,
+            "args": {
+              "image": "assets/decals/roads/bar.png",
+              "normal": [
+                0,
+                1,
+                0
+              ],
+              "position": [
+                0,
+                0,
+                1.38
+              ],
+              "size": [
+                6.02,
+                0.16
+              ],
+              "tint": [
+                0.75,
+                0.55,
+                0.12
+              ],
+              "values": {
+                "roughness": 0.4
+              }
+            }
+          },
+          {
+            "name": "logo_hoshikawa_dynamics",
+            "enabled": true,
+            "args": {
+              "image": "assets/decals/logo_hoshikawa_dynamics.png",
+              "normal": [
+                0,
+                1,
+                0
+              ],
+              "position": [
+                -1.5,
+                0,
+                0.35
+              ],
+              "size": [
+                2.4,
+                0.9
+              ],
+              "tint": [
+                1.0,
+                1.0,
+                1.0
+              ],
+              "values": {
+                "roughness": 0.4
+              }
+            }
+          },
+          {
+            "name": "sign_works",
+            "enabled": true,
+            "args": {
+              "image": "assets/decals/bridges/sign_works.png",
+              "normal": [
+                0,
+                1,
+                0
+              ],
+              "position": [
+                1.5,
+                0,
+                0.1
+              ],
+              "size": [
+                1.6,
+                1.0
+              ],
+              "tint": [
+                1.0,
+                1.0,
+                1.0
+              ],
+              "values": {
+                "roughness": 0.5
+              }
+            }
+          },
+          {
+            "name": "sign_hoshikawa_security",
+            "enabled": true,
+            "args": {
+              "image": "assets/decals/story/sign_hoshikawa_security.png",
+              "normal": [
+                0,
+                1,
+                0
+              ],
+              "position": [
+                -1.5,
+                0,
+                -0.65
+              ],
+              "size": [
+                2.6,
+                0.34
+              ],
+              "tint": [
+                1.0,
+                1.0,
+                1.0
+              ],
+              "values": {
+                "roughness": 0.4
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": 15,
+      "name": "Splash",
+      "visible": true,
+      "opacity": 0.6,
+      "kind": {
+        "type": "fill",
+        "values": {
+          "base_color": [
+            0.13,
+            0.1,
+            0.07
+          ],
+          "roughness": 0.95,
+          "metallic": 0.0,
+          "height": 0.0,
+          "normal": [
+            0.0,
+            0.0
+          ],
+          "emissive": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "emissive_strength": 0.0,
+          "opacity": 1.0,
+          "transmission": 0.0,
+          "coat": 0.0,
+          "coat_roughness": 0.03,
+          "flake": 0.0
+        }
+      },
+      "channels": {
+        "base_color": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "roughness": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "metallic": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "height": {
+          "enabled": false,
+          "blend": "add",
+          "opacity": 1.0
+        },
+        "normal": {
+          "enabled": false,
+          "blend": "normal_combine",
+          "opacity": 1.0
+        },
+        "emissive": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "opacity": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "transmission": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat_roughness": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "flake": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        }
+      },
+      "mask": {
+        "res": 16,
+        "generator": {
+          "kind": "grunge",
+          "amount": 0.25,
+          "softness": 0.3,
+          "noise_scale": 1.5,
+          "noise_amount": 0.0,
+          "seed": 605,
+          "ao_influence": 0.2,
+          "curvature_weight": 1.0
+        },
+        "invert": false,
+        "enabled": true
+      }
+    },
+    {
+      "id": 13,
+      "name": "Grime",
+      "visible": true,
+      "opacity": 0.5,
+      "kind": {
+        "type": "paint",
+        "res": 14
+      },
+      "channels": {
+        "base_color": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "roughness": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "metallic": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "height": {
+          "enabled": true,
+          "blend": "add",
+          "opacity": 1.0
+        },
+        "normal": {
+          "enabled": true,
+          "blend": "normal_combine",
+          "opacity": 1.0
+        },
+        "emissive": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "opacity": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "transmission": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat_roughness": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "flake": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        }
+      },
+      "variant": {
+        "decals": [
+          {
+            "name": "run",
+            "enabled": true,
+            "args": {
+              "image": "assets/decals/bridges/run.png",
+              "normal": [
+                0,
+                1,
+                0
+              ],
+              "position": [
+                -0.3194,
+                0,
+                -0.0054
+              ],
+              "size": [
+                0.0747,
+                0.926
+              ],
+              "tint": [
+                0.12059746908821556,
+                0.09805489804376805,
+                0.08987394025140952
+              ]
+            }
+          },
+          {
+            "name": "run",
+            "enabled": true,
+            "args": {
+              "image": "assets/decals/bridges/run.png",
+              "normal": [
+                0,
+                1,
+                0
+              ],
+              "position": [
+                -0.1946,
+                0,
+                -0.7311
+              ],
+              "size": [
+                0.0592,
+                1.0403
+              ],
+              "tint": [
+                0.11738080190822342,
+                0.11624108636000556,
+                0.10968869222843844
+              ]
+            }
+          },
+          {
+            "name": "run",
+            "enabled": true,
+            "args": {
+              "image": "assets/decals/bridges/run.png",
+              "normal": [
+                0,
+                1,
+                0
+              ],
+              "position": [
+                -0.109,
+                0,
+                -0.1782
+              ],
+              "size": [
+                0.0872,
+                1.2049
+              ],
+              "tint": [
+                0.1315005717437861,
+                0.0971129595769228,
+                0.08961401228119553
+              ]
+            }
+          },
+          {
+            "name": "run",
+            "enabled": true,
+            "args": {
+              "image": "assets/decals/bridges/run.png",
+              "normal": [
+                0,
+                1,
+                0
+              ],
+              "position": [
+                2.5202,
+                0,
+                -0.5893
+              ],
+              "size": [
+                0.1847,
+                0.4979
+              ],
+              "tint": [
+                0.1145512960827049,
+                0.12279543371264048,
+                0.11154483444085804
+              ]
+            }
+          },
+          {
+            "name": "run",
+            "enabled": true,
+            "args": {
+              "image": "assets/decals/bridges/run.png",
+              "normal": [
+                0,
+                1,
+                0
+              ],
+              "position": [
+                1.2663,
+                0,
+                0.8211
+              ],
+              "size": [
+                0.0504,
+                1.1725
+              ],
+              "tint": [
+                0.119227271366465,
+                0.10258650244137098,
+                0.10781415480167632
+              ]
+            }
+          },
+          {
+            "name": "run",
+            "enabled": true,
+            "args": {
+              "image": "assets/decals/bridges/run.png",
+              "normal": [
+                0,
+                1,
+                0
+              ],
+              "position": [
+                -1.0877,
+                0,
+                0.2492
+              ],
+              "size": [
+                0.0835,
+                0.6025
+              ],
+              "tint": [
+                0.1071444644279581,
+                0.12252466809473486,
+                0.09696506350067637
+              ]
+            }
+          },
+          {
+            "name": "run",
+            "enabled": true,
+            "args": {
+              "image": "assets/decals/bridges/run.png",
+              "normal": [
+                0,
+                1,
+                0
+              ],
+              "position": [
+                -0.2267,
+                0,
+                0.984
+              ],
+              "size": [
+                0.1514,
+                0.9919
+              ],
+              "tint": [
+                0.1087992141372594,
+                0.11227033169476108,
+                0.10197495490124518
+              ]
+            }
+          },
+          {
+            "name": "run",
+            "enabled": true,
+            "args": {
+              "image": "assets/decals/bridges/run.png",
+              "normal": [
+                0,
+                1,
+                0
+              ],
+              "position": [
+                1.3781,
+                0,
+                0.8621
+              ],
+              "size": [
+                0.1886,
+                0.9858
+              ],
+              "tint": [
+                0.1175818016036624,
+                0.10569610968397036,
+                0.1072818769851566
+              ]
+            }
+          },
+          {
+            "name": "run",
+            "enabled": true,
+            "args": {
+              "image": "assets/decals/bridges/run.png",
+              "normal": [
+                0,
+                1,
+                0
+              ],
+              "position": [
+                1.0396,
+                0,
+                0.181
+              ],
+              "size": [
+                0.196,
+                1.3503
+              ],
+              "tint": [
+                0.10682646650532308,
+                0.10048540025688613,
+                0.10944512682578894
+              ]
+            }
+          },
+          {
+            "name": "run",
+            "enabled": true,
+            "args": {
+              "image": "assets/decals/bridges/run.png",
+              "normal": [
+                0,
+                1,
+                0
+              ],
+              "position": [
+                -1.7921,
+                0,
+                0.0062
+              ],
+              "size": [
+                0.1113,
+                0.5264
+              ],
+              "tint": [
+                0.1262333250726203,
+                0.1196321652390771,
+                0.09809722461562342
+              ]
+            }
+          },
+          {
+            "name": "run",
+            "enabled": true,
+            "args": {
+              "image": "assets/decals/bridges/run.png",
+              "normal": [
+                0,
+                1,
+                0
+              ],
+              "position": [
+                -0.9557,
+                0,
+                -0.9215
+              ],
+              "size": [
+                0.1103,
+                1.0338
+              ],
+              "tint": [
+                0.13157454175773214,
+                0.09882543624292568,
+                0.10533587272165766
+              ]
+            }
+          },
+          {
+            "name": "run",
+            "enabled": true,
+            "args": {
+              "image": "assets/decals/bridges/run.png",
+              "normal": [
+                0,
+                1,
+                0
+              ],
+              "position": [
+                0.8543,
+                0,
+                1.2437
+              ],
+              "size": [
+                0.1609,
+                0.4727
+              ],
+              "tint": [
+                0.11496113931673468,
+                0.11884645075201793,
+                0.10904833879725992
+              ]
+            }
+          },
+          {
+            "name": "run",
+            "enabled": true,
+            "args": {
+              "image": "assets/decals/bridges/run.png",
+              "normal": [
+                0,
+                1,
+                0
+              ],
+              "position": [
+                -2.7159,
+                0,
+                0.5157
+              ],
+              "size": [
+                0.1135,
+                1.3042
+              ],
+              "tint": [
+                0.11087534209258644,
+                0.1190366956965993,
+                0.10746448859991052
+              ]
+            }
+          },
+          {
+            "name": "run",
+            "enabled": true,
+            "args": {
+              "image": "assets/decals/bridges/run.png",
+              "normal": [
+                0,
+                1,
+                0
+              ],
+              "position": [
+                2.2153,
+                0,
+                -0.184
+              ],
+              "size": [
+                0.1506,
+                0.4984
+              ],
+              "tint": [
+                0.12856658016897554,
+                0.10139262642320568,
+                0.10010422385882084
+              ]
+            }
+          },
+          {
+            "name": "run",
+            "enabled": true,
+            "args": {
+              "image": "assets/decals/bridges/run.png",
+              "normal": [
+                0,
+                1,
+                0
+              ],
+              "position": [
+                2.6286,
+                0,
+                -0.65
+              ],
+              "size": [
+                0.0796,
+                1.3765
+              ],
+              "tint": [
+                0.11142721547529216,
+                0.0998515077831934,
+                0.10613113352731483
+              ]
+            }
+          },
+          {
+            "name": "run",
+            "enabled": true,
+            "args": {
+              "image": "assets/decals/bridges/run.png",
+              "normal": [
+                0,
+                1,
+                0
+              ],
+              "position": [
+                1.4807,
+                0,
+                -0.4006
+              ],
+              "size": [
+                0.107,
+                0.4725
+              ],
+              "tint": [
+                0.10794034658030573,
+                0.1034184354267256,
+                0.09317098772779142
+              ]
+            }
+          },
+          {
+            "name": "run",
+            "enabled": true,
+            "args": {
+              "image": "assets/decals/bridges/run.png",
+              "normal": [
+                0,
+                1,
+                0
+              ],
+              "position": [
+                -2.3004,
+                0,
+                -0.0887
+              ],
+              "size": [
+                0.0956,
+                0.7254
+              ],
+              "tint": [
+                0.1144721403434164,
+                0.10728085673372074,
+                0.09876327421719663
+              ]
+            }
+          },
+          {
+            "name": "run",
+            "enabled": true,
+            "args": {
+              "image": "assets/decals/bridges/run.png",
+              "normal": [
+                0,
+                1,
+                0
+              ],
+              "position": [
+                2.4658,
+                0,
+                0.6757
+              ],
+              "size": [
+                0.0581,
+                1.0071
+              ],
+              "tint": [
+                0.12677637356598312,
+                0.11658750074900089,
+                0.10123987655933953
+              ]
+            }
+          },
+          {
+            "name": "run",
+            "enabled": true,
+            "args": {
+              "image": "assets/decals/bridges/run.png",
+              "normal": [
+                0,
+                1,
+                0
+              ],
+              "position": [
+                2.7719,
+                0,
+                -0.0033
+              ],
+              "size": [
+                0.1145,
+                0.4802
+              ],
+              "tint": [
+                0.11813733433369028,
+                0.10151700716570096,
+                0.09490179965745288
+              ]
+            }
+          },
+          {
+            "name": "run",
+            "enabled": true,
+            "args": {
+              "image": "assets/decals/bridges/run.png",
+              "normal": [
+                0,
+                1,
+                0
+              ],
+              "position": [
+                -0.1587,
+                0,
+                -0.4957
+              ],
+              "size": [
+                0.1725,
+                0.9049
+              ],
+              "tint": [
+                0.12060180390852077,
+                0.11646179836327566,
+                0.1067191871756568
+              ]
+            }
+          },
+          {
+            "name": "run",
+            "enabled": true,
+            "args": {
+              "image": "assets/decals/bridges/run.png",
+              "normal": [
+                0,
+                1,
+                0
+              ],
+              "position": [
+                2.5621,
+                0,
+                0.6647
+              ],
+              "size": [
+                0.1489,
+                0.3348
+              ],
+              "tint": [
+                0.12760972308863736,
+                0.10433649086528105,
+                0.08855546090008748
+              ]
+            }
+          },
+          {
+            "name": "run",
+            "enabled": true,
+            "args": {
+              "image": "assets/decals/bridges/run.png",
+              "normal": [
+                0,
+                1,
+                0
+              ],
+              "position": [
+                0.3109,
+                0,
+                0.7913
+              ],
+              "size": [
+                0.1348,
+                0.9457
+              ],
+              "tint": [
+                0.12650203278723074,
+                0.12213974533960992,
+                0.10943993859334228
+              ]
+            }
+          },
+          {
+            "name": "run",
+            "enabled": true,
+            "args": {
+              "image": "assets/decals/bridges/run.png",
+              "normal": [
+                0,
+                1,
+                0
+              ],
+              "position": [
+                2.8053,
+                0,
+                0.5834
+              ],
+              "size": [
+                0.0659,
+                0.7527
+              ],
+              "tint": [
+                0.11112065719535565,
+                0.12067964926721728,
+                0.1099739171657868
+              ]
+            }
+          },
+          {
+            "name": "run",
+            "enabled": true,
+            "args": {
+              "image": "assets/decals/bridges/run.png",
+              "normal": [
+                0,
+                1,
+                0
+              ],
+              "position": [
+                -1.1923,
+                0,
+                0.2111
+              ],
+              "size": [
+                0.122,
+                1.1668
+              ],
+              "tint": [
+                0.11742934588018993,
+                0.10523511374041028,
+                0.08828400288293245
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "bake": {
+    "ao_samples": 128,
+    "curvature_radius": 0.05,
+    "curvature_strength": 1.0,
+    "ao_distance": 0.3
+  },
+  "export_preset": "separate",
+  "next_id": 17,
+  "tile": {
+    "size_m": [
+      6.0,
+      3.0
+    ],
+    "wrap": [
+      true,
+      true
+    ],
+    "kind": "tile"
+  }
+}

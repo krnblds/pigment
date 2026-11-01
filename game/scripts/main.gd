@@ -18,6 +18,7 @@ extends Node3D
 ##   --traffic-test=<s> headless traffic test   --traffic-shots=<dir>  traffic screenshots + perf
 ##   --bench-traffic    fps with 0 / 30 / 60 / 80 cars
 ##   --interior-shots=<dir>  night views into the interior-mapped windows   --no-interiors  plain panes
+##   --bridge-shots=<dir> --bridge-cams=<json>  bridge proof views + drive across (tools/world/bridge_cams.py --godot)
 
 const TownLoader := preload("res://scripts/town_loader.gd")
 const Car := preload("res://scripts/car.gd")
@@ -138,7 +139,7 @@ func _ready() -> void:
 		fd.name = "FoliageDemo"
 		fd.main = self
 		add_child(fd)
-	elif args.has("autoshot") or args.has("bench") or args.has("bench-spots") or args.has("bench-matrix") or args.has("drive-old") or args.has("interior-shots"):
+	elif args.has("autoshot") or args.has("bench") or args.has("bench-spots") or args.has("bench-matrix") or args.has("drive-old") or args.has("interior-shots") or args.has("bridge-shots"):
 		var auto := preload("res://scripts/automation.gd").new()
 		auto.main = self
 		add_child(auto)

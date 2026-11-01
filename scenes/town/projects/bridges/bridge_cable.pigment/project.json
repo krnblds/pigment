@@ -1,0 +1,818 @@
+{
+  "format": 1,
+  "resolution": 1024,
+  "mesh": "mesh/mesh.obj",
+  "layers": [
+    {
+      "id": 4,
+      "name": "Base",
+      "visible": true,
+      "opacity": 1.0,
+      "kind": {
+        "type": "fill",
+        "values": {
+          "base_color": [
+            0.7,
+            0.7,
+            0.68
+          ],
+          "roughness": 0.35,
+          "metallic": 0.0,
+          "height": 0.0,
+          "normal": [
+            0.0,
+            0.0
+          ],
+          "emissive": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "emissive_strength": 0.0,
+          "opacity": 1.0,
+          "transmission": 0.0,
+          "coat": 0.0,
+          "coat_roughness": 0.03,
+          "flake": 0.0
+        }
+      },
+      "channels": {
+        "base_color": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "roughness": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "metallic": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "height": {
+          "enabled": false,
+          "blend": "add",
+          "opacity": 1.0
+        },
+        "normal": {
+          "enabled": false,
+          "blend": "normal_combine",
+          "opacity": 1.0
+        },
+        "emissive": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "opacity": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "transmission": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat_roughness": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "flake": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        }
+      }
+    },
+    {
+      "id": 7,
+      "name": "Helical rib",
+      "visible": true,
+      "opacity": 0.45,
+      "kind": {
+        "type": "fill",
+        "values": {
+          "base_color": [
+            0.64,
+            0.64,
+            0.62
+          ],
+          "roughness": 0.35,
+          "metallic": 0.0,
+          "height": 0.8,
+          "normal": [
+            0.0,
+            0.0
+          ],
+          "emissive": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "emissive_strength": 0.0,
+          "opacity": 1.0,
+          "transmission": 0.0,
+          "coat": 0.0,
+          "coat_roughness": 0.03,
+          "flake": 0.0
+        }
+      },
+      "channels": {
+        "base_color": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "roughness": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "metallic": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "height": {
+          "enabled": true,
+          "blend": "add",
+          "opacity": 1.0
+        },
+        "normal": {
+          "enabled": false,
+          "blend": "normal_combine",
+          "opacity": 1.0
+        },
+        "emissive": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "opacity": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "transmission": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat_roughness": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "flake": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        }
+      },
+      "mask": {
+        "res": 8,
+        "generator": {
+          "kind": "stripes",
+          "amount": 0.25,
+          "softness": 0.3,
+          "noise_scale": 6.0,
+          "noise_amount": 0.0,
+          "seed": 501,
+          "ao_influence": 0.0,
+          "curvature_weight": 1.0
+        },
+        "invert": false,
+        "enabled": true
+      }
+    },
+    {
+      "id": 9,
+      "name": "UV chalking",
+      "visible": true,
+      "opacity": 0.5,
+      "kind": {
+        "type": "fill",
+        "values": {
+          "base_color": [
+            0.78,
+            0.78,
+            0.76
+          ],
+          "roughness": 0.6,
+          "metallic": 0.0,
+          "height": 0.0,
+          "normal": [
+            0.0,
+            0.0
+          ],
+          "emissive": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "emissive_strength": 0.0,
+          "opacity": 1.0,
+          "transmission": 0.0,
+          "coat": 0.0,
+          "coat_roughness": 0.03,
+          "flake": 0.0
+        }
+      },
+      "channels": {
+        "base_color": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "roughness": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "metallic": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "height": {
+          "enabled": false,
+          "blend": "add",
+          "opacity": 1.0
+        },
+        "normal": {
+          "enabled": false,
+          "blend": "normal_combine",
+          "opacity": 1.0
+        },
+        "emissive": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "opacity": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "transmission": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat_roughness": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "flake": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        }
+      },
+      "mask": {
+        "res": 10,
+        "generator": {
+          "kind": "grunge",
+          "amount": 0.35,
+          "softness": 0.4,
+          "noise_scale": 2.0,
+          "noise_amount": 0.0,
+          "seed": 503,
+          "ao_influence": 0.2,
+          "curvature_weight": 1.0
+        },
+        "invert": false,
+        "enabled": true
+      }
+    },
+    {
+      "id": 13,
+      "name": "Soot",
+      "visible": true,
+      "opacity": 0.35,
+      "kind": {
+        "type": "fill",
+        "values": {
+          "base_color": [
+            0.2,
+            0.2,
+            0.2
+          ],
+          "roughness": 0.6,
+          "metallic": 0.0,
+          "height": 0.0,
+          "normal": [
+            0.0,
+            0.0
+          ],
+          "emissive": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "emissive_strength": 0.0,
+          "opacity": 1.0,
+          "transmission": 0.0,
+          "coat": 0.0,
+          "coat_roughness": 0.03,
+          "flake": 0.0
+        }
+      },
+      "channels": {
+        "base_color": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "roughness": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "metallic": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "height": {
+          "enabled": false,
+          "blend": "add",
+          "opacity": 1.0
+        },
+        "normal": {
+          "enabled": false,
+          "blend": "normal_combine",
+          "opacity": 1.0
+        },
+        "emissive": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "opacity": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "transmission": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat_roughness": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "flake": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        }
+      },
+      "mask": {
+        "res": 14,
+        "generator": {
+          "kind": "grunge",
+          "amount": 0.25,
+          "softness": 0.4,
+          "noise_scale": 4.0,
+          "noise_amount": 0.0,
+          "seed": 507,
+          "ao_influence": 0.2,
+          "curvature_weight": 1.0
+        },
+        "invert": false,
+        "enabled": true
+      }
+    },
+    {
+      "id": 11,
+      "name": "Grime runs",
+      "visible": true,
+      "opacity": 0.3,
+      "kind": {
+        "type": "paint",
+        "res": 12
+      },
+      "channels": {
+        "base_color": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "roughness": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "metallic": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "height": {
+          "enabled": true,
+          "blend": "add",
+          "opacity": 1.0
+        },
+        "normal": {
+          "enabled": true,
+          "blend": "normal_combine",
+          "opacity": 1.0
+        },
+        "emissive": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "opacity": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "transmission": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat_roughness": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "flake": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        }
+      },
+      "variant": {
+        "decals": [
+          {
+            "name": "run",
+            "enabled": true,
+            "args": {
+              "image": "assets/decals/bridges/run.png",
+              "normal": [
+                0,
+                1,
+                0
+              ],
+              "position": [
+                -0.2017,
+                0,
+                0.0523
+              ],
+              "size": [
+                0.0405,
+                0.791
+              ],
+              "tint": [
+                0.28515983401559053,
+                0.3105328954363825,
+                0.2793676133297464
+              ]
+            }
+          },
+          {
+            "name": "run",
+            "enabled": true,
+            "args": {
+              "image": "assets/decals/bridges/run.png",
+              "normal": [
+                0,
+                1,
+                0
+              ],
+              "position": [
+                0.3195,
+                0,
+                0.1321
+              ],
+              "size": [
+                0.0342,
+                0.6958
+              ],
+              "tint": [
+                0.30256430267359896,
+                0.3054411495127117,
+                0.28596706119900067
+              ]
+            }
+          },
+          {
+            "name": "run",
+            "enabled": true,
+            "args": {
+              "image": "assets/decals/bridges/run.png",
+              "normal": [
+                0,
+                1,
+                0
+              ],
+              "position": [
+                0.3558,
+                0,
+                0.1677
+              ],
+              "size": [
+                0.0889,
+                0.6246
+              ],
+              "tint": [
+                0.2654339171448154,
+                0.27471641467513525,
+                0.25140397781064583
+              ]
+            }
+          },
+          {
+            "name": "run",
+            "enabled": true,
+            "args": {
+              "image": "assets/decals/bridges/run.png",
+              "normal": [
+                0,
+                1,
+                0
+              ],
+              "position": [
+                0.3974,
+                0,
+                -0.0506
+              ],
+              "size": [
+                0.0834,
+                0.7398
+              ],
+              "tint": [
+                0.31994476207723,
+                0.32419348123006597,
+                0.2856785423833661
+              ]
+            }
+          },
+          {
+            "name": "run",
+            "enabled": true,
+            "args": {
+              "image": "assets/decals/bridges/run.png",
+              "normal": [
+                0,
+                1,
+                0
+              ],
+              "position": [
+                0.2857,
+                0,
+                0.1777
+              ],
+              "size": [
+                0.0567,
+                0.6045
+              ],
+              "tint": [
+                0.2817561809594708,
+                0.2680906591185759,
+                0.2422771002203602
+              ]
+            }
+          },
+          {
+            "name": "run",
+            "enabled": true,
+            "args": {
+              "image": "assets/decals/bridges/run.png",
+              "normal": [
+                0,
+                1,
+                0
+              ],
+              "position": [
+                0.2549,
+                0,
+                0.0866
+              ],
+              "size": [
+                0.0811,
+                0.7868
+              ],
+              "tint": [
+                0.3294375950010521,
+                0.2832147153350648,
+                0.2617601790464433
+              ]
+            }
+          },
+          {
+            "name": "run",
+            "enabled": true,
+            "args": {
+              "image": "assets/decals/bridges/run.png",
+              "normal": [
+                0,
+                1,
+                0
+              ],
+              "position": [
+                0.1667,
+                0,
+                0.1295
+              ],
+              "size": [
+                0.0305,
+                0.3195
+              ],
+              "tint": [
+                0.33372782062339595,
+                0.25591719991236694,
+                0.2939459098352386
+              ]
+            }
+          },
+          {
+            "name": "run",
+            "enabled": true,
+            "args": {
+              "image": "assets/decals/bridges/run.png",
+              "normal": [
+                0,
+                1,
+                0
+              ],
+              "position": [
+                0.099,
+                0,
+                0.0411
+              ],
+              "size": [
+                0.0869,
+                0.637
+              ],
+              "tint": [
+                0.2689537838080097,
+                0.28254890028049634,
+                0.2999048524229395
+              ]
+            }
+          },
+          {
+            "name": "run",
+            "enabled": true,
+            "args": {
+              "image": "assets/decals/bridges/run.png",
+              "normal": [
+                0,
+                1,
+                0
+              ],
+              "position": [
+                -0.0455,
+                0,
+                0.3722
+              ],
+              "size": [
+                0.0654,
+                0.2157
+              ],
+              "tint": [
+                0.3126908694811547,
+                0.27880419428807696,
+                0.30114506678704545
+              ]
+            }
+          },
+          {
+            "name": "run",
+            "enabled": true,
+            "args": {
+              "image": "assets/decals/bridges/run.png",
+              "normal": [
+                0,
+                1,
+                0
+              ],
+              "position": [
+                -0.291,
+                0,
+                0.1186
+              ],
+              "size": [
+                0.0952,
+                0.5884
+              ],
+              "tint": [
+                0.32010783253592273,
+                0.26346784871191814,
+                0.25455654557693597
+              ]
+            }
+          },
+          {
+            "name": "run",
+            "enabled": true,
+            "args": {
+              "image": "assets/decals/bridges/run.png",
+              "normal": [
+                0,
+                1,
+                0
+              ],
+              "position": [
+                -0.283,
+                0,
+                0.1847
+              ],
+              "size": [
+                0.0568,
+                0.5905
+              ],
+              "tint": [
+                0.3244494729751721,
+                0.2744411830079022,
+                0.28446103562282665
+              ]
+            }
+          },
+          {
+            "name": "run",
+            "enabled": true,
+            "args": {
+              "image": "assets/decals/bridges/run.png",
+              "normal": [
+                0,
+                1,
+                0
+              ],
+              "position": [
+                -0.3519,
+                0,
+                0.0772
+              ],
+              "size": [
+                0.035,
+                0.5402
+              ],
+              "tint": [
+                0.27656966330085575,
+                0.26299119593980047,
+                0.2968489179153985
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "bake": {
+    "ao_samples": 128,
+    "curvature_radius": 0.05,
+    "curvature_strength": 1.0,
+    "ao_distance": 0.3
+  },
+  "export_preset": "separate",
+  "next_id": 15,
+  "tile": {
+    "size_m": [
+      1.0,
+      1.0
+    ],
+    "wrap": [
+      true,
+      true
+    ],
+    "kind": "tile"
+  }
+}

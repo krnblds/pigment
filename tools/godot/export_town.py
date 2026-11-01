@@ -146,6 +146,12 @@ COLLIDE = [  # (name prefix, category, collision)
     ("JDecals_", "decal", "none"),
     ("Girder_", "bridge", "trimesh"),
     ("Bridge_", "bridge", "trimesh"),
+    # bridge_designs.py: steel under the deck, details, stays (near tubes / far ribbons), light washes
+    ("BridgeSteel_", "bridge", "none"),
+    ("BridgeDetail_", "bridge_detail", "none"),
+    ("BridgeCablesFar_", "bridge_far", "none"),
+    ("BridgeCables_", "bridge_near", "none"),
+    ("BridgeWash_", "bridge_wash", "none"),
     ("SeaWall", "wall", "trimesh"),
     ("LookoutRail", "rail", "none"),
     ("tower_", "building", "box"),

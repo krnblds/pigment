@@ -6,7 +6,8 @@ Everything is pieces, never one giant mesh:
     World_Roads       one spline mesh per road (tools/town_roads.py build_run with the
                       class profile) + its decal mesh from the Pigment atlas
     World_Junctions   one mesh per junction / lookout (town_roads.build_junction) + decals
-    World_Bridges     per bridge: girders, piers, pylons, cables, arches, railings
+    World_Bridges     per bridge (bridge_designs.py): deck structure, piers / pylons, steel,
+                      details, stays / hangers (+ far ribbons), uplight wash cards
     World_SeaWalls    quay walls along urban coasts
     World_<district>  instances (kit meshes, towers, port kit, props) by district
     World_Lights      lamps, alley lights, masts, aviation lights
@@ -56,7 +57,7 @@ def path_from(town, pts, step=0.5):
     return town["Path"]([Vector((a, b)) for a, b in zip(x, y)], z - ROAD_Z)
 
 
-def build(world, out, root, town, load_tool, region=None, log=print, trees=True, lights=True):
+def build(world, out, root, town, load_tool, region=None, log=print, trees=True, lights=True, bridge_options=None):
     bpy.ops.wm.read_factory_settings(use_empty=True)
     drv = load_tool("town_layout_driver", {"__name__": "town_layout_driver"})
     drv["import_kit"]()
@@ -163,13 +164,25 @@ def build(world, out, root, town, load_tool, region=None, log=print, trees=True,
     fme.materials.append(tmat)
     put(C["Water"], "SeaFloor", fme, (0, 0, -0.5))
 
-    # ---- bridges and viaducts
+    # ---- bridges and viaducts (tools/world/bridge_designs.py: engineered structures)
+    import bridge_designs as BD
+    import bridge_kit as BK
+    BM_ = BK.materials(root, red_light=KM["red_light"])
+
+    def ground(x, y, _H=H, _o=T["origin"], _c=T["cell_m"]):
+        fx, fy = (x - _o[0]) / _c, (y - _o[1]) / _c
+        i0, j0 = int(math.floor(fy)), int(math.floor(fx))
+        if not (0 <= i0 < _H.shape[0] - 1 and 0 <= j0 < _H.shape[1] - 1):
+            return -26.0
+        u, v = fx - j0, fy - i0
+        return float(_H[i0, j0] * (1 - u) * (1 - v) + _H[i0, j0 + 1] * u * (1 - v) + _H[i0 + 1, j0] * (1 - u) * v + _H[i0 + 1, j0 + 1] * u * v)
+    bctx = BD.Ctx(C["Bridges"], BM_, ground, built, root, lights=lights)
     for br in world["bridges"]:
         rid = f"r{br['edge']}"
         if rid not in roads_by_id:
             continue
-        build_bridge(C["Bridges"], br, roads_by_id[rid], classes[next(r["class"] for r in world["roads"] if r["id"] == rid)], R, RT,
-                     bridge_concrete, M, KM, built)
+        BD.build(bctx, br, roads_by_id[rid], classes[next(r["class"] for r in world["roads"] if r["id"] == rid)],
+                 option=(bridge_options or {}).get(BD.design_of(br)))
     log(f"bridges: {len(built['bridges'])} structures")
 
     # ---- sea walls
@@ -430,85 +443,6 @@ def lookout_dressing(C, J, M, built):
             sp.points[k].co = (J.pos.x + r * math.cos(th), J.pos.y + r * math.sin(th), J.z + 0.35 + h, 1)
     cu.materials.append(M["metal"])
     put(C["Junctions"], "LookoutRail", cu)
-
-
-def build_bridge(c, br, path, cls, R, RT, concrete, M, KM, built):
-    """Girder under the deck, piers, pylons + stays, arch ribs + hangers,
-    railings on the barriers, LED strips under the deck edges."""
-    s0, s1 = br["s"]
-    s0 = max(0.0, s0 - 6.0)
-    s1 = min(path.length, s1 + 6.0)
-    side = cls.get("side", "curb")
-    w = cls["half"] + (3.0 if side == "curb" else 0.5)
-    d = br.get("depth", 2.4)
-    ss = np.linspace(s0, s1, max(2, int((s1 - s0) / 2.0) + 1))
-    pos, t = path.at_many(ss)
-    P3 = [(p[0], p[1], p[2]) for p in pos]
-    nrm = [(-tt[1], tt[0]) for tt in t]
-    b = R["SectionBuilder"](RT)
-    prof = [(-w, -0.15), (-w, -d * 0.55), (-w * 0.55, -d), (w * 0.55, -d), (w, -d * 0.55), (w, -0.15)]
-    b.extrude(P3, nrm, prof, 0, sgn=-1.0)
-    # LED strips under the deck edges
-    for sgn in (-1, 1):
-        y = sgn * (w + 0.02)
-        strip = [(y, -0.35), (y, -0.5)] if sgn > 0 else [(y, -0.5), (y, -0.35)]
-        b.extrude(P3, nrm, strip, 1, sgn=1.0)
-    me = b.finish(f"Girder_{br['name']}", [concrete, KM["cable"]])
-    built["bridges"].append(put(c, f"Girder_{br['name']}", me))
-    m = WM.Mesher()
-    # railings on top of the barriers (or along the sidewalk edge)
-    rail_y = (cls["half"] + 0.38) if side != "curb" else (cls["half"] + 2.9)
-    rail_z = (ROAD_Z + 0.9 + 0.35) if side != "curb" else 0.35 + 1.05
-    for sgn in (-1, 1):
-        prev = None
-        for k in range(len(ss)):
-            q = Vector((pos[k][0] + nrm[k][0] * sgn * rail_y, pos[k][1] + nrm[k][1] * sgn * rail_y, pos[k][2] + rail_z))
-            if prev is not None:
-                m.cyl(prev, q, 0.05, 0, seg=6)
-            if k % 2 == 0:
-                m.cyl((q.x, q.y, q.z - (0.35 if side != "curb" else 1.05)), q, 0.04, 0, seg=6)
-            prev = q
-    for p in br["piers"]:
-        x, y = p["pos"]
-        dvec = Vector(p["dir"])
-        lat = Vector((-dvec.y, dvec.x))
-        heavy = p.get("heavy")
-        if w > 9 or heavy:
-            for sgn in (-1, 1):
-                q = Vector((x, y)) + lat * sgn * w * 0.5
-                m.cyl((q.x, q.y, p["bottom"]), (q.x, q.y, p["top"]), 1.9 if heavy else 1.3, 1, seg=12)
-        else:
-            m.cyl((x, y, p["bottom"]), (x, y, p["top"]), 1.5, 1, seg=12)
-        cap = 1.6
-        rz = math.atan2(dvec.y, dvec.x)
-        m.box((x, y, p["top"] - cap / 2), (2.6, 2 * w * 0.95, cap), 1, rz=rz)
-        built["piers"].append(p)
-    for py in br["pylons"]:
-        x, y = py["pos"]
-        dvec = Vector(py["dir"])
-        lat = Vector((-dvec.y, dvec.x))
-        rz = math.atan2(dvec.y, dvec.x)
-        legs = []
-        for sgn in (-1, 1):
-            foot = Vector((x, y)) + lat * sgn * (w + 3.5)
-            head = Vector((x, y)) + lat * sgn * (w + 1.2)
-            m.cyl((foot.x, foot.y, py["bottom"]), (head.x, head.y, py["top"]), 2.6, 1, seg=8, r2=1.6)
-            legs.append((foot, head))
-        for zf in (py["deck"] - d - 2.0, py["top"] - 12.0):
-            m.box((x, y, zf), (3.0, 2 * (w + 2.6), 3.0), 1, rz=rz)
-        m.box((x, y, py["top"] + 0.6), (2.0, 2.0, 1.2), 3)            # aviation light
-        built["piers"].append({"pos": py["pos"], "bottom": py["bottom"], "top": py["top"], "pylon": True})
-    for a, bpt in br["cables"]:
-        m.cyl(a, bpt, 0.11, 2, seg=6)
-    for rib in br["arches"]:
-        for p0, p1 in zip(rib, rib[1:]):
-            m.cyl(p0, p1, 0.9, 1, seg=8)
-    for a, bpt in br["hangers"]:
-        m.cyl(a, bpt, 0.08, 2, seg=6)
-    if m.bm.faces:
-        built["bridges"].append(put(c, f"Bridge_{br['name']}", m.finish(f"Bridge_{br['name']}", [M["metal"], concrete, KM["cable"], KM["red_light"]])))
-    else:
-        m.bm.free()
 
 
 def night_world():
