@@ -1,0 +1,537 @@
+{
+ "format": "vehicle-index",
+ "version": 1,
+ "coords": "glTF: +Y up, vehicles face +Z, +X is their left side; origin on the ground under the body centre",
+ "contract": "every <id>.glb / _lod1 / _lod2 has Body, Wheel_FL/FR/RL/RR (origins at the hubs), Collider (convex hull, hidden), Headlight_L/R + Taillight_L/R empties (local -Z = beam); LOD0 and LOD1 also Caliper_XX. <id>.json = car.json format.",
+ "variants": "KHR_materials_variants on Body; pick by name (variants[].name) or index; weights are relative within a vehicle",
+ "spawn": "pick a vehicle by spawn_weight / total_weight, then a variant by its weight; kinds: civilian, taxi, corporate, police, street, beater",
+ "total_weight": 7.2,
+ "vehicles": [
+  {
+   "id": "tsubame",
+   "name": "Kanzaki Tsubame-4, Hoshikawa Security cruiser",
+   "class": "sedan",
+   "spawn_weight": 1.0,
+   "player": true,
+   "files": {
+    "lod0": "tsubame/tsubame.glb",
+    "lod1": "tsubame/tsubame_lod1.glb",
+    "lod2": "tsubame/tsubame_lod2.glb",
+    "json": "tsubame/tsubame.json"
+   },
+   "triangles": {
+    "lod0": 92458,
+    "lod1": 9914,
+    "lod2": 2768
+   },
+   "lod_distances_m": {
+    "lod0": 0,
+    "lod1": 25,
+    "lod2": 70
+   },
+   "dimensions": {
+    "length": 4.44,
+    "width": 2.162,
+    "height": 1.79,
+    "width_body": 1.784,
+    "width_overfenders": 1.87,
+    "height_roof": 1.36,
+    "height_lightbar": 1.467
+   },
+   "wheelbase": 2.65,
+   "mass_kg": 1280,
+   "default_variant": "security",
+   "variants": [
+    {
+     "name": "security",
+     "index": 0,
+     "label": "Hoshikawa Security cruiser",
+     "kind": "police",
+     "weight": 0.6
+    },
+    {
+     "name": "cab",
+     "index": 1,
+     "label": "Koen Cab",
+     "kind": "taxi",
+     "weight": 1.2
+    },
+    {
+     "name": "pearl",
+     "index": 2,
+     "label": "civilian, pearl white",
+     "kind": "civilian",
+     "weight": 1.0
+    },
+    {
+     "name": "maroon",
+     "index": 3,
+     "label": "civilian, maroon metallic",
+     "kind": "civilian",
+     "weight": 0.8
+    },
+    {
+     "name": "gunmetal",
+     "index": 4,
+     "label": "civilian, gunmetal",
+     "kind": "civilian",
+     "weight": 0.8
+    },
+    {
+     "name": "exec",
+     "index": 5,
+     "label": "Hoshikawa Dynamics executive car",
+     "kind": "corporate",
+     "weight": 0.4
+    },
+    {
+     "name": "hinode",
+     "index": 6,
+     "label": "Hinode Taxi",
+     "kind": "taxi",
+     "weight": 1.0
+    },
+    {
+     "name": "rusty",
+     "index": 7,
+     "label": "beaten-up, rust and primer",
+     "kind": "beater",
+     "weight": 0.6
+    }
+   ],
+   "legacy": {
+    "lod0": "../car/car.glb",
+    "lod1": "../car/car_lod1.glb",
+    "json": "../car/car.json",
+    "variant": "security"
+   }
+  },
+  {
+   "id": "mame",
+   "name": "Kanzaki Mame K3 kei hatchback",
+   "class": "kei",
+   "spawn_weight": 2.2,
+   "player": false,
+   "files": {
+    "lod0": "mame/mame.glb",
+    "lod1": "mame/mame_lod1.glb",
+    "lod2": "mame/mame_lod2.glb",
+    "json": "mame/mame.json"
+   },
+   "triangles": {
+    "lod0": 62713,
+    "lod1": 10100,
+    "lod2": 1239
+   },
+   "lod_distances_m": {
+    "lod0": 0,
+    "lod1": 25,
+    "lod2": 70
+   },
+   "dimensions": {
+    "length": 3.433,
+    "width": 1.805,
+    "height": 1.465
+   },
+   "wheelbase": 2.33,
+   "mass_kg": 720,
+   "default_variant": "cream",
+   "variants": [
+    {
+     "name": "cream",
+     "index": 0,
+     "label": "civilian, cream",
+     "kind": "civilian",
+     "weight": 1.2
+    },
+    {
+     "name": "mint",
+     "index": 1,
+     "label": "civilian, mint",
+     "kind": "civilian",
+     "weight": 1.0
+    },
+    {
+     "name": "cherry",
+     "index": 2,
+     "label": "civilian, cherry red",
+     "kind": "civilian",
+     "weight": 1.0
+    },
+    {
+     "name": "sky",
+     "index": 3,
+     "label": "civilian, sky blue",
+     "kind": "civilian",
+     "weight": 0.9
+    },
+    {
+     "name": "silver",
+     "index": 4,
+     "label": "civilian, silver",
+     "kind": "civilian",
+     "weight": 1.0
+    },
+    {
+     "name": "tsuru",
+     "index": 5,
+     "label": "Tsuru Express courier",
+     "kind": "corporate",
+     "weight": 0.8
+    },
+    {
+     "name": "inspector",
+     "index": 6,
+     "label": "MERIDIAN score inspector",
+     "kind": "corporate",
+     "weight": 0.5
+    },
+    {
+     "name": "rusty",
+     "index": 7,
+     "label": "beaten-up kei, rust and UNPLUG tag",
+     "kind": "beater",
+     "weight": 0.7
+    }
+   ]
+  },
+  {
+   "id": "hakobi",
+   "name": "Ishimaru Hakobi LH-200 panel van",
+   "class": "van",
+   "spawn_weight": 1.4,
+   "player": false,
+   "files": {
+    "lod0": "hakobi/hakobi.glb",
+    "lod1": "hakobi/hakobi_lod1.glb",
+    "lod2": "hakobi/hakobi_lod2.glb",
+    "json": "hakobi/hakobi.json"
+   },
+   "triangles": {
+    "lod0": 70417,
+    "lod1": 10679,
+    "lod2": 1545
+   },
+   "lod_distances_m": {
+    "lod0": 0,
+    "lod1": 25,
+    "lod2": 70
+   },
+   "dimensions": {
+    "length": 4.763,
+    "width": 2.136,
+    "height": 2.019
+   },
+   "wheelbase": 2.35,
+   "mass_kg": 1650,
+   "default_variant": "white",
+   "variants": [
+    {
+     "name": "white",
+     "index": 0,
+     "label": "plain white work van",
+     "kind": "civilian",
+     "weight": 1.2
+    },
+    {
+     "name": "silver",
+     "index": 1,
+     "label": "silver work van",
+     "kind": "civilian",
+     "weight": 0.8
+    },
+    {
+     "name": "dreamlink",
+     "index": 2,
+     "label": "DREAMLINK pod delivery",
+     "kind": "corporate",
+     "weight": 1.0
+    },
+    {
+     "name": "noctis",
+     "index": 3,
+     "label": "NOCTIS collection van",
+     "kind": "corporate",
+     "weight": 0.8
+    },
+    {
+     "name": "tsuru",
+     "index": 4,
+     "label": "Tsuru Express parcels",
+     "kind": "corporate",
+     "weight": 1.0
+    },
+    {
+     "name": "facilities",
+     "index": 5,
+     "label": "Hoshikawa Dynamics facilities",
+     "kind": "corporate",
+     "weight": 0.6
+    },
+    {
+     "name": "ramen",
+     "index": 6,
+     "label": "Ramen Kira night stall",
+     "kind": "street",
+     "weight": 0.5
+    },
+    {
+     "name": "rusty",
+     "index": 7,
+     "label": "beaten-up van, rust and graffiti",
+     "kind": "beater",
+     "weight": 0.6
+    }
+   ]
+  },
+  {
+   "id": "hayate",
+   "name": "Kanzaki Hayate RS sports coupe",
+   "class": "sports",
+   "spawn_weight": 0.7,
+   "player": true,
+   "files": {
+    "lod0": "hayate/hayate.glb",
+    "lod1": "hayate/hayate_lod1.glb",
+    "lod2": "hayate/hayate_lod2.glb",
+    "json": "hayate/hayate.json"
+   },
+   "triangles": {
+    "lod0": 71290,
+    "lod1": 10916,
+    "lod2": 2295
+   },
+   "lod_distances_m": {
+    "lod0": 0,
+    "lod1": 25,
+    "lod2": 70
+   },
+   "dimensions": {
+    "length": 4.422,
+    "width": 2.119,
+    "height": 1.19
+   },
+   "wheelbase": 2.5,
+   "mass_kg": 1340,
+   "default_variant": "purple",
+   "variants": [
+    {
+     "name": "purple",
+     "index": 0,
+     "label": "midnight purple candy",
+     "kind": "civilian",
+     "weight": 1.0
+    },
+    {
+     "name": "red",
+     "index": 1,
+     "label": "racing red",
+     "kind": "civilian",
+     "weight": 1.0
+    },
+    {
+     "name": "pearl_stripes",
+     "index": 2,
+     "label": "pearl white, twin stripes",
+     "kind": "civilian",
+     "weight": 0.8
+    },
+    {
+     "name": "lime",
+     "index": 3,
+     "label": "lime yellow",
+     "kind": "civilian",
+     "weight": 0.6
+    },
+    {
+     "name": "gunmetal",
+     "index": 4,
+     "label": "gunmetal",
+     "kind": "civilian",
+     "weight": 0.8
+    },
+    {
+     "name": "racing",
+     "index": 5,
+     "label": "Kanzaki Racing #27",
+     "kind": "street",
+     "weight": 0.4
+    },
+    {
+     "name": "pursuit",
+     "index": 6,
+     "label": "Hoshikawa Security pursuit",
+     "kind": "police",
+     "weight": 0.4
+    },
+    {
+     "name": "rusty",
+     "index": 7,
+     "label": "street beater, primer and tags",
+     "kind": "beater",
+     "weight": 0.4
+    }
+   ]
+  },
+  {
+   "id": "kaiun",
+   "name": "Ishimaru Kaiun 2t box truck",
+   "class": "truck",
+   "spawn_weight": 0.7,
+   "player": false,
+   "files": {
+    "lod0": "kaiun/kaiun.glb",
+    "lod1": "kaiun/kaiun_lod1.glb",
+    "lod2": "kaiun/kaiun_lod2.glb",
+    "json": "kaiun/kaiun.json"
+   },
+   "triangles": {
+    "lod0": 72972,
+    "lod1": 12520,
+    "lod2": 1965
+   },
+   "lod_distances_m": {
+    "lod0": 0,
+    "lod1": 25,
+    "lod2": 70
+   },
+   "dimensions": {
+    "length": 5.6,
+    "width": 2.352,
+    "height": 2.92,
+    "width_box": 1.95,
+    "width_cab": 1.76,
+    "height_box": 2.95
+   },
+   "wheelbase": 3.05,
+   "mass_kg": 3900,
+   "default_variant": "white",
+   "variants": [
+    {
+     "name": "white",
+     "index": 0,
+     "label": "plain white box truck",
+     "kind": "civilian",
+     "weight": 1.0
+    },
+    {
+     "name": "logistics",
+     "index": 1,
+     "label": "Hoshikawa Dynamics logistics",
+     "kind": "corporate",
+     "weight": 1.0
+    },
+    {
+     "name": "dreamlink",
+     "index": 2,
+     "label": "DREAMLINK pod freight",
+     "kind": "corporate",
+     "weight": 0.8
+    },
+    {
+     "name": "noctis",
+     "index": 3,
+     "label": "NOCTIS collection truck",
+     "kind": "corporate",
+     "weight": 0.6
+    },
+    {
+     "name": "recycle",
+     "index": 4,
+     "label": "Shigen Recycle",
+     "kind": "corporate",
+     "weight": 0.7
+    },
+    {
+     "name": "tsuru",
+     "index": 5,
+     "label": "Tsuru Express freight",
+     "kind": "corporate",
+     "weight": 0.8
+    },
+    {
+     "name": "rusty",
+     "index": 6,
+     "label": "beaten-up truck, rust and graffiti",
+     "kind": "beater",
+     "weight": 0.5
+    }
+   ]
+  },
+  {
+   "id": "kago",
+   "name": "MERIDIAN Kago robotaxi pod",
+   "class": "robotaxi",
+   "spawn_weight": 1.2,
+   "player": false,
+   "files": {
+    "lod0": "kago/kago.glb",
+    "lod1": "kago/kago_lod1.glb",
+    "lod2": "kago/kago_lod2.glb",
+    "json": "kago/kago.json"
+   },
+   "triangles": {
+    "lod0": 58649,
+    "lod1": 10783,
+    "lod2": 2531
+   },
+   "lod_distances_m": {
+    "lod0": 0,
+    "lod1": 25,
+    "lod2": 70
+   },
+   "dimensions": {
+    "length": 3.848,
+    "width": 1.813,
+    "height": 1.936
+   },
+   "wheelbase": 2.54,
+   "mass_kg": 1450,
+   "default_variant": "meridian",
+   "variants": [
+    {
+     "name": "meridian",
+     "index": 0,
+     "label": "MERIDIAN Ride, white",
+     "kind": "taxi",
+     "weight": 1.5
+    },
+    {
+     "name": "night",
+     "index": 1,
+     "label": "MERIDIAN Ride, night black",
+     "kind": "taxi",
+     "weight": 1.0
+    },
+    {
+     "name": "dreamlink",
+     "index": 2,
+     "label": "DREAMLINK ad wrap",
+     "kind": "taxi",
+     "weight": 0.7
+    },
+    {
+     "name": "noctis",
+     "index": 3,
+     "label": "NOCTIS ad wrap",
+     "kind": "taxi",
+     "weight": 0.5
+    },
+    {
+     "name": "patrol",
+     "index": 4,
+     "label": "Hoshikawa Security patrol pod",
+     "kind": "police",
+     "weight": 0.4
+    },
+    {
+     "name": "vandalized",
+     "index": 5,
+     "label": "vandalized pod, UNPLUG tags",
+     "kind": "beater",
+     "weight": 0.4
+    }
+   ]
+  }
+ ]
+}

@@ -1,0 +1,155 @@
+{
+ "name": "Kanzaki Mame K3 kei hatchback",
+ "id": "mame",
+ "class": "kei",
+ "units": "metres",
+ "coords": "glTF: +Y up, the car faces +Z, +X is the car's left side",
+ "origin": "ground level under the centre of the body",
+ "nodes": {
+  "body": "Body",
+  "wheels": [
+   "Wheel_FL",
+   "Wheel_FR",
+   "Wheel_RL",
+   "Wheel_RR"
+  ],
+  "calipers": [
+   "Caliper_FL",
+   "Caliper_FR",
+   "Caliper_RL",
+   "Caliper_RR"
+  ],
+  "collider": "Collider",
+  "lights": [
+   "Headlight_L",
+   "Headlight_R",
+   "Taillight_L",
+   "Taillight_R"
+  ]
+ },
+ "wheel_radius": 0.272,
+ "wheel_width": 0.15,
+ "track": 1.29,
+ "wheelbase": 2.33,
+ "wheel_positions": {
+  "Wheel_FL": [
+   0.645,
+   0.272,
+   1.135
+  ],
+  "Wheel_FR": [
+   -0.645,
+   0.272,
+   1.135
+  ],
+  "Wheel_RL": [
+   0.645,
+   0.272,
+   -1.195
+  ],
+  "Wheel_RR": [
+   -0.645,
+   0.272,
+   -1.195
+  ]
+ },
+ "lights": {
+  "Headlight_L": {
+   "position": [
+    0.52,
+    0.645,
+    1.6536
+   ],
+   "direction": [
+    0,
+    0,
+    1
+   ],
+   "color": [
+    1.0,
+    0.93,
+    0.8
+   ]
+  },
+  "Headlight_R": {
+   "position": [
+    -0.52,
+    0.645,
+    1.6536
+   ],
+   "direction": [
+    0,
+    0,
+    1
+   ],
+   "color": [
+    1.0,
+    0.93,
+    0.8
+   ]
+  },
+  "Taillight_L": {
+   "position": [
+    0.66,
+    0.84,
+    -1.6575
+   ],
+   "direction": [
+    0,
+    0,
+    -1
+   ],
+   "color": [
+    1.0,
+    0.05,
+    0.03
+   ]
+  },
+  "Taillight_R": {
+   "position": [
+    -0.66,
+    0.84,
+    -1.6575
+   ],
+   "direction": [
+    0,
+    0,
+    -1
+   ],
+   "color": [
+    1.0,
+    0.05,
+    0.03
+   ]
+  }
+ },
+ "mass_kg": 720,
+ "center_of_mass": [
+  0.0,
+  0.5,
+  0.08
+ ],
+ "suspension_suggestion": {
+  "rest_length": 0.13,
+  "travel": 0.13,
+  "stiffness": 26.0,
+  "max_force": 5200.0,
+  "damping_compression": 0.8,
+  "damping_relaxation": 1.2,
+  "friction_slip": 2.4
+ },
+ "dimensions": {
+  "length": 3.433,
+  "width": 1.805,
+  "height": 1.465
+ },
+ "triangles": {
+  "lod0": 62713,
+  "lod0_body": 46513,
+  "lod0_wheel": 3774,
+  "lod0_caliper": 276,
+  "lod1": 10100,
+  "lod2": 1239,
+  "collider": 468
+ }
+}

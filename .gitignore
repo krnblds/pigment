@@ -15,3 +15,8 @@ assets/sky/*_4k.hdr
 assets/sky/*_8k.hdr
 game/sky/*_4k.hdr*
 game/sky/*_8k.hdr*
+# fleet (tools/vehicles): Pigment projects / texture sets and the build intermediates are regenerated
+scenes/vehicles/*/textures/
+scenes/vehicles/*/projects/
+assets/vehicles/*/src/*.glb
+assets/vehicles/*/src/*.blend

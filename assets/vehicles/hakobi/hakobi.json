@@ -1,0 +1,251 @@
+{
+ "name": "Ishimaru Hakobi LH-200 panel van",
+ "id": "hakobi",
+ "class": "van",
+ "units": "metres",
+ "coords": "glTF: +Y up, the car faces +Z, +X is the car's left side",
+ "origin": "ground level under the centre of the body",
+ "nodes": {
+  "body": "Body",
+  "wheels": [
+   "Wheel_FL",
+   "Wheel_FR",
+   "Wheel_RL",
+   "Wheel_RR"
+  ],
+  "calipers": [
+   "Caliper_FL",
+   "Caliper_FR",
+   "Caliper_RL",
+   "Caliper_RR"
+  ],
+  "collider": "Collider",
+  "lights": [
+   "Headlight_L",
+   "Headlight_R",
+   "Taillight_L",
+   "Taillight_R"
+  ]
+ },
+ "wheel_radius": 0.318,
+ "wheel_width": 0.195,
+ "track": 1.46,
+ "wheelbase": 2.35,
+ "wheel_positions": {
+  "Wheel_FL": [
+   0.73,
+   0.318,
+   1.5
+  ],
+  "Wheel_FR": [
+   -0.73,
+   0.318,
+   1.5
+  ],
+  "Wheel_RL": [
+   0.73,
+   0.318,
+   -0.85
+  ],
+  "Wheel_RR": [
+   -0.73,
+   0.318,
+   -0.85
+  ]
+ },
+ "lights": {
+  "Headlight_L": {
+   "position": [
+    0.66,
+    0.8,
+    2.3066
+   ],
+   "direction": [
+    0,
+    0,
+    1
+   ],
+   "color": [
+    1.0,
+    0.93,
+    0.8
+   ]
+  },
+  "Headlight_R": {
+   "position": [
+    -0.66,
+    0.8,
+    2.3066
+   ],
+   "direction": [
+    0,
+    0,
+    1
+   ],
+   "color": [
+    1.0,
+    0.93,
+    0.8
+   ]
+  },
+  "Taillight_L": {
+   "position": [
+    0.77,
+    0.92,
+    -2.3808
+   ],
+   "direction": [
+    0,
+    0,
+    -1
+   ],
+   "color": [
+    1.0,
+    0.05,
+    0.03
+   ]
+  },
+  "Taillight_R": {
+   "position": [
+    -0.77,
+    0.92,
+    -2.3808
+   ],
+   "direction": [
+    0,
+    0,
+    -1
+   ],
+   "color": [
+    1.0,
+    0.05,
+    0.03
+   ]
+  }
+ },
+ "mass_kg": 1650,
+ "center_of_mass": [
+  0.0,
+  0.7,
+  0.2
+ ],
+ "suspension_suggestion": {
+  "rest_length": 0.16,
+  "travel": 0.14,
+  "stiffness": 42.0,
+  "max_force": 12000.0,
+  "damping_compression": 1.0,
+  "damping_relaxation": 1.6,
+  "friction_slip": 2.3
+ },
+ "dimensions": {
+  "length": 4.763,
+  "width": 2.136,
+  "height": 2.019
+ },
+ "triangles": {
+  "lod0": 70417,
+  "lod0_body": 48137,
+  "lod0_wheel": 5294,
+  "lod0_caliper": 276,
+  "lod1": 10679,
+  "lod2": 1545,
+  "collider": 388
+ },
+ "files": {
+  "lod0": "hakobi.glb",
+  "lod1": "hakobi_lod1.glb",
+  "lod2": "hakobi_lod2.glb",
+  "json": "hakobi.json"
+ },
+ "textures": {
+  "body": 2048,
+  "wheel": 1024,
+  "lod1_body": 1024,
+  "lod2_body": 256,
+  "format": "webp"
+ },
+ "materials": {
+  "Body": "one material per variant (hakobi_<variant>), switched through KHR_materials_variants; glass, lenses and hidden parts are see-through via base-colour alpha (alphaMode BLEND): in Godot use transparency = Alpha Depth Pre-Pass on it.",
+  "Wheel": "hakobi_wheel: tyre, rim, disc and caliper (shared by every variant)"
+ },
+ "variants": [
+  {
+   "name": "white",
+   "index": 0,
+   "label": "plain white work van",
+   "kind": "civilian",
+   "weight": 1.2,
+   "material": "hakobi_white"
+  },
+  {
+   "name": "silver",
+   "index": 1,
+   "label": "silver work van",
+   "kind": "civilian",
+   "weight": 0.8,
+   "material": "hakobi_silver"
+  },
+  {
+   "name": "dreamlink",
+   "index": 2,
+   "label": "DREAMLINK pod delivery",
+   "kind": "corporate",
+   "weight": 1.0,
+   "material": "hakobi_dreamlink"
+  },
+  {
+   "name": "noctis",
+   "index": 3,
+   "label": "NOCTIS collection van",
+   "kind": "corporate",
+   "weight": 0.8,
+   "material": "hakobi_noctis"
+  },
+  {
+   "name": "tsuru",
+   "index": 4,
+   "label": "Tsuru Express parcels",
+   "kind": "corporate",
+   "weight": 1.0,
+   "material": "hakobi_tsuru"
+  },
+  {
+   "name": "facilities",
+   "index": 5,
+   "label": "Hoshikawa Dynamics facilities",
+   "kind": "corporate",
+   "weight": 0.6,
+   "material": "hakobi_facilities"
+  },
+  {
+   "name": "ramen",
+   "index": 6,
+   "label": "Ramen Kira night stall",
+   "kind": "street",
+   "weight": 0.5,
+   "material": "hakobi_ramen"
+  },
+  {
+   "name": "rusty",
+   "index": 7,
+   "label": "beaten-up van, rust and graffiti",
+   "kind": "beater",
+   "weight": 0.6,
+   "material": "hakobi_rusty"
+  }
+ ],
+ "default_variant": "white",
+ "traffic": {
+  "class": "van",
+  "spawn_weight": 1.4,
+  "player": false
+ },
+ "notes": [
+  "Calipers are separate nodes (Caliper_XX, same origin as Wheel_XX): steer them with the wheel but don't spin them. LOD2 has no calipers.",
+  "Collider is a convex hull (extras: collider=convex, hidden=true): use it as a ConvexPolygonShape3D and hide the mesh.",
+  "Headlight_* / Taillight_* empties: put a SpotLight3D / OmniLight3D there; their local -Z is the beam direction.",
+  "Variants: glTF KHR_materials_variants on Body (all LODs). Godot does not apply the extension by itself: tools/vehicles/godot/vehicle_variants.gd reads it at import and offers set_variant(root, name).",
+  "Metallic flake is not in glTF; the clearcoat is (KHR_materials_clearcoat)."
+ ]
+}
