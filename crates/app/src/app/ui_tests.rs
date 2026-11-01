@@ -615,3 +615,39 @@ fn foliage_screenshots() {
     h.app.camera.pitch = 12f32.to_radians();
     shot(&mut h, "ui_simple_plants");
 }
+
+/// Filters and anchors in the Properties and Mask panels: a filter layer's
+/// stack, a mask filter and the anchor toggle; clicking a filter's switch
+/// turns it off (and the composite follows).
+#[test]
+fn filter_stacks_and_anchor_in_panels() {
+    use pigment_core::filters::{Filter, FilterKind};
+    // tall, so the mask panel's filter section is on screen
+    let Some(mut h) = Harness::new([1440.0, 2400.0], 1.0) else { return };
+    settle(&mut h);
+    let layout = |p: PanelId| DockLayout { root: super::dock::Node::Split { vertical: false, ratio: 0.5, a: Box::new(super::dock::Node::Leaf { tabs: vec![PanelId::Viewport], active: 0 }), b: Box::new(super::dock::Node::Leaf { tabs: vec![p], active: 0 }) }, floating: vec![] };
+    super::panels::filters::add_filter_layer(&mut h.app);
+    let id = h.app.doc.layers.iter().find(|l| matches!(l.kind, LayerKind::Filter {})).unwrap().id;
+    h.app.select(Some(id), true);
+    *h.app.ui.prefs.layout_mut() = layout(PanelId::Properties);
+    h.run(4);
+    let r = anchor(&h, "layer_filter_0");
+    h.click(r.center());
+    h.run(3);
+    let l = h.app.doc.layer(id).unwrap();
+    assert!(!l.filters[0].enabled, "clicking the switch disables the filter");
+    // mask filters in the Mask panel
+    let i = h.app.edge_wear_layer().unwrap();
+    let wid = h.app.doc.layers[i].id;
+    h.app.doc.layers[i].mask.as_mut().unwrap().filters.push(Filter::new(FilterKind::Blur));
+    h.app.doc.layers[i].anchor = Some("Wear".into());
+    h.app.select(Some(wid), true);
+    *h.app.ui.prefs.layout_mut() = layout(PanelId::Mask);
+    h.run(4);
+    let r = anchor(&h, "mask_filter_0");
+    h.click(r.center());
+    h.run(3);
+    assert!(!h.app.doc.layers[i].mask.as_ref().unwrap().filters[0].enabled);
+    *h.app.ui.prefs.layout_mut() = layout(PanelId::Properties);
+    h.run(4);
+}

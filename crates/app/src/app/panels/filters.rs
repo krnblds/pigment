@@ -99,7 +99,9 @@ fn filter_params_ui(ui: &mut egui::Ui, f: &mut Filter, target: FilterTarget, sal
 }
 
 /// An ordered filter stack with enable toggles, reorder and remove.
-pub fn filter_stack_ui(ui: &mut egui::Ui, filters: &mut Vec<Filter>, target: FilterTarget, id: &str) {
+/// Returns the rect of the first filter's enable toggle (UI tests).
+pub fn filter_stack_ui(ui: &mut egui::Ui, filters: &mut Vec<Filter>, target: FilterTarget, id: &str) -> Option<egui::Rect> {
+    let mut first: Option<egui::Rect> = None;
     let mut action: Option<(usize, i32)> = None; // (index, -1 up / 1 down / 0 remove)
     let n = filters.len();
     if n == 0 {
@@ -111,7 +113,10 @@ pub fn filter_stack_ui(ui: &mut egui::Ui, filters: &mut Vec<Filter>, target: Fil
     for (k, f) in filters.iter_mut().enumerate() {
         ds::card(ui, |ui| {
             ui.horizontal(|ui| {
-                ds::toggle(ui, &mut f.enabled, f.kind.label());
+                let t = ds::toggle(ui, &mut f.enabled, f.kind.label());
+                if k == 0 {
+                    first = Some(t.rect);
+                }
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     if ui.add(IconBtn::new(Icon::Close, "Remove this filter").size(size::CONTROL_H_SM)).clicked() {
                         action = Some((k, 0));
@@ -154,6 +159,7 @@ pub fn filter_stack_ui(ui: &mut egui::Ui, filters: &mut Vec<Filter>, target: Fil
     if let Some(k) = add {
         filters.push(Filter::new(k));
     }
+    first
 }
 
 /// Properties panel: the layer's filters and its anchor point.
@@ -164,7 +170,10 @@ pub fn layer_filters_ui(app: &mut PigmentApp, ui: &mut egui::Ui, i: usize) {
     }
     ds::section(ui, if is_filter { "Filters (stack below)" } else { "Filters" });
     let l = &mut app.doc.layers[i];
-    filter_stack_ui(ui, &mut l.filters, FilterTarget::Layer, "layer");
+    if let Some(r) = filter_stack_ui(ui, &mut l.filters, FilterTarget::Layer, "layer") {
+        app.anchors.insert("layer_filter_0", r);
+    }
+    let l = &mut app.doc.layers[i];
     ds::section(ui, "Anchor point");
     ds::card(ui, |ui| {
         let mut on = l.anchor.is_some();
@@ -184,7 +193,9 @@ pub fn layer_filters_ui(app: &mut PigmentApp, ui: &mut egui::Ui, i: usize) {
 pub fn mask_filters_ui(app: &mut PigmentApp, ui: &mut egui::Ui, i: usize) {
     ds::section(ui, "Mask filters");
     if let Some(m) = app.doc.layers[i].mask.as_mut() {
-        filter_stack_ui(ui, &mut m.filters, FilterTarget::Mask, "mask");
+        if let Some(r) = filter_stack_ui(ui, &mut m.filters, FilterTarget::Mask, "mask") {
+            app.anchors.insert("mask_filter_0", r);
+        }
     }
 }
 

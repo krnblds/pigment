@@ -12,6 +12,7 @@ use serde_json::{json, Value};
 type Res<T> = Result<T, String>;
 
 mod decal_tools;
+mod filter_tools;
 mod foliage_tools;
 mod interior_tools;
 mod sheet_tools;
@@ -217,7 +218,7 @@ impl Session {
                     let mut o = json!({
                         "index": i,
                         "name": l.name,
-                        "kind": if l.is_folder() { "folder" } else if l.is_paint() { "paint" } else { "fill" },
+                        "kind": if l.is_folder() { "folder" } else if l.is_paint() { "paint" } else if matches!(l.kind, LayerKind::Filter {}) { "filter" } else { "fill" },
                         "visible": l.visible,
                         "opacity": l.opacity,
                         "channels": Channel::ALL.iter().filter(|c| l.channels.get(**c).enabled).map(|c| c.file_stem()).collect::<Vec<_>>(),
@@ -253,6 +254,20 @@ impl Session {
                             "parts": m.parts,
                             "invert": m.invert,
                         });
+                    }
+                    if !l.filters.is_empty() {
+                        o["filters"] = filter_tools::filters_json(&l.filters);
+                    }
+                    if let Some(a) = &l.anchor {
+                        o["anchor"] = json!(a);
+                    }
+                    if let Some(m) = &l.mask {
+                        if !m.filters.is_empty() {
+                            o["mask"]["filters"] = filter_tools::filters_json(&m.filters);
+                        }
+                        if let Some(inp) = m.generator.as_ref().and_then(|g| g.input.as_ref()) {
+                            o["mask"]["input"] = json!({ "anchor": inp.anchor, "channel": inp.channel.id(), "strength": inp.strength, "radius": inp.radius });
+                        }
                     }
                     if !l.variant.is_empty() {
                         o["variant"] = json!({
@@ -545,6 +560,7 @@ impl Session {
                 }
             }
         }
+        filter_tools::configure_filters(app, i, a)?;
         match a.get("variant") {
             None => {}
             Some(Value::Null) => app.doc.layers[i].variant.group.clear(),
@@ -638,7 +654,8 @@ impl Session {
             "fill" => self.app.doc.fill_with(&name, s(a, "material").unwrap_or("White plastic"), None),
             "folder" => self.app.doc.new_folder(if s(a, "name").is_some() { &name } else { "Folder" }),
             "foliage" => self.app.doc.new_foliage_layer(&name),
-            _ => return Err("`kind` must be \"fill\", \"paint\", \"folder\" or \"foliage\"".into()),
+            "filter" => self.app.doc.new_filter_layer(if s(a, "name").is_some() { &name } else { "Filter" }, Vec::new()),
+            _ => return Err("`kind` must be \"fill\", \"paint\", \"folder\", \"filter\" or \"foliage\"".into()),
         };
         if let Some(p) = parent {
             // inside a folder: `index` is the position among its children
@@ -663,7 +680,7 @@ impl Session {
         }
         let at = match a.get("index").and_then(Value::as_u64) {
             Some(i) => (i as usize).min(self.app.doc.layers.len()),
-            None if kind == "paint" => self.app.doc.layers.len(),
+            None if kind == "paint" || kind == "filter" => self.app.doc.layers.len(),
             None => self.app.doc.layers.iter().rposition(|l| l.is_paint()).unwrap_or(self.app.doc.layers.len()),
         };
         let id = l.id;

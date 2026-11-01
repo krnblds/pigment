@@ -42,6 +42,8 @@ fn tools() -> Value {
         "channels": { "type": "object", "description": "e.g. {\"height\": false, \"roughness\": true}" },
         "blend": { "type": "object", "description": "per channel, e.g. {\"base_color\": \"multiply\", \"height\": \"add\"}" },
         "mask": mask_schema(),
+        "filters": { "type": "array", "items": filter_schema(false), "description": "replace the layer's filter stack (run in order on the stack right after this layer, inside its mask; on a filter layer: on the stack below). [] removes them" },
+        "anchor": { "type": ["string", "null"], "description": "make this layer an anchor point with this name (null removes): generators above can read its height / mask / colour (mask.input)" },
         "variant": { "type": ["string", "null"], "description": "variant group tag: export_variants can enable/disable every layer or decal in a group" },
         "part_subset": { "type": ["object", "null"], "additionalProperties": false,
             "properties": { "from": { "type": "number" }, "to": { "type": "number" }, "salt": { "type": "integer", "minimum": 0 } },
@@ -94,7 +96,7 @@ fn tools() -> Value {
     let mut add_props = layer_fields.clone();
     let layer_ref = |d: &str| json!({ "type": ["string", "integer"], "description": d });
     let folder_ref = |d: &str| json!({ "type": ["string", "integer", "null"], "description": d });
-    add_props["kind"] = json!({ "type": "string", "enum": ["fill", "paint", "folder", "foliage"], "description": "folder = a group with its own opacity, blend, mask and visibility; its mask multiplies its children's. foliage = cards on the model (see scatter_foliage / paint_foliage / grow_ivy)" });
+    add_props["kind"] = json!({ "type": "string", "enum": ["fill", "paint", "folder", "filter", "foliage"], "description": "filter = an adjustment layer: its `filters` run on the whole stack below, inside its mask and opacity (default position: top). folder = a group with its own opacity, blend, mask and visibility; its mask multiplies its children's. foliage = cards on the model (see scatter_foliage / paint_foliage / grow_ivy)" });
     add_props["index"] = json!({ "type": "integer", "minimum": 0, "description": "stack position (0 = bottom); default: below the top paint layer. With `parent`: position among the folder's children (default: top)" });
     add_props["parent"] = folder_ref("folder to put the new layer in (name, \"Folder/Sub\" path or index); null/omitted = top level");
     let mut upd_props = layer_fields;
@@ -368,9 +370,56 @@ fn tools() -> Value {
         t("batch", "Run several tool calls in one request, in order: {calls: [{tool, args}, ...]}. Returns {ok, failed, results: [{index, tool, ok, ms, result | error}]}. Stops at the first error unless stop_on_error is false. Images from render are saved to disk (path in the result) rather than returned.",
           json!({ "calls": { "type": "array", "items": { "type": "object", "properties": { "tool": { "type": "string" }, "args": { "type": "object" } }, "required": ["tool"], "additionalProperties": false } },
                   "stop_on_error": { "type": "boolean", "description": "default true" } }), &["calls"]),
+        t("add_filter", "Add a filter to a layer's filter stack. target \"layer\" (default): runs on the composited stack right after the layer, inside its mask (for a filter layer: on the stack below, gated by its mask and opacity); target \"mask\": runs on the layer's evaluated mask. Spatial filters are seam-aware (taps stay on their UV island). Filters run in order; `index` inserts (0 = first).",
+          { let mut p = filter_schema(true)["properties"].clone();
+            p["layer"] = json!({ "type": ["string", "integer"], "description": "layer name, path or index" });
+            p["target"] = json!({ "type": "string", "enum": ["layer", "mask"], "description": "default layer" });
+            p["index"] = json!({ "type": "integer", "minimum": 0, "description": "position in the stack (default: last)" });
+            p }, &["layer", "kind"]),
+        t("update_filter", "Change, toggle or reorder filter `index` of a layer's (or its mask's) filter stack. Giving a different `kind` resets its parameters.",
+          { let mut p = filter_schema(true)["properties"].clone();
+            p["layer"] = json!({ "type": ["string", "integer"], "description": "layer name, path or index" });
+            p["target"] = json!({ "type": "string", "enum": ["layer", "mask"], "description": "default layer" });
+            p["index"] = json!({ "type": "integer", "minimum": 0, "description": "which filter (0 = runs first)" });
+            p["move_to"] = json!({ "type": "integer", "minimum": 0, "description": "new position in the stack" });
+            p }, &["layer", "index"]),
+        t("remove_filter", "Remove filter `index` from a layer's (or its mask's) filter stack.",
+          json!({ "layer": { "type": ["string", "integer"], "description": "layer name, path or index" }, "target": { "type": "string", "enum": ["layer", "mask"], "description": "default layer" }, "index": { "type": "integer", "minimum": 0 } }), &["layer", "index"]),
+        t("set_anchor", "Make a layer or folder an anchor point: the stack as composited right after it (height, the layer's mask x coverage, colour luminance) can be read by generators of layers above through mask.input {anchor, channel}, e.g. edge wear on painted scratches or dirt in painted dents; the `anchor` generator uses a channel directly as a mask.",
+          json!({ "layer": { "type": ["string", "integer"], "description": "layer name, path or index" }, "anchor": { "type": ["string", "null"], "description": "anchor name (default: the layer name); null removes it" } }), &["layer"]),
         t("undo", "Undo the last action.", json!({}), &[]),
         t("redo", "Redo.", json!({}), &[]),
     ])
+}
+
+/// Schema of one filter (`pigment_core::filters`). `top` = tool arguments
+/// (the tool marks `kind` required itself).
+fn filter_schema(top: bool) -> Value {
+    let kinds: Vec<&str> = pigment_core::filters::FilterKind::ALL.iter().map(|k| k.id()).collect();
+    let num = |d: &str| json!({ "type": "number", "description": d });
+    let lv = |d: &str| json!({ "type": ["number", "array"], "items": { "type": "number" }, "description": d });
+    let rgb = |d: &str| json!({ "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3, "description": d });
+    let mut v = json!({ "type": "object", "additionalProperties": false, "properties": {
+        "kind": { "type": "string", "enum": kinds, "description": "levels, hsl, color_balance, invert, clamp (point filters); blur, directional_blur, sharpen, warp, slope_blur, edge_detect, height_to_normal (spatial, seam-aware); fill_holes, grow, shrink (masks only); noise_overlay (MatFinish-style world noise)" },
+        "enabled": { "type": "boolean" },
+        "radius": num("blur / sharpen / grow / shrink / fill_holes / edge radius, warp / slope_blur distance: texels at 2048 (scales with the resolution)"),
+        "amount": num("strength: sharpen, warp, slope_blur, noise_overlay, edge gain, height_to_normal"),
+        "strength": num("alias of amount"),
+        "angle": num("directional_blur: degrees (0 = along +u)"),
+        "scale": num("noise frequency per metre (warp, slope_blur, noise_overlay)"),
+        "seed": { "type": "integer", "minimum": 0 },
+        "levels": { "type": "object", "additionalProperties": false, "description": "each a number (master) or [r, g, b] / [r, g, b, master]",
+            "properties": { "in_black": lv("input black"), "in_white": lv("input white"), "gamma": lv("gamma (1 = linear, > 1 brighter)"), "out_black": lv("output black"), "out_white": lv("output white") } },
+        "hue": num("hsl: hue shift, degrees"), "saturation": num("hsl: -1..1"), "lightness": num("hsl: -1..1"),
+        "shadows": rgb("color_balance: rgb offsets -1..1"), "midtones": rgb("color_balance"), "highlights": rgb("color_balance"),
+        "min": num("clamp minimum (0..1)"), "max": num("clamp maximum (0..1)"),
+        "use_height": { "type": "boolean", "description": "slope_blur: follow the stack's height instead of noise; height_to_normal: keep the height (adds normal detail on top) instead of converting it" },
+        "channels": { "type": "array", "items": { "type": "string", "enum": ["base_color", "roughness", "metallic", "height", "normal", "emissive"] }, "description": "layer filters: channels to change (default per kind: colour filters base_color, spatial ones colour/roughness/metallic/height/emission)" }
+    } });
+    if !top {
+        v["required"] = json!(["kind"]);
+    }
+    v
 }
 
 /// Schema of a layer `mask` argument.
@@ -402,6 +451,11 @@ fn mask_schema() -> Value {
         "description": "part ids from list_parts / pick_parts: limit the layer to those mesh pieces ([] = whole model)" });
     gen_fields["parts_where"] = json!({ "type": "object", "properties": list_parts_props(), "additionalProperties": false,
         "description": "select parts by shape instead of ids (same filters as list_parts, e.g. {\"max_thickness\": 0.02, \"min_area\": 0.5}); resolved to ids when set; combined with `parts` as a union" });
+    gen_fields["input"] = json!({ "type": ["object", "null"], "additionalProperties": false, "required": ["anchor"],
+        "description": "generator input: read an anchor below this layer instead of only the mesh bakes. The anchor channel's relief (value minus its local average) is added to the curvature (raised rims = edges, dents = cavities); the `anchor` generator uses the channel directly. null = bakes",
+        "properties": { "anchor": { "type": "string", "description": "anchor name (set_anchor)" }, "channel": { "type": "string", "enum": ["height", "mask", "color"], "description": "default height" },
+                        "strength": { "type": "number", "description": "relief -> curvature gain (default 4)" }, "radius": { "type": "number", "description": "relief neighbourhood, texels at 2048 (default 6)" } } });
+    gen_fields["filters"] = json!({ "type": "array", "items": filter_schema(false), "description": "replace the mask's filter stack (blur, grow, shrink, fill_holes, warp, levels...), run in order on the evaluated mask. [] removes them" });
     gen_fields["effects"] = json!({ "type": "array", "maxItems": 2, "description": "up to 2 more generators combined in order",
         "items": { "type": "object", "properties": effect, "required": ["generator"], "additionalProperties": false } });
     json!({ "type": ["string", "object", "null"], "properties": gen_fields, "additionalProperties": false,
@@ -685,6 +739,10 @@ fn call(session: &mut Option<Session>, name: &str, args: &Value) -> Result<Vec<V
         "add_smart_material" => text(s.add_smart_material(args)?),
         "add_layer" => text(s.add_layer(args)?),
         "update_layer" => text(s.update_layer(args)?),
+        "add_filter" => text(s.add_filter(args)?),
+        "update_filter" => text(s.update_filter(args)?),
+        "remove_filter" => text(s.remove_filter(args)?),
+        "set_anchor" => text(s.set_anchor(args)?),
         "delete_layer" => text(s.delete_layer(args)?),
         "bake" => text(s.bake(args)?),
         "paint_stroke" => text(s.paint_stroke(args)?),
