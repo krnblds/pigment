@@ -441,6 +441,15 @@ mod tests {
         s.new_project(&json!({ "mesh": root().join("assets/town/building_a.glb"), "resolution": 1024, "material": "Matte black" })).unwrap();
     }
 
+    /// The part of the east (+X) wall at street level (looked up, since the
+    /// town kit's part ids change as the kit evolves), and its box.
+    fn east_wall(s: &Session) -> (u32, glam::Vec3, glam::Vec3) {
+        let (t, _) = s.app.mesh.raycast(glam::Vec3::new(20.0, 1.75, 0.0), glam::Vec3::NEG_X).expect("the east wall");
+        let p = s.app.parts.triangle_part[t];
+        let i = s.app.parts.info[p as usize];
+        (p, glam::Vec3::from(i.min), glam::Vec3::from(i.max))
+    }
+
     #[test]
     fn anchored_decal_lands_on_the_chosen_face_and_undoes() {
         let _gpu = gpu_lock();
@@ -449,9 +458,11 @@ mod tests {
         // the grey environment counts too: measure against the bare wall
         let base = glow(&mut s);
         let poster = root().join("assets/decals/story/poster_unplug.png");
-        // the body's right (+X) face, middle, 1.75 m up (v from the top of a 21 m face)
+        // the east wall part's right (+X) face, 1.75 m up (v from the top of the face), at z = -2
+        let (wall, lo, hi) = east_wall(&s);
+        let (u, v) = ((-2.0 - lo.z) / (hi.z - lo.z), (hi.y - 1.75) / (hi.y - lo.y));
         let d = s
-            .project_decal(&json!({ "image": poster, "part": 1, "face": "right", "anchor": [0.5, 1.0 - 1.75 / 21.0], "size": 1.0, "rotation": 10, "emissive_strength": 3.0 }))
+            .project_decal(&json!({ "image": poster, "part": wall, "face": "right", "anchor": [1.0 - u, v], "size": 1.0, "rotation": 10, "emissive_strength": 3.0 }))
             .unwrap();
         let c = &d["center"];
         assert!((c[0].as_f64().unwrap() - 4.0).abs() < 0.05 && (c[1].as_f64().unwrap() - 1.75).abs() < 0.05, "{d}");
@@ -464,7 +475,7 @@ mod tests {
         // a world position + normal does the same; a bad face is an error, not a silent no-op
         s.project_decal(&json!({ "image": poster, "position": [4.2, 1.5, -2.0], "normal": [1, 0, 0], "size": 0.8, "emissive_strength": 3.0 })).unwrap();
         assert!(glow(&mut s).saturating_sub(base) > 100);
-        assert!(s.project_decal(&json!({ "image": poster, "part": 1, "face": "nowhere", "anchor": [0.5, 0.5] })).is_err());
+        assert!(s.project_decal(&json!({ "image": poster, "part": wall, "face": "nowhere", "anchor": [0.5, 0.5] })).is_err());
     }
 
     #[test]
@@ -477,10 +488,11 @@ mod tests {
         s.project_decal(&json!({ "image": st.join("graffiti_lying.png"), "position": [4.2, 1.6, 3.0], "normal": [1, 0, 0], "size": 2.0, "overlap_order": 1, "fade": 0.3, "wear_style": "grunge" }))
             .unwrap();
         let before = glow(&mut s);
+        let wall = east_wall(&s).0;
         let r = s
             .scatter_decals(&json!({
                 "images": [st.join("poster_missing_aiko.png"), st.join("poster_unplug.png")],
-                "count": 5, "seed": 11, "parts": [1], "region": { "min": [3.8, 0, -5.5], "max": [4.6, 5, 5.5] },
+                "count": 5, "seed": 11, "parts": [wall], "region": { "min": [3.8, 0, -5.5], "max": [4.6, 5, 5.5] },
                 "height": [0.5, 3.0], "size": [0.6, 0.8], "min_spacing": 1.0, "wear": 0.3, "fade": 0.2,
                 "overlap_order": 0, "emissive_strength": 3.0 }))
             .unwrap();
@@ -544,10 +556,11 @@ mod tests {
         let Ok(mut s) = Session::new() else { return };
         building(&mut s);
         let st = root().join("assets/decals/story");
+        let wall = east_wall(&s).0;
         let r = s
             .scatter_decals(&json!({
                 "images": [st.join("poster_missing_aiko.png"), st.join("poster_unplug.png")],
-                "count": 4, "seed": 5, "parts": [1], "region": { "min": [3.8, 0, -5.5], "max": [4.6, 5, 5.5] },
+                "count": 4, "seed": 5, "parts": [wall], "region": { "min": [3.8, 0, -5.5], "max": [4.6, 5, 5.5] },
                 "height": [0.5, 3.0], "size": [0.6, 0.8], "rotation_jitter": 8, "wear": 0.3, "fade": 0.2,
                 "overlap_order": 0, "emissive_strength": 3.0, "variant": "posters" }))
             .unwrap();

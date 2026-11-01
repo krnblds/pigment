@@ -143,10 +143,23 @@ impl Placement {
             if d > self.depth || n.dot(self.normal).abs() < 0.3 || best.is_some_and(|(bd, _)| d >= bd) {
                 continue;
             }
+            // the centre must really be over the triangle: barycentrics of sliver
+            // triangles are unstable, so check its box first
+            let (lo, hi) = (p[0].min(p[1]).min(p[2]) - Vec3::splat(self.depth), p[0].max(p[1]).max(p[2]) + Vec3::splat(self.depth));
+            if self.center.cmplt(lo).any() || self.center.cmpgt(hi).any() {
+                continue;
+            }
             if barycentric(self.center, p[0], p[1], p[2]).min_element() < -1e-4 {
                 continue;
             }
             let uv = v.map(|v| Vec2::from(v.uv));
+            // triangles with (almost) no texture space receive no visible paint:
+            // skip them (less than ~1 texel per metre at 1K)
+            let uv_area = (uv[1] - uv[0]).perp_dot(uv[2] - uv[0]).abs();
+            let area = (p[1] - p[0]).cross(p[2] - p[0]).length();
+            if uv_area < area * 1e-6 {
+                continue;
+            }
             let map = |q: Vec3| {
                 let w = barycentric(q, p[0], p[1], p[2]);
                 uv[0] * w.x + uv[1] * w.y + uv[2] * w.z
