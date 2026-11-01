@@ -217,7 +217,8 @@ func _flush() -> void:
 	_acc = {}
 	if a.w <= 0.0:
 		return
-	apply_impact(a.p / a.w, a.d.normalized(), a.j, a.other)
+	var other: Object = a.other if is_instance_valid(a.other) else null
+	apply_impact(a.p / a.w, a.d.normalized(), a.j, other)
 
 
 func _scrape(st: PhysicsDirectBodyState3D, delta: float) -> void:
