@@ -119,7 +119,8 @@ def fill(name, parts=None, values=None, *extra, **kw):
     m = {}
     if parts is not None:
         if not parts:
-            raise SystemExit(f"layer {name!r}: empty part selection")
+            print(f"   (skipped layer {name!r}: no parts in this vehicle)")
+            return None
         m["parts"] = parts
     if gen:
         m.update(gen)
@@ -252,16 +253,16 @@ def light_wear_block(P, paint, exterior):
         fill("Gap grime", exterior, {"base_color": [0.06, 0.055, 0.05], "roughness": 0.85, "coat": 0.0},
              {"generator": "dirt", "amount": 0.42, "softness": 0.2, "breakup": 0.5}, opacity=0.8, channels=NO_HEIGHT),
         fill("Rain streaks", P.group("paint", "chrome", "black_trim", "cargo"), {"base_color": [0.08, 0.075, 0.07], "roughness": 0.55, "coat_roughness": 0.3},
-             {"generator": "leaks", "amount": 0.40, "scale": 3.0, "breakup": 0.6, "drip_length": 0.6, "ao_influence": 0.3, "softness": 0.15},
-             opacity=0.45, channels=NO_HEIGHT),
+             {"generator": "leaks", "amount": 0.30, "scale": 3.0, "breakup": 0.65, "drip_length": 0.5, "ao_influence": 0.4, "softness": 0.15},
+             opacity=0.22, channels=NO_HEIGHT),
         fill("Water spots", P.group("glass"), {"base_color": [0.2, 0.2, 0.2], "roughness": 0.25, "opacity": 0.55},
              {"generator": "spots", "amount": 0.15, "scale": 40.0, "softness": 0.1}, opacity=0.3, channels=NO_HEIGHT),
         fill("Road dirt", exterior + P.group("underbody"), ROAD_DIRT,
-             {"generator": "gradient", "amount": 0.17, "softness": 0.05, "breakup": 0.55, "scale": 3.0,
-              "effects": [{"generator": "grunge", "op": "multiply", "amount": 0.75, "scale": 2.5, "softness": 0.25}]},
-             opacity=0.85, channels=NO_HEIGHT),
+             {"generator": "gradient", "amount": 0.12, "softness": 0.05, "breakup": 0.55, "scale": 3.0,
+              "effects": [{"generator": "grunge", "op": "multiply", "amount": 0.7, "scale": 2.5, "softness": 0.25}]},
+             opacity=0.7, channels=NO_HEIGHT),
         fill("Road spray", exterior, {"base_color": [0.12, 0.11, 0.1], "roughness": 0.7, "coat_roughness": 0.4},
-             {"generator": "gradient", "amount": 0.28, "softness": 0.12, "breakup": 0.7, "scale": 6.0}, opacity=0.3, channels=NO_HEIGHT),
+             {"generator": "gradient", "amount": 0.22, "softness": 0.12, "breakup": 0.7, "scale": 6.0}, opacity=0.2, channels=NO_HEIGHT),
         fill("Cabin dust", P.group("interior_dark", "interior_plastic", "interior_carpet"), {"base_color": [0.12, 0.11, 0.1], "roughness": 0.9},
              {"generator": "dirt", "amount": 0.35, "softness": 0.3}, opacity=0.4, channels=NO_HEIGHT),
     ]
@@ -649,6 +650,7 @@ def texture(vid, what, no_run=False):
                 L = body_finish(body_script(vid, P, spec, fv, pt), vid, fv, pt, variants_def(fv))
         else:
             L = wheel_script(vid, P, fv, pt)
+        L = [l for l in L if l is not None]
         path = pt["scripts"] / f"{vid}_{w}.jsonl"
         if no_run:
             path.parent.mkdir(parents=True, exist_ok=True)

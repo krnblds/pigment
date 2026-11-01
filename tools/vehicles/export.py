@@ -196,7 +196,7 @@ def set_variants(mesh, mats, names):
         vv.variant.variant_idx = i
 
 
-def export(path, objs, fmt="WEBP", quality=88):
+def export(path, objs, fmt="WEBP", quality=82):
     bpy.ops.object.select_all(action="DESELECT")
     for o in objs:
         o.hide_set(False)
