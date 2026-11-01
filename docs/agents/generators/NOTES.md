@@ -40,7 +40,7 @@ Also new: `render` takes `target: [x, y, z]` (orbit centre in world metres) for 
 - **bakes.b = drip**: `1 / (1 + metres down to the nearest protrusion above)`, 0 where nothing sticks out above. The mesh is cut into horizontal slices (step = height / 256, at least 2 cm); per slice an orthographic depth map looks straight *up* from the slice top, so it holds the lowest surface above it within 6 m. Wall texels in the slice band look up the column just outside their wall (pushed out ~2.5 depth texels, about 1-2 cm, along the horizontal normal): anything there sticks out of the wall above them. This finds the *nearest* feature, so stacked sills on every floor each get their own leaks (the AO shadow maps only keep the first hit from above). Depth map size scales with the mesh (~8 mm texels, 512..4096). `render/bake.rs: bake_drip`, `bake_ao.wgsl: fs_drip`.
 - **bakes.a = rain exposure**: fraction of near-vertical directions (cos-weighted towards straight up) from which the texel is unoccluded at any distance, computed in the existing AO pass. Open ground ~0.9, a wall ~0.5 (rain from its own side), under an awning ~0. Unbaked default 1.
 
-Bake cost on building_a (24 m, 4096²): the drip slices add on the order of a second to the existing AO bake.
+Bake cost: up to 257 extra depth renders plus full-screen passes (like the AO's 128 directions); not separately timed, and the whole 4096² building_a script, bake included, runs in well under a minute here.
 
 ## Proof
 
