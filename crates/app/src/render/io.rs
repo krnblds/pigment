@@ -31,7 +31,7 @@ pub fn read_layer(device: &wgpu::Device, queue: &wgpu::Queue, ts: &TexSet, res: 
         .enumerate()
         .map(|(i, v)| if i % 4 == 3 { unorm16(v) } else { unorm16(v / 16.0) })
         .collect();
-    Some(LayerPixels { size: ts.res, color: rb(0), roughness: rb(1), metallic: rb(2), height, normal: rb(4), emissive, opacity: rb(6), transmission: rb(7) })
+    Some(LayerPixels { size: ts.res, color: rb(0), roughness: rb(1), metallic: rb(2), height, normal: rb(4), emissive, opacity: rb(6), transmission: rb(7), coat: rb(8), coat_roughness: rb(9), flake: rb(10) })
 }
 
 pub fn upload_layer(device: &wgpu::Device, queue: &wgpu::Queue, ts: &mut TexSet, res: ResId, px: &LayerPixels) {
@@ -62,6 +62,9 @@ pub fn upload_layer(device: &wgpu::Device, queue: &wgpu::Queue, ts: &mut TexSet,
     gpu::upload(queue, &l.ch[5], bytemuck::cast_slice(&e));
     gpu::upload(queue, &l.ch[6], &px.opacity);
     gpu::upload(queue, &l.ch[7], &px.transmission);
+    gpu::upload(queue, &l.ch[8], &px.coat);
+    gpu::upload(queue, &l.ch[9], &px.coat_roughness);
+    gpu::upload(queue, &l.ch[10], &px.flake);
     ts.layers.insert(res, l);
 }
 
@@ -109,8 +112,9 @@ fn f16_lut<T>(f: impl Fn(f32) -> T) -> Vec<T> {
 /// one GPU round trip; the half-float conversions are table lookups (one
 /// entry per f16 bit pattern) spread over all cores.
 pub fn read_material(device: &wgpu::Device, queue: &wgpu::Queue, ts: &TexSet) -> MaterialImages {
-    let mut maps = gpu::readback_many(device, queue, &[&ts.material[0], &ts.material[1], &ts.material[2], &ts.material[3], &ts.emissive]).into_iter();
+    let mut maps = gpu::readback_many(device, queue, &[&ts.material[0], &ts.material[1], &ts.material[2], &ts.material[3], &ts.emissive, &ts.coat]).into_iter();
     let (color, orm, normal, h, e) = (maps.next().unwrap(), maps.next().unwrap(), maps.next().unwrap(), maps.next().unwrap(), maps.next().unwrap());
+    let coat = maps.next().unwrap();
     // emission is HDR: normalise so the brightest texel is 1, report the scale
     let peak = f16::from_bits(par_chunks(&e, 8, |c| vec![f16_peak(c, true)]).into_iter().max().unwrap_or(0)).to_f32();
     let scale = if peak > 1.0 { peak } else { 1.0 };
@@ -128,7 +132,7 @@ pub fn read_material(device: &wgpu::Device, queue: &wgpu::Queue, ts: &TexSet) ->
     });
     let hl = f16_lut(|v| unorm16(v * 0.5 + 0.5));
     let height = par_chunks(&h, 2, |c| c.chunks_exact(2).map(|p| hl[u16::from_le_bytes([p[0], p[1]]) as usize]).collect());
-    MaterialImages { size: ts.res, color, orm, normal, height, emissive, emissive_scale: scale }
+    MaterialImages { size: ts.res, color, orm, normal, height, emissive, emissive_scale: scale, coat }
 }
 
 /// Move all layer and mask pixels into `dst` (a fresh TexSet at a new

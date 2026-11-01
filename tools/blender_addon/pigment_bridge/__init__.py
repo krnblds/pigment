@@ -53,6 +53,7 @@ def _options(s):
         "displacement_scale": s.displacement_scale,
         "ao_strength": s.ao_strength,
         "emission_mult": s.emission_mult,
+        "flake_normal": s.flake_normal,
     }
 
 
@@ -77,6 +78,9 @@ class PigmentBridgeSettings(bpy.types.PropertyGroup):
     ao_strength: FloatProperty(name="AO into base colour", default=0.5, min=0.0, max=1.0)
     emission_mult: FloatProperty(name="Emission ×", default=1.0, min=0.0, soft_max=20.0,
                                  description="Multiplier on Pigment's exported emissive_scale")
+    flake_normal: BoolProperty(name="Metallic flake sparkle", default=True,
+                               description="With a Flake map: jitter the base normal per tiny cell under the clearcoat "
+                                           "(turn off before a glTF export, which can't carry the procedural normal)")
     auto_reload: BoolProperty(name="Auto-reload", default=True,
                               description="Watch linked texture files and reload them when Pigment re-exports")
     watch_projects: BoolProperty(name="Re-export linked projects", default=False,
@@ -237,6 +241,7 @@ class PIGMENT_PT_bridge(bpy.types.Panel):
             box.prop(s, "add_subdivision")
         box.prop(s, "ao_strength")
         box.prop(s, "emission_mult")
+        box.prop(s, "flake_normal")
 
         lay.operator(PIGMENT_OT_link.bl_idname, icon="LINKED")
         row = lay.row(align=True)

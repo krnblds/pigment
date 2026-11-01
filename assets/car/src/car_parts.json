@@ -1,0 +1,5442 @@
+{
+ "format": "car-parts",
+ "version": 1,
+ "coords": "glTF (Y up, the car faces +Z)",
+ "groups": [
+  "black_metal",
+  "black_trim",
+  "brake_disc",
+  "caliper",
+  "chrome",
+  "emitter_amber",
+  "emitter_blue",
+  "emitter_head",
+  "emitter_red",
+  "emitter_reverse",
+  "emitter_tail",
+  "exhaust",
+  "frit",
+  "glass",
+  "grille",
+  "interior_carpet",
+  "interior_dark",
+  "interior_fabric",
+  "interior_leather",
+  "interior_plastic",
+  "lens_amber",
+  "lens_clear",
+  "lens_red",
+  "lightbar_center",
+  "lightbar_lens_blue",
+  "lightbar_lens_red",
+  "lug",
+  "mirror",
+  "paint",
+  "plate",
+  "rim",
+  "rubber",
+  "screen",
+  "spring",
+  "suspension",
+  "tyre",
+  "underbody",
+  "underbody_metal"
+ ],
+ "body": [
+  {
+   "name": "body_shell",
+   "group": "paint",
+   "pieces": [
+    {
+     "center": [
+      0.0,
+      0.7476,
+      -0.0142
+     ],
+     "size": [
+      1.7704,
+      1.1951,
+      4.4729
+     ],
+     "triangles": 18049
+    }
+   ]
+  },
+  {
+   "name": "bumper_F",
+   "group": "paint",
+   "pieces": [
+    {
+     "center": [
+      0.0,
+      0.3403,
+      2.0105
+     ],
+     "size": [
+      1.7318,
+      0.3509,
+      0.4365
+     ],
+     "triangles": 2943
+    }
+   ]
+  },
+  {
+   "name": "hood",
+   "group": "paint",
+   "pieces": [
+    {
+     "center": [
+      0.0,
+      0.7471,
+      1.4719
+     ],
+     "size": [
+      1.6546,
+      0.1738,
+      1.3016
+     ],
+     "triangles": 2230
+    }
+   ]
+  },
+  {
+   "name": "bumper_R",
+   "group": "paint",
+   "pieces": [
+    {
+     "center": [
+      -0.0,
+      0.3462,
+      -2.057
+     ],
+     "size": [
+      1.733,
+      0.347,
+      0.3894
+     ],
+     "triangles": 1865
+    }
+   ]
+  },
+  {
+   "name": "door_FR",
+   "group": "paint",
+   "pieces": [
+    {
+     "center": [
+      -0.7164,
+      0.7887,
+      0.31
+     ],
+     "size": [
+      0.3399,
+      0.9629,
+      1.0455
+     ],
+     "triangles": 2120
+    }
+   ]
+  },
+  {
+   "name": "door_FL",
+   "group": "paint",
+   "pieces": [
+    {
+     "center": [
+      0.7665,
+      0.7887,
+      0.31
+     ],
+     "size": [
+      0.2397,
+      0.9629,
+      1.0455
+     ],
+     "triangles": 2198
+    }
+   ]
+  },
+  {
+   "name": "trunk_lid",
+   "group": "paint",
+   "pieces": [
+    {
+     "center": [
+      0.0,
+      0.9025,
+      -1.905
+     ],
+     "size": [
+      1.6478,
+      0.0864,
+      0.5355
+     ],
+     "triangles": 1478
+    }
+   ]
+  },
+  {
+   "name": "door_RR",
+   "group": "paint",
+   "pieces": [
+    {
+     "center": [
+      -0.7664,
+      0.7955,
+      -0.6569
+     ],
+     "size": [
+      0.2399,
+      0.9764,
+      0.877
+     ],
+     "triangles": 1373
+    }
+   ]
+  },
+  {
+   "name": "door_RL",
+   "group": "paint",
+   "pieces": [
+    {
+     "center": [
+      0.7664,
+      0.7955,
+      -0.6569
+     ],
+     "size": [
+      0.2398,
+      0.9764,
+      0.877
+     ],
+     "triangles": 1243
+    }
+   ]
+  },
+  {
+   "name": "fuel_door",
+   "group": "paint",
+   "pieces": [
+    {
+     "center": [
+      0.8727,
+      0.73,
+      -1.64
+     ],
+     "size": [
+      0.0204,
+      0.117,
+      0.177
+     ],
+     "triangles": 182
+    }
+   ]
+  },
+  {
+   "name": "glass_door_glass_F_R",
+   "group": "glass",
+   "pieces": [
+    {
+     "center": [
+      -0.7389,
+      1.0451,
+      0.1753
+     ],
+     "size": [
+      0.1239,
+      0.3654,
+      0.6414
+     ],
+     "triangles": 239
+    }
+   ]
+  },
+  {
+   "name": "glass_door_glass_R_R",
+   "group": "glass",
+   "pieces": [
+    {
+     "center": [
+      -0.7404,
+      1.0676,
+      -0.6102
+     ],
+     "size": [
+      0.1221,
+      0.3623,
+      0.6404
+     ],
+     "triangles": 155
+    }
+   ]
+  },
+  {
+   "name": "glass_door_glass_F_L",
+   "group": "glass",
+   "pieces": [
+    {
+     "center": [
+      0.7389,
+      1.0459,
+      0.1855
+     ],
+     "size": [
+      0.1238,
+      0.3639,
+      0.6618
+     ],
+     "triangles": 247
+    }
+   ]
+  },
+  {
+   "name": "glass_door_glass_R_L",
+   "group": "glass",
+   "pieces": [
+    {
+     "center": [
+      0.7405,
+      1.0655,
+      -0.6103
+     ],
+     "size": [
+      0.122,
+      0.358,
+      0.6405
+     ],
+     "triangles": 144
+    }
+   ]
+  },
+  {
+   "name": "glass_windshield",
+   "group": "glass",
+   "pieces": [
+    {
+     "center": [
+      0.0,
+      1.0634,
+      0.3832
+     ],
+     "size": [
+      1.1876,
+      0.4318,
+      0.7015
+     ],
+     "triangles": 598
+    }
+   ]
+  },
+  {
+   "name": "glass_rear_window",
+   "group": "glass",
+   "pieces": [
+    {
+     "center": [
+      0.0001,
+      1.0884,
+      -1.2669
+     ],
+     "size": [
+      1.1856,
+      0.3102,
+      0.5086
+     ],
+     "triangles": 477
+    }
+   ]
+  },
+  {
+   "name": "headlight_lens_L",
+   "group": "lens_clear",
+   "pieces": [
+    {
+     "center": [
+      0.6028,
+      0.6034,
+      2.1311
+     ],
+     "size": [
+      0.4463,
+      0.1409,
+      0.1523
+     ],
+     "triangles": 550
+    }
+   ]
+  },
+  {
+   "name": "indicator_lens_L",
+   "group": "lens_amber",
+   "pieces": [
+    {
+     "center": [
+      0.7072,
+      0.4519,
+      2.1538
+     ],
+     "size": [
+      0.1779,
+      0.0549,
+      0.0875
+     ],
+     "triangles": 68
+    }
+   ]
+  },
+  {
+   "name": "headlight_lens_R",
+   "group": "lens_clear",
+   "pieces": [
+    {
+     "center": [
+      -0.6028,
+      0.6024,
+      2.1319
+     ],
+     "size": [
+      0.4463,
+      0.1439,
+      0.1511
+     ],
+     "triangles": 568
+    }
+   ]
+  },
+  {
+   "name": "indicator_lens_R",
+   "group": "lens_amber",
+   "pieces": [
+    {
+     "center": [
+      -0.7072,
+      0.4525,
+      2.1538
+     ],
+     "size": [
+      0.1779,
+      0.0555,
+      0.0875
+     ],
+     "triangles": 70
+    }
+   ]
+  },
+  {
+   "name": "taillight_lens",
+   "group": "lens_red",
+   "pieces": [
+    {
+     "center": [
+      0.0,
+      0.7959,
+      -2.1698
+     ],
+     "size": [
+      1.6808,
+      0.1238,
+      0.1423
+     ],
+     "triangles": 923
+    }
+   ]
+  },
+  {
+   "name": "headlight_housing_L",
+   "group": "black_trim",
+   "pieces": [
+    {
+     "center": [
+      0.6,
+      0.602,
+      2.0345
+     ],
+     "size": [
+      0.4,
+      0.13,
+      0.2
+     ],
+     "triangles": 108
+    }
+   ]
+  },
+  {
+   "name": "headlight_reflector_L0",
+   "group": "chrome",
+   "pieces": [
+    {
+     "center": [
+      0.7,
+      0.602,
+      2.1058
+     ],
+     "size": [
+      0.128,
+      0.128,
+      0.079
+     ],
+     "triangles": 160
+    }
+   ]
+  },
+  {
+   "name": "headlight_bulb_L0",
+   "group": "emitter_head",
+   "pieces": [
+    {
+     "center": [
+      0.7,
+      0.602,
+      2.1113
+     ],
+     "size": [
+      0.0266,
+      0.028,
+      0.0266
+     ],
+     "triangles": 64
+    }
+   ]
+  },
+  {
+   "name": "headlight_reflector_L1",
+   "group": "chrome",
+   "pieces": [
+    {
+     "center": [
+      0.505,
+      0.602,
+      2.1285
+     ],
+     "size": [
+      0.112,
+      0.112,
+      0.079
+     ],
+     "triangles": 160
+    }
+   ]
+  },
+  {
+   "name": "headlight_bulb_L1",
+   "group": "emitter_head",
+   "pieces": [
+    {
+     "center": [
+      0.505,
+      0.602,
+      2.134
+     ],
+     "size": [
+      0.0266,
+      0.028,
+      0.0266
+     ],
+     "triangles": 64
+    }
+   ]
+  },
+  {
+   "name": "headlight_shroud_L",
+   "group": "black_trim",
+   "pieces": [
+    {
+     "center": [
+      0.505,
+      0.602,
+      2.165
+     ],
+     "size": [
+      0.082,
+      0.082,
+      0.034
+     ],
+     "triangles": 120
+    }
+   ]
+  },
+  {
+   "name": "headlight_projector_L",
+   "group": "lens_clear",
+   "pieces": [
+    {
+     "center": [
+      0.505,
+      0.602,
+      2.176
+     ],
+     "size": [
+      0.062,
+      0.062,
+      0.0341
+     ],
+     "triangles": 288
+    }
+   ]
+  },
+  {
+   "name": "headlight_drl_L",
+   "group": "emitter_head",
+   "pieces": [
+    {
+     "center": [
+      0.6,
+      0.552,
+      2.1776
+     ],
+     "size": [
+      0.36,
+      0.01,
+      0.012
+     ],
+     "triangles": 12
+    }
+   ]
+  },
+  {
+   "name": "indicator_F_L",
+   "group": "emitter_amber",
+   "pieces": [
+    {
+     "center": [
+      0.71,
+      0.45,
+      2.1516
+     ],
+     "size": [
+      0.17,
+      0.045,
+      0.04
+     ],
+     "triangles": 108
+    }
+   ]
+  },
+  {
+   "name": "headlight_housing_R",
+   "group": "black_trim",
+   "pieces": [
+    {
+     "center": [
+      -0.6,
+      0.602,
+      2.0345
+     ],
+     "size": [
+      0.4,
+      0.13,
+      0.2
+     ],
+     "triangles": 108
+    }
+   ]
+  },
+  {
+   "name": "headlight_reflector_R0",
+   "group": "chrome",
+   "pieces": [
+    {
+     "center": [
+      -0.7,
+      0.602,
+      2.1058
+     ],
+     "size": [
+      0.128,
+      0.128,
+      0.079
+     ],
+     "triangles": 160
+    }
+   ]
+  },
+  {
+   "name": "headlight_bulb_R0",
+   "group": "emitter_head",
+   "pieces": [
+    {
+     "center": [
+      -0.7,
+      0.602,
+      2.1113
+     ],
+     "size": [
+      0.0266,
+      0.028,
+      0.0266
+     ],
+     "triangles": 64
+    }
+   ]
+  },
+  {
+   "name": "headlight_reflector_R1",
+   "group": "chrome",
+   "pieces": [
+    {
+     "center": [
+      -0.505,
+      0.602,
+      2.1284
+     ],
+     "size": [
+      0.112,
+      0.112,
+      0.079
+     ],
+     "triangles": 160
+    }
+   ]
+  },
+  {
+   "name": "headlight_bulb_R1",
+   "group": "emitter_head",
+   "pieces": [
+    {
+     "center": [
+      -0.505,
+      0.602,
+      2.1339
+     ],
+     "size": [
+      0.0266,
+      0.028,
+      0.0266
+     ],
+     "triangles": 64
+    }
+   ]
+  },
+  {
+   "name": "headlight_shroud_R",
+   "group": "black_trim",
+   "pieces": [
+    {
+     "center": [
+      -0.505,
+      0.602,
+      2.1649
+     ],
+     "size": [
+      0.082,
+      0.082,
+      0.034
+     ],
+     "triangles": 120
+    }
+   ]
+  },
+  {
+   "name": "headlight_projector_R",
+   "group": "lens_clear",
+   "pieces": [
+    {
+     "center": [
+      -0.505,
+      0.602,
+      2.1759
+     ],
+     "size": [
+      0.062,
+      0.062,
+      0.0341
+     ],
+     "triangles": 288
+    }
+   ]
+  },
+  {
+   "name": "headlight_drl_R",
+   "group": "emitter_head",
+   "pieces": [
+    {
+     "center": [
+      -0.6,
+      0.552,
+      2.1776
+     ],
+     "size": [
+      0.36,
+      0.01,
+      0.012
+     ],
+     "triangles": 12
+    }
+   ]
+  },
+  {
+   "name": "indicator_F_R",
+   "group": "emitter_amber",
+   "pieces": [
+    {
+     "center": [
+      -0.71,
+      0.45,
+      2.1516
+     ],
+     "size": [
+      0.17,
+      0.045,
+      0.04
+     ],
+     "triangles": 108
+    }
+   ]
+  },
+  {
+   "name": "taillight_housing",
+   "group": "black_trim",
+   "pieces": [
+    {
+     "center": [
+      0.0,
+      0.795,
+      -2.1235
+     ],
+     "size": [
+      1.54,
+      0.11,
+      0.16
+     ],
+     "triangles": 108
+    }
+   ]
+  },
+  {
+   "name": "tail_brake_L",
+   "group": "emitter_tail",
+   "pieces": [
+    {
+     "center": [
+      0.735,
+      0.795,
+      -2.175
+     ],
+     "size": [
+      0.2,
+      0.095,
+      0.03
+     ],
+     "triangles": 108
+    }
+   ]
+  },
+  {
+   "name": "tail_indicator_L",
+   "group": "emitter_amber",
+   "pieces": [
+    {
+     "center": [
+      0.565,
+      0.795,
+      -2.1951
+     ],
+     "size": [
+      0.1,
+      0.095,
+      0.03
+     ],
+     "triangles": 108
+    }
+   ]
+  },
+  {
+   "name": "tail_reverse_L",
+   "group": "emitter_reverse",
+   "pieces": [
+    {
+     "center": [
+      0.445,
+      0.795,
+      -2.2012
+     ],
+     "size": [
+      0.1,
+      0.095,
+      0.03
+     ],
+     "triangles": 108
+    }
+   ]
+  },
+  {
+   "name": "tail_brake_R",
+   "group": "emitter_tail",
+   "pieces": [
+    {
+     "center": [
+      -0.735,
+      0.795,
+      -2.175
+     ],
+     "size": [
+      0.2,
+      0.095,
+      0.03
+     ],
+     "triangles": 108
+    }
+   ]
+  },
+  {
+   "name": "tail_indicator_R",
+   "group": "emitter_amber",
+   "pieces": [
+    {
+     "center": [
+      -0.565,
+      0.795,
+      -2.1951
+     ],
+     "size": [
+      0.1,
+      0.095,
+      0.03
+     ],
+     "triangles": 108
+    }
+   ]
+  },
+  {
+   "name": "tail_reverse_R",
+   "group": "emitter_reverse",
+   "pieces": [
+    {
+     "center": [
+      -0.445,
+      0.795,
+      -2.2012
+     ],
+     "size": [
+      0.1,
+      0.095,
+      0.03
+     ],
+     "triangles": 108
+    }
+   ]
+  },
+  {
+   "name": "tail_reflector_L",
+   "group": "chrome",
+   "pieces": [
+    {
+     "center": [
+      0.62,
+      0.795,
+      -2.1512
+     ],
+     "size": [
+      0.46,
+      0.1,
+      0.008
+     ],
+     "triangles": 12
+    }
+   ]
+  },
+  {
+   "name": "tail_fin_L_835",
+   "group": "black_trim",
+   "pieces": [
+    {
+     "center": [
+      0.835,
+      0.795,
+      -2.0807
+     ],
+     "size": [
+      0.008,
+      0.1,
+      0.06
+     ],
+     "triangles": 12
+    }
+   ]
+  },
+  {
+   "name": "tail_fin_L_625",
+   "group": "black_trim",
+   "pieces": [
+    {
+     "center": [
+      0.625,
+      0.795,
+      -2.1808
+     ],
+     "size": [
+      0.008,
+      0.1,
+      0.06
+     ],
+     "triangles": 12
+    }
+   ]
+  },
+  {
+   "name": "tail_fin_L_505",
+   "group": "black_trim",
+   "pieces": [
+    {
+     "center": [
+      0.505,
+      0.795,
+      -2.1885
+     ],
+     "size": [
+      0.008,
+      0.1,
+      0.06
+     ],
+     "triangles": 12
+    }
+   ]
+  },
+  {
+   "name": "tail_fin_L_390",
+   "group": "black_trim",
+   "pieces": [
+    {
+     "center": [
+      0.39,
+      0.795,
+      -2.1929
+     ],
+     "size": [
+      0.008,
+      0.1,
+      0.06
+     ],
+     "triangles": 12
+    }
+   ]
+  },
+  {
+   "name": "tail_reflector_R",
+   "group": "chrome",
+   "pieces": [
+    {
+     "center": [
+      -0.62,
+      0.795,
+      -2.1511
+     ],
+     "size": [
+      0.46,
+      0.1,
+      0.008
+     ],
+     "triangles": 12
+    }
+   ]
+  },
+  {
+   "name": "tail_fin_R_835",
+   "group": "black_trim",
+   "pieces": [
+    {
+     "center": [
+      -0.835,
+      0.795,
+      -2.0807
+     ],
+     "size": [
+      0.008,
+      0.1,
+      0.06
+     ],
+     "triangles": 12
+    }
+   ]
+  },
+  {
+   "name": "tail_fin_R_625",
+   "group": "black_trim",
+   "pieces": [
+    {
+     "center": [
+      -0.625,
+      0.795,
+      -2.1807
+     ],
+     "size": [
+      0.008,
+      0.1,
+      0.06
+     ],
+     "triangles": 12
+    }
+   ]
+  },
+  {
+   "name": "tail_fin_R_505",
+   "group": "black_trim",
+   "pieces": [
+    {
+     "center": [
+      -0.505,
+      0.795,
+      -2.1885
+     ],
+     "size": [
+      0.008,
+      0.1,
+      0.06
+     ],
+     "triangles": 12
+    }
+   ]
+  },
+  {
+   "name": "tail_fin_R_390",
+   "group": "black_trim",
+   "pieces": [
+    {
+     "center": [
+      -0.39,
+      0.795,
+      -2.1929
+     ],
+     "size": [
+      0.008,
+      0.1,
+      0.06
+     ],
+     "triangles": 12
+    }
+   ]
+  },
+  {
+   "name": "tail_center_rib_0",
+   "group": "emitter_tail",
+   "pieces": [
+    {
+     "center": [
+      0.0,
+      0.759,
+      -2.2235
+     ],
+     "size": [
+      0.76,
+      0.012,
+      0.012
+     ],
+     "triangles": 108
+    }
+   ]
+  },
+  {
+   "name": "tail_center_rib_1",
+   "group": "emitter_tail",
+   "pieces": [
+    {
+     "center": [
+      0.0,
+      0.783,
+      -2.2225
+     ],
+     "size": [
+      0.76,
+      0.012,
+      0.012
+     ],
+     "triangles": 108
+    }
+   ]
+  },
+  {
+   "name": "tail_center_rib_2",
+   "group": "emitter_tail",
+   "pieces": [
+    {
+     "center": [
+      0.0,
+      0.807,
+      -2.2193
+     ],
+     "size": [
+      0.76,
+      0.012,
+      0.012
+     ],
+     "triangles": 108
+    }
+   ]
+  },
+  {
+   "name": "tail_center_rib_3",
+   "group": "emitter_tail",
+   "pieces": [
+    {
+     "center": [
+      0.0,
+      0.831,
+      -2.2089
+     ],
+     "size": [
+      0.76,
+      0.012,
+      0.012
+     ],
+     "triangles": 108
+    }
+   ]
+  },
+  {
+   "name": "tail_third_brake",
+   "group": "emitter_tail",
+   "pieces": [
+    {
+     "center": [
+      0.0,
+      1.1283,
+      -1.06
+     ],
+     "size": [
+      0.34,
+      0.034,
+      0.0362
+     ],
+     "triangles": 108
+    }
+   ]
+  },
+  {
+   "name": "grille_back",
+   "group": "black_trim",
+   "pieces": [
+    {
+     "center": [
+      0.0,
+      0.602,
+      2.1492
+     ],
+     "size": [
+      0.7,
+      0.13,
+      0.02
+     ],
+     "triangles": 12
+    }
+   ]
+  },
+  {
+   "name": "grille_slat_0",
+   "group": "grille",
+   "pieces": [
+    {
+     "center": [
+      0.0,
+      0.558,
+      2.2037
+     ],
+     "size": [
+      0.68,
+      0.007,
+      0.025
+     ],
+     "triangles": 108
+    }
+   ]
+  },
+  {
+   "name": "grille_slat_1",
+   "group": "grille",
+   "pieces": [
+    {
+     "center": [
+      0.0,
+      0.58,
+      2.2008
+     ],
+     "size": [
+      0.68,
+      0.007,
+      0.025
+     ],
+     "triangles": 108
+    }
+   ]
+  },
+  {
+   "name": "grille_slat_2",
+   "group": "grille",
+   "pieces": [
+    {
+     "center": [
+      0.0,
+      0.602,
+      2.1932
+     ],
+     "size": [
+      0.68,
+      0.007,
+      0.025
+     ],
+     "triangles": 108
+    }
+   ]
+  },
+  {
+   "name": "grille_slat_3",
+   "group": "grille",
+   "pieces": [
+    {
+     "center": [
+      0.0,
+      0.624,
+      2.1823
+     ],
+     "size": [
+      0.68,
+      0.007,
+      0.025
+     ],
+     "triangles": 108
+    }
+   ]
+  },
+  {
+   "name": "grille_slat_4",
+   "group": "grille",
+   "pieces": [
+    {
+     "center": [
+      0.0,
+      0.646,
+      2.1666
+     ],
+     "size": [
+      0.68,
+      0.007,
+      0.025
+     ],
+     "triangles": 108
+    }
+   ]
+  },
+  {
+   "name": "grille_badge",
+   "group": "chrome",
+   "pieces": [
+    {
+     "center": [
+      0.0,
+      0.602,
+      2.1992
+     ],
+     "size": [
+      0.072,
+      0.072,
+      0.012
+     ],
+     "triangles": 120
+    }
+   ]
+  },
+  {
+   "name": "intake_mesh_L",
+   "group": "black_trim",
+   "pieces": [
+    {
+     "center": [
+      0.39,
+      0.332,
+      2.185
+     ],
+     "size": [
+      0.34,
+      0.13,
+      0.012
+     ],
+     "triangles": 12
+    }
+   ]
+  },
+  {
+   "name": "intake_bar_L0",
+   "group": "black_trim",
+   "pieces": [
+    {
+     "center": [
+      0.26,
+      0.332,
+      2.2
+     ],
+     "size": [
+      0.012,
+      0.12,
+      0.03
+     ],
+     "triangles": 12
+    }
+   ]
+  },
+  {
+   "name": "intake_bar_L1",
+   "group": "black_trim",
+   "pieces": [
+    {
+     "center": [
+      0.345,
+      0.332,
+      2.2
+     ],
+     "size": [
+      0.012,
+      0.12,
+      0.03
+     ],
+     "triangles": 12
+    }
+   ]
+  },
+  {
+   "name": "intake_bar_L2",
+   "group": "black_trim",
+   "pieces": [
+    {
+     "center": [
+      0.43,
+      0.332,
+      2.2
+     ],
+     "size": [
+      0.012,
+      0.12,
+      0.03
+     ],
+     "triangles": 12
+    }
+   ]
+  },
+  {
+   "name": "intake_bar_L3",
+   "group": "black_trim",
+   "pieces": [
+    {
+     "center": [
+      0.515,
+      0.332,
+      2.2
+     ],
+     "size": [
+      0.012,
+      0.12,
+      0.03
+     ],
+     "triangles": 12
+    }
+   ]
+  },
+  {
+   "name": "intake_mesh_R",
+   "group": "black_trim",
+   "pieces": [
+    {
+     "center": [
+      -0.39,
+      0.332,
+      2.1851
+     ],
+     "size": [
+      0.34,
+      0.13,
+      0.012
+     ],
+     "triangles": 12
+    }
+   ]
+  },
+  {
+   "name": "intake_bar_R0",
+   "group": "black_trim",
+   "pieces": [
+    {
+     "center": [
+      -0.26,
+      0.332,
+      2.2001
+     ],
+     "size": [
+      0.012,
+      0.12,
+      0.03
+     ],
+     "triangles": 12
+    }
+   ]
+  },
+  {
+   "name": "intake_bar_R1",
+   "group": "black_trim",
+   "pieces": [
+    {
+     "center": [
+      -0.345,
+      0.332,
+      2.2001
+     ],
+     "size": [
+      0.012,
+      0.12,
+      0.03
+     ],
+     "triangles": 12
+    }
+   ]
+  },
+  {
+   "name": "intake_bar_R2",
+   "group": "black_trim",
+   "pieces": [
+    {
+     "center": [
+      -0.43,
+      0.332,
+      2.2001
+     ],
+     "size": [
+      0.012,
+      0.12,
+      0.03
+     ],
+     "triangles": 12
+    }
+   ]
+  },
+  {
+   "name": "intake_bar_R3",
+   "group": "black_trim",
+   "pieces": [
+    {
+     "center": [
+      -0.515,
+      0.332,
+      2.2001
+     ],
+     "size": [
+      0.012,
+      0.12,
+      0.03
+     ],
+     "triangles": 12
+    }
+   ]
+  },
+  {
+   "name": "push_bar",
+   "group": "black_metal",
+   "pieces": [
+    {
+     "center": [
+      0.0,
+      0.4306,
+      2.3291
+     ],
+     "size": [
+      0.7656,
+      0.3251,
+      0.06
+     ],
+     "triangles": 256
+    },
+    {
+     "center": [
+      -0.2,
+      0.3925,
+      2.3232
+     ],
+     "size": [
+      0.0418,
+      0.325,
+      0.044
+     ],
+     "triangles": 36
+    },
+    {
+     "center": [
+      -0.2,
+      0.32,
+      2.2582
+     ],
+     "size": [
+      0.036,
+      0.036,
+      0.13
+     ],
+     "triangles": 28
+    },
+    {
+     "center": [
+      0.2,
+      0.3925,
+      2.3232
+     ],
+     "size": [
+      0.0418,
+      0.325,
+      0.044
+     ],
+     "triangles": 36
+    },
+    {
+     "center": [
+      0.2,
+      0.32,
+      2.2582
+     ],
+     "size": [
+      0.036,
+      0.036,
+      0.13
+     ],
+     "triangles": 28
+    },
+    {
+     "center": [
+      0.0,
+      0.37,
+      2.3232
+     ],
+     "size": [
+      0.66,
+      0.036,
+      0.036
+     ],
+     "triangles": 28
+    }
+   ]
+  },
+  {
+   "name": "push_bar_pad_L",
+   "group": "rubber",
+   "pieces": [
+    {
+     "center": [
+      0.2,
+      0.44,
+      2.3512
+     ],
+     "size": [
+      0.07,
+      0.18,
+      0.02
+     ],
+     "triangles": 108
+    }
+   ]
+  },
+  {
+   "name": "push_bar_pad_R",
+   "group": "rubber",
+   "pieces": [
+    {
+     "center": [
+      -0.2,
+      0.44,
+      2.3512
+     ],
+     "size": [
+      0.07,
+      0.18,
+      0.02
+     ],
+     "triangles": 108
+    }
+   ]
+  },
+  {
+   "name": "window_seal_F_L",
+   "group": "rubber",
+   "pieces": [
+    {
+     "center": [
+      0.7446,
+      1.0462,
+      0.2115
+     ],
+     "size": [
+      0.1365,
+      0.3788,
+      0.726
+     ],
+     "triangles": 280
+    }
+   ]
+  },
+  {
+   "name": "window_seal_R_L",
+   "group": "rubber",
+   "pieces": [
+    {
+     "center": [
+      0.7462,
+      1.0676,
+      -0.61
+     ],
+     "size": [
+      0.1338,
+      0.3686,
+      0.6506
+     ],
+     "triangles": 270
+    }
+   ]
+  },
+  {
+   "name": "window_seal_F_R",
+   "group": "rubber",
+   "pieces": [
+    {
+     "center": [
+      -0.7446,
+      1.0452,
+      0.212
+     ],
+     "size": [
+      0.1361,
+      0.3788,
+      0.7252
+     ],
+     "triangles": 280
+    }
+   ]
+  },
+  {
+   "name": "window_seal_R_R",
+   "group": "rubber",
+   "pieces": [
+    {
+     "center": [
+      -0.7461,
+      1.0678,
+      -0.6095
+     ],
+     "size": [
+      0.1347,
+      0.3691,
+      0.652
+     ],
+     "triangles": 270
+    }
+   ]
+  },
+  {
+   "name": "rub_strip_F_L",
+   "group": "black_trim",
+   "pieces": [
+    {
+     "center": [
+      0.8824,
+      0.475,
+      0.301
+     ],
+     "size": [
+      0.0101,
+      0.045,
+      1.008
+     ],
+     "triangles": 118
+    }
+   ]
+  },
+  {
+   "name": "rub_strip_R_L",
+   "group": "black_trim",
+   "pieces": [
+    {
+     "center": [
+      0.8821,
+      0.475,
+      -0.5885
+     ],
+     "size": [
+      0.0104,
+      0.045,
+      0.723
+     ],
+     "triangles": 118
+    }
+   ]
+  },
+  {
+   "name": "rub_strip_F_R",
+   "group": "black_trim",
+   "pieces": [
+    {
+     "center": [
+      -0.8824,
+      0.475,
+      0.301
+     ],
+     "size": [
+      0.0101,
+      0.045,
+      1.008
+     ],
+     "triangles": 118
+    }
+   ]
+  },
+  {
+   "name": "rub_strip_R_R",
+   "group": "black_trim",
+   "pieces": [
+    {
+     "center": [
+      -0.8821,
+      0.475,
+      -0.5885
+     ],
+     "size": [
+      0.0104,
+      0.045,
+      0.723
+     ],
+     "triangles": 118
+    }
+   ]
+  },
+  {
+   "name": "flare_FL",
+   "group": "black_trim",
+   "pieces": [
+    {
+     "center": [
+      0.809,
+      0.525,
+      1.33
+     ],
+     "size": [
+      0.2466,
+      0.5109,
+      0.8974
+     ],
+     "triangles": 336
+    }
+   ]
+  },
+  {
+   "name": "flare_bolts_FL",
+   "group": "chrome",
+   "pieces": [
+    {
+     "center": [
+      0.913,
+      0.5673,
+      1.6645
+     ],
+     "size": [
+      0.012,
+      0.0139,
+      0.016
+     ],
+     "triangles": 20
+    },
+    {
+     "center": [
+      0.9084,
+      0.3867,
+      0.9247
+     ],
+     "size": [
+      0.012,
+      0.0139,
+      0.016
+     ],
+     "triangles": 20
+    },
+    {
+     "center": [
+      0.9096,
+      0.695,
+      1.5185
+     ],
+     "size": [
+      0.012,
+      0.0139,
+      0.016
+     ],
+     "triangles": 20
+    },
+    {
+     "center": [
+      0.9176,
+      0.695,
+      1.1415
+     ],
+     "size": [
+      0.012,
+      0.0139,
+      0.016
+     ],
+     "triangles": 20
+    },
+    {
+     "center": [
+      0.9221,
+      0.5673,
+      0.9955
+     ],
+     "size": [
+      0.012,
+      0.0139,
+      0.016
+     ],
+     "triangles": 20
+    },
+    {
+     "center": [
+      0.905,
+      0.741,
+      1.33
+     ],
+     "size": [
+      0.012,
+      0.0139,
+      0.016
+     ],
+     "triangles": 20
+    },
+    {
+     "center": [
+      0.8969,
+      0.3867,
+      1.7353
+     ],
+     "size": [
+      0.012,
+      0.0139,
+      0.016
+     ],
+     "triangles": 20
+    }
+   ]
+  },
+  {
+   "name": "flare_FR",
+   "group": "black_trim",
+   "pieces": [
+    {
+     "center": [
+      -0.8091,
+      0.525,
+      1.33
+     ],
+     "size": [
+      0.2465,
+      0.5109,
+      0.8974
+     ],
+     "triangles": 336
+    }
+   ]
+  },
+  {
+   "name": "flare_bolts_FR",
+   "group": "chrome",
+   "pieces": [
+    {
+     "center": [
+      -0.913,
+      0.5673,
+      1.6645
+     ],
+     "size": [
+      0.012,
+      0.0139,
+      0.016
+     ],
+     "triangles": 20
+    },
+    {
+     "center": [
+      -0.9084,
+      0.3867,
+      0.9247
+     ],
+     "size": [
+      0.012,
+      0.0139,
+      0.016
+     ],
+     "triangles": 20
+    },
+    {
+     "center": [
+      -0.9096,
+      0.695,
+      1.5185
+     ],
+     "size": [
+      0.012,
+      0.0139,
+      0.016
+     ],
+     "triangles": 20
+    },
+    {
+     "center": [
+      -0.9176,
+      0.695,
+      1.1415
+     ],
+     "size": [
+      0.012,
+      0.0139,
+      0.016
+     ],
+     "triangles": 20
+    },
+    {
+     "center": [
+      -0.9221,
+      0.5673,
+      0.9955
+     ],
+     "size": [
+      0.012,
+      0.0139,
+      0.016
+     ],
+     "triangles": 20
+    },
+    {
+     "center": [
+      -0.905,
+      0.741,
+      1.33
+     ],
+     "size": [
+      0.012,
+      0.0139,
+      0.016
+     ],
+     "triangles": 20
+    },
+    {
+     "center": [
+      -0.8969,
+      0.3867,
+      1.7353
+     ],
+     "size": [
+      0.012,
+      0.0139,
+      0.016
+     ],
+     "triangles": 20
+    }
+   ]
+  },
+  {
+   "name": "flare_RL",
+   "group": "black_trim",
+   "pieces": [
+    {
+     "center": [
+      0.8901,
+      0.525,
+      -1.32
+     ],
+     "size": [
+      0.0899,
+      0.5109,
+      0.8974
+     ],
+     "triangles": 336
+    }
+   ]
+  },
+  {
+   "name": "flare_bolts_RL",
+   "group": "chrome",
+   "pieces": [
+    {
+     "center": [
+      0.9231,
+      0.5673,
+      -0.9855
+     ],
+     "size": [
+      0.012,
+      0.0139,
+      0.016
+     ],
+     "triangles": 20
+    },
+    {
+     "center": [
+      0.9017,
+      0.3867,
+      -1.7253
+     ],
+     "size": [
+      0.012,
+      0.0139,
+      0.016
+     ],
+     "triangles": 20
+    },
+    {
+     "center": [
+      0.9246,
+      0.695,
+      -1.1315
+     ],
+     "size": [
+      0.012,
+      0.0139,
+      0.016
+     ],
+     "triangles": 20
+    },
+    {
+     "center": [
+      0.923,
+      0.695,
+      -1.5085
+     ],
+     "size": [
+      0.012,
+      0.0139,
+      0.016
+     ],
+     "triangles": 20
+    },
+    {
+     "center": [
+      0.9183,
+      0.5673,
+      -1.6545
+     ],
+     "size": [
+      0.012,
+      0.0139,
+      0.016
+     ],
+     "triangles": 20
+    },
+    {
+     "center": [
+      0.9226,
+      0.741,
+      -1.32
+     ],
+     "size": [
+      0.012,
+      0.0139,
+      0.016
+     ],
+     "triangles": 20
+    },
+    {
+     "center": [
+      0.909,
+      0.3867,
+      -0.9147
+     ],
+     "size": [
+      0.012,
+      0.0139,
+      0.016
+     ],
+     "triangles": 20
+    }
+   ]
+  },
+  {
+   "name": "flare_RR",
+   "group": "black_trim",
+   "pieces": [
+    {
+     "center": [
+      -0.8901,
+      0.525,
+      -1.32
+     ],
+     "size": [
+      0.0899,
+      0.5109,
+      0.8974
+     ],
+     "triangles": 336
+    }
+   ]
+  },
+  {
+   "name": "flare_bolts_RR",
+   "group": "chrome",
+   "pieces": [
+    {
+     "center": [
+      -0.9231,
+      0.5673,
+      -0.9855
+     ],
+     "size": [
+      0.012,
+      0.0139,
+      0.016
+     ],
+     "triangles": 20
+    },
+    {
+     "center": [
+      -0.9017,
+      0.3867,
+      -1.7253
+     ],
+     "size": [
+      0.012,
+      0.0139,
+      0.016
+     ],
+     "triangles": 20
+    },
+    {
+     "center": [
+      -0.9246,
+      0.695,
+      -1.1315
+     ],
+     "size": [
+      0.012,
+      0.0139,
+      0.016
+     ],
+     "triangles": 20
+    },
+    {
+     "center": [
+      -0.923,
+      0.695,
+      -1.5085
+     ],
+     "size": [
+      0.012,
+      0.0139,
+      0.016
+     ],
+     "triangles": 20
+    },
+    {
+     "center": [
+      -0.9183,
+      0.5673,
+      -1.6545
+     ],
+     "size": [
+      0.012,
+      0.0139,
+      0.016
+     ],
+     "triangles": 20
+    },
+    {
+     "center": [
+      -0.9226,
+      0.741,
+      -1.32
+     ],
+     "size": [
+      0.012,
+      0.0139,
+      0.016
+     ],
+     "triangles": 20
+    },
+    {
+     "center": [
+      -0.909,
+      0.3867,
+      -0.9147
+     ],
+     "size": [
+      0.012,
+      0.0139,
+      0.016
+     ],
+     "triangles": 20
+    }
+   ]
+  },
+  {
+   "name": "mirror_stalk_L",
+   "group": "black_trim",
+   "pieces": [
+    {
+     "center": [
+      0.8879,
+      0.842,
+      0.65
+     ],
+     "size": [
+      0.075,
+      0.045,
+      0.04
+     ],
+     "triangles": 108
+    }
+   ]
+  },
+  {
+   "name": "mirror_housing_L",
+   "group": "paint",
+   "pieces": [
+    {
+     "center": [
+      0.9879,
+      0.887,
+      0.66
+     ],
+     "size": [
+      0.186,
+      0.1114,
+      0.085
+     ],
+     "triangles": 188
+    }
+   ]
+  },
+  {
+   "name": "mirror_glass_L",
+   "group": "mirror",
+   "pieces": [
+    {
+     "center": [
+      0.9879,
+      0.887,
+      0.616
+     ],
+     "size": [
+      0.165,
+      0.092,
+      0.004
+     ],
+     "triangles": 188
+    }
+   ]
+  },
+  {
+   "name": "mirror_stalk_R",
+   "group": "black_trim",
+   "pieces": [
+    {
+     "center": [
+      -0.8879,
+      0.842,
+      0.65
+     ],
+     "size": [
+      0.075,
+      0.045,
+      0.04
+     ],
+     "triangles": 108
+    }
+   ]
+  },
+  {
+   "name": "mirror_housing_R",
+   "group": "paint",
+   "pieces": [
+    {
+     "center": [
+      -0.9879,
+      0.887,
+      0.66
+     ],
+     "size": [
+      0.186,
+      0.1114,
+      0.085
+     ],
+     "triangles": 188
+    }
+   ]
+  },
+  {
+   "name": "mirror_glass_R",
+   "group": "mirror",
+   "pieces": [
+    {
+     "center": [
+      -0.9879,
+      0.887,
+      0.616
+     ],
+     "size": [
+      0.165,
+      0.092,
+      0.004
+     ],
+     "triangles": 188
+    }
+   ]
+  },
+  {
+   "name": "handle_pocket_FL",
+   "group": "black_trim",
+   "pieces": [
+    {
+     "center": [
+      0.8794,
+      0.7584,
+      -0.045
+     ],
+     "size": [
+      0.008,
+      0.05,
+      0.17
+     ],
+     "triangles": 108
+    }
+   ]
+  },
+  {
+   "name": "handle_FL",
+   "group": "chrome",
+   "pieces": [
+    {
+     "center": [
+      0.8914,
+      0.7624,
+      -0.045
+     ],
+     "size": [
+      0.016,
+      0.024,
+      0.145
+     ],
+     "triangles": 108
+    }
+   ]
+  },
+  {
+   "name": "door_lock_L",
+   "group": "chrome",
+   "pieces": [
+    {
+     "center": [
+      0.8874,
+      0.7624,
+      -0.15
+     ],
+     "size": [
+      0.012,
+      0.018,
+      0.018
+     ],
+     "triangles": 44
+    }
+   ]
+  },
+  {
+   "name": "handle_pocket_RL",
+   "group": "black_trim",
+   "pieces": [
+    {
+     "center": [
+      0.8787,
+      0.7805,
+      -0.86
+     ],
+     "size": [
+      0.008,
+      0.05,
+      0.17
+     ],
+     "triangles": 108
+    }
+   ]
+  },
+  {
+   "name": "handle_RL",
+   "group": "chrome",
+   "pieces": [
+    {
+     "center": [
+      0.8907,
+      0.7845,
+      -0.86
+     ],
+     "size": [
+      0.016,
+      0.024,
+      0.145
+     ],
+     "triangles": 108
+    }
+   ]
+  },
+  {
+   "name": "handle_pocket_FR",
+   "group": "black_trim",
+   "pieces": [
+    {
+     "center": [
+      -0.8794,
+      0.7584,
+      -0.045
+     ],
+     "size": [
+      0.008,
+      0.05,
+      0.17
+     ],
+     "triangles": 108
+    }
+   ]
+  },
+  {
+   "name": "handle_FR",
+   "group": "chrome",
+   "pieces": [
+    {
+     "center": [
+      -0.8914,
+      0.7624,
+      -0.045
+     ],
+     "size": [
+      0.016,
+      0.024,
+      0.145
+     ],
+     "triangles": 108
+    }
+   ]
+  },
+  {
+   "name": "door_lock_R",
+   "group": "chrome",
+   "pieces": [
+    {
+     "center": [
+      -0.8874,
+      0.7624,
+      -0.15
+     ],
+     "size": [
+      0.012,
+      0.018,
+      0.018
+     ],
+     "triangles": 44
+    }
+   ]
+  },
+  {
+   "name": "handle_pocket_RR",
+   "group": "black_trim",
+   "pieces": [
+    {
+     "center": [
+      -0.8787,
+      0.7805,
+      -0.86
+     ],
+     "size": [
+      0.008,
+      0.05,
+      0.17
+     ],
+     "triangles": 108
+    }
+   ]
+  },
+  {
+   "name": "handle_RR",
+   "group": "chrome",
+   "pieces": [
+    {
+     "center": [
+      -0.8907,
+      0.7845,
+      -0.86
+     ],
+     "size": [
+      0.016,
+      0.024,
+      0.145
+     ],
+     "triangles": 108
+    }
+   ]
+  },
+  {
+   "name": "wiper_arm_0",
+   "group": "black_metal",
+   "pieces": [
+    {
+     "center": [
+      -0.03,
+      0.8741,
+      0.73
+     ],
+     "size": [
+      0.5807,
+      0.0221,
+      0.042
+     ],
+     "triangles": 116
+    },
+    {
+     "center": [
+      0.26,
+      0.8702,
+      0.755
+     ],
+     "size": [
+      0.036,
+      0.03,
+      0.036
+     ],
+     "triangles": 44
+    }
+   ]
+  },
+  {
+   "name": "wiper_blade_0",
+   "group": "rubber",
+   "pieces": [
+    {
+     "center": [
+      -0.0735,
+      0.8722,
+      0.7152
+     ],
+     "size": [
+      0.4936,
+      0.0185,
+      0.0354
+     ],
+     "triangles": 96
+    }
+   ]
+  },
+  {
+   "name": "wiper_arm_1",
+   "group": "black_metal",
+   "pieces": [
+    {
+     "center": [
+      -0.4501,
+      0.8708,
+      0.73
+     ],
+     "size": [
+      0.501,
+      0.0167,
+      0.042
+     ],
+     "triangles": 116
+    },
+    {
+     "center": [
+      -0.2,
+      0.872,
+      0.755
+     ],
+     "size": [
+      0.036,
+      0.03,
+      0.036
+     ],
+     "triangles": 44
+    }
+   ]
+  },
+  {
+   "name": "wiper_blade_1",
+   "group": "rubber",
+   "pieces": [
+    {
+     "center": [
+      -0.4876,
+      0.8643,
+      0.7152
+     ],
+     "size": [
+      0.4259,
+      0.0175,
+      0.0354
+     ],
+     "triangles": 96
+    }
+   ]
+  },
+  {
+   "name": "cowl_panel",
+   "group": "black_trim",
+   "pieces": [
+    {
+     "center": [
+      0.0,
+      0.8401,
+      0.795
+     ],
+     "size": [
+      1.3,
+      0.0225,
+      0.0595
+     ],
+     "triangles": 108
+    }
+   ]
+  },
+  {
+   "name": "plate_F",
+   "group": "plate",
+   "pieces": [
+    {
+     "center": [
+      0.0,
+      0.3875,
+      2.2176
+     ],
+     "size": [
+      0.33,
+      0.165,
+      0.006
+     ],
+     "triangles": 108
+    }
+   ]
+  },
+  {
+   "name": "plate_R",
+   "group": "plate",
+   "pieces": [
+    {
+     "center": [
+      0.0,
+      0.3875,
+      -2.2422
+     ],
+     "size": [
+      0.33,
+      0.165,
+      0.006
+     ],
+     "triangles": 108
+    }
+   ]
+  },
+  {
+   "name": "plate_lamp",
+   "group": "emitter_reverse",
+   "pieces": [
+    {
+     "center": [
+      0.0,
+      0.492,
+      -2.2493
+     ],
+     "size": [
+      0.1,
+      0.012,
+      0.012
+     ],
+     "triangles": 108
+    }
+   ]
+  },
+  {
+   "name": "exhaust_tip_L",
+   "group": "exhaust",
+   "pieces": [
+    {
+     "center": [
+      0.52,
+      0.22,
+      -2.0581
+     ],
+     "size": [
+      0.08,
+      0.08,
+      0.158
+     ],
+     "triangles": 160
+    }
+   ]
+  },
+  {
+   "name": "exhaust_tip_R",
+   "group": "exhaust",
+   "pieces": [
+    {
+     "center": [
+      -0.52,
+      0.22,
+      -2.0581
+     ],
+     "size": [
+      0.08,
+      0.08,
+      0.158
+     ],
+     "triangles": 160
+    }
+   ]
+  },
+  {
+   "name": "exhaust_pipe",
+   "group": "underbody_metal",
+   "pieces": [
+    {
+     "center": [
+      0.2239,
+      0.1875,
+      -0.2551
+     ],
+     "size": [
+      0.4999,
+      0.0745,
+      2.9102
+     ],
+     "triangles": 96
+    },
+    {
+     "center": [
+      -0.1188,
+      0.2125,
+      -1.865
+     ],
+     "size": [
+      0.8505,
+      0.0607,
+      0.2761
+     ],
+     "triangles": 56
+    },
+    {
+     "center": [
+      0.4855,
+      0.2125,
+      -1.8661
+     ],
+     "size": [
+      0.117,
+      0.0606,
+      0.2461
+     ],
+     "triangles": 56
+    }
+   ]
+  },
+  {
+   "name": "silencer",
+   "group": "underbody_metal",
+   "pieces": [
+    {
+     "center": [
+      0.0,
+      0.205,
+      -1.78
+     ],
+     "size": [
+      0.8,
+      0.13,
+      0.3
+     ],
+     "triangles": 188
+    }
+   ]
+  },
+  {
+   "name": "catalyst",
+   "group": "underbody_metal",
+   "pieces": [
+    {
+     "center": [
+      0.0,
+      0.185,
+      0.55
+     ],
+     "size": [
+      0.16,
+      0.09,
+      0.36
+     ],
+     "triangles": 188
+    }
+   ]
+  },
+  {
+   "name": "lightbar_foot_L",
+   "group": "black_metal",
+   "pieces": [
+    {
+     "center": [
+      0.56,
+      1.3384,
+      -0.3
+     ],
+     "size": [
+      0.06,
+      0.0813,
+      0.16
+     ],
+     "triangles": 108
+    }
+   ]
+  },
+  {
+   "name": "lightbar_foot_R",
+   "group": "black_metal",
+   "pieces": [
+    {
+     "center": [
+      -0.56,
+      1.3384,
+      -0.3
+     ],
+     "size": [
+      0.06,
+      0.0813,
+      0.16
+     ],
+     "triangles": 108
+    }
+   ]
+  },
+  {
+   "name": "lightbar_base",
+   "group": "black_trim",
+   "pieces": [
+    {
+     "center": [
+      0.0,
+      1.3811,
+      -0.3
+     ],
+     "size": [
+      1.26,
+      0.024,
+      0.28
+     ],
+     "triangles": 108
+    }
+   ]
+  },
+  {
+   "name": "lightbar_lens_L",
+   "group": "lightbar_lens_red",
+   "pieces": [
+    {
+     "center": [
+      0.34,
+      1.4271,
+      -0.3
+     ],
+     "size": [
+      0.52,
+      0.07,
+      0.24
+     ],
+     "triangles": 300
+    }
+   ]
+  },
+  {
+   "name": "lightbar_led_L0",
+   "group": "emitter_red",
+   "pieces": [
+    {
+     "center": [
+      0.15,
+      1.4191,
+      -0.3
+     ],
+     "size": [
+      0.08,
+      0.035,
+      0.17
+     ],
+     "triangles": 12
+    }
+   ]
+  },
+  {
+   "name": "lightbar_led_L1",
+   "group": "emitter_red",
+   "pieces": [
+    {
+     "center": [
+      0.27,
+      1.4191,
+      -0.3
+     ],
+     "size": [
+      0.08,
+      0.035,
+      0.17
+     ],
+     "triangles": 12
+    }
+   ]
+  },
+  {
+   "name": "lightbar_led_L2",
+   "group": "emitter_red",
+   "pieces": [
+    {
+     "center": [
+      0.39,
+      1.4191,
+      -0.3
+     ],
+     "size": [
+      0.08,
+      0.035,
+      0.17
+     ],
+     "triangles": 12
+    }
+   ]
+  },
+  {
+   "name": "lightbar_led_L3",
+   "group": "emitter_red",
+   "pieces": [
+    {
+     "center": [
+      0.51,
+      1.4191,
+      -0.3
+     ],
+     "size": [
+      0.08,
+      0.035,
+      0.17
+     ],
+     "triangles": 12
+    }
+   ]
+  },
+  {
+   "name": "lightbar_lens_R",
+   "group": "lightbar_lens_blue",
+   "pieces": [
+    {
+     "center": [
+      -0.34,
+      1.4271,
+      -0.3
+     ],
+     "size": [
+      0.52,
+      0.07,
+      0.24
+     ],
+     "triangles": 300
+    }
+   ]
+  },
+  {
+   "name": "lightbar_led_R0",
+   "group": "emitter_blue",
+   "pieces": [
+    {
+     "center": [
+      -0.15,
+      1.4191,
+      -0.3
+     ],
+     "size": [
+      0.08,
+      0.035,
+      0.17
+     ],
+     "triangles": 12
+    }
+   ]
+  },
+  {
+   "name": "lightbar_led_R1",
+   "group": "emitter_blue",
+   "pieces": [
+    {
+     "center": [
+      -0.27,
+      1.4191,
+      -0.3
+     ],
+     "size": [
+      0.08,
+      0.035,
+      0.17
+     ],
+     "triangles": 12
+    }
+   ]
+  },
+  {
+   "name": "lightbar_led_R2",
+   "group": "emitter_blue",
+   "pieces": [
+    {
+     "center": [
+      -0.39,
+      1.4191,
+      -0.3
+     ],
+     "size": [
+      0.08,
+      0.035,
+      0.17
+     ],
+     "triangles": 12
+    }
+   ]
+  },
+  {
+   "name": "lightbar_led_R3",
+   "group": "emitter_blue",
+   "pieces": [
+    {
+     "center": [
+      -0.51,
+      1.4191,
+      -0.3
+     ],
+     "size": [
+      0.08,
+      0.035,
+      0.17
+     ],
+     "triangles": 12
+    }
+   ]
+  },
+  {
+   "name": "lightbar_center",
+   "group": "lightbar_center",
+   "pieces": [
+    {
+     "center": [
+      0.0,
+      1.4291,
+      -0.3
+     ],
+     "size": [
+      0.14,
+      0.075,
+      0.24
+     ],
+     "triangles": 188
+    }
+   ]
+  },
+  {
+   "name": "antenna_whip",
+   "group": "black_metal",
+   "pieces": [
+    {
+     "center": [
+      -0.42,
+      1.3702,
+      -2.0102
+     ],
+     "size": [
+      0.0048,
+      0.8403,
+      0.0645
+     ],
+     "triangles": 26
+    },
+    {
+     "center": [
+      -0.42,
+      0.9422,
+      -1.98
+     ],
+     "size": [
+      0.032,
+      0.024,
+      0.032
+     ],
+     "triangles": 44
+    }
+   ]
+  },
+  {
+   "name": "antenna_puck",
+   "group": "black_trim",
+   "pieces": [
+    {
+     "center": [
+      0.0,
+      1.35,
+      -0.78
+     ],
+     "size": [
+      0.11,
+      0.045,
+      0.11
+     ],
+     "triangles": 160
+    }
+   ]
+  },
+  {
+   "name": "spotlight_bracket",
+   "group": "black_metal",
+   "pieces": [
+    {
+     "center": [
+      -0.7885,
+      0.894,
+      0.4144
+     ],
+     "size": [
+      0.0791,
+      0.0633,
+      0.0479
+     ],
+     "triangles": 44
+    }
+   ]
+  },
+  {
+   "name": "spotlight_body",
+   "group": "black_trim",
+   "pieces": [
+    {
+     "center": [
+      -0.8187,
+      0.9415,
+      0.4575
+     ],
+     "size": [
+      0.112,
+      0.112,
+      0.095
+     ],
+     "triangles": 160
+    }
+   ]
+  },
+  {
+   "name": "spotlight_lens",
+   "group": "emitter_head",
+   "pieces": [
+    {
+     "center": [
+      -0.8187,
+      0.9415,
+      0.5075
+     ],
+     "size": [
+      0.104,
+      0.104,
+      0.005
+     ],
+     "triangles": 40
+    }
+   ]
+  },
+  {
+   "name": "mudflap_FL",
+   "group": "rubber",
+   "pieces": [
+    {
+     "center": [
+      0.7381,
+      0.195,
+      0.95
+     ],
+     "size": [
+      0.19,
+      0.2091,
+      0.0275
+     ],
+     "triangles": 108
+    }
+   ]
+  },
+  {
+   "name": "mudflap_FR",
+   "group": "rubber",
+   "pieces": [
+    {
+     "center": [
+      -0.7381,
+      0.195,
+      0.95
+     ],
+     "size": [
+      0.19,
+      0.2091,
+      0.0275
+     ],
+     "triangles": 108
+    }
+   ]
+  },
+  {
+   "name": "mudflap_RL",
+   "group": "rubber",
+   "pieces": [
+    {
+     "center": [
+      0.733,
+      0.195,
+      -1.7
+     ],
+     "size": [
+      0.19,
+      0.2091,
+      0.0275
+     ],
+     "triangles": 108
+    }
+   ]
+  },
+  {
+   "name": "mudflap_RR",
+   "group": "rubber",
+   "pieces": [
+    {
+     "center": [
+      -0.733,
+      0.195,
+      -1.7
+     ],
+     "size": [
+      0.19,
+      0.2091,
+      0.0275
+     ],
+     "triangles": 108
+    }
+   ]
+  },
+  {
+   "name": "underbody_tray",
+   "group": "underbody",
+   "pieces": [
+    {
+     "center": [
+      0.0,
+      0.154,
+      -0.05
+     ],
+     "size": [
+      1.4,
+      0.012,
+      3.5
+     ],
+     "triangles": 108
+    }
+   ]
+  },
+  {
+   "name": "underbody_tunnel",
+   "group": "underbody",
+   "pieces": [
+    {
+     "center": [
+      0.0,
+      0.185,
+      0.2
+     ],
+     "size": [
+      0.22,
+      0.07,
+      2.4
+     ],
+     "triangles": 188
+    }
+   ]
+  },
+  {
+   "name": "fuel_tank",
+   "group": "underbody_metal",
+   "pieces": [
+    {
+     "center": [
+      0.0,
+      0.185,
+      -1.2
+     ],
+     "size": [
+      1.0,
+      0.07,
+      0.45
+     ],
+     "triangles": 188
+    }
+   ]
+  },
+  {
+   "name": "crossmember_F",
+   "group": "underbody_metal",
+   "pieces": [
+    {
+     "center": [
+      0.0,
+      0.21,
+      1.28
+     ],
+     "size": [
+      1.05,
+      0.07,
+      0.1
+     ],
+     "triangles": 108
+    }
+   ]
+  },
+  {
+   "name": "crossmember_R",
+   "group": "underbody_metal",
+   "pieces": [
+    {
+     "center": [
+      0.0,
+      0.21,
+      -1.27
+     ],
+     "size": [
+      1.05,
+      0.07,
+      0.1
+     ],
+     "triangles": 108
+    }
+   ]
+  },
+  {
+   "name": "wheel_well_FL",
+   "group": "underbody",
+   "pieces": [
+    {
+     "center": [
+      0.695,
+      0.473,
+      1.33
+     ],
+     "size": [
+      0.33,
+      0.442,
+      0.7233
+     ],
+     "triangles": 84
+    }
+   ]
+  },
+  {
+   "name": "wheel_well_FR",
+   "group": "underbody",
+   "pieces": [
+    {
+     "center": [
+      -0.695,
+      0.473,
+      1.33
+     ],
+     "size": [
+      0.33,
+      0.442,
+      0.7233
+     ],
+     "triangles": 84
+    }
+   ]
+  },
+  {
+   "name": "wheel_well_RL",
+   "group": "underbody",
+   "pieces": [
+    {
+     "center": [
+      0.695,
+      0.473,
+      -1.32
+     ],
+     "size": [
+      0.33,
+      0.442,
+      0.7233
+     ],
+     "triangles": 84
+    }
+   ]
+  },
+  {
+   "name": "wheel_well_RR",
+   "group": "underbody",
+   "pieces": [
+    {
+     "center": [
+      -0.695,
+      0.473,
+      -1.32
+     ],
+     "size": [
+      0.33,
+      0.442,
+      0.7233
+     ],
+     "triangles": 84
+    }
+   ]
+  },
+  {
+   "name": "damper_FL",
+   "group": "suspension",
+   "pieces": [
+    {
+     "center": [
+      0.6762,
+      0.4963,
+      1.3163
+     ],
+     "size": [
+      0.0762,
+      0.1615,
+      0.0786
+     ],
+     "triangles": 36
+    },
+    {
+     "center": [
+      0.6513,
+      0.6313,
+      1.2912
+     ],
+     "size": [
+      0.0422,
+      0.1266,
+      0.0422
+     ],
+     "triangles": 28
+    }
+   ]
+  },
+  {
+   "name": "spring_FL",
+   "group": "spring",
+   "pieces": [
+    {
+     "center": [
+      0.6556,
+      0.5987,
+      1.2973
+     ],
+     "size": [
+      0.1398,
+      0.1836,
+      0.1478
+     ],
+     "triangles": 308
+    }
+   ]
+  },
+  {
+   "name": "control_arm_FL",
+   "group": "suspension",
+   "pieces": [
+    {
+     "center": [
+      0.49,
+      0.232,
+      1.41
+     ],
+     "size": [
+      0.3924,
+      0.032,
+      0.1895
+     ],
+     "triangles": 28
+    },
+    {
+     "center": [
+      0.49,
+      0.232,
+      1.25
+     ],
+     "size": [
+      0.3924,
+      0.032,
+      0.1895
+     ],
+     "triangles": 28
+    }
+   ]
+  },
+  {
+   "name": "knuckle_FL",
+   "group": "suspension",
+   "pieces": [
+    {
+     "center": [
+      0.68,
+      0.332,
+      1.33
+     ],
+     "size": [
+      0.04,
+      0.2,
+      0.1
+     ],
+     "triangles": 108
+    }
+   ]
+  },
+  {
+   "name": "driveshaft_FL",
+   "group": "underbody_metal",
+   "pieces": [
+    {
+     "center": [
+      0.395,
+      0.322,
+      1.33
+     ],
+     "size": [
+      0.5512,
+      0.054,
+      0.034
+     ],
+     "triangles": 28
+    }
+   ]
+  },
+  {
+   "name": "damper_FR",
+   "group": "suspension",
+   "pieces": [
+    {
+     "center": [
+      -0.6762,
+      0.4963,
+      1.3163
+     ],
+     "size": [
+      0.0762,
+      0.1615,
+      0.0786
+     ],
+     "triangles": 36
+    },
+    {
+     "center": [
+      -0.6513,
+      0.6313,
+      1.2912
+     ],
+     "size": [
+      0.0422,
+      0.1266,
+      0.0422
+     ],
+     "triangles": 28
+    }
+   ]
+  },
+  {
+   "name": "spring_FR",
+   "group": "spring",
+   "pieces": [
+    {
+     "center": [
+      -0.6571,
+      0.6023,
+      1.2978
+     ],
+     "size": [
+      0.155,
+      0.1648,
+      0.1487
+     ],
+     "triangles": 308
+    }
+   ]
+  },
+  {
+   "name": "control_arm_FR",
+   "group": "suspension",
+   "pieces": [
+    {
+     "center": [
+      -0.49,
+      0.232,
+      1.41
+     ],
+     "size": [
+      0.3924,
+      0.032,
+      0.1895
+     ],
+     "triangles": 28
+    },
+    {
+     "center": [
+      -0.49,
+      0.232,
+      1.25
+     ],
+     "size": [
+      0.3924,
+      0.032,
+      0.1895
+     ],
+     "triangles": 28
+    }
+   ]
+  },
+  {
+   "name": "knuckle_FR",
+   "group": "suspension",
+   "pieces": [
+    {
+     "center": [
+      -0.68,
+      0.332,
+      1.33
+     ],
+     "size": [
+      0.04,
+      0.2,
+      0.1
+     ],
+     "triangles": 108
+    }
+   ]
+  },
+  {
+   "name": "driveshaft_FR",
+   "group": "underbody_metal",
+   "pieces": [
+    {
+     "center": [
+      -0.395,
+      0.322,
+      1.33
+     ],
+     "size": [
+      0.5512,
+      0.054,
+      0.034
+     ],
+     "triangles": 28
+    }
+   ]
+  },
+  {
+   "name": "damper_RL",
+   "group": "suspension",
+   "pieces": [
+    {
+     "center": [
+      0.6762,
+      0.4963,
+      -1.3063
+     ],
+     "size": [
+      0.0762,
+      0.1615,
+      0.0786
+     ],
+     "triangles": 36
+    },
+    {
+     "center": [
+      0.6513,
+      0.6313,
+      -1.2812
+     ],
+     "size": [
+      0.0422,
+      0.1266,
+      0.0422
+     ],
+     "triangles": 28
+    }
+   ]
+  },
+  {
+   "name": "spring_RL",
+   "group": "spring",
+   "pieces": [
+    {
+     "center": [
+      0.6578,
+      0.5985,
+      -1.2867
+     ],
+     "size": [
+      0.1408,
+      0.1839,
+      0.1487
+     ],
+     "triangles": 308
+    }
+   ]
+  },
+  {
+   "name": "control_arm_RL",
+   "group": "suspension",
+   "pieces": [
+    {
+     "center": [
+      0.49,
+      0.232,
+      -1.24
+     ],
+     "size": [
+      0.3924,
+      0.032,
+      0.1895
+     ],
+     "triangles": 28
+    },
+    {
+     "center": [
+      0.49,
+      0.232,
+      -1.4
+     ],
+     "size": [
+      0.3924,
+      0.032,
+      0.1895
+     ],
+     "triangles": 28
+    }
+   ]
+  },
+  {
+   "name": "knuckle_RL",
+   "group": "suspension",
+   "pieces": [
+    {
+     "center": [
+      0.68,
+      0.332,
+      -1.32
+     ],
+     "size": [
+      0.04,
+      0.2,
+      0.1
+     ],
+     "triangles": 108
+    }
+   ]
+  },
+  {
+   "name": "driveshaft_RL",
+   "group": "underbody_metal",
+   "pieces": [
+    {
+     "center": [
+      0.395,
+      0.322,
+      -1.32
+     ],
+     "size": [
+      0.5512,
+      0.054,
+      0.034
+     ],
+     "triangles": 28
+    }
+   ]
+  },
+  {
+   "name": "damper_RR",
+   "group": "suspension",
+   "pieces": [
+    {
+     "center": [
+      -0.6762,
+      0.4963,
+      -1.3063
+     ],
+     "size": [
+      0.0762,
+      0.1615,
+      0.0786
+     ],
+     "triangles": 36
+    },
+    {
+     "center": [
+      -0.6513,
+      0.6313,
+      -1.2812
+     ],
+     "size": [
+      0.0422,
+      0.1266,
+      0.0422
+     ],
+     "triangles": 28
+    }
+   ]
+  },
+  {
+   "name": "spring_RR",
+   "group": "spring",
+   "pieces": [
+    {
+     "center": [
+      -0.6574,
+      0.5955,
+      -1.2858
+     ],
+     "size": [
+      0.155,
+      0.1659,
+      0.1468
+     ],
+     "triangles": 308
+    }
+   ]
+  },
+  {
+   "name": "control_arm_RR",
+   "group": "suspension",
+   "pieces": [
+    {
+     "center": [
+      -0.49,
+      0.232,
+      -1.24
+     ],
+     "size": [
+      0.3924,
+      0.032,
+      0.1895
+     ],
+     "triangles": 28
+    },
+    {
+     "center": [
+      -0.49,
+      0.232,
+      -1.4
+     ],
+     "size": [
+      0.3924,
+      0.032,
+      0.1895
+     ],
+     "triangles": 28
+    }
+   ]
+  },
+  {
+   "name": "knuckle_RR",
+   "group": "suspension",
+   "pieces": [
+    {
+     "center": [
+      -0.68,
+      0.332,
+      -1.32
+     ],
+     "size": [
+      0.04,
+      0.2,
+      0.1
+     ],
+     "triangles": 108
+    }
+   ]
+  },
+  {
+   "name": "driveshaft_RR",
+   "group": "underbody_metal",
+   "pieces": [
+    {
+     "center": [
+      -0.395,
+      0.322,
+      -1.32
+     ],
+     "size": [
+      0.5512,
+      0.054,
+      0.034
+     ],
+     "triangles": 28
+    }
+   ]
+  },
+  {
+   "name": "floor_carpet",
+   "group": "interior_carpet",
+   "pieces": [
+    {
+     "center": [
+      0.0,
+      0.205,
+      -0.3
+     ],
+     "size": [
+      1.58,
+      0.02,
+      2.35
+     ],
+     "triangles": 12
+    }
+   ]
+  },
+  {
+   "name": "floor_tunnel",
+   "group": "interior_carpet",
+   "pieces": [
+    {
+     "center": [
+      0.0,
+      0.265,
+      -0.05
+     ],
+     "size": [
+      0.24,
+      0.12,
+      1.7
+     ],
+     "triangles": 188
+    }
+   ]
+  },
+  {
+   "name": "dash_lower",
+   "group": "interior_plastic",
+   "pieces": [
+    {
+     "center": [
+      0.0,
+      0.65,
+      0.56
+     ],
+     "size": [
+      1.5,
+      0.28,
+      0.3
+     ],
+     "triangles": 188
+    }
+   ]
+  },
+  {
+   "name": "dash_top",
+   "group": "interior_dark",
+   "pieces": [
+    {
+     "center": [
+      0.0,
+      0.825,
+      0.63
+     ],
+     "size": [
+      1.52,
+      0.12,
+      0.4179
+     ],
+     "triangles": 188
+    }
+   ]
+  },
+  {
+   "name": "dash_binnacle",
+   "group": "interior_dark",
+   "pieces": [
+    {
+     "center": [
+      -0.37,
+      0.875,
+      0.46
+     ],
+     "size": [
+      0.4,
+      0.1,
+      0.14
+     ],
+     "triangles": 188
+    }
+   ]
+  },
+  {
+   "name": "dash_gauges",
+   "group": "screen",
+   "pieces": [
+    {
+     "center": [
+      -0.37,
+      0.855,
+      0.392
+     ],
+     "size": [
+      0.34,
+      0.07,
+      0.004
+     ],
+     "triangles": 108
+    }
+   ]
+  },
+  {
+   "name": "center_stack",
+   "group": "interior_plastic",
+   "pieces": [
+    {
+     "center": [
+      0.0,
+      0.63,
+      0.46
+     ],
+     "size": [
+      0.26,
+      0.3,
+      0.16
+     ],
+     "triangles": 108
+    }
+   ]
+  },
+  {
+   "name": "radio",
+   "group": "screen",
+   "pieces": [
+    {
+     "center": [
+      0.0,
+      0.69,
+      0.377
+     ],
+     "size": [
+      0.19,
+      0.055,
+      0.006
+     ],
+     "triangles": 108
+    }
+   ]
+  },
+  {
+   "name": "vent_R",
+   "group": "black_trim",
+   "pieces": [
+    {
+     "center": [
+      -0.6,
+      0.76,
+      0.408
+     ],
+     "size": [
+      0.14,
+      0.05,
+      0.006
+     ],
+     "triangles": 108
+    }
+   ]
+  },
+  {
+   "name": "vent_L",
+   "group": "black_trim",
+   "pieces": [
+    {
+     "center": [
+      0.6,
+      0.76,
+      0.408
+     ],
+     "size": [
+      0.14,
+      0.05,
+      0.006
+     ],
+     "triangles": 108
+    }
+   ]
+  },
+  {
+   "name": "center_console",
+   "group": "interior_plastic",
+   "pieces": [
+    {
+     "center": [
+      0.0,
+      0.36,
+      0.05
+     ],
+     "size": [
+      0.22,
+      0.18,
+      0.7
+     ],
+     "triangles": 188
+    }
+   ]
+  },
+  {
+   "name": "shifter",
+   "group": "interior_dark",
+   "pieces": [
+    {
+     "center": [
+      0.0,
+      0.51,
+      0.23
+     ],
+     "size": [
+      0.016,
+      0.1226,
+      0.0358
+     ],
+     "triangles": 28
+    },
+    {
+     "center": [
+      0.0,
+      0.585,
+      0.245
+     ],
+     "size": [
+      0.05,
+      0.05,
+      0.05
+     ],
+     "triangles": 168
+    }
+   ]
+  },
+  {
+   "name": "handbrake",
+   "group": "interior_dark",
+   "pieces": [
+    {
+     "center": [
+      0.02,
+      0.47,
+      -0.05
+     ],
+     "size": [
+      0.035,
+      0.0862,
+      0.2355
+     ],
+     "triangles": 108
+    }
+   ]
+  },
+  {
+   "name": "terminal_stand",
+   "group": "black_metal",
+   "pieces": [
+    {
+     "center": [
+      0.02,
+      0.59,
+      0.33
+     ],
+     "size": [
+      0.03,
+      0.22,
+      0.03
+     ],
+     "triangles": 12
+    }
+   ]
+  },
+  {
+   "name": "terminal",
+   "group": "interior_dark",
+   "pieces": [
+    {
+     "center": [
+      0.02,
+      0.75,
+      0.3
+     ],
+     "size": [
+      0.3,
+      0.1896,
+      0.0851
+     ],
+     "triangles": 108
+    }
+   ]
+  },
+  {
+   "name": "terminal_screen",
+   "group": "screen",
+   "pieces": [
+    {
+     "center": [
+      0.02,
+      0.754,
+      0.285
+     ],
+     "size": [
+      0.27,
+      0.1611,
+      0.0619
+     ],
+     "triangles": 12
+    }
+   ]
+  },
+  {
+   "name": "steering_rim",
+   "group": "interior_leather",
+   "pieces": [
+    {
+     "center": [
+      -0.37,
+      0.83,
+      0.33
+     ],
+     "size": [
+      0.402,
+      0.2043,
+      0.3573
+     ],
+     "triangles": 512
+    }
+   ]
+  },
+  {
+   "name": "steering_hub",
+   "group": "interior_dark",
+   "pieces": [
+    {
+     "center": [
+      -0.285,
+      0.83,
+      0.33
+     ],
+     "size": [
+      0.17,
+      0.0208,
+      0.024
+     ],
+     "triangles": 20
+    },
+    {
+     "center": [
+      -0.455,
+      0.83,
+      0.33
+     ],
+     "size": [
+      0.17,
+      0.0208,
+      0.024
+     ],
+     "triangles": 20
+    },
+    {
+     "center": [
+      -0.37,
+      0.7901,
+      0.4051
+     ],
+     "size": [
+      0.024,
+      0.0982,
+      0.1599
+     ],
+     "triangles": 20
+    },
+    {
+     "center": [
+      -0.37,
+      0.8168,
+      0.323
+     ],
+     "size": [
+      0.12,
+      0.12,
+      0.04
+     ],
+     "triangles": 60
+    }
+   ]
+  },
+  {
+   "name": "steering_column",
+   "group": "interior_dark",
+   "pieces": [
+    {
+     "center": [
+      -0.37,
+      0.7823,
+      0.4156
+     ],
+     "size": [
+      0.07,
+      0.0908,
+      0.2166
+     ],
+     "triangles": 36
+    }
+   ]
+  },
+  {
+   "name": "seat_FR_cushion",
+   "group": "interior_fabric",
+   "pieces": [
+    {
+     "center": [
+      -0.37,
+      0.37,
+      -0.03
+     ],
+     "size": [
+      0.5,
+      0.11,
+      0.5
+     ],
+     "triangles": 188
+    }
+   ]
+  },
+  {
+   "name": "seat_FR_back",
+   "group": "interior_fabric",
+   "pieces": [
+    {
+     "center": [
+      -0.37,
+      0.7125,
+      -0.3547
+     ],
+     "size": [
+      0.5,
+      0.605,
+      0.2553
+     ],
+     "triangles": 188
+    }
+   ]
+  },
+  {
+   "name": "seat_FR_headrest",
+   "group": "interior_fabric",
+   "pieces": [
+    {
+     "center": [
+      -0.37,
+      1.1231,
+      -0.4828
+     ],
+     "size": [
+      0.26,
+      0.16,
+      0.112
+     ],
+     "triangles": 188
+    }
+   ]
+  },
+  {
+   "name": "seat_FR_posts",
+   "group": "chrome",
+   "pieces": [
+    {
+     "center": [
+      -0.44,
+      1.0269,
+      -0.4552
+     ],
+     "size": [
+      0.0104,
+      0.0802,
+      0.0336
+     ],
+     "triangles": 20
+    },
+    {
+     "center": [
+      -0.3,
+      1.0269,
+      -0.4552
+     ],
+     "size": [
+      0.0104,
+      0.0802,
+      0.0336
+     ],
+     "triangles": 20
+    }
+   ]
+  },
+  {
+   "name": "seat_FR_base",
+   "group": "interior_dark",
+   "pieces": [
+    {
+     "center": [
+      -0.37,
+      0.27,
+      -0.03
+     ],
+     "size": [
+      0.4,
+      0.1,
+      0.42
+     ],
+     "triangles": 108
+    }
+   ]
+  },
+  {
+   "name": "seat_FL_cushion",
+   "group": "interior_fabric",
+   "pieces": [
+    {
+     "center": [
+      0.37,
+      0.37,
+      -0.03
+     ],
+     "size": [
+      0.5,
+      0.11,
+      0.5
+     ],
+     "triangles": 188
+    }
+   ]
+  },
+  {
+   "name": "seat_FL_back",
+   "group": "interior_fabric",
+   "pieces": [
+    {
+     "center": [
+      0.37,
+      0.7125,
+      -0.3547
+     ],
+     "size": [
+      0.5,
+      0.605,
+      0.2553
+     ],
+     "triangles": 188
+    }
+   ]
+  },
+  {
+   "name": "seat_FL_headrest",
+   "group": "interior_fabric",
+   "pieces": [
+    {
+     "center": [
+      0.37,
+      1.1231,
+      -0.4828
+     ],
+     "size": [
+      0.26,
+      0.16,
+      0.112
+     ],
+     "triangles": 188
+    }
+   ]
+  },
+  {
+   "name": "seat_FL_posts",
+   "group": "chrome",
+   "pieces": [
+    {
+     "center": [
+      0.3,
+      1.0269,
+      -0.4552
+     ],
+     "size": [
+      0.0104,
+      0.0802,
+      0.0336
+     ],
+     "triangles": 20
+    },
+    {
+     "center": [
+      0.44,
+      1.0269,
+      -0.4552
+     ],
+     "size": [
+      0.0104,
+      0.0802,
+      0.0336
+     ],
+     "triangles": 20
+    }
+   ]
+  },
+  {
+   "name": "seat_FL_base",
+   "group": "interior_dark",
+   "pieces": [
+    {
+     "center": [
+      0.37,
+      0.27,
+      -0.03
+     ],
+     "size": [
+      0.4,
+      0.1,
+      0.42
+     ],
+     "triangles": 108
+    }
+   ]
+  },
+  {
+   "name": "seat_rear_cushion",
+   "group": "interior_fabric",
+   "pieces": [
+    {
+     "center": [
+      0.0,
+      0.35,
+      -0.78
+     ],
+     "size": [
+      1.3,
+      0.11,
+      0.5
+     ],
+     "triangles": 188
+    }
+   ]
+  },
+  {
+   "name": "seat_rear_back",
+   "group": "interior_fabric",
+   "pieces": [
+    {
+     "center": [
+      0.0,
+      0.6521,
+      -1.1234
+     ],
+     "size": [
+      1.3,
+      0.5355,
+      0.2869
+     ],
+     "triangles": 188
+    }
+   ]
+  },
+  {
+   "name": "seat_rear_headrest_R",
+   "group": "interior_fabric",
+   "pieces": [
+    {
+     "center": [
+      -0.38,
+      0.9859,
+      -1.2583
+     ],
+     "size": [
+      0.24,
+      0.1318,
+      0.1042
+     ],
+     "triangles": 188
+    }
+   ]
+  },
+  {
+   "name": "seat_rear_headrest_L",
+   "group": "interior_fabric",
+   "pieces": [
+    {
+     "center": [
+      0.38,
+      0.9859,
+      -1.2583
+     ],
+     "size": [
+      0.24,
+      0.1318,
+      0.1042
+     ],
+     "triangles": 188
+    }
+   ]
+  },
+  {
+   "name": "partition",
+   "group": "black_metal",
+   "pieces": [
+    {
+     "center": [
+      -0.003,
+      0.8995,
+      -0.4
+     ],
+     "size": [
+      1.4546,
+      0.6399,
+      0.024
+     ],
+     "triangles": 56
+    },
+    {
+     "center": [
+      -0.6,
+      0.9,
+      -0.4005
+     ],
+     "size": [
+      0.0095,
+      0.6,
+      0.009
+     ],
+     "triangles": 16
+    },
+    {
+     "center": [
+      -0.45,
+      0.9,
+      -0.4005
+     ],
+     "size": [
+      0.0095,
+      0.6,
+      0.009
+     ],
+     "triangles": 16
+    },
+    {
+     "center": [
+      -0.3,
+      0.9,
+      -0.4005
+     ],
+     "size": [
+      0.0095,
+      0.6,
+      0.009
+     ],
+     "triangles": 16
+    },
+    {
+     "center": [
+      -0.15,
+      0.9,
+      -0.4005
+     ],
+     "size": [
+      0.0095,
+      0.6,
+      0.009
+     ],
+     "triangles": 16
+    },
+    {
+     "center": [
+      0.0,
+      0.9,
+      -0.4005
+     ],
+     "size": [
+      0.0095,
+      0.6,
+      0.009
+     ],
+     "triangles": 16
+    },
+    {
+     "center": [
+      0.15,
+      0.9,
+      -0.4005
+     ],
+     "size": [
+      0.0095,
+      0.6,
+      0.009
+     ],
+     "triangles": 16
+    },
+    {
+     "center": [
+      0.3,
+      0.9,
+      -0.4005
+     ],
+     "size": [
+      0.0095,
+      0.6,
+      0.009
+     ],
+     "triangles": 16
+    },
+    {
+     "center": [
+      0.45,
+      0.9,
+      -0.4005
+     ],
+     "size": [
+      0.0095,
+      0.6,
+      0.009
+     ],
+     "triangles": 16
+    },
+    {
+     "center": [
+      0.6,
+      0.9,
+      -0.4005
+     ],
+     "size": [
+      0.0095,
+      0.6,
+      0.009
+     ],
+     "triangles": 16
+    },
+    {
+     "center": [
+      0.0,
+      0.77,
+      -0.3995
+     ],
+     "size": [
+      1.4,
+      0.0095,
+      0.009
+     ],
+     "triangles": 16
+    },
+    {
+     "center": [
+      0.0,
+      0.97,
+      -0.3995
+     ],
+     "size": [
+      1.4,
+      0.0095,
+      0.009
+     ],
+     "triangles": 16
+    }
+   ]
+  },
+  {
+   "name": "parcel_shelf",
+   "group": "interior_dark",
+   "pieces": [
+    {
+     "center": [
+      0.0,
+      0.9,
+      -1.36
+     ],
+     "size": [
+      1.4,
+      0.0479,
+      0.4004
+     ],
+     "triangles": 12
+    }
+   ]
+  },
+  {
+   "name": "rearview_mirror",
+   "group": "interior_dark",
+   "pieces": [
+    {
+     "center": [
+      0.0,
+      1.22,
+      0.12
+     ],
+     "size": [
+      0.24,
+      0.065,
+      0.03
+     ],
+     "triangles": 108
+    }
+   ]
+  },
+  {
+   "name": "door_card_FL",
+   "group": "interior_plastic",
+   "pieces": [
+    {
+     "center": [
+      0.8021,
+      0.5805,
+      0.31
+     ],
+     "size": [
+      0.0423,
+      0.4774,
+      1.0664
+     ],
+     "triangles": 464
+    }
+   ]
+  },
+  {
+   "name": "armrest_FL",
+   "group": "interior_leather",
+   "pieces": [
+    {
+     "center": [
+      0.7598,
+      0.57,
+      0.27
+     ],
+     "size": [
+      0.06,
+      0.05,
+      0.575
+     ],
+     "triangles": 108
+    }
+   ]
+  },
+  {
+   "name": "door_card_FR",
+   "group": "interior_plastic",
+   "pieces": [
+    {
+     "center": [
+      -0.8021,
+      0.5805,
+      0.31
+     ],
+     "size": [
+      0.0423,
+      0.4774,
+      1.0664
+     ],
+     "triangles": 460
+    }
+   ]
+  },
+  {
+   "name": "armrest_FR",
+   "group": "interior_leather",
+   "pieces": [
+    {
+     "center": [
+      -0.7598,
+      0.57,
+      0.27
+     ],
+     "size": [
+      0.06,
+      0.05,
+      0.575
+     ],
+     "triangles": 108
+    }
+   ]
+  },
+  {
+   "name": "door_card_RL",
+   "group": "interior_plastic",
+   "pieces": [
+    {
+     "center": [
+      0.8033,
+      0.5944,
+      -0.6517
+     ],
+     "size": [
+      0.0397,
+      0.4926,
+      0.8875
+     ],
+     "triangles": 288
+    }
+   ]
+  },
+  {
+   "name": "armrest_RL",
+   "group": "interior_leather",
+   "pieces": [
+    {
+     "center": [
+      0.7598,
+      0.57,
+      -0.6969
+     ],
+     "size": [
+      0.06,
+      0.05,
+      0.4824
+     ],
+     "triangles": 108
+    }
+   ]
+  },
+  {
+   "name": "door_card_RR",
+   "group": "interior_plastic",
+   "pieces": [
+    {
+     "center": [
+      -0.8032,
+      0.5944,
+      -0.6517
+     ],
+     "size": [
+      0.0398,
+      0.4926,
+      0.8875
+     ],
+     "triangles": 288
+    }
+   ]
+  },
+  {
+   "name": "armrest_RR",
+   "group": "interior_leather",
+   "pieces": [
+    {
+     "center": [
+      -0.7598,
+      0.57,
+      -0.6969
+     ],
+     "size": [
+      0.06,
+      0.05,
+      0.4824
+     ],
+     "triangles": 108
+    }
+   ]
+  },
+  {
+   "name": "headliner",
+   "group": "interior_fabric",
+   "pieces": [
+    {
+     "center": [
+      0.0,
+      1.2246,
+      -0.4462
+     ],
+     "size": [
+      1.3133,
+      0.1711,
+      1.1376
+     ],
+     "triangles": 720
+    }
+   ]
+  },
+  {
+   "name": "frit_windscreen",
+   "group": "frit",
+   "pieces": [
+    {
+     "center": [
+      0.0,
+      1.0683,
+      0.385
+     ],
+     "size": [
+      1.1889,
+      0.431,
+      0.7
+     ],
+     "triangles": 116
+    }
+   ]
+  },
+  {
+   "name": "frit_rear_window",
+   "group": "frit",
+   "pieces": [
+    {
+     "center": [
+      0.0,
+      1.0933,
+      -1.2675
+     ],
+     "size": [
+      1.187,
+      0.3093,
+      0.505
+     ],
+     "triangles": 112
+    }
+   ]
+  }
+ ],
+ "wheel": [
+  {
+   "name": "tyre",
+   "group": "tyre",
+   "pieces": [
+    {
+     "center": [
+      0.001,
+      0.0,
+      -0.0
+     ],
+     "size": [
+      0.225,
+      0.664,
+      0.664
+     ],
+     "triangles": 2944
+    }
+   ]
+  },
+  {
+   "name": "rim_barrel",
+   "group": "rim",
+   "pieces": [
+    {
+     "center": [
+      0.005,
+      0.0,
+      -0.0
+     ],
+     "size": [
+      0.205,
+      0.428,
+      0.428
+     ],
+     "triangles": 1344
+    }
+   ]
+  },
+  {
+   "name": "rim_hub",
+   "group": "rim",
+   "pieces": [
+    {
+     "center": [
+      0.0535,
+      0.0,
+      -0.0
+     ],
+     "size": [
+      0.052,
+      0.17,
+      0.17
+     ],
+     "triangles": 360
+    }
+   ]
+  },
+  {
+   "name": "rim_spokes",
+   "group": "rim",
+   "pieces": [
+    {
+     "center": [
+      0.0576,
+      -0.0086,
+      -0.129
+     ],
+     "size": [
+      0.0391,
+      0.0274,
+      0.1155
+     ],
+     "triangles": 132
+    },
+    {
+     "center": [
+      0.0576,
+      0.0086,
+      -0.129
+     ],
+     "size": [
+      0.0391,
+      0.0274,
+      0.1155
+     ],
+     "triangles": 132
+    },
+    {
+     "center": [
+      0.0576,
+      0.1063,
+      -0.072
+     ],
+     "size": [
+      0.0391,
+      0.1027,
+      0.0776
+     ],
+     "triangles": 132
+    },
+    {
+     "center": [
+      0.0576,
+      0.1162,
+      -0.0551
+     ],
+     "size": [
+      0.0391,
+      0.1089,
+      0.0643
+     ],
+     "triangles": 132
+    },
+    {
+     "center": [
+      0.0576,
+      0.1162,
+      0.0551
+     ],
+     "size": [
+      0.0391,
+      0.1089,
+      0.0643
+     ],
+     "triangles": 132
+    },
+    {
+     "center": [
+      0.0576,
+      0.1063,
+      0.072
+     ],
+     "size": [
+      0.0391,
+      0.1027,
+      0.0776
+     ],
+     "triangles": 132
+    },
+    {
+     "center": [
+      0.0576,
+      0.0086,
+      0.129
+     ],
+     "size": [
+      0.0391,
+      0.0274,
+      0.1155
+     ],
+     "triangles": 132
+    },
+    {
+     "center": [
+      0.0576,
+      -0.0086,
+      0.129
+     ],
+     "size": [
+      0.0391,
+      0.0274,
+      0.1155
+     ],
+     "triangles": 132
+    },
+    {
+     "center": [
+      0.0576,
+      -0.1063,
+      0.072
+     ],
+     "size": [
+      0.0391,
+      0.1027,
+      0.0776
+     ],
+     "triangles": 132
+    },
+    {
+     "center": [
+      0.0576,
+      -0.1162,
+      0.0551
+     ],
+     "size": [
+      0.0391,
+      0.1089,
+      0.0643
+     ],
+     "triangles": 132
+    },
+    {
+     "center": [
+      0.0576,
+      -0.1162,
+      -0.0551
+     ],
+     "size": [
+      0.0391,
+      0.1089,
+      0.0643
+     ],
+     "triangles": 132
+    },
+    {
+     "center": [
+      0.0576,
+      -0.1063,
+      -0.072
+     ],
+     "size": [
+      0.0391,
+      0.1027,
+      0.0776
+     ],
+     "triangles": 132
+    }
+   ]
+  },
+  {
+   "name": "lug_nuts",
+   "group": "lug",
+   "pieces": [
+    {
+     "center": [
+      0.0855,
+      0.025,
+      -0.0433
+     ],
+     "size": [
+      0.022,
+      0.0182,
+      0.021
+     ],
+     "triangles": 20
+    },
+    {
+     "center": [
+      0.0855,
+      -0.0335,
+      -0.0372
+     ],
+     "size": [
+      0.022,
+      0.0182,
+      0.021
+     ],
+     "triangles": 20
+    },
+    {
+     "center": [
+      0.0855,
+      0.0052,
+      0.0497
+     ],
+     "size": [
+      0.022,
+      0.0182,
+      0.021
+     ],
+     "triangles": 20
+    },
+    {
+     "center": [
+      0.0855,
+      0.0489,
+      0.0104
+     ],
+     "size": [
+      0.022,
+      0.0182,
+      0.021
+     ],
+     "triangles": 20
+    },
+    {
+     "center": [
+      0.0855,
+      -0.0457,
+      0.0203
+     ],
+     "size": [
+      0.022,
+      0.0182,
+      0.021
+     ],
+     "triangles": 20
+    }
+   ]
+  },
+  {
+   "name": "center_cap",
+   "group": "rim",
+   "pieces": [
+    {
+     "center": [
+      0.0885,
+      0.0,
+      -0.0
+     ],
+     "size": [
+      0.018,
+      0.066,
+      0.066
+     ],
+     "triangles": 144
+    }
+   ]
+  },
+  {
+   "name": "brake_disc",
+   "group": "brake_disc",
+   "pieces": [
+    {
+     "center": [
+      -0.001,
+      0.0,
+      -0.0
+     ],
+     "size": [
+      0.052,
+      0.284,
+      0.284
+     ],
+     "triangles": 518
+    }
+   ]
+  },
+  {
+   "name": "caliper",
+   "group": "caliper",
+   "pieces": [
+    {
+     "center": [
+      -0.014,
+      0.0909,
+      -0.0909
+     ],
+     "size": [
+      0.062,
+      0.1106,
+      0.1106
+     ],
+     "triangles": 276
+    }
+   ]
+  }
+ ],
+ "triangles": {
+  "body": 63378,
+  "wheel": 7270
+ }
+}

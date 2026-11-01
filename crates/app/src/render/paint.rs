@@ -57,6 +57,10 @@ pub struct BrushGpu {
     pub enabled3: [f32; 4], // emissive
     /// opacity value, transmission value, opacity on, transmission on
     pub extra: [f32; 4],
+    /// clearcoat value, coat roughness value, flake value
+    pub coat: [f32; 4],
+    /// clearcoat on, coat roughness on, flake on
+    pub coat_on: [f32; 4],
 }
 
 /// Pixels of the dirty tiles of one target, packed into atlases.
@@ -114,7 +118,7 @@ pub struct Painter {
     decal_bgl: wgpu::BindGroupLayout,
     decal_buf: wgpu::Buffer,
     decal_sampler: wgpu::Sampler,
-    before: [Tex; 8],
+    before: [Tex; 11],
     before_mask: Tex,
     active: Option<Target>,
     box_pipe: wgpu::RenderPipeline,
@@ -131,7 +135,7 @@ impl Painter {
         let apply_bgl = gpu::bgl(
             device,
             "apply",
-            &[gpu::ntex(0), gpu::ntex(1), gpu::ntex(2), gpu::ntex(3), gpu::ntex(4), gpu::ntex(5), gpu::ntex(6), gpu::uniform_entry(7, false), gpu::ntex(8), gpu::ntex(9), gpu::ntex(10)],
+            &[gpu::ntex(0), gpu::ntex(1), gpu::ntex(2), gpu::ntex(3), gpu::ntex(4), gpu::ntex(5), gpu::ntex(6), gpu::uniform_entry(7, false), gpu::ntex(8), gpu::ntex(9), gpu::ntex(10), gpu::ntex(11), gpu::ntex(12), gpu::ntex(13)],
         );
         let attrs = wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3, 2 => Float32x2, 3 => Float32x4];
         let mesh_layout = [Some(wgpu::VertexBufferLayout {
@@ -251,7 +255,7 @@ impl Painter {
         }
     }
 
-    fn scratch(device: &wgpu::Device, res: u32) -> (Tex, [Tex; 8], Tex) {
+    fn scratch(device: &wgpu::Device, res: u32) -> (Tex, [Tex; 11], Tex) {
         (
             Tex::target(device, "stroke mask", res, wgpu::TextureFormat::R16Float),
             LAYER_FORMATS.map(|f| Tex::target(device, "before", res, f)),

@@ -28,10 +28,16 @@ pub enum Channel {
     Opacity,
     /// Glass: 0 = opaque surface, 1 = fully transmissive (refracting) surface.
     Transmission,
+    /// Clearcoat weight: a glossy varnish layer over the base (car paint).
+    Coat,
+    /// Roughness of the clearcoat layer.
+    CoatRoughness,
+    /// Metallic flake amount in the base under the coat (sparkle).
+    Flake,
 }
 
 impl Channel {
-    pub const ALL: [Channel; 8] = [
+    pub const ALL: [Channel; 11] = [
         Channel::BaseColor,
         Channel::Roughness,
         Channel::Metallic,
@@ -40,6 +46,9 @@ impl Channel {
         Channel::Emissive,
         Channel::Opacity,
         Channel::Transmission,
+        Channel::Coat,
+        Channel::CoatRoughness,
+        Channel::Flake,
     ];
     pub fn index(self) -> usize {
         self as usize
@@ -54,6 +63,9 @@ impl Channel {
             Channel::Emissive => "Emission",
             Channel::Opacity => "Opacity",
             Channel::Transmission => "Transmission",
+            Channel::Coat => "Coat",
+            Channel::CoatRoughness => "Coat roughness",
+            Channel::Flake => "Flake",
         }
     }
     pub fn file_stem(self) -> &'static str {
@@ -66,6 +78,9 @@ impl Channel {
             Channel::Emissive => "emissive",
             Channel::Opacity => "opacity",
             Channel::Transmission => "transmission",
+            Channel::Coat => "coat",
+            Channel::CoatRoughness => "coat_roughness",
+            Channel::Flake => "flake",
         }
     }
     /// Blend modes that make sense for this channel.
@@ -107,6 +122,13 @@ pub struct Channels<T> {
     pub opacity: T,
     #[serde(default)]
     pub transmission: T,
+    /// Clearcoat (added after opacity): older projects load these off.
+    #[serde(default)]
+    pub coat: T,
+    #[serde(default)]
+    pub coat_roughness: T,
+    #[serde(default)]
+    pub flake: T,
 }
 
 impl<T> Channels<T> {
@@ -120,6 +142,9 @@ impl<T> Channels<T> {
             emissive: f(Channel::Emissive),
             opacity: f(Channel::Opacity),
             transmission: f(Channel::Transmission),
+            coat: f(Channel::Coat),
+            coat_roughness: f(Channel::CoatRoughness),
+            flake: f(Channel::Flake),
         }
     }
     pub fn get(&self, c: Channel) -> &T {
@@ -132,6 +157,9 @@ impl<T> Channels<T> {
             Channel::Emissive => &self.emissive,
             Channel::Opacity => &self.opacity,
             Channel::Transmission => &self.transmission,
+            Channel::Coat => &self.coat,
+            Channel::CoatRoughness => &self.coat_roughness,
+            Channel::Flake => &self.flake,
         }
     }
     pub fn get_mut(&mut self, c: Channel) -> &mut T {
@@ -144,6 +172,9 @@ impl<T> Channels<T> {
             Channel::Emissive => &mut self.emissive,
             Channel::Opacity => &mut self.opacity,
             Channel::Transmission => &mut self.transmission,
+            Channel::Coat => &mut self.coat,
+            Channel::CoatRoughness => &mut self.coat_roughness,
+            Channel::Flake => &mut self.flake,
         }
     }
 }
@@ -222,6 +253,19 @@ pub struct MaterialValues {
     /// 0 = opaque, 1 = clear glass (light passes through and refracts).
     #[serde(default)]
     pub transmission: f32,
+    /// Clearcoat weight: 0 = none, 1 = a full glossy varnish layer.
+    #[serde(default)]
+    pub coat: f32,
+    /// Roughness of the clearcoat (0.03 = factory-fresh lacquer).
+    #[serde(default = "default_coat_roughness")]
+    pub coat_roughness: f32,
+    /// Metallic flake in the base layer: 0 = none, 1 = strong sparkle.
+    #[serde(default)]
+    pub flake: f32,
+}
+
+fn default_coat_roughness() -> f32 {
+    0.03
 }
 
 impl Default for MaterialValues {
@@ -236,6 +280,9 @@ impl Default for MaterialValues {
             emissive_strength: 0.0,
             opacity: 1.0,
             transmission: 0.0,
+            coat: 0.0,
+            coat_roughness: 0.03,
+            flake: 0.0,
         }
     }
 }
@@ -245,6 +292,11 @@ impl MaterialValues {
     /// opacity / transmission channels on.
     pub fn is_see_through(&self) -> (bool, bool) {
         (self.opacity < 1.0 - 1e-3, self.transmission > 1e-3)
+    }
+    /// (coated, flaked): whether a fill of these values needs its coat (+ coat
+    /// roughness) / flake channels on.
+    pub fn is_coated(&self) -> (bool, bool) {
+        (self.coat > 1e-3, self.flake > 1e-3)
     }
 }
 
@@ -695,6 +747,9 @@ pub fn material_presets() -> Vec<(&'static str, MaterialValues)> {
         ("Tinted glass", MaterialValues { base_color: [0.35, 0.45, 0.5], roughness: 0.05, opacity: 0.6, transmission: 1.0, ..Default::default() }),
         ("Frosted glass", MaterialValues { base_color: [0.85, 0.88, 0.9], roughness: 0.35, opacity: 0.7, transmission: 1.0, ..Default::default() }),
         ("Cut-out", MaterialValues { opacity: 0.0, ..Default::default() }),
+        ("Car paint clearcoat", MaterialValues { base_color: [0.42, 0.04, 0.05], roughness: 0.35, metallic: 0.0, coat: 1.0, coat_roughness: 0.03, ..Default::default() }),
+        ("Candy paint", MaterialValues { base_color: [0.55, 0.05, 0.32], roughness: 0.3, metallic: 0.6, coat: 1.0, coat_roughness: 0.02, flake: 0.6, ..Default::default() }),
+        ("Metallic flake paint", MaterialValues { base_color: [0.1, 0.16, 0.3], roughness: 0.35, metallic: 0.5, coat: 1.0, coat_roughness: 0.04, flake: 0.8, ..Default::default() }),
     ]
 }
 
@@ -771,6 +826,8 @@ impl Document {
         l.channels.normal.enabled = false;
         l.channels.emissive.enabled = values.emissive_strength > 0.0;
         (l.channels.opacity.enabled, l.channels.transmission.enabled) = values.is_see_through();
+        (l.channels.coat.enabled, l.channels.flake.enabled) = values.is_coated();
+        l.channels.coat_roughness.enabled = l.channels.coat.enabled;
         l.kind = LayerKind::Fill { values };
         if let Some(g) = generator {
             let res = self.mint();
@@ -895,6 +952,9 @@ impl Document {
         channels.emissive.enabled = false; // a fill without emission must not black out glow below it
         channels.opacity.enabled = false; // nor make glass / cut-outs below it solid
         channels.transmission.enabled = false;
+        channels.coat.enabled = false; // nor strip the clearcoat below it
+        channels.coat_roughness.enabled = false;
+        channels.flake.enabled = false;
         Layer {
             id,
             name: name.into(),
@@ -1066,6 +1126,36 @@ mod tests {
         assert!(!old.layers[0].channels.opacity.enabled);
         let LayerKind::Fill { values } = &old.layers[0].kind else { panic!() };
         assert_eq!((values.opacity, values.transmission), (1.0, 0.0));
+    }
+
+    #[test]
+    fn coat_and_flake_are_off_on_plain_fills_and_old_projects_load() {
+        let mut d = Document::default();
+        let f = d.new_fill_layer("f");
+        assert!(!f.channels.coat.enabled && !f.channels.coat_roughness.enabled && !f.channels.flake.enabled);
+        let p = d.new_paint_layer("p");
+        assert!(p.channels.coat.enabled && p.channels.coat_roughness.enabled && p.channels.flake.enabled);
+        let c = d.fill_with("c", "Car paint clearcoat", None);
+        assert!(c.channels.coat.enabled && c.channels.coat_roughness.enabled && !c.channels.flake.enabled);
+        let k = d.fill_with("k", "Candy paint", None);
+        assert!(k.channels.coat.enabled && k.channels.flake.enabled);
+        assert_eq!(Channel::Coat.file_stem(), "coat");
+        assert_eq!(Channel::CoatRoughness.file_stem(), "coat_roughness");
+        assert!(Channel::ALL.iter().enumerate().all(|(i, c)| c.index() == i));
+        // a document saved before the coat channels existed
+        let mut v = serde_json::to_value(Document::new_default()).unwrap();
+        for l in v["layers"].as_array_mut().unwrap() {
+            for k in ["coat", "coat_roughness", "flake"] {
+                l["channels"].as_object_mut().unwrap().remove(k);
+                if let Some(vals) = l["kind"].get_mut("values") {
+                    vals.as_object_mut().unwrap().remove(k);
+                }
+            }
+        }
+        let old: Document = serde_json::from_value(v).unwrap();
+        assert!(!old.layers[0].channels.coat.enabled && !old.layers[0].channels.flake.enabled);
+        let LayerKind::Fill { values } = &old.layers[0].kind else { panic!() };
+        assert_eq!((values.coat, values.coat_roughness, values.flake), (0.0, 0.03, 0.0));
     }
 
     #[test]

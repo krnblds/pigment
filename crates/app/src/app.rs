@@ -59,7 +59,7 @@ struct Brush {
     hardness: f32,
     spacing: f32, // fraction of diameter
     values: MaterialValues,
-    channels: [bool; 8],
+    channels: [bool; 11],
     erase: bool,
     mask_white: bool,
 }
@@ -72,7 +72,7 @@ impl Default for Brush {
             hardness: 0.6,
             spacing: 0.1,
             values: material_preset("Orange paint"),
-            channels: [true, true, true, false, false, false, false, false],
+            channels: [true, true, true, false, false, false, false, false, false, false, false],
             erase: false,
             mask_white: true,
         }
@@ -728,6 +728,8 @@ impl PigmentApp {
             },
             enabled3: [on(5), 0.0, 0.0, 0.0],
             extra: [b.values.opacity.clamp(0.0, 1.0), b.values.transmission.clamp(0.0, 1.0), on(6), on(7)],
+            coat: [b.values.coat.clamp(0.0, 1.0), b.values.coat_roughness.clamp(0.0, 1.0), b.values.flake.clamp(0.0, 1.0), 0.0],
+            coat_on: [on(8), on(9), on(10), 0.0],
         }
     }
 
