@@ -16,6 +16,8 @@ func _ready() -> void:
 		_drive_test.call_deferred()
 	elif a.has("autoshot"):
 		_autoshot.call_deferred(String(a.autoshot))
+	elif a.has("bench-matrix"):
+		_bench_matrix.call_deferred()
 	elif a.has("bench"):
 		_bench_only.call_deferred(float(a.bench))
 
@@ -25,7 +27,14 @@ func _physics_process(delta: float) -> void:
 		main.autopilot_step(delta)
 
 
+var _beat := 0
+
+
 func _process(delta: float) -> void:
+	var now := Time.get_ticks_msec()
+	if now - _beat > 2000:
+		_beat = now
+		print("  [%.1f s] fps %d  frame %.1f ms" % [now / 1000.0, Engine.get_frames_per_second(), delta * 1000.0])
 	if _measure:
 		_frames.append(delta)
 		_draws.append(RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME))
@@ -33,7 +42,7 @@ func _process(delta: float) -> void:
 
 
 func _wait(t: float) -> void:
-	await get_tree().create_timer(t, true, true).timeout
+	await get_tree().create_timer(t, true, false, true).timeout
 
 
 func _drive(on: bool) -> void:
@@ -125,11 +134,7 @@ func _autoshot(dir: String) -> void:
 	cam.snap()
 	_drive(true)
 	await _wait(2.0)
-	perf["drive_sdfgi_on"] = await _measure_for(10.0)
-	main.env.sdfgi_enabled = false
-	await _wait(1.0)
-	perf["drive_sdfgi_off"] = await _measure_for(6.0)
-	main.env.sdfgi_enabled = true
+	perf["drive"] = await _measure_for(10.0)
 	_ap = false
 	# overview from the Cycles "overview" camera position
 	cam.manual = true
@@ -248,4 +253,36 @@ func _drive_test() -> void:
 	for l in log:
 		print("  ", l)
 	print("DRIVETEST ", JSON.stringify(res))
+	_quit()
+
+
+# ------------------------------------------------------------------ what costs what (static view)
+func _bench_matrix() -> void:
+	_video_setup()
+	await _wait(6.0)
+	var env: Environment = main.env
+	var moon: DirectionalLight3D = main.get_node("Moon")
+	var vis: Node3D = main.town.get_node("Visuals")
+	var res := {}
+	res["base"] = await _measure_for(3.0)
+	moon.shadow_enabled = false
+	res["no_moon_shadow"] = await _measure_for(3.0)
+	main.set_process(false)
+	for l in main.town.lamp_lights:
+		l.shadow_enabled = false
+	res["+no_lamp_shadows"] = await _measure_for(3.0)
+	env.ssil_enabled = false
+	res["+no_ssil"] = await _measure_for(3.0)
+	env.volumetric_fog_enabled = false
+	res["+no_volfog"] = await _measure_for(3.0)
+	env.ssr_enabled = false
+	env.ssao_enabled = false
+	res["+no_ssr_ssao"] = await _measure_for(3.0)
+	main.rain.visible = false
+	res["+no_rain"] = await _measure_for(3.0)
+	for c in vis.get_children():
+		if c.name.begins_with("building"):
+			c.visible = false
+	res["+no_buildings"] = await _measure_for(3.0)
+	print("MATRIX ", JSON.stringify(res, "  "))
 	_quit()

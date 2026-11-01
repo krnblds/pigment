@@ -5,7 +5,8 @@ extends Node3D
 ##   --autoshot=<dir>   scripted drive, saves PNGs + perf.json to <dir>, quits
 ##   --bench=<seconds>  autopilot drive, prints FPS / draw calls, quits
 ##   --drive-test       physics-only check (works with --headless), prints, quits
-##   --no-gi            start with SDFGI off      --no-rain   start without rain
+##   --gi               start with SDFGI on       --no-rain   start without rain
+##   --no-town          skip the town (empty ground)
 
 const TownLoader := preload("res://scripts/town_loader.gd")
 const Car := preload("res://scripts/car.gd")
@@ -24,6 +25,7 @@ var world_env: WorldEnvironment
 var rain: GPUParticles3D
 var args := {}
 var _shadow_t := 0.0
+const SHADOW_LAMPS := 3                 ## nearest street lamps that cast shadows
 var _road_lines: Array = []
 var _ap_line := 0
 var _ap_idx := 0
@@ -43,7 +45,7 @@ func _ready() -> void:
 	town = TownLoader.new()
 	town.name = "Town"
 	add_child(town)
-	if not town.load_town(1.0):
+	if args.has("no-town") or not town.load_town(1.0):
 		_fallback_ground()
 	car = Car.new()
 	car.name = "Car"
@@ -65,8 +67,8 @@ func _ready() -> void:
 	_setup_rain()
 	if args.has("no-rain"):
 		rain.emitting = false
-	if args.has("no-gi"):
-		env.sdfgi_enabled = false
+	if args.has("gi"):
+		env.sdfgi_enabled = true
 	_road_lines = town.road_polylines() if town.layout else []
 	if args.has("autoshot") or args.has("bench") or args.has("drive-test"):
 		var auto := preload("res://scripts/automation.gd").new()
@@ -119,6 +121,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		rain.visible = rain.emitting
 	elif event.is_action_pressed("toggle_gi"):
 		env.sdfgi_enabled = not env.sdfgi_enabled
+		print("SDFGI ", env.sdfgi_enabled)
 	elif event.is_action_pressed("toggle_stats"):
 		hud.show_fps = not hud.show_fps
 	elif event.is_action_pressed("quit"):
@@ -174,7 +177,12 @@ func _setup_environment() -> void:
 	env.ssao_enabled = true
 	env.ssao_radius = 1.2
 	env.ssao_intensity = 1.6
-	env.sdfgi_enabled = true
+	# SDFGI is opt-in (G / --gi): voxelising ~14 M triangles stalls on a shared GPU; SSIL gives the
+	# cheap screen-space bounce of neon and lamps instead
+	env.sdfgi_enabled = false
+	env.ssil_enabled = true
+	env.ssil_radius = 6.0
+	env.ssil_intensity = 1.4
 	env.sdfgi_use_occlusion = true
 	env.sdfgi_cascades = 4
 	env.sdfgi_min_cell_size = 0.3
@@ -207,9 +215,9 @@ func _setup_environment() -> void:
 	moon.name = "Moon"
 	moon.light_color = Color(0.55, 0.65, 1.0)
 	moon.light_energy = 0.12
-	moon.shadow_enabled = true
-	moon.directional_shadow_max_distance = 160.0
-	moon.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS
+	moon.shadow_enabled = false            # at this energy its shadows are invisible; lamps cast instead
+	moon.directional_shadow_max_distance = 90.0
+	moon.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS
 	moon.light_volumetric_fog_energy = 0.4
 	moon.rotation_degrees = Vector3(-50, 35, 0)
 	add_child(moon)
@@ -283,7 +291,7 @@ func _process(delta: float) -> void:
 		var cp := cam.global_position
 		lamps.sort_custom(func(a, b): return a.global_position.distance_squared_to(cp) < b.global_position.distance_squared_to(cp))
 		for i in lamps.size():
-			lamps[i].shadow_enabled = i < 4 and lamps[i].global_position.distance_to(cp) < 60.0
+			lamps[i].shadow_enabled = i < SHADOW_LAMPS and lamps[i].global_position.distance_to(cp) < 50.0
 
 
 # ------------------------------------------------------------------ autopilot (automation + demo)

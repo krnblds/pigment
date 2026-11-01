@@ -372,6 +372,7 @@ func _build_lights() -> void:
 					o.light_energy = 3.2
 					o.light_volumetric_fog_energy = 2.0
 					o.light_size = 0.15
+					o.omni_shadow_mode = OmniLight3D.SHADOW_DUAL_PARABOLOID
 					lamp_lights.append(o)
 				"AlleyLight":
 					o.omni_range = 9.0
