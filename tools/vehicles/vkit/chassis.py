@@ -16,6 +16,8 @@ def wheel_wells(p):
     p: {inner, outer, a0, a1}"""
     out = []
     for axle, an in zip(cfg.V.axles, "FR"):
+        if an not in p.get("axles", "FR"):
+            continue
         for sx, side in SIDES:
             r = cfg.V.arch_r - 0.006
             bm = bmesh.new()

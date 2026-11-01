@@ -192,12 +192,10 @@ def fixed_window(w):
     r = w.get("r", 0.012)
     top = w.get("top_drop", 0.0)
     bot = w.get("bottom_rise", 0.0)
+    sl = w.get("slant", 0.0)    # the rear edge leans forward at the top (C pillar)
     pts = [(y0, dlo_bottom(y0) + bot), (y0, dlo_top(y0) - r - top)]
-    pts += [(y, dlo_top(y) - top) for y in frange(y0 + 0.03, y1 - 0.03, w.get("n", 8))]
-    pts += [(y1, dlo_top(y1) - r - top), (y1, dlo_bottom(y1) + bot)]
-    if w.get("slant"):
-        # the rear edge leans forward at the top (C pillar)
-        pts[-2] = (y1 - w.slant, pts[-2][1])
+    pts += [(y, dlo_top(y) - top) for y in frange(y0 + 0.03, y1 - sl - 0.03, w.get("n", 8))]
+    pts += [(y1 - sl, dlo_top(y1 - sl) - r - top), (y1, dlo_bottom(y1) + bot)]
     return pts
 
 
@@ -672,6 +670,16 @@ def cut_body(shell):
     solids, gaps, wins, recess = make_cutters()
     lamps = lamp_apertures()
     glass_src = copy_obj(shell, "GlassSource")
+    dec = cfg.V.body.get("decimate", 1.0)
+    if dec < 1.0:
+        # traffic budget: thin the shell (collapse, symmetric) before cutting; the full-resolution
+        # copy stays the normal reference, so the reflections keep the smooth surface's shading
+        m = shell.modifiers.new("dec", "DECIMATE")
+        m.decimate_type = "COLLAPSE"
+        m.ratio = dec
+        m.use_symmetry = True
+        m.symmetry_axis = "X"
+        apply_mods(shell)
     cut(shell, solids, keep=True)
     for w in wins.values():
         cut(shell, w, keep=True)
@@ -694,7 +702,8 @@ def cut_body(shell):
     depth = PN().get("flange_depth", 0.014)
     for nm, ob in pieces.items():
         flange(ob, depth)
+    nd = 0.004 if dec >= 1.0 else 0.010
     for ob in list(pieces.values()) + [p for p, g in panes.values()]:
-        transfer_normals(ob, glass_src, max_dist=0.008 if ob.name in panes else 0.004)
+        transfer_normals(ob, glass_src, max_dist=0.008 if ob.name in panes else nd)
     delete([glass_src])
     return pieces, panes

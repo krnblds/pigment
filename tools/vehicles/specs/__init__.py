@@ -3,4 +3,4 @@
 FLEET is the build / export order; tools/vehicles/fleet.py holds the traffic metadata
 (class, spawn weights, variants) that goes into assets/vehicles/index.json.
 """
-FLEET = ["tsubame"]
+FLEET = ["tsubame", "mame", "hakobi", "hayate", "kaiun", "kago"]

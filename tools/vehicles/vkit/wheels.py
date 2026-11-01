@@ -75,6 +75,21 @@ def tyre():
         (R_RIM + 0.030, hw - 0.004),    # rim protector
         (R_RIM + 0.004, hw - 0.018),
     ]
+    if w.get("profile") == "v2":
+        # proportional profile: every height is a fraction of the sidewall, so any aspect ratio works
+        H = R_TYRE - R_RIM
+        g = 0.20 * w.width / 0.215
+        prof = [
+            (R_RIM + 0.004, -hw + 0.018), (R_RIM + 0.25 * H, -hw + 0.004), (R_TYRE - 0.35 * H, -hw - 0.004),
+            (R_TYRE - 0.12 * H, -hw + 0.004), (R_TYRE - 0.03 * H, -hw + 0.018),
+            (R_TYRE, -hw + 0.034), (R_TYRE, -g * 0.26), (R_TYRE - 0.007, -g * 0.24), (R_TYRE - 0.007, -g * 0.18), (R_TYRE, -g * 0.16),
+            (R_TYRE, g * 0.16), (R_TYRE - 0.007, g * 0.18), (R_TYRE - 0.007, g * 0.24), (R_TYRE, g * 0.26), (R_TYRE, hw - 0.034),
+            (R_TYRE - 0.03 * H, hw - 0.018), (R_TYRE - 0.12 * H, hw - 0.004), (R_TYRE - 0.30 * H, hw + 0.002),
+            (R_TYRE - 0.40 * H, hw + 0.006), (R_TYRE - 0.62 * H, hw + 0.006), (R_RIM + 0.22 * H, hw + 0.003), (R_RIM + 0.10 * H, hw - 0.006),
+            (R_RIM + 0.004, hw - 0.018),
+        ]
+        lug = {5, 6, 13, 14}
+        centre = {9, 10}
     seg = w.get("tyre_seg", 64)
     lug = {5, 6, 13, 14}
     centre = {9, 10}
@@ -107,10 +122,11 @@ def barrel():
         (R_LIP + 0.002, hw - 0.014), (R_LIP + 0.002, hw - 0.004), (R_LIP - 0.010, hw), (R_RIM - 0.020, hw - 0.006),
         (R_RIM - 0.024, hw - 0.020), (R_RIM - 0.020, -hw + 0.030), (R_RIM - 0.012, -hw + 0.012),
     ]
-    rings = revolve(bm, prof, 48)
+    sg = w.get("barrel_seg", 48)
+    rings = revolve(bm, prof, sg)
     A, Bq = rings[0], rings[-1]
-    for k in range(48):
-        bm.faces.new((Bq[k], Bq[(k + 1) % 48], A[(k + 1) % 48], A[k]))
+    for k in range(sg):
+        bm.faces.new((Bq[k], Bq[(k + 1) % sg], A[(k + 1) % sg], A[k]))
     return bm_obj("rim_barrel", bm)
 
 
@@ -177,14 +193,14 @@ def rim_face():
         spokes = bm_obj("rim_spokes", bm)
         m = spokes.modifiers.new("bev", "BEVEL")
         m.width = 0.004 if style != "mesh" else 0.002
-        m.segments = 2
+        m.segments = 2 if style != "mesh" else 1
         apply_mods(spokes)
         out.append(spokes)
     elif style == "steel":
         # a pressed disc: dish profile from the hub to the barrel with a ring of round vent holes
         bm = bmesh.new()
         nh = w.get("holes", 8)
-        seg = nh * 8
+        seg = nh * w.get("disc_seg_per_hole", 8)
         prof = [(0.0, xf + 0.004), (0.085, xf + 0.004), (0.095, xf - 0.004), (0.115, xf - 0.010), (0.125, xf - 0.004),
                 (R_RIM * 0.62, xf - 0.002), (R_RIM * 0.80, xf - 0.012), (R_RIM - 0.016, xf - 0.040), (R_RIM - 0.014, xf - 0.050)]
         revolve(bm, prof, seg)
@@ -221,12 +237,15 @@ def rim_face():
         # slots: dark inserts
         bm = bmesh.new()
         n = w.get("slots", 7)
+        from .geom import bm_tube_path
         for i in range(n):
             a = TAU * i / n
-            for t in range(6):
-                r = 0.095 + t * (R_RIM * 0.72 - 0.095) / 5
-                aa = a + t * 0.06
-                bm_cyl(bm, (xf + 0.012 + 0.008 * (1 - t / 5), r * math.cos(aa), r * math.sin(aa)), 0.010, 0.006, seg=8, axis="X")
+            pts = []
+            for t in range(7):
+                r = 0.090 + t * (R_RIM * 0.74 - 0.090) / 6
+                aa = a + t * 0.07
+                pts.append((xf + 0.019 - 0.008 * (r / R_RIM), r * math.cos(aa), r * math.sin(aa)))
+            bm_tube_path(bm, pts, 0.011, 6)
         slots = bm_obj("rim_slots", bm)
         out.append(slots)
     return out

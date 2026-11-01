@@ -338,10 +338,10 @@ def assemble(reg, wheel_parts, caliper, groups, src_dir):
     col = make_collider(pts[::5])
     # lamp empties at the reflector / brake-lamp centres
     lp = v.lamps
-    hx, hz = lp.head
-    tx, tz = lp.tail
-    yh = P.front_face_y(hx, hz)
-    yt = P.rear_face_y(tx, tz)
+    hx, hz = lp.head[:2]
+    tx, tz = lp.tail[:2]
+    yh = lp.head[2] if len(lp.head) > 2 else P.front_face_y(hx, hz)
+    yt = lp.tail[2] if len(lp.tail) > 2 else P.rear_face_y(tx, tz)
     zh, zt = hz - v.body_drop, tz - v.body_drop
     lamps = [lamp_empty("Headlight_L", (hx, yh, zh), True), lamp_empty("Headlight_R", (-hx, yh, zh), True),
              lamp_empty("Taillight_L", (tx, yt, zt), False), lamp_empty("Taillight_R", (-tx, yt, zt), False)]

@@ -155,7 +155,7 @@ def build(name, preview=None, export=True):
             ob.location.z -= 50
         length = v.rear - v.front
         PV.clay(preview, views=v.get("preview_views", ("front34", "rear34", "side", "front", "rear", "wheel", "interior")),
-                scale=max(1.0, length / 4.44), zc=max(0.0, (v.get("height", 1.4) - 1.4) * 0.4),
+                scale=v.get("preview_scale", max(1.0, length / 4.44)), zc=max(0.0, (v.get("height", 1.4) - 1.4) * 0.4),
                 wheel_target=(v.track / 2, B.axle_f(), v.wheel_r))
         for (nm, grp, ob) in wheel_parts + [caliper]:
             ob.location.z += 50
