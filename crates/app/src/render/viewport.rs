@@ -174,6 +174,8 @@ pub struct Viewport {
     sampler: wgpu::Sampler,
     targets: Option<Targets>,
     texture_id: Option<egui::TextureId>,
+    /// Foliage cards drawn after the opaque mesh (see `render/foliage.rs`).
+    pub foliage: super::foliage::FoliageGpu,
 }
 
 impl Viewport {
@@ -187,6 +189,7 @@ impl Viewport {
             &[gpu::ftex(0), gpu::ftex(1), gpu::ftex(2), gpu::ftex(3), gpu::ftex(4), gpu::ftex(5), gpu::ftex(6), gpu::sampler_entry(7, wgpu::SamplerBindingType::Filtering), gpu::ftex(8)],
         );
         let layout = gpu::layout(device, "viewport", &[&g_bgl, &env_bgl, &mat_bgl]);
+        let foliage = super::foliage::FoliageGpu::new(device, &g_bgl, &env_bgl, HDR_FORMAT, DEPTH_FORMAT, MSAA);
         let depth_layout = gpu::layout(device, "viewport depth", &[&g_bgl]);
         let globals = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("viewport globals"),
@@ -328,6 +331,7 @@ impl Viewport {
             sampler,
             targets: None,
             texture_id: None,
+            foliage,
         }
     }
 
@@ -459,6 +463,7 @@ impl Viewport {
             flags: [bloom_on as u32 as f32, 0.0, 0.0, 0.0],
         };
         queue.write_buffer(&self.post_buf, 0, bytemuck::bytes_of(&post));
+        self.foliage.write_params(queue);
 
         let env_bg = gpu::bind_group(
             device,
@@ -516,8 +521,17 @@ impl Viewport {
                 pass.set_vertex_buffer(0, m.vertices.slice(..));
                 pass.set_index_buffer(m.indices.slice(..), wgpu::IndexFormat::Uint32);
                 pass.draw_indexed(0..m.index_count, 0, 0..1);
+            }
+            // foliage cards (alpha-tested, depth-written)
+            if self.foliage.card_count() > 0 {
+                self.foliage.draw(&mut pass);
+                pass.set_bind_group(2, &mat_bg, &[]);
+            }
+            if let Some(m) = mesh {
                 // then glass and cut-outs over it (depth-tested, not written)
                 pass.set_pipeline(&self.glass_pipe);
+                pass.set_vertex_buffer(0, m.vertices.slice(..));
+                pass.set_index_buffer(m.indices.slice(..), wgpu::IndexFormat::Uint32);
                 pass.draw_indexed(0..m.index_count, 0, 0..1);
             }
         }

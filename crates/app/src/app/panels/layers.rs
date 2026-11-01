@@ -39,6 +39,7 @@ fn layer_subtitle(doc: &Document, l: &Layer) -> String {
             None => "Fill · painted mask".to_string(),
         },
         (LayerKind::Fill { .. }, None) => if l.image.is_some() { "Image fill · everywhere" } else { "Fill · everywhere" }.to_string(),
+        (LayerKind::Foliage { foliage }, _) => format!("Foliage · {} card{}", foliage.instances.len(), if foliage.instances.len() == 1 { "" } else { "s" }),
         (LayerKind::Folder { .. }, m) => format!(
             "Folder · {kids} item{}{}",
             if kids == 1 { "" } else { "s" },
@@ -61,6 +62,10 @@ fn paint_thumb(pa: &egui::Painter, r: egui::Rect, l: &Layer, p: &ds::Palette) {
         LayerKind::Folder { .. } => {
             pa.rect_filled(r, egui::CornerRadius::same(ds::radius::SM), p.accent_subtle);
             Icon::Folder.paint(pa, r.shrink(space::SM), p.accent);
+        }
+        LayerKind::Foliage { .. } => {
+            pa.rect_filled(r, egui::CornerRadius::same(ds::radius::SM), p.well);
+            Icon::Leaf.paint(pa, r.shrink(space::SM), p.success);
         }
     }
 }
@@ -483,6 +488,15 @@ impl Panel for PropertiesPanel {
                 ds::card(ui, |ui| {
                     ui.label(ds::strong("Paint layer", font::BODY));
                     ds::hint(ui, "Holds whatever you paint. Pick the brush material in the Brush panel.");
+                });
+            }
+            LayerKind::Foliage { foliage } => {
+                ds::card(ui, |ui| {
+                    ui.label(ds::strong("Foliage layer", font::BODY));
+                    ds::hint(ui, "Cards placed on the model: moss, grass, ivy, fallen leaves. Paint them with the Foliage brush (V); they are not part of the textures and export with Export foliage.");
+                    let t = ds::muted(ui, format!("{} cards · atlas: {}", foliage.instances.len(), foliage.atlas));
+                    ui.label(t);
+                    ds::slider_row(ui, "Wind (preview)", &mut foliage.wind, 0.0..=1.0, ds::Unit::Percent);
                 });
             }
             LayerKind::Folder { .. } => {

@@ -313,6 +313,13 @@ pub enum LayerKind {
         #[serde(default)]
         collapsed: bool,
     },
+    /// Foliage cards placed on the model (moss, grass, ivy...): geometry,
+    /// not texture. Skipped by the compositor; drawn by the viewport and
+    /// exported with `export_foliage` (see `foliage_set`).
+    Foliage {
+        #[serde(default)]
+        foliage: crate::foliage_set::FoliageSet,
+    },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -615,6 +622,20 @@ pub struct Layer {
     /// Fill layers only: channels from tiling images instead of flat values.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub image: Option<crate::image_fill::ImageFill>,
+    /// Paint layers only: pixels drawn by a procedural generator (foliage
+    /// atlas cells, bark). The app redraws them whenever this changes.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub generated: Option<Generated>,
+}
+
+/// What draws a generated paint layer.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum Generated {
+    /// One foliage cell per atlas cell (same order as `Document.tile.cells`).
+    FoliageCells { cells: Vec<crate::foliage::FoliageCell> },
+    /// Bark over the whole seamless tile.
+    Bark { bark: crate::foliage::BarkSpec },
 }
 
 impl Layer {
@@ -624,6 +645,20 @@ impl Layer {
     pub fn paint_res(&self) -> Option<ResId> {
         match self.kind {
             LayerKind::Paint { res } => Some(res),
+            _ => None,
+        }
+    }    pub fn is_foliage(&self) -> bool {
+        matches!(self.kind, LayerKind::Foliage { .. })
+    }
+    pub fn foliage(&self) -> Option<&crate::foliage_set::FoliageSet> {
+        match &self.kind {
+            LayerKind::Foliage { foliage } => Some(foliage),
+            _ => None,
+        }
+    }
+    pub fn foliage_mut(&mut self) -> Option<&mut crate::foliage_set::FoliageSet> {
+        match &mut self.kind {
+            LayerKind::Foliage { foliage } => Some(foliage),
             _ => None,
         }
     }
@@ -951,6 +986,25 @@ impl Document {
             parent: None,
             variant: Default::default(),
             image: None,
+            generated: None,
+        }
+    }
+
+    /// A foliage layer (cards on the model) using the built-in card library.
+    pub fn new_foliage_layer(&mut self, name: &str) -> Layer {
+        let id = self.mint();
+        Layer {
+            id,
+            name: name.into(),
+            visible: true,
+            opacity: 1.0,
+            kind: LayerKind::Foliage { foliage: Default::default() },
+            channels: Self::channels_default(),
+            mask: None,
+            parent: None,
+            variant: Default::default(),
+            image: None,
+            generated: None,
         }
     }
 
@@ -974,6 +1028,7 @@ impl Document {
             parent: None,
             variant: Default::default(),
             image: None,
+            generated: None,
         }
     }
 

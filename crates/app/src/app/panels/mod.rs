@@ -9,6 +9,7 @@ use super::*;
 use std::collections::BTreeMap;
 
 pub mod decals;
+pub mod foliage;
 pub mod layers;
 pub mod library;
 pub mod misc;
@@ -47,6 +48,9 @@ impl Panels {
             Box::new(misc::HistoryPanel),
             Box::new(misc::ExportPanel),
             Box::new(misc::TextureSetPanel),
+            Box::new(foliage::FoliageLibraryPanel::default()),
+            Box::new(foliage::FoliageBrushPanel),
+            Box::new(foliage::FoliageCellsPanel),
         ];
         Panels { map: list.into_iter().map(|p| (p.id(), p)).collect() }
     }

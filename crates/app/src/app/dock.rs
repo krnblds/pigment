@@ -27,10 +27,13 @@ pub enum PanelId {
     History,
     Export,
     TextureSet,
+    FoliageLibrary,
+    FoliageBrush,
+    FoliageCells,
 }
 
 impl PanelId {
-    pub const ALL: [PanelId; 15] = [
+    pub const ALL: [PanelId; 18] = [
         PanelId::Viewport,
         PanelId::Library,
         PanelId::Look,
@@ -46,6 +49,9 @@ impl PanelId {
         PanelId::History,
         PanelId::Export,
         PanelId::TextureSet,
+        PanelId::FoliageLibrary,
+        PanelId::FoliageBrush,
+        PanelId::FoliageCells,
     ];
 
     pub fn title(self) -> &'static str {
@@ -65,6 +71,9 @@ impl PanelId {
             PanelId::History => "History",
             PanelId::Export => "Export",
             PanelId::TextureSet => "Texture set & bake",
+            PanelId::FoliageLibrary => "Foliage library",
+            PanelId::FoliageBrush => "Foliage brush",
+            PanelId::FoliageCells => "Foliage cell editor",
         }
     }
 
@@ -85,6 +94,7 @@ impl PanelId {
             PanelId::History => Icon::History,
             PanelId::Export => Icon::Export,
             PanelId::TextureSet => Icon::Tile,
+            PanelId::FoliageLibrary | PanelId::FoliageBrush | PanelId::FoliageCells => Icon::Leaf,
         }
     }
 

@@ -11,6 +11,8 @@ extends Node3D
 ##   --vehicle=<id>     drive a fleet vehicle (hayate, mame, hakobi, kago, kaiun, tsubame)
 ##   --no-gi            start with SDFGI off      --no-rain   start without rain
 ##   --no-town          skip the town (empty ground)
+##   --foliage-demo=<dir>  Pigment foliage proof (tools/foliage_demo.py output): building + street with
+##                      moss, ivy and crack grass in the night rain, screenshot, quit (scripts/foliage_demo.gd)
 ##   --no-traffic       no traffic          --traffic=<n>  fixed number of moving cars (default: adaptive 24-80)
 ##   --world=<res path> traffic lane graph from a world-lanes/1 file instead of the town layout
 ##   --traffic-test=<s> headless traffic test   --traffic-shots=<dir>  traffic screenshots + perf
@@ -61,7 +63,8 @@ func _ready() -> void:
 	# --map=town | world (default: the open world when it has been exported)
 	map_name = String(args.get("map", "world" if FileAccess.file_exists("res://assets/world/world_layout.json") else "town"))
 	if args.has("no-town") or not town.load_town(1.0, map_name):
-		_fallback_ground()
+		if not args.has("foliage-demo"):        # the foliage demo brings its own street
+			_fallback_ground()
 	car = Car.new()
 	car.name = "Car"
 	add_child(car)
@@ -124,6 +127,11 @@ func _ready() -> void:
 		var vt := preload("res://scripts/vehicle/vehicle_tests.gd").new()
 		vt.main = self
 		add_child(vt)
+	elif args.has("foliage-demo"):
+		var fd := preload("res://scripts/foliage_demo.gd").new()
+		fd.name = "FoliageDemo"
+		fd.main = self
+		add_child(fd)
 	elif args.has("autoshot") or args.has("bench") or args.has("bench-spots") or args.has("bench-matrix") or args.has("drive-old"):
 		var auto := preload("res://scripts/automation.gd").new()
 		auto.main = self

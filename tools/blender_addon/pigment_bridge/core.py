@@ -119,10 +119,144 @@ def _scan_suffixes(folder):
 
 
 def list_materials(folder):
-    """Base names of the texture sets in a folder."""
+    """Base names of the texture sets in a folder (foliage card sets excluded,
+    see `foliage_entries`)."""
     sc = read_sidecar(folder)
     names = set(sc["materials"]) if sc else set()
-    return sorted(names | set(_scan_suffixes(folder)))
+    foliage = set(foliage_entries(folder))
+    return sorted((names | set(_scan_suffixes(folder))) - foliage)
+
+
+# ------------------------------------------------------------------ foliage
+
+def foliage_entries(folder):
+    """{name: entry} of the foliage card sets exported next to the textures
+    (Pigment export_foliage / send_to_blender: kind "foliage")."""
+    sc = read_sidecar(folder)
+    if not sc:
+        return {}
+    return {k: v for k, v in sc["materials"].items() if isinstance(v, dict) and v.get("kind") == "foliage"}
+
+
+def build_foliage_material(folder, entry, mat=None, translucency=0.8, alpha_clip=None):
+    """Foliage card material: BaseColorAlpha (colour + alpha cut-out), OpenGL
+    normal map, roughness, and light through the leaves from the
+    Translucency map (Translucent BSDF added to the Principled BSDF), mixed
+    with Transparent by the alpha. Two-sided, alpha-clipped (Cycles reads the
+    tree; EEVEE uses dithered / clip)."""
+    maps = entry.get("maps", {})
+    name = entry.get("name", "foliage")
+    mat = mat or bpy.data.materials.get(f"PigmentFoliage_{name}") or bpy.data.materials.new(f"PigmentFoliage_{name}")
+    mat.use_nodes = True
+    nt = mat.node_tree
+    nodes, links = nt.nodes, nt.links
+    nodes.clear()
+    out = nodes.new("ShaderNodeOutputMaterial")
+    out.location = (900, 0)
+    bsdf = nodes.new("ShaderNodeBsdfPrincipled")
+    bsdf.location = (300, 200)
+    trans = nodes.new("ShaderNodeBsdfTranslucent")
+    trans.location = (300, -250)
+    add = nodes.new("ShaderNodeAddShader")
+    add.location = (550, 0)
+    transp = nodes.new("ShaderNodeBsdfTransparent")
+    transp.location = (550, 200)
+    mix = nodes.new("ShaderNodeMixShader")
+    mix.location = (720, 0)
+
+    def img(role, is_color, x, y):
+        f = maps.get(role)
+        if not f:
+            return None
+        path = os.path.join(folder, f)
+        if not os.path.isfile(path):
+            return None
+        n = nodes.new("ShaderNodeTexImage")
+        n.location = (x, y)
+        n.image = load_image(path, is_color)
+        n.interpolation = "Linear"
+        return n
+
+    col = img("base_color_alpha", True, -500, 300)
+    if col is not None:
+        col.image.alpha_mode = "STRAIGHT"
+        links.new(col.outputs["Color"], sock(bsdf.inputs, "Base Color"))
+        alpha_out = col.outputs["Alpha"]
+        if alpha_clip:
+            # hard cut-out: alpha > clip
+            g = nodes.new("ShaderNodeMath")
+            g.operation = "GREATER_THAN"
+            g.inputs[1].default_value = float(alpha_clip)
+            g.location = (-150, 450)
+            links.new(alpha_out, g.inputs[0])
+            alpha_out = g.outputs[0]
+        links.new(alpha_out, mix.inputs[0])
+    else:
+        mix.inputs[0].default_value = 1.0
+    rough = img("roughness", False, -500, 0)
+    if rough is not None:
+        links.new(rough.outputs["Color"], sock(bsdf.inputs, "Roughness"))
+    nrm = img("normal", False, -500, -250)
+    if nrm is not None:
+        nm = nodes.new("ShaderNodeNormalMap")
+        nm.location = (-150, -250)
+        nm.inputs["Strength"].default_value = 0.6
+        links.new(nrm.outputs["Color"], nm.inputs["Color"])
+        links.new(nm.outputs["Normal"], sock(bsdf.inputs, "Normal"))
+        links.new(nm.outputs["Normal"], trans.inputs["Normal"])
+    tr = img("translucency", True, -500, -500)
+    if tr is not None:
+        k = nodes.new("ShaderNodeMixRGB") if hasattr(bpy.types, "ShaderNodeMixRGB") else None
+        if k is not None:
+            k.blend_type = "MULTIPLY"
+            k.inputs[0].default_value = 1.0
+            k.inputs[2].default_value = (translucency, translucency, translucency, 1.0)
+            k.location = (-150, -500)
+            links.new(tr.outputs["Color"], k.inputs[1])
+            links.new(k.outputs[0], trans.inputs["Color"])
+        else:
+            links.new(tr.outputs["Color"], trans.inputs["Color"])
+    else:
+        trans.inputs["Color"].default_value = (0.0, 0.0, 0.0, 1.0)
+    spec = input_socket(bsdf, "Specular IOR Level", "Specular", kind="VALUE")
+    if spec is not None:
+        spec.default_value = 0.35
+    links.new(bsdf.outputs[0], add.inputs[0])
+    links.new(trans.outputs[0], add.inputs[1])
+    links.new(transp.outputs[0], mix.inputs[1])
+    links.new(add.outputs[0], mix.inputs[2])
+    links.new(mix.outputs[0], out.inputs["Surface"])
+    configure_see_through(mat, alpha=True)
+    _set_attr(mat, "use_backface_culling", False)
+    _set_enum(mat, "blend_method", "CLIP", "HASHED")
+    mat["pigment_foliage"] = name
+    mat["pigment_folder"] = folder
+    return mat
+
+
+def import_foliage(folder, name=None, collection=None, translucency=0.8):
+    """Import the foliage card glb(s) Pigment exported into `folder` and give
+    them the foliage material. Returns the new objects."""
+    out = []
+    for key, entry in foliage_entries(folder).items():
+        if name and key != name:
+            continue
+        path = os.path.join(folder, entry.get("mesh", key + ".glb"))
+        if not os.path.isfile(path):
+            continue
+        before = set(bpy.data.objects)
+        bpy.ops.import_scene.gltf(filepath=path)
+        new = [o for o in bpy.data.objects if o not in before and o.type == "MESH"]
+        mat = build_foliage_material(folder, entry, translucency=translucency)
+        for o in new:
+            assign(o, mat)
+            o["pigment_foliage"] = key
+            if collection is not None and o.name not in collection.objects:
+                for c in list(o.users_collection):
+                    c.objects.unlink(o)
+                collection.objects.link(o)
+        out.extend(new)
+    return out
 
 
 def has_maps(folder):

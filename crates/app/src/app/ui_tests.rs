@@ -520,3 +520,98 @@ fn readme_hero() {
     std::fs::create_dir_all(out.parent().unwrap()).unwrap();
     h.save_png(&out);
 }
+
+/// Foliage brush: V picks the tool and opens its panel, a drag paints cards
+/// onto a foliage layer as one undo step, erase removes them, and the
+/// quick "Add moss" action works from the panel API.
+#[test]
+fn foliage_brush_paints_erases_and_quick_plants() {
+    let Some(mut h) = harness() else { return };
+    settle(&mut h);
+    h.key(egui::Key::V, egui::Modifiers::NONE);
+    settle(&mut h);
+    assert_eq!(h.app.tool(), Tool::Foliage);
+    assert!(h.app.ui.prefs.layout().contains(PanelId::FoliageBrush), "V opens the foliage brush panel");
+    h.app.foliage.brush.cells = vec!["grass".into(), "weed".into()];
+    h.app.foliage.brush.radius = 0.15;
+    h.app.foliage.brush.density = 200.0;
+    let v = anchor(&h, "viewport");
+    let undo_before = h.app.history.history().1;
+    h.drag(v.center() - egui::vec2(60.0, 0.0), v.center() + egui::vec2(60.0, 0.0), 12);
+    settle(&mut h);
+    let count = |h: &Harness| h.app.doc.layers.iter().filter_map(|l| l.foliage()).map(|f| f.instances.len()).sum::<usize>();
+    let n = count(&h);
+    assert!(n > 10, "the drag painted cards: {n} ({:?})", h.app.status);
+    assert!(h.app.viewport.foliage.card_count() as usize >= n);
+    assert_eq!(h.app.history.history().1, undo_before + 1, "one stroke = one undo step");
+    // erase with the same stroke
+    h.app.foliage.brush.erase = true;
+    h.app.foliage.brush.radius = 0.4;
+    h.drag(v.center() - egui::vec2(60.0, 0.0), v.center() + egui::vec2(60.0, 0.0), 12);
+    settle(&mut h);
+    assert!(count(&h) < n / 4, "erased: {} of {n} left", count(&h));
+    h.key(egui::Key::Z, egui::Modifiers::COMMAND);
+    settle(&mut h);
+    assert_eq!(count(&h), n, "undo brings the erased cards back");
+    // one-click moss (Simple mode's Plants buttons call this)
+    h.app.foliage.brush.erase = false;
+    let added = h.app.quick_foliage(&h.rs.clone(), "moss").unwrap();
+    assert!(added > 20, "{added}");
+    assert!(h.app.history.undo_label().is_some_and(|l| l.contains("Moss")), "{:?}", h.app.history.undo_label());
+    // the panels draw with a foliage layer selected
+    for p in [PanelId::FoliageLibrary, PanelId::FoliageBrush, PanelId::FoliageCells] {
+        *h.app.ui.prefs.layout_mut() = DockLayout { root: super::dock::Node::Split { vertical: false, ratio: 0.6, a: Box::new(super::dock::Node::Leaf { tabs: vec![PanelId::Viewport], active: 0 }), b: Box::new(super::dock::Node::Leaf { tabs: vec![p], active: 0 }) }, floating: vec![] };
+        h.run(3);
+        assert!(h.app.ui.dock_rects.iter().any(|(id, r)| *id == p && r.width() > 50.0), "{p:?}");
+    }
+    h.key(egui::Key::Escape, egui::Modifiers::NONE);
+}
+
+/// Docs screenshots of the foliage UI (`docs/agents/foliage/`). Opens the
+/// project given by PIGMENT_FOLIAGE_PROJECT (the proof's building_a) if set.
+/// `cargo test -p pigment --release foliage_screenshots -- --ignored`
+#[test]
+#[ignore]
+fn foliage_screenshots() {
+    let Some(mut h) = harness() else { return };
+    let out = docs().join("agents/foliage");
+    std::fs::create_dir_all(&out).unwrap();
+    let shot = |h: &mut Harness, name: &str| {
+        h.run(30);
+        h.save_png(&out.join(format!("{name}.png")));
+    };
+    h.app.ui.welcome = false;
+    settle(&mut h);
+    if let Ok(p) = std::env::var("PIGMENT_FOLIAGE_PROJECT") {
+        h.app.run_pending_ui(&h.rs.clone(), Pending::OpenProject(PathBuf::from(p)));
+    } else {
+        let mesh = docs().join("../assets/town/building_a.glb");
+        h.app.run_pending_ui(&h.rs.clone(), Pending::NewFromMesh(mesh));
+        h.app.quick_foliage(&h.rs.clone(), "moss").unwrap();
+        h.app.quick_foliage(&h.rs.clone(), "ivy").unwrap();
+        h.app.quick_foliage(&h.rs.clone(), "grass").unwrap();
+    }
+    settle(&mut h);
+    h.app.set_mode(Mode::Advanced);
+    h.app.set_tool(Tool::Foliage);
+    h.app.ui.prefs.layout_mut().open(PanelId::FoliageLibrary);
+    // close-up of the ivy wall
+    let (c, _) = h.app.mesh.bounding_sphere();
+    h.app.camera.target = glam::Vec3::new(c.x + 3.0, 2.6, c.z + 0.5);
+    h.app.camera.distance = 9.0;
+    h.app.camera.yaw = 70f32.to_radians();
+    h.app.camera.pitch = 8f32.to_radians();
+    settle(&mut h);
+    let v = anchor(&h, "viewport");
+    h.hover(v.center() + egui::vec2(40.0, 60.0));
+    shot(&mut h, "ui_foliage_brush");
+    // the whole building in Simple mode with the Plants buttons
+    h.app.set_tool(Tool::Paint);
+    h.app.set_mode(Mode::Simple);
+    h.app.ui.prefs.layout_simple = DockLayout { root: super::dock::Node::Split { vertical: false, ratio: 0.7, a: Box::new(super::dock::Node::Leaf { tabs: vec![PanelId::Viewport], active: 0 }), b: Box::new(super::dock::Node::Leaf { tabs: vec![PanelId::Look, PanelId::Library], active: 0 }) }, floating: vec![] };
+    let (c, r) = h.app.mesh.bounding_sphere();
+    h.app.camera.frame(c, r);
+    h.app.camera.yaw = 55f32.to_radians();
+    h.app.camera.pitch = 12f32.to_radians();
+    shot(&mut h, "ui_simple_plants");
+}

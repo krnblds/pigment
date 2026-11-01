@@ -619,6 +619,9 @@ impl Panel for LookPanel {
             ui.label(ds::text("Edge wear and dirt follow the model's shape: they gather on edges and in crevices by themselves.", font::SMALL).color(p.text_muted));
         }
         ui.add_space(space::MD);
+        ds::section(ui, "Plants");
+        super::foliage::quick_actions(app, ui, rs);
+        ui.add_space(space::MD);
         ds::section(ui, "Light it");
         super::misc::lighting_presets(app, ui, rs);
         ui.add_space(space::LG);

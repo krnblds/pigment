@@ -70,10 +70,11 @@ pub enum Icon {
     Sparkle,
     Play,
     Scatter,
+    Leaf,
 }
 
 impl Icon {
-    pub const ALL: [Icon; 62] = [
+    pub const ALL: [Icon; 63] = [
         Icon::Brush,
         Icon::Eraser,
         Icon::Bucket,
@@ -136,6 +137,7 @@ impl Icon {
         Icon::Sparkle,
         Icon::Play,
         Icon::Scatter,
+        Icon::Leaf,
     ];
 
     pub fn name(self) -> String {
@@ -519,6 +521,13 @@ impl Pen<'_> {
                 self.rect((6.0, 10.0), (11.0, 14.0), 1.0);
                 self.dot((14.0, 12.0), 1.1);
                 self.dot((3.5, 13.5), 1.1);
+            }
+            Leaf => {
+                // a leaf blade with its midrib and stalk
+                self.poly(&[(3.5, 14.5), (4.0, 9.0), (7.0, 5.0), (11.5, 3.0), (15.0, 3.0), (14.8, 7.0), (12.5, 11.5), (8.5, 14.0), (3.5, 14.5)], true);
+                self.line((2.5, 15.5), (12.5, 5.5));
+                self.line((8.0, 10.0), (8.2, 6.5));
+                self.line((10.0, 8.0), (12.8, 8.2));
             }
         }
     }
