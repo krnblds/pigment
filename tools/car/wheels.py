@@ -43,8 +43,7 @@ def tyre():
     prof = [
         (R_RIM + 0.004, -hw + 0.018),   # inner bead
         (R_RIM + 0.030, -hw + 0.004),
-        (R_RIM + 0.070, -hw - 0.004),   # sidewall bulge
-        (R_TYRE - 0.040, -hw - 0.002),
+        (R_TYRE - 0.040, -hw - 0.004),   # sidewall bulge
         (R_TYRE - 0.016, -hw + 0.004),  # shoulder
         (R_TYRE - 0.004, -hw + 0.018),
         (R_TYRE, -hw + 0.034),          # tread starts
@@ -60,17 +59,15 @@ def tyre():
         (R_TYRE - 0.004, hw - 0.018),
         (R_TYRE - 0.016, hw - 0.004),
         (R_TYRE - 0.040, hw + 0.002),
-        (R_TYRE - 0.052, hw + 0.004),   # sidewall lettering band (raised)
-        (R_TYRE - 0.056, hw + 0.006),
-        (R_TYRE - 0.078, hw + 0.006),
-        (R_TYRE - 0.082, hw + 0.004),
+        (R_TYRE - 0.054, hw + 0.006),   # sidewall lettering band (raised)
+        (R_TYRE - 0.080, hw + 0.006),
         (R_RIM + 0.070, hw + 0.004),
         (R_RIM + 0.030, hw - 0.004),    # rim protector
         (R_RIM + 0.004, hw - 0.018),
     ]
-    seg = 96
-    lug = {6, 7, 14, 15}            # outer tread ribs get the lateral lugs
-    centre = {10, 11}
+    seg = 64
+    lug = {5, 6, 13, 14}            # outer tread ribs get the lateral lugs
+    centre = {9, 10}
 
     def radial(i, k):
         # lateral grooves: every 3rd segment pair is cut 5 mm deep on the shoulder ribs,
@@ -103,10 +100,10 @@ def rim():
         (R_LIP + 0.002, hw - 0.014), (R_LIP + 0.002, hw - 0.004), (R_LIP - 0.010, hw), (R_RIM - 0.020, hw - 0.006),
         (R_RIM - 0.024, hw - 0.020), (R_RIM - 0.020, -hw + 0.030), (R_RIM - 0.012, -hw + 0.012),
     ]
-    rings = revolve(bm, prof, 72)
+    rings = revolve(bm, prof, 48)
     A, Bq = rings[0], rings[-1]
-    for k in range(72):
-        bm.faces.new((Bq[k], Bq[(k + 1) % 72], A[(k + 1) % 72], A[k]))
+    for k in range(48):
+        bm.faces.new((Bq[k], Bq[(k + 1) % 48], A[(k + 1) % 48], A[k]))
     barrel = bm_obj("rim_barrel", bm)
 
     # face: hub disc
@@ -164,7 +161,7 @@ def brake():
     xd = -0.015
     prof = [(0.075, xd + 0.040), (0.090, xd + 0.040), (0.092, xd + 0.012), (0.142, xd + 0.012), (0.142, xd - 0.012),
             (0.090, xd - 0.012), (0.088, xd - 0.006)]
-    rings = revolve(bm, prof, 48)
+    rings = revolve(bm, prof, 40)
     bm.faces.new(list(reversed(rings[0])))
     disc = bm_obj("brake_disc", bm)
     # caliper: a block curved round the disc edge, behind the axle (+Y = rear), upper side

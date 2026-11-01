@@ -25,9 +25,9 @@ ARCH_R = 0.395        # wheel arch opening radius
 TRACK = 1.52          # wheel centre to wheel centre, across
 
 # station y values: dense where the shape turns (nose, cowl, roof ends, deck, tail)
-STATIONS = [-2.20, -2.185, -2.15, -2.08, -1.95, -1.75, -1.50, -1.25, -1.00, -0.84, -0.77, -0.70,
-            -0.55, -0.35, -0.15, -0.02, 0.06, 0.30, 0.55, 0.80, 0.92, 1.00, 1.15, 1.32, 1.50,
-            1.58, 1.66, 1.85, 2.02, 2.14, 2.20, 2.235]
+STATIONS = [-2.20, -2.185, -2.15, -2.08, -1.95, -1.60, -1.00, -0.84, -0.77, -0.70,
+            -0.55, -0.35, -0.15, -0.02, 0.06, 0.40, 0.80, 0.92, 1.00, 1.15, 1.32, 1.50,
+            1.58, 1.66, 2.02, 2.14, 2.20, 2.235]
 
 # longitudinal keys
 ZTOP = [(-2.20, 0.700), (-2.15, 0.752), (-2.05, 0.772), (-1.50, 0.812), (-0.84, 0.858), (-0.77, 0.880),
@@ -54,8 +54,8 @@ ZROCK = [(-2.20, 0.330), (-2.0, 0.300), (2.0, 0.305), (2.235, 0.36)]
 RAKE = [(-2.20, 0.10), (-2.15, 0.05), (-2.08, 0.0), (2.14, 0.0), (2.20, 0.03), (2.235, 0.05)]
 
 # point indices along the half section (0 = bottom centre ... 12 = top centre)
-P_SILL, P_ROCK, P_LOW, P_SHOULDER, P_GBASE, P_ROOF = 2, 3, 4, 7, 8, 10
-NP = 13
+P_SILL, P_ROCK, P_SHOULDER, P_GBASE, P_ROOF = 2, 3, 6, 7, 9
+NP = 12
 
 
 def half_section(y):
@@ -83,8 +83,7 @@ def half_section(y):
         (ws - 0.11, zf),
         (ws - 0.05, zf + 0.04),
         (ws - 0.016, zr),
-        (ws - 0.004, zr + 0.25 * (zb - zr)),
-        (ws, zr + 0.62 * (zb - zr)),
+        (ws, zr + 0.55 * (zb - zr)),
         (ws - 0.006, zb - 0.035),
         (wsh, zb),
         (wg, zg),
@@ -98,15 +97,16 @@ def half_section(y):
 
 
 def coons_cap(verts, ring, bulge):
-    """Fill the end loop with a 4 x 8 quad grid. Loop layout: ring[0] bottom centre,
-    ring[1..11] right side (x<0) bottom->top, ring[12] top centre, ring[13..23] left side top->bottom."""
+    """Fill the end loop with a 4 x (NP-5) quad grid. Loop layout: ring[0] bottom centre,
+    ring[1..NP-2] right side (x<0) bottom->top, ring[NP-1] top centre, then the left side top->bottom."""
     from mathutils import Vector
-    V = lambda i: Vector(verts[ring[i]])
-    R = [ring[k] for k in range(2, 11)]            # right rail, v = 0..8 (bottom->top)
-    L = [ring[24 - k] for k in range(2, 11)]       # left rail
-    B = [ring[2], ring[1], ring[0], ring[23], ring[22]]   # bottom, u = 0..4 (right->left)
-    T = [ring[10], ring[11], ring[12], ring[13], ring[14]]
-    nu, nv = 4, 8
+    n = NP
+    m = 2 * (n - 1)
+    R = [ring[k] for k in range(2, n - 2)]          # right rail, bottom->top
+    L = [ring[m - k] for k in range(2, n - 2)]      # left rail
+    B = [ring[2], ring[1], ring[0], ring[m - 1], ring[m - 2]]   # bottom, right->left
+    T = [ring[n - 3], ring[n - 2], ring[n - 1], ring[n], ring[n + 1]]
+    nu, nv = 4, n - 5
     grid = [[None] * (nv + 1) for _ in range(nu + 1)]
     for u in range(nu + 1):
         grid[u][0] = B[u]
@@ -186,11 +186,19 @@ def build_cage():
     return ob
 
 
-def subdivide(ob, levels=2):
+def subdivide(ob, levels=2, decimate=1.0):
     m = ob.modifiers.new("subd", "SUBSURF")
     m.levels = levels
     m.render_levels = levels
     m.quality = 3
     from carlib import apply_mods
     apply_mods(ob)
+    if decimate < 1.0:
+        # collapse in flat-ish areas only matters for budget; boundaries are cut later
+        m = ob.modifiers.new("dec", "DECIMATE")
+        m.decimate_type = "COLLAPSE"
+        m.ratio = decimate
+        m.use_symmetry = True
+        m.symmetry_axis = "X"
+        apply_mods(ob)
     return ob

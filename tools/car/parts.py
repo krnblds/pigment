@@ -98,19 +98,20 @@ def headlights():
     for sx, side in ((1, "L"), (-1, "R")):
         yb = P.front_face_y(sx * 0.6, 0.63)
         # housing: a dark box behind the aperture
-        h = box(f"headlight_housing_{side}", (sx * 0.612, yb + 0.12, 0.632), (0.47, 0.20, 0.15), bevel=0.01)
+        h = box(f"headlight_housing_{side}", (sx * 0.600, yb + 0.15, 0.632), (0.40, 0.20, 0.13), bevel=0.01)
         out.append((h.name, "black_trim", h))
         # two reflector bowls per lamp (90s twin-reflector headlamp) + bulbs
         for k, (xc, r) in enumerate(((0.700, 0.060), (0.505, 0.052))):
             prof = [(0.012, 0.075), (r * 0.55, 0.055), (r * 0.85, 0.028), (r, 0.0), (r + 0.004, -0.004)]
-            bowl = lathe(f"headlight_reflector_{side}{k}", prof, (sx * xc, yb + 0.020, 0.632), "Y", 24)
+            yk = P.front_face_y(sx * xc, 0.632)
+            bowl = lathe(f"headlight_reflector_{side}{k}", prof, (sx * xc, yk + 0.028, 0.632), "Y", 20)
             out.append((bowl.name, "chrome", bowl))
             bm = bmesh.new()
-            bm_sphere(bm, (sx * xc, yb + 0.050, 0.632), 0.014, 10, 6)
+            bm_sphere(bm, (sx * xc, yk + 0.058, 0.632), 0.014, 8, 5)
             bulb = obj(f"headlight_bulb_{side}{k}", bm)
             out.append((bulb.name, "emitter_head", bulb))
         # a slim LED position strip under the reflectors (a later "upgrade")
-        strip = box(f"headlight_drl_{side}", (sx * 0.612, yb + 0.012, 0.582), (0.40, 0.012, 0.010), bevel=0.003)
+        strip = box(f"headlight_drl_{side}", (sx * 0.600, P.front_face_y(sx * 0.6, 0.582) + 0.016, 0.582), (0.36, 0.012, 0.010))
         out.append((strip.name, "emitter_head", strip))
         # amber indicator in the bumper corner
         yi = P.front_face_y(sx * 0.71, 0.48)
@@ -124,7 +125,7 @@ def taillights():
     # one long housing behind the full-width aperture
     zc = 0.825
     yb = P.rear_face_y(0.0, zc)
-    h = box("taillight_housing", (0, yb - 0.10, zc), (1.70, 0.16, 0.13), bevel=0.01)
+    h = box("taillight_housing", (0, yb - 0.12, zc), (1.54, 0.16, 0.11), bevel=0.01)
     out.append((h.name, "black_trim", h))
     # segments: outer brake/tail (red), indicator (amber), reverse (white), centre reflector panel (red)
     segs = []
@@ -207,14 +208,14 @@ def window_seals():
     """Black rubber seals round the side glass (a thin tube along each opening)."""
     out = []
     for sx, side in ((1, "L"), (-1, "R")):
-        for nm, pts in (("F", P.front_dlo()), ("R", P.rear_dlo()), ("Q", P.quarter_dlo())):
+        for nm, pts in (("F", P.front_dlo()), ("R", P.rear_dlo())):
             # densify the outline and put it on the surface
             dense = []
             n = len(pts)
             for i in range(n):
                 a, b = pts[i], pts[(i + 1) % n]
                 L = math.hypot(b[0] - a[0], b[1] - a[1])
-                k = max(1, int(L / 0.05))
+                k = max(1, int(L / 0.075))
                 for j in range(k):
                     t = j / k
                     dense.append((lerp(a[0], b[0], t), lerp(a[1], b[1], t)))
@@ -223,7 +224,7 @@ def window_seals():
                 x, nrm = P.side_x(y, z, sx)
                 p3.append((x + sx * 0.002, y, z))
             bm = bmesh.new()
-            bm_tube_path(bm, p3, 0.0065, 6, closed=True)
+            bm_tube_path(bm, p3, 0.0065, 5, closed=True)
             ob = obj(f"window_seal_{nm}_{side}", bm)
             out.append((ob.name, "rubber", ob))
     return out
@@ -331,9 +332,9 @@ def door_handles():
             z = P.z_belt(y) - 0.075
             x, n = P.side_x(y, z, sx)
             # recessed pocket plate + pull bar
-            pl = box(f"handle_pocket_{nm}{side}", (x - sx * 0.002, y, z), (0.008, 0.17, 0.05), bevel=0.012, seg=3)
+            pl = box(f"handle_pocket_{nm}{side}", (x - sx * 0.002, y, z), (0.008, 0.17, 0.05), bevel=0.012, seg=2)
             out.append((pl.name, "black_trim", pl))
-            hb = box(f"handle_{nm}{side}", (x + sx * 0.010, y, z + 0.004), (0.016, 0.145, 0.024), bevel=0.007, seg=3)
+            hb = box(f"handle_{nm}{side}", (x + sx * 0.010, y, z + 0.004), (0.016, 0.145, 0.024), bevel=0.007, seg=2)
             out.append((hb.name, "chrome", hb))
             if nm == "F":
                 bm = bmesh.new()
@@ -386,11 +387,11 @@ def plates():
     yf = P.front_face_y(0.0, 0.42) + 0.014
     pf = box("plate_F", (0, yf - 0.004, 0.4175), (0.33, 0.006, 0.165), bevel=0.003)
     out.append((pf.name, "plate", pf))
-    yr = P.rear_face_y(0.0, 0.44) - 0.014
-    pr = box("plate_R", (0, yr + 0.004, 0.435), (0.33, 0.006, 0.165), bevel=0.003)
+    yr = P.rear_face_y(0.0, 0.42) - 0.014
+    pr = box("plate_R", (0, yr + 0.004, 0.4175), (0.33, 0.006, 0.165), bevel=0.003)
     out.append((pr.name, "plate", pr))
     # plate lamp above the rear plate
-    pl = box("plate_lamp", (0, yr + 0.003, 0.515), (0.10, 0.012, 0.012), bevel=0.003)
+    pl = box("plate_lamp", (0, P.rear_face_y(0.0, 0.52) - 0.002, 0.522), (0.10, 0.012, 0.012), bevel=0.003)
     out.append((pl.name, "emitter_reverse", pl))
     return out
 
@@ -423,7 +424,7 @@ def roof_gear():
     out = []
     yb = 0.30
     zr, n = P.top_z(0.0, yb)
-    zb = zr + 0.055
+    zb = zr + 0.028
     # feet / brackets at the roof edges
     for sx, side in ((1, "L"), (-1, "R")):
         x = sx * 0.56
@@ -440,7 +441,7 @@ def roof_gear():
         mods(ln, bevel=0.03, seg=4)
         out.append((ln.name, grp, ln))
         for i in range(4):
-            em = box(f"lightbar_led_{side}{i}", (sx * (0.15 + i * 0.12), yb, zb + 0.05), (0.08, 0.17, 0.035), bevel=0.006)
+            em = box(f"lightbar_led_{side}{i}", (sx * (0.15 + i * 0.12), yb, zb + 0.05), (0.08, 0.17, 0.035))
             out.append((em.name, "emitter_red" if sx > 0 else "emitter_blue", em))
     cm = box("lightbar_center", (0, yb, zb + 0.06), (0.14, 0.24, 0.075), bevel=0.012, seg=3)
     out.append((cm.name, "lightbar_center", cm))
@@ -476,7 +477,7 @@ def mudflaps():
             y = axle + B.ARCH_R + 0.012
             zt = 0.33
             x, n = P.side_x(y + 0.02, zt, sx)
-            fl = box(f"mudflap_{an}{side}", (x - sx * 0.12, y, (zt + 0.10) / 2), (0.21, 0.006, zt - 0.10), bevel=0.002,
+            fl = box(f"mudflap_{an}{side}", (x - sx * 0.12, y, (zt + 0.12) / 2), (0.19, 0.006, zt - 0.12), bevel=0.002,
                      rot=Matrix.Rotation(math.radians(6), 4, "X"))
             out.append((fl.name, "rubber", fl))
     return out
@@ -485,7 +486,7 @@ def mudflaps():
 def underbody():
     out = []
     # flat tray with a centre tunnel and a fuel tank
-    tray = box("underbody_tray", (0, 0.05, 0.172), (1.50, 3.70, 0.012), bevel=0.01)
+    tray = box("underbody_tray", (0, 0.05, 0.184), (1.40, 3.50, 0.012), bevel=0.01)
     out.append((tray.name, "underbody", tray))
     tun = box("underbody_tunnel", (0, -0.20, 0.215), (0.22, 2.4, 0.07), bevel=0.03, seg=3)
     out.append((tun.name, "underbody", tun))
@@ -552,7 +553,7 @@ def suspension():
             # coil spring: a helix around the upper damper
             pts = []
             turns = 5.5
-            n = int(turns * 12)
+            n = int(turns * 7)
             axis = d.normalized()
             u = axis.cross(Vector((0, 1, 0))).normalized()
             v = axis.cross(u)
@@ -563,7 +564,7 @@ def suspension():
                 p = s0 + d * 0.55 * t + (u * math.cos(a) + v * math.sin(a)) * 0.058
                 pts.append(tuple(p))
             bm = bmesh.new()
-            bm_tube_path(bm, pts, 0.0075, 6)
+            bm_tube_path(bm, pts, 0.0075, 4)
             sp = obj(f"spring_{an}{side}", bm)
             out.append((sp.name, "spring", sp))
             # lower control arm (A-arm): two tubes to the subframe
@@ -735,6 +736,8 @@ def door_cards(pieces):
             f.normal_flip()
         ys = [v.co.y for v in bm.verts]
         card = obj(f"door_card_{nm[-2:]}", bm)
+        m = card.modifiers.new("dec", "DECIMATE")
+        m.ratio = 0.3
         m = card.modifiers.new("sol", "SOLIDIFY")
         m.thickness = 0.012
         apply_mods(card)

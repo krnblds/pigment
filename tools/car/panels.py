@@ -233,28 +233,40 @@ def make_cutters():
         bm_prism(bm, rounded_rect(sx * 0.52 - 0.09, 0.215, sx * 0.52 + 0.09, 0.285, 0.03), "Y", 2.0, 2.6)
     solids = bm_obj("CutSolids", bm, col)
 
-    # --- shut lines
-    bm = bmesh.new()
+    # --- shut lines: every loop is its own closed solid, then they are unioned
+    pieces = []
+
+    def gap_piece(fn):
+        b = bmesh.new()
+        fn(b)
+        pieces.append(bm_obj(f"Gap{len(pieces)}", b, col))
     for sx in (-1, 1):
         a0, a1 = (0.45, 1.3) if sx > 0 else (-1.3, -0.45)
-        bm_gap_cutter(bm, front_door_outline(), "X", a0, a1, GAP, closed=True)
-        bm_gap_cutter(bm, rear_door_outline(), "X", a0, a1, GAP, closed=True)
-        # fuel filler door on the left rear quarter
+        gap_piece(lambda b: bm_gap_cutter(b, front_door_outline(), "X", a0, a1, GAP, closed=True))
+        # nudge the rear door's copy of the shared B line so the two loops never coincide
+        rd = [(y + 0.0011 if abs(y - B_LINE) < 1e-6 else y, z) for y, z in rear_door_outline()]
+        gap_piece(lambda b: bm_gap_cutter(b, rd, "X", a0 + 0.003, a1 - 0.003, GAP, closed=True))
         if sx > 0:
-            bm_gap_cutter(bm, rounded_rect(1.55, 0.70, 1.73, 0.82, 0.03, 3), "X", 0.6, 1.3, 0.003, closed=True)
-    # hood and trunk lid (top view, cut along Z)
-    bm_gap_cutter(bm, hood_outline(), "Z", 0.62, 1.2, GAP, closed=True)
-    bm_gap_cutter(bm, trunk_outline(), "Z", 0.80, 1.2, GAP, closed=True)
-    # bumpers: a horizontal slab across the nose / tail + a vertical slab ahead of / behind the arches
-    for (y0, y1, zt, yv) in ((-2.6, -1.79, 0.548, -1.79), (1.86, 2.6, 0.585, 1.86)):
-        bm_box(bm, (0, (y0 + y1) / 2, zt), (2.4, y1 - y0, GAP))
-        bm_box(bm, (0, yv, zt / 2 - 0.05), (2.4, GAP, zt + 0.1))
-    gaps = bm_obj("CutGaps", bm, col)
+            gap_piece(lambda b: bm_gap_cutter(b, rounded_rect(1.55, 0.70, 1.73, 0.82, 0.03, 3), "X", 0.6, 1.3, 0.003, closed=True))
+    gap_piece(lambda b: bm_gap_cutter(b, hood_outline(), "Z", 0.62, 1.2, GAP, closed=True))
+    gap_piece(lambda b: bm_gap_cutter(b, trunk_outline(), "Z", 0.80, 1.2, GAP, closed=True))
+    for (y0, y1, zt, yv) in ((-2.6, -1.79, 0.548, -1.79), (1.86, 2.6, 0.552, 1.86)):
+        gap_piece(lambda b: bm_box(b, (0, (y0 + y1) / 2, zt), (2.4, y1 - y0, GAP)))
+        gap_piece(lambda b: bm_box(b, (0, yv, zt / 2 - 0.05 + 0.001), (2.41, GAP, zt + 0.1)))
+    gaps = pieces[0]
+    gaps.name = "CutGaps"
+    for p in pieces[1:]:
+        m = gaps.modifiers.new("u", "BOOLEAN")
+        m.operation = "UNION"
+        m.solver = "MANIFOLD"
+        m.object = p
+        apply_mods(gaps)
+    delete(pieces[1:])
 
     # --- number plate recesses (kept as pockets: tagged RECESS, not deleted)
     bm = bmesh.new()
     bm_prism(bm, rounded_rect(-0.185, 0.330, 0.185, 0.505, 0.012), "Y", -2.6, front_face_y(0.0, 0.42) + 0.016)
-    bm_prism(bm, rounded_rect(-0.195, 0.345, 0.195, 0.525, 0.012), "Y", rear_face_y(0.0, 0.44) - 0.016, 2.6)
+    bm_prism(bm, rounded_rect(-0.195, 0.330, 0.195, 0.505, 0.012), "Y", rear_face_y(0.0, 0.42) - 0.016, 2.6)
     recess = bm_obj("CutRecess", bm, col)
 
     # --- glass openings (also used to cut the glass panes out of a copy of the shell)
@@ -262,7 +274,7 @@ def make_cutters():
     for sx in (-1, 1):
         a0, a1 = (0.40, 1.3) if sx > 0 else (-1.3, -0.40)
         side = "L" if sx > 0 else "R"
-        for nm, pts in (("door_glass_F", front_dlo()), ("door_glass_R", rear_dlo()), ("quarter_glass", quarter_dlo())):
+        for nm, pts in (("door_glass_F", front_dlo()), ("door_glass_R", rear_dlo())):
             bm = bmesh.new()
             bm_prism(bm, pts, "X", a0, a1)
             wins[f"{nm}_{side}"] = bm_obj(f"Win_{nm}_{side}", bm, col)
@@ -372,6 +384,7 @@ def separate_pieces(ob):
         lo = Vector((min(v.co.x for v in bm2.verts), min(v.co.y for v in bm2.verts), min(v.co.z for v in bm2.verts)))
         hi = Vector((max(v.co.x for v in bm2.verts), max(v.co.y for v in bm2.verts), max(v.co.z for v in bm2.verts)))
         c, sz = (lo + hi) / 2, hi - lo
+        print(f"[piece] {gi} faces={len(comp)} c=({c.x:.2f},{c.y:.2f},{c.z:.2f}) s=({sz.x:.2f},{sz.y:.2f},{sz.z:.2f})")
         name = None
         if gi == 0:
             name = "body_shell"
@@ -408,12 +421,6 @@ def thicken(ob, t=0.004, inset=0.003):
     me.update()
     for v in me.vertices:
         v.co -= v.normal * inset
-    m = ob.modifiers.new("solid", "SOLIDIFY")
-    m.thickness = t
-    m.offset = -1
-    m.use_even_offset = True
-    m.use_rim = True
-    apply_mods(ob)
     return ob
 
 
