@@ -169,6 +169,7 @@
   "Calipers are separate nodes (Caliper_XX, same origin as Wheel_XX): steer them with the wheel but don't spin them.",
   "Collider is a convex hull (extras: collider=convex, hidden=true): use it as a ConvexPolygonShape3D and hide the mesh.",
   "Headlight_* / Taillight_* empties: put a SpotLight3D / OmniLight3D there; their local -Z is the beam direction.",
-  "Metallic flake is not in glTF; the clearcoat is (KHR_materials_clearcoat)."
+  "Metallic flake is not in glTF; the clearcoat is (KHR_materials_clearcoat).",
+  "This is the legacy single-livery export; assets/vehicles/tsubame/ has the same car with all its variants and LOD2."
  ]
 }
