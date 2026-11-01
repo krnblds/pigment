@@ -367,7 +367,9 @@ mod tests {
     #[test]
     fn sidecar_describes_maps_and_merges_entries() {
         let dir = tmp("sidecar");
-        let extra = SidecarExtra { project: Some(PathBuf::from("C:/work/crate.pigment")), ..Default::default() };
+        // an absolute path on any platform, outside the export folder
+        let project = std::env::temp_dir().join("work").join("crate.pigment");
+        let extra = SidecarExtra { project: Some(project.clone()), ..Default::default() };
         write_sidecar(&dir, "Crate", &preset("separate").unwrap(), &tiny(true), &extra).unwrap();
         write_sidecar(&dir, "Lid", &preset("unreal").unwrap(), &tiny(false), &SidecarExtra::default()).unwrap();
         let doc = read_sidecar(&dir);
@@ -378,7 +380,7 @@ mod tests {
         assert!((c["emissive_scale"].as_f64().unwrap() - 3.5).abs() < 1e-6);
         assert_eq!(c["has_emission"], true);
         assert!(c["channels"].as_array().unwrap().contains(&json!("emissive")));
-        assert_eq!(c["project"], "C:/work/crate.pigment");
+        assert_eq!(c["project"], project.to_string_lossy().replace(std::path::MAIN_SEPARATOR, "/"));
         let bc = c["maps"].as_array().unwrap().iter().find(|m| m["suffix"] == "BaseColor").unwrap();
         assert_eq!(bc["file"], "Crate_BaseColor.png");
         assert_eq!(bc["colorspace"], "srgb");
