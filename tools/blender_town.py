@@ -74,24 +74,24 @@ STEP = 0.5                 # path sample spacing
 # name: ((x, y), z, [arm angles in degrees, outward])
 NODES = {
     "J1": ((-20.0, -5.0), 0.0, [195, 15, 105, 285]),   # crossroads
-    "J2": ((60.0, 15.0), 6.0, [200, 62, 350]),         # Y fork
-    "J3": ((-45.0, 70.0), 7.0, [282, 102, 12]),        # T
-    "J4": ((70.0, 95.0), 13.0, [262, 82, 172]),        # T
-    "J5": ((5.0, -70.0), -5.0, [100, 228, 312]),       # Y fork
+    "J2": ((68.0, 12.0), 4.0, [200, 72, 350]),         # Y fork
+    "J3": ((-50.0, 82.0), 4.5, [282, 102, 12]),        # T
+    "J4": ((72.0, 108.0), 9.0, [266, 86, 176]),        # T
+    "J5": ((-12.0, -92.0), -3.5, [100, 228, 312]),     # Y fork
 }
 # (from (node, arm), to (node, arm) | ((x, y), z) free end, waypoints)
 EDGES = [
-    (("J1", 0), ((-170.0, -38.0), -4.0), [(-72, -24), (-118, -22)]),
-    (("J1", 1), ("J2", 0), [(20, 2)]),
-    (("J2", 1), ("J4", 0), [(76, 48)]),
-    (("J4", 1), ((95.0, 170.0), 18.0), [(84, 130)]),
-    (("J1", 2), ("J3", 0), [(-36, 32)]),
-    (("J3", 1), ((-85.0, 170.0), 13.0), [(-62, 118)]),
-    (("J3", 2), ("J4", 2), [(-2, 84), (34, 104)]),
-    (("J2", 2), ((170.0, -14.0), 3.0), [(112, 2)]),
-    (("J1", 3), ("J5", 0), [(-10, -40)]),
-    (("J5", 1), ((-62.0, -170.0), -10.0), [(-32, -112)]),
-    (("J5", 2), ((72.0, -170.0), -9.0), [(46, -116)]),
+    (("J1", 0), ((-170.0, -38.0), -3.0), [(-72, -24), (-118, -22)]),
+    (("J1", 1), ("J2", 0), [(27, 1)]),
+    (("J2", 1), ("J4", 0), []),
+    (("J4", 1), ((95.0, 170.0), 13.0), []),
+    (("J1", 2), ("J3", 0), []),
+    (("J3", 1), ((-85.0, 170.0), 11.0), []),
+    (("J3", 2), ("J4", 2), [(5, 93), (30, 106)]),
+    (("J2", 2), ((170.0, -14.0), 2.0), [(125, 2)]),
+    (("J1", 3), ("J5", 0), []),
+    (("J5", 1), ((-62.0, -170.0), -8.0), [(-40, -130)]),
+    (("J5", 2), ((72.0, -170.0), -7.0), []),
 ]
 
 
@@ -121,16 +121,23 @@ def ang_vec(deg):
 
 def catmull(points, step=STEP):
     pts = [v2(p) for p in points]
-    pts = [pts[0] * 2 - pts[1]] + pts + [pts[-1] * 2 - pts[-2]]
+    # Hermite spline whose tangents are scaled to each segment's length: no
+    # overshoot or cusps when control points are unevenly spaced.
+    dirs = []
+    for i in range(len(pts)):
+        a, b = pts[max(0, i - 1)], pts[min(len(pts) - 1, i + 1)]
+        dirs.append((b - a).normalized())
     out = []
-    for i in range(1, len(pts) - 2):
-        p0, p1, p2, p3 = pts[i - 1], pts[i], pts[i + 1], pts[i + 2]
-        n = max(4, int((p2 - p1).length / (step * 0.25)))
+    for i in range(len(pts) - 1):
+        p1, p2 = pts[i], pts[i + 1]
+        seg = (p2 - p1).length
+        m1, m2 = dirs[i] * seg, dirs[i + 1] * seg
+        n = max(4, int(seg / (step * 0.25)))
         for k in range(n):
             t = k / n
             t2, t3 = t * t, t * t * t
-            out.append(0.5 * ((2 * p1) + (-p0 + p2) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t2 + (-p0 + 3 * p1 - 3 * p2 + p3) * t3))
-    out.append(pts[-2])
+            out.append(p1 * (2 * t3 - 3 * t2 + 1) + m1 * (t3 - 2 * t2 + t) + p2 * (-2 * t3 + 3 * t2) + m2 * (t3 - t2))
+    out.append(pts[-1])
     even, acc = [out[0]], 0.0
     for a, b in zip(out, out[1:]):
         seg = (b - a).length
@@ -571,7 +578,7 @@ class Junction:
         self.uv_scale = k
         for f in top:
             for lp in f.loops:
-                lp[uv] = ((lp.vert.co.x - x0) * k, (lp.vert.co.y - y0) * k)
+                lp[uv].uv = ((lp.vert.co.x - x0) * k, (lp.vert.co.y - y0) * k)
         u, v, col_w = 0.885, 0.005, 0.18 * k + 0.004
         for f in bm.faces:
             if f.normal.z > 0.7:
@@ -588,11 +595,11 @@ class Junction:
                 for l in lp:
                     along = 0.0 if (l.vert.co.to_2d() - pa).length < 1e-3 else w
                     hz = (l.vert.co.z - (ROAD_Z - 0.01)) * k
-                    l[uv] = (min(0.999, u + hz), v + along)
+                    l[uv].uv = (min(0.999, u + hz), v + along)
                 v += w
             else:
                 for l in f.loops:
-                    l[uv] = (0.998, 0.998)
+                    l[uv].uv = (0.998, 0.998)
 
 # ---------------------------------------------------------------- street run
 
@@ -776,7 +783,8 @@ def build(root=None, export_junctions=False, quick=False):
         zz = np.interp(np.cumsum(seg), s, z)
         path = Path(pts, zz)
         runs.append(path)
-        grade = abs(zb - ja.z) / max(1.0, L - 28)
+        grade = float(np.max(np.abs(np.diff(zz)) / np.maximum(1e-6, np.diff(np.cumsum(seg)))))
+        print(f"junction arms {na}: {[round(x, 1) for x in ja.L]}") if False else None
         print(f"edge {na}.{ia} -> {b[0] if isinstance(b[0], str) else 'free'}: {L:.0f} m  grade {grade * 100:.1f}%  min radius {path.min_radius():.1f} m")
 
     street = dense_street(K["street_segment"])
@@ -853,14 +861,14 @@ def build(root=None, export_junctions=False, quick=False):
         return []
 
     def level(x, y, with_owner=False):
-        """Ground level: road core > highest lot band > natural ground."""
+        """Ground level: the nearest road's lot level within BAND, else natural ground."""
         core = band = None
         for r in cands_at(x, y):
             _, k, d = r.kd.find((x, y, 0))
             z = r.pts[k][2] + LOT_DZ
             if d < CORE and (core is None or d < core[2]):
                 core = (z, r.id, d)
-            if d < BAND and (band is None or z > band[0]):
+            if d < BAND and (band is None or d < band[2]):
                 band = (z, r.id, d)
         res = core or band
         if res is None:
@@ -1054,8 +1062,10 @@ def build(root=None, export_junctions=False, quick=False):
     posts = bmesh.new()
     for w in walls:
         run = []
-        for q, t, nn, hi, lo, low in w["recs"] + [None]:
-            if q is None or hi - lo < 1.0:
+        for rec in w["recs"] + [None]:
+            if rec is not None:
+                q, t, nn, hi, lo, low = rec
+            if rec is None or hi - lo < 1.0:
                 if len(run) >= 4:
                     for h in (1.0, 0.5):
                         sp = rail_cu.splines.new("POLY")
@@ -1276,25 +1286,36 @@ def build(root=None, export_junctions=False, quick=False):
         return b
 
     # frontage: every run plus the junction arms leading into it
-    front_paths = runs
-    for path in front_paths:
+    def at_ext(path, s):
+        """Path point, continuing straight beyond the ends (into junction arms)."""
+        if s < 0:
+            p, t = path.at(0)
+            return p + (t * s).to_3d(), t
+        if s > path.length:
+            p, t = path.at(path.length)
+            return p + (t * (s - path.length)).to_3d(), t
+        return path.at(s)
+
+    for path in runs:
         for sgn in (1, -1):
-            s = 2.0
-            while s < path.length - 4:
-                kind = rng.choice(["building_a", "building_a", "building_b", "building_b", "building_c"])
-                xmin, xmax, ymin, ymax = kinds[kind]
-                w = xmax - xmin
+            s = -9.0
+            while s < path.length + 4:
                 site = None
-                for back in (0.2, 0.9, 1.8):
-                    pos, t = path.at(s + w / 2)
-                    nout = rot90(t) * sgn
-                    rz = math.atan2(-nout.x, nout.y)
-                    cn_ = pos.to_2d() + nout * (WALK_W + ROAD_HALF + back - ymin)
-                    site = site_ok(cn_, rz, kinds[kind])
+                for kind in rng.sample(["building_a", "building_b", "building_c", "building_a", "building_b"], 5):
+                    xmin, xmax, ymin, ymax = kinds[kind]
+                    w = xmax - xmin
+                    for back in (0.2, 0.9, 1.8):
+                        pos, t = at_ext(path, s + w / 2)
+                        nout = rot90(t) * sgn
+                        rz = math.atan2(-nout.x, nout.y)
+                        cn_ = pos.to_2d() + nout * (WALK_W + ROAD_HALF + back - ymin)
+                        site = site_ok(cn_, rz, kinds[kind])
+                        if site:
+                            break
                     if site:
                         break
                 if not site:
-                    s += 2.5
+                    s += 2.0
                     continue
                 place_building(kind, cn_, rz, site[0], site[1], site[2])
                 gap = rng.uniform(0.3, 1.2)
@@ -1310,18 +1331,20 @@ def build(root=None, export_junctions=False, quick=False):
                 s += w + gap
 
     # back rows on the hillside
-    for gy in np.arange(-HALF + 10, HALF - 10, 15.0):
-        for gx in np.arange(-HALF + 10, HALF - 10, 15.0):
-            p = Vector((gx + rng.uniform(-4, 4), gy + rng.uniform(-4, 4)))
-            co, k, d = akd.find((p.x, p.y, 0))
-            if d < BAND - 4:
-                continue
-            nout = (p - Vector(co[:2])).normalized()
-            rz = math.atan2(-nout.x, nout.y) + rng.choice([0.0, 0.0, math.pi / 2, -math.pi / 2]) * (d > BAND + 15)
-            kind = rng.choice(["building_a", "building_b", "building_c", "building_c"])
-            site = site_ok(p, rz, kinds[kind], road_clear=7.6, spread=6.0)
-            if site:
-                place_building(kind, p, rz, site[0], site[1], site[2], sign=rng.random() < 0.4)
+    for gy in np.arange(-HALF + 8, HALF - 8, 10.0):
+        for gx in np.arange(-HALF + 8, HALF - 8, 10.0):
+            for _ in range(3):
+                p = Vector((gx + rng.uniform(-4, 4), gy + rng.uniform(-4, 4)))
+                co, k, d = akd.find((p.x, p.y, 0))
+                if d < 14:
+                    break
+                nout = (p - Vector(co[:2])).normalized()
+                rz = math.atan2(-nout.x, nout.y) + rng.choice([0.0, 0.0, math.pi / 2, -math.pi / 2]) * (d > BAND + 15)
+                kind = rng.choice(["building_a", "building_b", "building_c", "building_c"])
+                site = site_ok(p, rz, kinds[kind], road_clear=7.6, spread=6.0)
+                if site:
+                    place_building(kind, p, rz, site[0], site[1], site[2], sign=rng.random() < 0.4)
+                    break
 
     # ---- lamps, poles, wires
     n_lamp = 0
