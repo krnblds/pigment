@@ -145,19 +145,6 @@ func reset_car() -> void:
 # ------------------------------------------------------------------ look
 func _setup_environment() -> void:
 	env = Environment.new()
-	var sky := Sky.new()
-	var sm := ProceduralSkyMaterial.new()
-	sm.sky_top_color = Color(0.006, 0.008, 0.02)
-	sm.sky_horizon_color = Color(0.07, 0.045, 0.09)     # city glow on the low cloud
-	sm.ground_horizon_color = Color(0.05, 0.035, 0.07)
-	sm.ground_bottom_color = Color(0.01, 0.01, 0.015)
-	sm.sky_curve = 0.12
-	sm.sun_angle_max = 1.0
-	sky.sky_material = sm
-	env.background_mode = Environment.BG_SKY
-	env.sky = sky
-	env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
-	env.ambient_light_energy = 0.9
 	env.reflected_light_source = Environment.REFLECTION_SOURCE_SKY
 	env.tonemap_mode = Environment.TONE_MAPPER_AGX
 	env.tonemap_exposure = 1.25
@@ -210,6 +197,9 @@ func _setup_environment() -> void:
 	env.adjustment_enabled = true
 	env.adjustment_contrast = 1.06
 	env.adjustment_saturation = 1.08
+	# baked night-city sky (tools/sky/make_sky.py): sky, ambient, horizon-matched fog colours.
+	# --sky=dusk | night_moon | predawn switches preset.
+	CitySky.apply(env, args.get("sky", "night_rain"))
 	world_env = WorldEnvironment.new()
 	world_env.environment = env
 	add_child(world_env)
@@ -222,6 +212,7 @@ func _setup_environment() -> void:
 	moon.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS
 	moon.light_volumetric_fog_energy = 0.4
 	moon.rotation_degrees = Vector3(-50, 35, 0)
+	CitySky.setup_key(moon, args.get("sky", "night_rain"))
 	add_child(moon)
 
 
