@@ -31,7 +31,8 @@ const HEAVY_TRIS := 3000       ## buildings above this get far proxies
 const PROXY_NEAR := 330.0      ## a region switches from detailed buildings to proxies this far from its centre
 const MERGE_TRIS := 3000       ## meshes up to this size may be merged / region-instanced
 const MERGE_MAX_INST := 6      ## ... merged when used at most this often, region MultiMesh otherwise
-const COL_RADIUS := 240.0      ## collision exists within this distance of the car
+const COL_RADIUS := 300.0      ## collision exists within this distance of the car (covers the traffic ring)
+const TELEPORT := 30.0         ## a focus jump this big in one tick streams its collision in at once
 const LIGHT_MARGIN := 15.0     ## lights are created this far beyond their fade-out distance
 const STREAM_BUDGET_USEC := 2500
 const STREAM_EVERY := 0.2
@@ -64,7 +65,8 @@ var _light_grid := {}          ## Vector2i(CELL) -> Array[int]
 var _light_nodes := {}         ## int -> Light3D
 var _queue: Array = []         ## pending Callables (stream-in work)
 var _stream_t := 0.0
-var _arrays_cache := {}        ## mesh key -> Array of surface arrays (for merging)
+var _arrays_cache := {}        ## mesh key -> Array of surface arrays (merging, collision)
+var _arrays_mats := {}         ## mesh key -> material name per surface
 var _hf: PackedFloat32Array
 var _hf_meta := {}
 var _proxy_mat: ShaderMaterial
@@ -74,6 +76,7 @@ func load_town(wet := 1.0, map := "town") -> bool:
 	_wet = wet
 	_headless = DisplayServer.get_name() == "headless"
 	process_priority = 100        # stream after the camera has moved this frame
+	process_physics_priority = -100   # teleport check before the car / traffic scripts
 	dir = "res://assets/%s/" % map
 	var path := dir + "%s_layout.json" % map
 	if not FileAccess.file_exists(path):
@@ -94,7 +97,10 @@ func load_town(wet := 1.0, map := "town") -> bool:
 	add_child(_lights_root)
 	_load_heightfield(map)
 	var groups := _group_instances()
-	_preload_meshes(groups)
+	for g in groups:
+		g["pol"] = _policy(layout.meshes[g.mesh], g.xf.size())
+	# scenes only for what is drawn as itself; merged / collision meshes come as arrays (_load_arrays)
+	_preload_meshes(groups.filter(func(g): return g.pol != "merge" and not _headless))
 	stats["mesh_load_ms"] = Time.get_ticks_msec() - t0
 	_build_groups(groups)
 	_index_lights()
@@ -168,9 +174,15 @@ func _find_mesh_instance(n: Node) -> MeshInstance3D:
 
 ## Material names per surface after the remap.
 func _surface_materials(key: String, remap: Dictionary) -> Array:
-	var src := _source_mesh(key)
 	var names: Array = layout.meshes[key].surfaces
 	var out := []
+	if _arrays_mats.has(key) and not _mesh_cache.has(key):
+		for nm in _arrays_mats[key]:
+			out.append(remap.get(nm, nm))
+		return out
+	var src := _source_mesh(key)
+	if src == null:
+		return out
 	for i in src.get_surface_count():
 		var nm := ""
 		var m := src.surface_get_material(i)
@@ -418,17 +430,24 @@ func _build_groups(groups: Array) -> void:
 	var merge_jobs := {}       # "rx,ry,vis,shadow" -> {"key", "vis", "shadows", "parts": [[mesh key, xf, mats]]}
 	var visual_keys := {}      # meshes drawn as themselves
 	var proxies := {}          # region -> Array of Transform3D (unit box -> building bounds)
+	# arrays (no GPU round trip) for every mesh that is merged or becomes collision
+	var akeys := {}
+	for g in groups:
+		var col: String = layout.meshes[g.mesh].get("col", "none")
+		if (g.pol == "merge" and not _headless) or col == "trimesh":
+			akeys[g.mesh] = true
+	_load_arrays(akeys)
 	for g in groups:
 		var info: Dictionary = layout.meshes[g.mesh]
-		if _source_mesh(g.mesh) == null:
-			continue
 		var cat: String = info.get("cat", "other")
 		var vis_end: float = VIS_END.get(cat, 0.0)
 		var shadows: bool = CAST_SHADOWS.get(cat, true)
 		var xfs: Array = g.xf
-		var pol := _policy(info, xfs.size())
+		var pol: String = g.pol
 		_index_collision(g.mesh, info, xfs)
 		if _headless:
+			continue
+		if pol == "merge" and not _arrays_cache.has(g.mesh) or pol != "merge" and _source_mesh(g.mesh) == null:
 			continue
 		var a: Array = info.aabb
 		var lo := Vector3(a[0][0], a[0][1], a[0][2])
@@ -506,21 +525,10 @@ func _build_groups(groups: Array) -> void:
 					_cells[uk].entries.append(e)
 					_cells[uk].r = maxf(_cells[uk].r, r)
 	_build_proxies(proxies)
-	# one read-back of every mesh that is merged or becomes collision, then both jobs on the pool
-	var keys := {}
-	for j in merge_jobs.values():
-		for p in j.parts:
-			keys[p[0]] = true
-	for p in _trimesh_parts:
-		keys[p[0]] = true
-	_readback(keys)
 	_prepare_collision()
 	_run_merges(merge_jobs.values())
 	_arrays_cache.clear()
-	# meshes that are only merged / collision are not drawn themselves: let them go (VRAM)
-	for k in keys:
-		if not visual_keys.has(k):
-			_mesh_cache.erase(k)
+	_arrays_mats.clear()
 
 
 func _build_proxies(proxies: Dictionary) -> void:
@@ -758,7 +766,7 @@ func _col_cell(k: Vector2i) -> Dictionary:
 	if not _col_cells.has(k):
 		var c := _center(k, COL_CELL)
 		# slack: shapes and triangles near the edge reach over it
-		var item := {"kind": "cell", "shapes": [], "faces": PackedVector3Array(), "node": null,
+		var item := {"kind": "cell", "shapes": [], "faces": {}, "rep": {}, "node": null,
 			"rect": Rect2(c.x - COL_CELL * 0.5 - 20.0, c.y - COL_CELL * 0.5 - 20.0, COL_CELL + 40.0, COL_CELL + 40.0)}
 		_col_cells[k] = item
 		_col_items.append(item)
@@ -792,19 +800,54 @@ func _index_collision(key: String, info: Dictionary, xfs: Array) -> void:
 					_trimesh_parts.append([key, t])
 
 
-## Surface arrays of the meshes that are merged or become collision, read back once (main thread).
-func _readback(keys: Dictionary) -> void:
+## Surface arrays + material names of the meshes that are merged or become collision. The glbs are
+## parsed directly on worker threads (GLTFDocument: ~0.4 ms a file, no GPU); where the source glb is
+## not there (an exported build has only the imported scenes) the imported mesh is read back instead.
+func _load_arrays(keys: Dictionary) -> void:
 	var t0 := Time.get_ticks_msec()
-	for k in keys:
-		if _arrays_cache.has(k):
-			continue
-		var m := _source_mesh(k)
-		var arr := []
-		if m:
-			for i in m.get_surface_count():
-				arr.append(m.surface_get_arrays(i))
-		_arrays_cache[k] = arr
-	stats["readback_ms"] = stats.get("readback_ms", 0) + Time.get_ticks_msec() - t0
+	var list: Array = keys.keys()
+	var res := []
+	res.resize(list.size())
+	var task := WorkerThreadPool.add_group_task(func(i: int): res[i] = _gltf_arrays(dir + layout.meshes[list[i]].file),
+			list.size(), -1, true, "glb arrays")
+	WorkerThreadPool.wait_for_group_task_completion(task)
+	var fallback := 0
+	for i in list.size():
+		var k: String = list[i]
+		var r = res[i]
+		if r == null:
+			fallback += 1
+			var m := _source_mesh(k)
+			r = {"arrays": [], "mats": []}
+			if m:
+				for si in m.get_surface_count():
+					r.arrays.append(m.surface_get_arrays(si))
+					var mat := m.surface_get_material(si)
+					r.mats.append(mat.resource_name if mat else "")
+		var names: Array = layout.meshes[k].surfaces
+		for si in r.mats.size():
+			if r.mats[si] == "" and si < names.size():
+				r.mats[si] = names[si]
+		_arrays_cache[k] = r.arrays
+		_arrays_mats[k] = r.mats
+	stats["arrays_ms"] = Time.get_ticks_msec() - t0
+	stats["arrays_readback"] = fallback
+
+
+static func _gltf_arrays(path: String):
+	if not FileAccess.file_exists(path):
+		return null
+	var doc := GLTFDocument.new()
+	var st := GLTFState.new()
+	if doc.append_from_file(ProjectSettings.globalize_path(path), st) != OK or st.meshes.is_empty():
+		return null
+	var m: ImporterMesh = st.meshes[0].mesh
+	var out := {"arrays": [], "mats": []}
+	for i in m.get_surface_count():
+		out.arrays.append(m.get_surface_arrays(i))
+		var mat := m.get_surface_material(i)
+		out.mats.append(mat.resource_name if mat else m.get_surface_name(i))
+	return out
 
 
 ## Worker threads: triangle soups per collision cell, heights per terrain chunk.
@@ -819,9 +862,15 @@ func _prepare_collision() -> void:
 			heights.size(), -1, true, "heights")
 	WorkerThreadPool.wait_for_group_task_completion(task)
 	WorkerThreadPool.wait_for_group_task_completion(htask)
-	for r in results:
-		for k in r:
-			_col_cell(k).faces.append_array(r[k])
+	for i in results.size():
+		var key: String = _trimesh_parts[i][0]
+		var cat: String = layout.meshes[key].get("cat", "other")
+		for k in results[i]:
+			var it := _col_cell(k)
+			if not it.faces.has(cat):
+				it.faces[cat] = PackedVector3Array()
+				it.rep[cat] = key
+			it.faces[cat].append_array(results[i][k])
 	_trimesh_parts.clear()
 	stats["collision_prep_ms"] = Time.get_ticks_msec() - t0
 
@@ -899,12 +948,14 @@ func _make_collision(item: Dictionary) -> Node:
 					cs.transform = s[2]
 					sb.add_child(cs)
 				node.add_child(sb)
-			if not item.faces.is_empty():
-				# own body: Jolt compounds of mesh shapes run out of sub-shape ID bits
+			for cat in item.faces:
+				# a body per category, named "Col_<a mesh of it>" like the per-mesh bodies were (ray hits
+				# tell road from the rest by it); own bodies: Jolt compounds of mesh shapes run out of
+				# sub-shape ID bits
 				var sb := StaticBody3D.new()
-				sb.name = "Trimesh"
+				sb.name = "Col_" + String(item.rep[cat])
 				var shape := ConcavePolygonShape3D.new()
-				shape.set_faces(item.faces)
+				shape.set_faces(item.faces[cat])
 				var cs := CollisionShape3D.new()
 				cs.shape = shape
 				sb.add_child(cs)
@@ -912,13 +963,13 @@ func _make_collision(item: Dictionary) -> Node:
 		"height":
 			node.name = "Height_" + item.key
 			var sb := StaticBody3D.new()
+			sb.name = "Col_" + item.key
 			sb.add_child(_height_shape(item))
 			node.add_child(sb)
 	_col_root.add_child(node)
 	var us := Time.get_ticks_usec() - t0
 	if us > 6000:
-		print("stream: collision %s %s %d us (%d shapes, %d tris)" % [item.kind, item.get("key", ""), us,
-				item.get("shapes", []).size(), item.get("faces", PackedVector3Array()).size() / 3])
+		print("stream: collision %s %s %d us (%d shapes)" % [item.kind, item.get("key", ""), us, item.get("shapes", []).size()])
 	return node
 
 
@@ -964,8 +1015,7 @@ func _stream_collision(p: Vector2, sync: bool) -> void:
 			item.node = null
 		if item.node != null:
 			n += item.get("shapes", []).size()
-			if item.kind == "height" or not item.get("faces", PackedVector3Array()).is_empty():
-				n += 1
+			n += 1 if item.kind == "height" else item.faces.size()
 	stats.shapes = n
 
 
@@ -1115,9 +1165,38 @@ func stream_now(p: Vector3) -> void:
 	_stream_collision(Vector2(cp.x, cp.z), true)
 
 
+## Collision around `p` right now, wherever the car is (the traffic places parked cars by ray casts
+## all over the map). Cells made this way stay until the streamer drops them.
+func ensure_collision(p: Vector3, radius := 20.0) -> void:
+	var p2 := Vector2(p.x, p.z)
+	for item in _col_items:
+		if item.node == null and _rect_dist(item.rect, p2) < radius:
+			item.node = _make_collision(item)
+
+
+var _last_focus := Vector3.INF
+
+
+## Teleports (reset, automation placing the car anywhere): collision must be there before the next
+## physics step, so a big jump of the focus streams it in synchronously.
+func _check_teleport() -> void:
+	if not is_instance_valid(collision_focus):
+		return
+	var fp := collision_focus.global_position
+	if _last_focus != Vector3.INF and fp.distance_to(_last_focus) > TELEPORT:
+		_stream_collision(Vector2(fp.x, fp.z), true)
+	_last_focus = fp
+
+
+func _physics_process(_dt: float) -> void:
+	if streaming and not layout.is_empty():
+		_check_teleport()
+
+
 func _process(delta: float) -> void:
 	if not streaming or layout.is_empty():
 		return
+	_check_teleport()
 	_stream_t -= delta
 	if _stream_t <= 0.0:
 		_stream_t = STREAM_EVERY

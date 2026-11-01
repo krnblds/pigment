@@ -1044,6 +1044,8 @@ func _spawn_parked() -> void:
 				s += rng.randf_range(7.0, 34.0)
 				if _near_junction(c, 9.0):
 					continue
+				if main.town and main.town.has_method("ensure_collision"):
+					main.town.ensure_collision(c)      # the world streams its collision
 				# ground: flat under the whole footprint
 				var hs := []
 				for o in [Vector2(0, 0), Vector2(1, 1), Vector2(1, -1), Vector2(-1, 1), Vector2(-1, -1)]:
