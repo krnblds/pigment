@@ -644,12 +644,11 @@ func _think(c, dt: float) -> void:
 		c.blocked_by_player_t += dt
 	else:
 		c.blocked_by_player_t = 0.0
-	if c.honk_cool <= 0.0:
-		var cut_in: bool = by_player and gap < 7.0 and dv > 3.0
-		if c.blocked_by_player_t > 2.5 or cut_in:
-			c.honk_cool = rng.randf_range(5.0, 11.0)
-			if rng.randf() < 0.7:
-				_honk(c)
+	# drivers mind their own business: only a long hold-up by the player gets the odd honk
+	if c.honk_cool <= 0.0 and c.blocked_by_player_t > 8.0:
+		c.honk_cool = rng.randf_range(25.0, 45.0)
+		if rng.randf() < 0.3:
+			_honk(c)
 	if c.v < 0.3:
 		c.stall_t += dt
 	else:
@@ -912,8 +911,8 @@ func _knock(c) -> void:
 	c.set_braking(true, lib)
 	if not was_parked:
 		stats.knocked += 1
-		if c.honk_cool <= 0.0:
-			c.honk_cool = 6.0
+		if c.honk_cool <= 0.0 and rng.randf() < 0.35:      # rammed: sometimes a honk, not always
+			c.honk_cool = 20.0
 			_honk(c)
 
 
