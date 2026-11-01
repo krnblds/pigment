@@ -25,6 +25,28 @@
    "Headlight_R",
    "Taillight_L",
    "Taillight_R"
+  ],
+  "panels": [
+   "Door_SL",
+   "Door_SR",
+   "Glass_Door_SL",
+   "Glass_Door_SR",
+   "Hood",
+   "Trunk",
+   "Bumper_F",
+   "Bumper_R",
+   "Glass_RearQuarterR",
+   "Glass_FrontQuarterR",
+   "Glass_RearQuarterL",
+   "Glass_FrontQuarterL",
+   "Glass_Windshield",
+   "Glass_RearWindow",
+   "Lens_Head_C",
+   "Lamp_Head_L",
+   "Lamp_Head_R",
+   "Lens_Tail_C",
+   "Lamp_Tail_L",
+   "Lamp_Tail_R"
   ]
  },
  "wheel_radius": 0.33,
@@ -220,6 +242,636 @@
   }
  ],
  "default_variant": "meridian",
+ "damage": {
+  "version": 1,
+  "coords": "car space: +Y up, the car faces +Z, +X is its left; pivot = node origin",
+  "panels": [
+   {
+    "node": "Door_SL",
+    "kind": "door",
+    "parent": null,
+    "pivot": [
+     0.9067,
+     0.9804,
+     0.7097
+    ],
+    "aabb": [
+     [
+      0.7306,
+      0.2822,
+      -0.6697
+     ],
+     [
+      0.9067,
+      1.6786,
+      0.7097
+     ]
+    ],
+    "mass_kg": 34.67,
+    "triangles": 1831,
+    "parts": [
+     "door_SL",
+     "handle_pocket_SL",
+     "handle_SL",
+     "door_card_SL",
+     "window_seal_S_L"
+    ],
+    "hinge_axis": [
+     0,
+     1,
+     0
+    ],
+    "open_sign": -1,
+    "limits_deg": [
+     0,
+     75
+    ]
+   },
+   {
+    "node": "Door_SR",
+    "kind": "door",
+    "parent": null,
+    "pivot": [
+     -0.9067,
+     0.9804,
+     0.7097
+    ],
+    "aabb": [
+     [
+      -0.9067,
+      0.2822,
+      -0.6697
+     ],
+     [
+      -0.7306,
+      1.6786,
+      0.7097
+     ]
+    ],
+    "mass_kg": 34.67,
+    "triangles": 1831,
+    "parts": [
+     "door_SR",
+     "handle_pocket_SR",
+     "handle_SR",
+     "door_card_SR",
+     "window_seal_S_R"
+    ],
+    "hinge_axis": [
+     0,
+     1,
+     0
+    ],
+    "open_sign": 1,
+    "limits_deg": [
+     0,
+     75
+    ]
+   },
+   {
+    "node": "Glass_Door_SL",
+    "kind": "glass",
+    "parent": "Door_SL",
+    "pivot": [
+     0.7885,
+     1.2723,
+     0.0022
+    ],
+    "aabb": [
+     [
+      0.7528,
+      0.906,
+      -0.6155
+     ],
+     [
+      0.8242,
+      1.6386,
+      0.62
+     ]
+    ],
+    "mass_kg": 9.05,
+    "triangles": 302,
+    "parts": [
+     "glass_door_glass_S_L"
+    ]
+   },
+   {
+    "node": "Glass_Door_SR",
+    "kind": "glass",
+    "parent": "Door_SR",
+    "pivot": [
+     -0.7884,
+     1.2728,
+     0.0023
+    ],
+    "aabb": [
+     [
+      -0.8241,
+      0.9066,
+      -0.6155
+     ],
+     [
+      -0.7528,
+      1.6389,
+      0.6201
+     ]
+    ],
+    "mass_kg": 9.05,
+    "triangles": 302,
+    "parts": [
+     "glass_door_glass_S_R"
+    ]
+   },
+   {
+    "node": "Hood",
+    "kind": "hood",
+    "parent": null,
+    "pivot": [
+     0.0,
+     0.9716,
+     1.6165
+    ],
+    "aabb": [
+     [
+      -0.8286,
+      0.7376,
+      1.6165
+     ],
+     [
+      0.8286,
+      0.9716,
+      1.8277
+     ]
+    ],
+    "mass_kg": 4.26,
+    "triangles": 958,
+    "parts": [
+     "hood"
+    ],
+    "hinge_axis": [
+     1,
+     0,
+     0
+    ],
+    "open_sign": -1,
+    "limits_deg": [
+     0,
+     55
+    ]
+   },
+   {
+    "node": "Trunk",
+    "kind": "trunk",
+    "parent": null,
+    "pivot": [
+     0.0,
+     0.9716,
+     -1.6165
+    ],
+    "aabb": [
+     [
+      -0.8286,
+      0.7376,
+      -1.8277
+     ],
+     [
+      0.8286,
+      0.9716,
+      -1.6165
+     ]
+    ],
+    "mass_kg": 4.26,
+    "triangles": 963,
+    "parts": [
+     "trunk_lid"
+    ],
+    "hinge_axis": [
+     1,
+     0,
+     0
+    ],
+    "open_sign": 1,
+    "limits_deg": [
+     0,
+     70
+    ]
+   },
+   {
+    "node": "Bumper_F",
+    "kind": "bumper",
+    "parent": null,
+    "pivot": [
+     0.0,
+     0.3363,
+     1.813
+    ],
+    "aabb": [
+     [
+      -0.8785,
+      0.1749,
+      1.7019
+     ],
+     [
+      0.8785,
+      0.4977,
+      1.924
+     ]
+    ],
+    "mass_kg": 3.4,
+    "triangles": 1520,
+    "parts": [
+     "bumper_F",
+     "plate_F"
+    ]
+   },
+   {
+    "node": "Bumper_R",
+    "kind": "bumper",
+    "parent": null,
+    "pivot": [
+     0.0,
+     0.335,
+     -1.7931
+    ],
+    "aabb": [
+     [
+      -0.8822,
+      0.1722,
+      -1.924
+     ],
+     [
+      0.8822,
+      0.4977,
+      -1.6622
+     ]
+    ],
+    "mass_kg": 3.45,
+    "triangles": 1668,
+    "parts": [
+     "bumper_R",
+     "plate_R"
+    ]
+   },
+   {
+    "node": "Glass_RearQuarterR",
+    "kind": "glass",
+    "parent": null,
+    "pivot": [
+     -0.7772,
+     1.2336,
+     -0.97
+    ],
+    "aabb": [
+     [
+      -0.8242,
+      0.9011,
+      -1.1805
+     ],
+     [
+      -0.7302,
+      1.566,
+      -0.7595
+     ]
+    ],
+    "mass_kg": 2.8,
+    "triangles": 192,
+    "parts": [
+     "glass_rear_quarter_R"
+    ]
+   },
+   {
+    "node": "Glass_FrontQuarterR",
+    "kind": "glass",
+    "parent": null,
+    "pivot": [
+     -0.7775,
+     1.2266,
+     0.9096
+    ],
+    "aabb": [
+     [
+      -0.8242,
+      0.9018,
+      0.799
+     ],
+     [
+      -0.7308,
+      1.5515,
+      1.0201
+     ]
+    ],
+    "mass_kg": 1.44,
+    "triangles": 128,
+    "parts": [
+     "glass_front_quarter_R"
+    ]
+   },
+   {
+    "node": "Glass_RearQuarterL",
+    "kind": "glass",
+    "parent": null,
+    "pivot": [
+     0.7785,
+     1.233,
+     -0.9696
+    ],
+    "aabb": [
+     [
+      0.7307,
+      0.9001,
+      -1.1803
+     ],
+     [
+      0.8263,
+      1.5658,
+      -0.759
+     ]
+    ],
+    "mass_kg": 2.8,
+    "triangles": 183,
+    "parts": [
+     "glass_rear_quarter_L"
+    ]
+   },
+   {
+    "node": "Glass_FrontQuarterL",
+    "kind": "glass",
+    "parent": null,
+    "pivot": [
+     0.7784,
+     1.2261,
+     0.9095
+    ],
+    "aabb": [
+     [
+      0.7302,
+      0.901,
+      0.799
+     ],
+     [
+      0.8265,
+      1.5512,
+      1.0201
+     ]
+    ],
+    "mass_kg": 1.44,
+    "triangles": 126,
+    "parts": [
+     "glass_front_quarter_L"
+    ]
+   },
+   {
+    "node": "Glass_Windshield",
+    "kind": "glass",
+    "parent": null,
+    "pivot": [
+     -0.0,
+     1.3078,
+     1.2203
+    ],
+    "aabb": [
+     [
+      -0.6838,
+      0.971,
+      0.8577
+     ],
+     [
+      0.6838,
+      1.6446,
+      1.5829
+     ]
+    ],
+    "mass_kg": 9.92,
+    "triangles": 649,
+    "parts": [
+     "glass_windshield"
+    ]
+   },
+   {
+    "node": "Glass_RearWindow",
+    "kind": "glass",
+    "parent": null,
+    "pivot": [
+     0.0,
+     1.3075,
+     -1.2208
+    ],
+    "aabb": [
+     [
+      -0.6837,
+      0.9706,
+      -1.5838
+     ],
+     [
+      0.6837,
+      1.6444,
+      -0.8579
+     ]
+    ],
+    "mass_kg": 9.93,
+    "triangles": 645,
+    "parts": [
+     "glass_rear_window"
+    ]
+   },
+   {
+    "node": "Lens_Head_C",
+    "kind": "lens",
+    "parent": null,
+    "pivot": [
+     -0.0,
+     0.7468,
+     1.8496
+    ],
+    "aabb": [
+     [
+      -0.68,
+      0.7194,
+      1.8323
+     ],
+     [
+      0.6799,
+      0.7741,
+      1.8668
+     ]
+    ],
+    "mass_kg": 0.3,
+    "triangles": 232,
+    "parts": [
+     "headlight_lens"
+    ],
+    "lamps": [
+     "Headlight_L",
+     "Headlight_R"
+    ]
+   },
+   {
+    "node": "Lamp_Head_L",
+    "kind": "lamp",
+    "parent": null,
+    "pivot": [
+     0.35,
+     0.746,
+     1.8369
+    ],
+    "aabb": [
+     [
+      0.04,
+      0.735,
+      1.8245
+     ],
+     [
+      0.66,
+      0.757,
+      1.8493
+     ]
+    ],
+    "mass_kg": 0.3,
+    "triangles": 324,
+    "parts": [
+     "headlight_led_L0",
+     "headlight_led_L1",
+     "indicator_F_L"
+    ],
+    "lamps": [
+     "Headlight_L"
+    ]
+   },
+   {
+    "node": "Lamp_Head_R",
+    "kind": "lamp",
+    "parent": null,
+    "pivot": [
+     -0.35,
+     0.746,
+     1.8369
+    ],
+    "aabb": [
+     [
+      -0.66,
+      0.735,
+      1.8245
+     ],
+     [
+      -0.04,
+      0.757,
+      1.8493
+     ]
+    ],
+    "mass_kg": 0.3,
+    "triangles": 324,
+    "parts": [
+     "headlight_led_R0",
+     "headlight_led_R1",
+     "indicator_F_R"
+    ],
+    "lamps": [
+     "Headlight_R"
+    ]
+   },
+   {
+    "node": "Lens_Tail_C",
+    "kind": "lens",
+    "parent": null,
+    "pivot": [
+     0.0002,
+     0.7453,
+     -1.8496
+    ],
+    "aabb": [
+     [
+      -0.6796,
+      0.7165,
+      -1.8668
+     ],
+     [
+      0.68,
+      0.7742,
+      -1.8323
+     ]
+    ],
+    "mass_kg": 0.3,
+    "triangles": 232,
+    "parts": [
+     "taillight_lens"
+    ],
+    "lamps": [
+     "Taillight_L",
+     "Taillight_R"
+    ]
+   },
+   {
+    "node": "Lamp_Tail_L",
+    "kind": "lamp",
+    "parent": "Trunk",
+    "pivot": [
+     0.35,
+     0.746,
+     -1.8389
+    ],
+    "aabb": [
+     [
+      0.04,
+      0.734,
+      -1.8583
+     ],
+     [
+      0.66,
+      0.758,
+      -1.8195
+     ]
+    ],
+    "mass_kg": 0.3,
+    "triangles": 324,
+    "parts": [
+     "tail_brake_L",
+     "tail_indicator_L",
+     "tail_status_L"
+    ],
+    "lamps": [
+     "Taillight_L"
+    ]
+   },
+   {
+    "node": "Lamp_Tail_R",
+    "kind": "lamp",
+    "parent": "Trunk",
+    "pivot": [
+     -0.35,
+     0.746,
+     -1.8389
+    ],
+    "aabb": [
+     [
+      -0.66,
+      0.734,
+      -1.8583
+     ],
+     [
+      -0.04,
+      0.758,
+      -1.8195
+     ]
+    ],
+    "mass_kg": 0.3,
+    "triangles": 324,
+    "parts": [
+     "tail_brake_R",
+     "tail_indicator_R",
+     "tail_status_R"
+    ],
+    "lamps": [
+     "Taillight_R"
+    ]
+   }
+  ],
+  "notes": [
+   "LOD0 only: LOD1 / LOD2 keep the merged Body.",
+   "kind: door | hood | trunk | bumper | mirror | glass | lens | lamp. A node with a parent moves with it (and falls off with it).",
+   "hinge_axis + open_sign: rotating by open_sign * angle (radians, right-handed about the axis) opens the panel; limits_deg = [0, max opening].",
+   "lens / lamp: lamps lists the Headlight_* / Taillight_* empties the unit lights; a broken lens darkens its lamp node (emission off) and those lights."
+  ]
+ },
  "traffic": {
   "class": "robotaxi",
   "spawn_weight": 1.2,

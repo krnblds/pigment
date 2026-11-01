@@ -6,7 +6,9 @@ Needs assets/vehicles/<id>/src/<id>_model.blend (tools/vehicles/build.py) and th
 texture sets in scenes/vehicles/<id>/textures/ (tools/vehicles/textures.py). Writes:
 
     assets/vehicles/<id>/<id>.glb        LOD0: Body, Wheel_FL/FR/RL/RR, Caliper_*, Collider,
-                                         Headlight_L/R, Taillight_L/R
+                                         Headlight_L/R, Taillight_L/R, and the detachable damage
+                                         panels (Door_*, Hood, Trunk, Bumper_*, Mirror_*, Glass_*,
+                                         Lens_*, Lamp_*: tools/vehicles/damage_panels.py)
     assets/vehicles/<id>/<id>_lod1.glb   the same node names, ~10k triangles, half-size textures
     assets/vehicles/<id>/<id>_lod2.glb   distant traffic: Body + wheels (+ Collider, lamps), ~1-2k
                                          triangles, 256 px textures, no calipers
@@ -255,8 +257,11 @@ def export_vehicle(vid, fmt, legacy=True):
             drop_transmission(m)
     triangulate([o for o in sc.objects if o.type == "MESH" and o.name.startswith("Body")])
     triangulate_shared([o for o in sc.objects if o.type == "MESH" and o.name.startswith(("Wheel_", "Caliper_"))])
+    # LOD0 damage panels: doors, hood, trunk, bumpers, mirrors, glass, lenses, lamps as their own nodes
+    import damage_panels as DP
+    panels, damage = DP.split(body, src, vid) if "--no-panels" not in sys.argv else ([], None)
     use_material(wheels, mw)
-    for o in [body] + wheels:
+    for o in [body] + panels + wheels:
         for k in ("pigment_source", "pigment_folder"):   # local absolute paths: keep them out of the glb
             if k in o.keys():
                 del o[k]
@@ -273,10 +278,11 @@ def export_vehicle(vid, fmt, legacy=True):
     b, w = LOD_SIZES["lod0"]
     imgs.point(mats, b)
     imgs.point([mw], w)
-    use_material([body], mats[0])
-    set_variants(body.data, mats, names)
+    use_material([body] + panels, mats[0])
+    for o in [body] + panels:
+        set_variants(o.data, mats, names)
     files["lod0"] = f"{vid}.glb"
-    export(os.path.join(out, files["lod0"]), [body] + wheels + [col] + lamps, fmt)
+    export(os.path.join(out, files["lod0"]), [body] + panels + wheels + [col] + lamps, fmt)
     calipers = [o for o in wheels if o.name.startswith("Caliper_")]
     # LOD1 / LOD2
     for suffix, key in (("LOD1", "lod1"), ("LOD2", "lod2")):
@@ -306,6 +312,9 @@ def export_vehicle(vid, fmt, legacy=True):
     info["variants"] = [{"name": v["name"], "index": i, "label": v.get("label", v["name"]), "kind": v.get("kind", "civilian"),
                          "weight": v.get("weight", 1.0), "material": f"{vid}_{v['name']}"} for i, v in enumerate(fv["variants"])]
     info["default_variant"] = names[0]
+    if damage:
+        info["nodes"]["panels"] = [p["node"] for p in damage["panels"]]
+        info["damage"] = damage
     info["traffic"] = {"class": fv["class"], "spawn_weight": fv["weight"], "player": bool(fv.get("player") or vid == "tsubame")}
     info["notes"] = ["Calipers are separate nodes (Caliper_XX, same origin as Wheel_XX): steer them with the wheel but don't spin them. "
                      "LOD2 has no calipers.",
@@ -318,22 +327,24 @@ def export_vehicle(vid, fmt, legacy=True):
         json.dump(info, f, indent=1)
 
     if vid == "tsubame" and legacy:
-        export_legacy(sc, body, wheels, calipers, col, lamps, legacy_mats[0], legacy_mats[1], imgs)
+        export_legacy(sc, body, wheels, calipers, col, lamps, legacy_mats[0], legacy_mats[1], imgs, panels, damage)
     shutil.rmtree(tmp, ignore_errors=True)
     return info
 
 
-def export_legacy(sc, body, wheels, calipers, col, lamps, mat_security, mw, imgs):
-    """assets/car/: the hero's old contract (security livery, PNG, no variants), unchanged."""
+def export_legacy(sc, body, wheels, calipers, col, lamps, mat_security, mw, imgs, panels=(), damage=None):
+    """assets/car/: the hero's old contract (security livery, PNG, no variants), plus the LOD0 damage panels."""
     out = os.path.join(ROOT, "assets", "car")
-    body.data.gltf2_variant_mesh_data.clear()
+    panels = list(panels)
+    for o in [body] + panels:
+        o.data.gltf2_variant_mesh_data.clear()
     mat_security.name = "Pigment_car_body"
     mw.name = "Pigment_car_wheel"
     imgs.point([mat_security], 2048)
     imgs.point([mw], 1024)
-    use_material([body], mat_security)
+    use_material([body] + panels, mat_security)
     use_material(wheels, mw)
-    export(os.path.join(out, "car.glb"), [body] + wheels + [col] + lamps, "AUTO")
+    export(os.path.join(out, "car.glb"), [body] + panels + wheels + [col] + lamps, "AUTO")
     lod, undo = lod_swap(sc, "LOD1")
     lb = lod["Body"]
     lb.data.gltf2_variant_mesh_data.clear()
@@ -350,6 +361,9 @@ def export_legacy(sc, body, wheels, calipers, col, lamps, mat_security, mw, imgs
     info["dimensions"] = {k: v for k, v in info["dimensions"].items() if k not in ("width", "height")}
     info["triangles"].pop("lod2", None)
     info["livery"] = "security"
+    if damage:
+        info["nodes"]["panels"] = [p["node"] for p in damage["panels"]]
+        info["damage"] = damage
     info["files"] = {"lod0": "car.glb", "lod1": "car_lod1.glb"}
     info["materials"] = {
         "CarBody": "Pigment_car_body (security): one material for the whole body; glass, lenses and the light bar are see-through "
@@ -384,6 +398,9 @@ def write_index():
              "dimensions": info["dimensions"], "wheelbase": info["wheelbase"], "mass_kg": info["mass_kg"],
              "default_variant": info["default_variant"],
              "variants": [{k: v[k] for k in ("name", "index", "label", "kind", "weight")} for v in info["variants"]]}
+        if info.get("damage"):
+            e["panels"] = [{k: p[k] for k in ("node", "kind", "parent", "pivot", "hinge_axis", "open_sign", "limits_deg", "lamps")
+                            if k in p} for p in info["damage"]["panels"]]
         if vid == "tsubame":
             e["legacy"] = {"lod0": "../car/car.glb", "lod1": "../car/car_lod1.glb", "json": "../car/car.json", "variant": "security"}
         vehicles.append(e)
@@ -392,7 +409,9 @@ def write_index():
         "format": "vehicle-index", "version": 1,
         "coords": "glTF: +Y up, vehicles face +Z, +X is their left side; origin on the ground under the body centre",
         "contract": "every <id>.glb / _lod1 / _lod2 has Body, Wheel_FL/FR/RL/RR (origins at the hubs), Collider (convex hull, hidden), "
-                    "Headlight_L/R + Taillight_L/R empties (local -Z = beam); LOD0 and LOD1 also Caliper_XX. <id>.json = car.json format.",
+                    "Headlight_L/R + Taillight_L/R empties (local -Z = beam); LOD0 and LOD1 also Caliper_XX. <id>.json = car.json format. "
+                    "LOD0 also has the damage panels (panels[]: node, kind, parent, pivot = node origin, hinge_axis, open_sign, "
+                    "limits_deg, lamps; details in <id>.json damage).",
         "variants": "KHR_materials_variants on Body; pick by name (variants[].name) or index; weights are relative within a vehicle",
         "spawn": "pick a vehicle by spawn_weight / total_weight, then a variant by its weight; kinds: civilian, taxi, corporate, "
                  "police, street, beater",
