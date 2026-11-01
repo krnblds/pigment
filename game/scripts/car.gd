@@ -909,18 +909,21 @@ func _gearbox(dt: float, thr: float) -> void:
 			target = 1.0
 		else:
 			var rpm_drive := absf(wc * _ratio(gear) * _final) * 60.0 / TAU
-			if rpm_drive > idle + 350.0:
+			# launch: the clutch slips with a capacity ~ rpm^2, so the engine settles where its torque
+			# matches (~3000 rpm flat out) -- smooth against any load; it locks once the slip is small
+			var k := float(P.gearbox.get("launch_k", 24.0))
+			var launch_t := clampf(k * (rpm / 1000.0) * (rpm / 1000.0) / float(P.gearbox.clutch_torque), 0.0, 1.0)
+			if rpm_drive > idle + 200.0 and rpm_drive > rpm - 350.0:
 				target = 1.0
 			else:
-				# launch: torque-converter-like slip, capacity ~ rpm^2 -- the engine settles at a stall
-				# speed where its torque matches (~3000 rpm flat out), smooth against any load
-				var k := float(P.gearbox.get("launch_k", 19.0))
-				target = clampf(k * (rpm / 1000.0) * (rpm / 1000.0) / float(P.gearbox.clutch_torque), 0.0, 1.0)
+				target = launch_t
 				if rpm < idle + 80.0 and _thr < 0.05:
 					target = 0.0
 				if input_handbrake:
 					target = 0.0
-	clutch = move_toward(clutch, target, (6.0 if target > clutch else 20.0) * dt)
+	# after a shift the clutch comes back in over ~0.25 s (no shock through the tyres)
+	var rate_in := 4.0 if _since_shift < 0.5 else (2.5 if gear == 1 or gear == -1 else 8.0)
+	clutch = move_toward(clutch, target, (rate_in if target > clutch else 20.0) * dt)
 
 
 func _ratio(g: int) -> float:
@@ -971,9 +974,9 @@ func _assists(dt: float, thr: float, brk: float, vfwd: float, av: Vector3, up: V
 				w.brake_extra += clampf((sr / w.kp - 1.5) * 250.0, 0.0, 900.0) * slow
 	var floor_t := lerpf(0.08, 0.45, slow)
 	if tc_on and spin > 1.35 and t > 0.05:
-		_tc = maxf(floor_t, _tc - 7.0 * dt * (spin - 1.0))
+		_tc = maxf(floor_t, _tc - 5.0 * dt * (spin - 1.2))
 	else:
-		_tc = minf(1.0, _tc + 1.8 * dt)
+		_tc = minf(1.0, _tc + 4.0 * dt)
 	tc_active = 1.0 - _tc if tc_on else 0.0
 	t *= _tc if tc_on else 1.0
 	# stability control: brake the outer front wheel when the car yaws past the bicycle-model rate

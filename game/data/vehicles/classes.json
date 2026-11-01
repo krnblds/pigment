@@ -3,12 +3,12 @@
   "sedan": {
     "engine": {
       "idle_rpm": 850, "redline_rpm": 6800, "limiter_rpm": 7000,
-      "torque_curve": [[0, 90], [1000, 128], [2000, 152], [3000, 170], [4000, 184], [4800, 190], [5600, 184], [6200, 172], [6800, 150], [7200, 128]],
+      "torque_curve": [[0, 95], [1000, 132], [2000, 158], [3000, 176], [4000, 190], [4800, 196], [5600, 190], [6200, 178], [6800, 156], [7200, 132]],
       "inertia": 0.13, "friction_nm": 14.0, "friction_per_krpm": 5.5, "efficiency": 0.9,
       "speed_limiter_kmh": 0
     },
-    "gearbox": {"ratios": [3.29, 1.89, 1.28, 0.97, 0.80], "reverse": 3.2, "final_drive": 4.1,
-      "shift_time": 0.22, "clutch_torque": 320.0, "clutch_damping": 60.0,
+    "gearbox": {"ratios": [3.29, 1.89, 1.28, 0.97, 0.80], "reverse": 3.2, "final_drive": 4.3,
+      "shift_time": 0.2, "clutch_torque": 320.0, "clutch_damping": 60.0,
       "auto_up_rpm": [2700, 6500], "auto_down_rpm": [1250, 3300]},
     "drive": "RWD",
     "differential": {"type": "lsd", "preload_nm": 40.0, "lock_ratio": 0.3},
