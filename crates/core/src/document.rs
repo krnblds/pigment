@@ -377,8 +377,11 @@ pub struct MaskEffect {
 
 /// Most mask effects after the main generator (GPU parameter budget).
 pub const MAX_MASK_EFFECTS: usize = 2;
-/// Parts with ids below this can be selected in masks.
-pub const MAX_SELECTABLE_PARTS: u32 = 256;
+/// Parts with ids below this can be selected in masks. The GPU part-id map
+/// is R16Uint holding id + 1, so ids 0..=65533 are distinct; the selection
+/// itself is a per-layer bitset in a storage buffer, sized to the highest id
+/// actually selected (no fixed uniform budget any more).
+pub const MAX_SELECTABLE_PARTS: u32 = 65534;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Mask {

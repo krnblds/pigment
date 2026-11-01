@@ -70,9 +70,8 @@ struct LayerParams {
     gb2: [f32; 4],
     gc: [f32; 4],
     gc2: [f32; 4],
-    /// selected parts bitset (256 bits)
-    pbits: [u32; 8],
-    /// x = part selection on
+    /// x = part selection on, y = first word of this layer's bitset in the
+    /// part-selection storage buffer, z = its length in words
     misc: [u32; 4],
 }
 
@@ -104,7 +103,6 @@ fn layer_params(l: &Layer) -> LayerParams {
         gb2: [0.0; 4],
         gc: [0.0; 4],
         gc2: [0.0; 4],
-        pbits: [0; 8],
         misc: [0; 4],
     };
     if let LayerKind::Fill { values } = &l.kind {
@@ -139,13 +137,24 @@ fn layer_params(l: &Layer) -> LayerParams {
             }
         }
         if !m.parts.is_empty() {
+            // misc.y / misc.z (where the bitset lives) are filled in by `composite`
             p.misc[0] = 1;
-            for &id in m.parts.iter().filter(|&&id| id < pigment_core::MAX_SELECTABLE_PARTS) {
-                p.pbits[(id / 32) as usize] |= 1 << (id % 32);
-            }
         }
     }
     p
+}
+
+/// Bitset of selected part ids (bit k of word k/32 = part k), just long
+/// enough for the highest id. Ids at or above MAX_SELECTABLE_PARTS are
+/// dropped (they can't be told apart in the R16 part-id map).
+pub fn part_bitset(parts: &[u32]) -> Vec<u32> {
+    let ids = || parts.iter().copied().filter(|&id| id < pigment_core::MAX_SELECTABLE_PARTS);
+    let Some(top) = ids().max() else { return Vec::new() };
+    let mut words = vec![0u32; (top / 32 + 1) as usize];
+    for id in ids() {
+        words[(id / 32) as usize] |= 1 << (id % 32);
+    }
+    words
 }
 
 struct AccSet {
@@ -177,6 +186,9 @@ pub struct TexSet {
     shared_bg: wgpu::BindGroup,
     layer_buf: wgpu::Buffer,
     layer_buf_slots: u64,
+    /// Part-selection bitsets of all visible layers (storage, u32 words).
+    part_buf: wgpu::Buffer,
+    part_buf_words: u64,
     p: Pipes,
     mipgen: MipGen,
     center_radius: [f32; 4],
@@ -206,7 +218,7 @@ impl Pipes {
         let layer_bgl = gpu::bgl(
             device,
             "layer",
-            &[gpu::ntex(0), gpu::ntex(1), gpu::ntex(2), gpu::ntex(3), gpu::ntex(4), gpu::ntex(5), gpu::ntex(6), gpu::uniform_entry(7, true)],
+            &[gpu::ntex(0), gpu::ntex(1), gpu::ntex(2), gpu::ntex(3), gpu::ntex(4), gpu::ntex(5), gpu::ntex(6), gpu::uniform_entry(7, true), gpu::storage_entry(8)],
         );
         let full_layout = gpu::layout(device, "composite", &[&shared_bgl, &acc_bgl, &layer_bgl]);
         let fin_layout = gpu::layout(device, "finalize", &[&shared_bgl, &acc_bgl]);
@@ -252,6 +264,15 @@ impl Pipes {
             jfa_bgl,
         }
     }
+}
+
+fn part_buffer(device: &wgpu::Device, words: u64) -> wgpu::Buffer {
+    device.create_buffer(&wgpu::BufferDescriptor {
+        label: Some("part selection bits"),
+        size: words * 4,
+        usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+        mapped_at_creation: false,
+    })
 }
 
 fn acc_views(s: &AccSet) -> [&wgpu::TextureView; 4] {
@@ -314,6 +335,8 @@ impl TexSet {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
+        let part_buf_words = 256;
+        let part_buf = part_buffer(device, part_buf_words);
         let s = Self {
             res,
             layers: HashMap::new(),
@@ -335,6 +358,8 @@ impl TexSet {
             shared_bg,
             layer_buf,
             layer_buf_slots,
+            part_buf,
+            part_buf_words,
             p,
             mipgen: MipGen::new(device),
             center_radius: [0.0, 0.0, 0.0, 1.0],
@@ -500,16 +525,29 @@ impl TexSet {
             });
         }
         let mut params = vec![0u8; (LAYER_UNIFORM_STRIDE as usize) * visible.len().max(1)];
+        // word 0 stays zero so the buffer is never empty
+        let mut part_words: Vec<u32> = vec![0];
         for (i, l) in visible.iter().enumerate() {
             let mut p = layer_params(l);
             // a mask flagged in the doc but without pixels yet acts as "no mask"
             if l.mask.as_ref().is_some_and(|m| !self.masks.contains_key(&m.res)) {
                 p.flags[1] = 0;
             }
+            if p.misc[0] != 0 {
+                let bits = part_bitset(&l.mask.as_ref().map(|m| m.parts.as_slice()).unwrap_or(&[]));
+                p.misc[1] = part_words.len() as u32;
+                p.misc[2] = bits.len() as u32;
+                part_words.extend_from_slice(&bits);
+            }
             let o = i * LAYER_UNIFORM_STRIDE as usize;
             params[o..o + std::mem::size_of::<LayerParams>()].copy_from_slice(bytemuck::bytes_of(&p));
         }
         queue.write_buffer(&self.layer_buf, 0, &params);
+        if part_words.len() as u64 > self.part_buf_words {
+            self.part_buf_words = (part_words.len() as u64).next_power_of_two();
+            self.part_buf = part_buffer(device, self.part_buf_words);
+        }
+        queue.write_buffer(&self.part_buf, 0, bytemuck::cast_slice(&part_words));
 
         let layer_bgs: Vec<wgpu::BindGroup> = visible
             .iter()
@@ -523,6 +561,7 @@ impl TexSet {
                     offset: 0,
                     size: wgpu::BufferSize::new(std::mem::size_of::<LayerParams>() as u64),
                 }));
+                res.push(self.part_buf.as_entire_binding());
                 gpu::bind_group(device, "layer", &self.p.layer_bgl, &res)
             })
             .collect();
@@ -582,5 +621,24 @@ impl TexSet {
             self.mipgen.generate(device, &mut enc, t, frect);
         }
         queue.submit([enc.finish()]);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn part_bitset_covers_ids_far_past_the_old_256_limit() {
+        assert!(part_bitset(&[]).is_empty());
+        let b = part_bitset(&[0, 31, 32, 300, 4095]);
+        assert_eq!(b.len(), 4095 / 32 + 1);
+        assert_eq!(b[0], 1 | 1 << 31);
+        assert_eq!(b[1], 1);
+        assert_eq!(b[300 / 32], 1 << (300 % 32));
+        assert_eq!(b[127], 1 << 31);
+        assert_eq!(b.iter().map(|w| w.count_ones()).sum::<u32>(), 5);
+        // ids the R16 part map can't tell apart are dropped
+        assert!(part_bitset(&[pigment_core::MAX_SELECTABLE_PARTS]).is_empty());
     }
 }

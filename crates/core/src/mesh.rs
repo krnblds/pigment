@@ -366,6 +366,29 @@ impl Mesh {
         m
     }
 
+    /// `n x n` separate flat tiles (gaps between them), each with its own
+    /// UV cell: a synthetic mesh with `n * n` parts, part id = row * n + col
+    /// (row = v). For testing part masks at scale.
+    pub fn tile_grid(n: u32) -> Mesh {
+        let mut vertices = Vec::with_capacity((n * n * 4) as usize);
+        let mut indices = Vec::with_capacity((n * n * 6) as usize);
+        let cell = 1.0 / n as f32;
+        for row in 0..n {
+            for col in 0..n {
+                let (u0, v0) = (col as f32 * cell, row as f32 * cell);
+                let base = vertices.len() as u32;
+                for (du, dv) in [(0.1, 0.1), (0.9, 0.1), (0.9, 0.9), (0.1, 0.9)] {
+                    let (u, v) = (u0 + du * cell, v0 + dv * cell);
+                    vertices.push(Vertex { position: [u * 2.0 - 1.0, 1.0 - v * 2.0, 0.0], normal: [0.0, 0.0, 1.0], uv: [u, v], tangent: [0.0; 4] });
+                }
+                indices.extend_from_slice(&[base, base + 2, base + 1, base, base + 3, base + 2]);
+            }
+        }
+        let mut m = Mesh { name: format!("Tiles{n}x{n}"), vertices, indices, has_uvs: true };
+        m.compute_tangents();
+        m
+    }
+
     /// Write as Wavefront OBJ (positions, UVs flipped back to OBJ's bottom-left
     /// origin, normals). Used to store generated meshes in a project.
     pub fn write_obj(&self, path: &Path) -> Result<()> {
@@ -648,6 +671,17 @@ f 1/1 2/2 3/3 4/4
         // a cube touching the first along a full edge stays separate (3+ triangles on that edge)
         cube_at(&mut m, Vec3::new(1.0, 1.0, 0.0), true);
         assert_eq!(m.parts().info.len(), 3);
+    }
+
+    #[test]
+    fn tile_grid_has_one_part_per_tile_in_order() {
+        let m = Mesh::tile_grid(24);
+        let p = m.parts();
+        assert_eq!(p.info.len(), 24 * 24);
+        // part id = row * n + col; tile 300 = row 12, col 12
+        let c = (glam::Vec3::from(p.info[300].min) + glam::Vec3::from(p.info[300].max)) * 0.5;
+        let cell = 2.0 / 24.0;
+        assert!((c.x - (-1.0 + 12.5 * cell)).abs() < 1e-4 && (c.y - (1.0 - 12.5 * cell)).abs() < 1e-4, "{c}");
     }
 
     #[test]

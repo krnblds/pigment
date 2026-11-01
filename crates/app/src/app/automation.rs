@@ -327,10 +327,23 @@ impl Session {
                 if let Some(inv) = m.get("invert").and_then(Value::as_bool) {
                     mask.invert = inv;
                 }
-                if let Some(ps) = m.get("parts").and_then(Value::as_array) {
-                    mask.parts = ps.iter().filter_map(|p| p.as_u64().map(|x| x as u32)).filter(|&p| p < MAX_SELECTABLE_PARTS).collect();
-                    mask.parts.sort_unstable();
-                    mask.parts.dedup();
+                if let Some(ps) = m.get("parts") {
+                    let n = app.parts.info.len();
+                    let ps = ps.as_array().ok_or("`mask.parts` must be an array of part ids (see list_parts)")?;
+                    let mut ids = Vec::with_capacity(ps.len());
+                    for (k, p) in ps.iter().enumerate() {
+                        let id = p.as_u64().ok_or_else(|| format!("`mask.parts[{k}]` must be a part id (integer >= 0), got {p}"))?;
+                        if id as usize >= n {
+                            return Err(format!("`mask.parts[{k}]` = {id}: no such part (the mesh has {n} parts, ids 0..{})", n.saturating_sub(1)));
+                        }
+                        if id >= MAX_SELECTABLE_PARTS as u64 {
+                            return Err(format!("`mask.parts[{k}]` = {id}: part masks support ids below {MAX_SELECTABLE_PARTS}"));
+                        }
+                        ids.push(id as u32);
+                    }
+                    ids.sort_unstable();
+                    ids.dedup();
+                    mask.parts = ids;
                 }
                 if let Some(effs) = m.get("effects").and_then(Value::as_array) {
                     if effs.len() > MAX_MASK_EFFECTS {

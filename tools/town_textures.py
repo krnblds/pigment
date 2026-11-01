@@ -136,8 +136,6 @@ def building(asset, base, shell_extra, signs, seed):
             elif bottom >= roof_y:
                 k = "roof"
         c.setdefault(k, []).append(p["id"])
-    sel = lambda k: [i for i in c.get(k, []) if i < 256]
-    c = {k: sel(k) for k in c}
     shell = c.get("shell", [])
     L = [{"tool": "new_project", "args": {"mesh": f"assets/town/{asset}.glb", "resolution": 4096, "material": base}},
          {"tool": "bake", "args": {"curvature_radius": 0.004, "curvature_strength": 0.7, "ao_distance": 0.12}}]
