@@ -89,7 +89,7 @@ PROPS = {
         category="street_furniture", title="Steel bollard with LED ring",
         desc="0.95 m domed steel bollard, retro-reflective band and a cyan LED ring.",
         res=512, embed=512, lod1=None,
-        scatter=dict(slots=["curb", "corner"], density=dens(6.0, downtown=14.0, luxury=12.0, commercial=8.0, slum=1.0, industrial=3.0),
+        scatter=dict(slots=["curb", "corner"], density=dens(2.5, downtown=5.0, luxury=5.0, commercial=3.0, slum=0.5, industrial=1.5),
                      offset=-0.35, spacing=1.6, clearance=0.25, facing="road", yaw_jitter=0, along=[0.3, 4.0], cluster=[2, 5], cluster_radius=1.6, cluster_line=True)),
     "guard_rail": dict(
         category="traffic", title="W-beam guard rail (4 m, tileable)",
@@ -113,7 +113,7 @@ PROPS = {
         category="traffic", title="Traffic cone",
         desc="70 cm cone with two reflective collars on a rubber base.",
         res=512, embed=256, lod1=None,
-        scatter=dict(slots=["roadside", "curb"], density=dens(2.0, industrial=6.0, slum=4.0, luxury=0.0), offset=0.5, spacing=3.0,
+        scatter=dict(slots=["roadside", "curb"], density=dens(0.8, industrial=3.0, slum=2.0, luxury=0.0), offset=0.5, spacing=3.0,
                      clearance=0.3, facing="random", yaw_jitter=180, cluster=[1, 5], cluster_radius=1.5)),
     "steam_vent": dict(
         category="utility", title="Manhole steam stack",
@@ -225,13 +225,13 @@ PROPS = {
         category="clutter", title="City bicycle",
         desc="Step-through city bike on its kickstand with a front basket.",
         res=1024, embed=512, lod1=0.4,
-        scatter=dict(slots=["frontage", "curb", "alley"], density=dens(1.0, residential=3.0, market=2.0, slum=1.5, downtown=0.5),
+        scatter=dict(slots=["frontage", "curb", "alley"], density=dens(1.0, residential=3.0, market=2.0, slum=1.5, downtown=0.5, luxury=0.3),
                      offset=0.5, spacing=2.0, clearance=0.4, facing="along", yaw_jitter=8, cluster=[1, 4], cluster_radius=0.0, cluster_line=True, cluster_gap=0.7)),
     "scooter": dict(
         category="clutter", title="Hoshikawa Ride share e-scooter",
         desc="Rental kick scooter on its stand, with a display and a scan plate.",
         res=1024, embed=512, lod1=0.5,
-        scatter=dict(slots=["curb", "frontage", "plaza"], density=dens(1.5, downtown=3.0, commercial=3.0, slum=0.5), offset=-0.7,
+        scatter=dict(slots=["curb", "frontage", "plaza"], density=dens(0.8, downtown=1.5, commercial=1.5, slum=0.3), offset=-0.7,
                      spacing=1.0, clearance=0.35, facing="random", yaw_jitter=60, cluster=[1, 3], cluster_radius=0.0, cluster_line=True, cluster_gap=0.55)),
     "ramen_cart": dict(
         category="food", title="Ramen yatai cart",
@@ -255,7 +255,7 @@ PROPS = {
         category="rooftop", title="Air-con condenser on a stand",
         desc="Split-system condenser with a perforated fan grille on a galvanised stand, refrigerant pipes and drain hose.",
         res=1024, embed=512, lod1=None,
-        scatter=dict(slots=["rooftop", "alley"], density=dens(2.0, residential=3.0, slum=3.0, market=3.0), offset=0.35, spacing=1.2,
+        scatter=dict(slots=["rooftop", "alley"], density=dens(1.2, residential=2.0, slum=2.0, market=2.0), offset=0.35, spacing=1.2,
                      clearance=0.6, facing="random", yaw_jitter=0, cluster=[1, 4], cluster_radius=0.0, cluster_line=True, cluster_gap=0.95)),
     "satellite_dish": dict(
         category="rooftop", title="Satellite dish on a ballast mount",
