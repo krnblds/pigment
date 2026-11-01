@@ -112,6 +112,15 @@ def headlights():
             bm_sphere(bm, (sx * xc, yk + 0.058, 0.632), 0.014, 8, 5)
             bulb = obj(f"headlight_bulb_{side}{k}", bm)
             out.append((bulb.name, "emitter_head", bulb))
+            if k == 1:
+                # projector: a black shroud ring and a glass condenser lens in front of the bowl
+                sh = lathe(f"headlight_shroud_{side}", [(0.030, 0.0), (0.040, 0.004), (0.041, 0.030), (0.034, 0.034)],
+                           (sx * xc, yk + 0.010, 0.632), "Y", 20)
+                out.append((sh.name, "black_trim", sh))
+                bm = bmesh.new()
+                bm_sphere(bm, (sx * xc, yk + 0.016, 0.632), 0.031, 16, 10, scale=(1, 0.55, 1))
+                pl = obj(f"headlight_projector_{side}", bm)
+                out.append((pl.name, "lens_clear", pl))
         # a slim LED position strip under the reflectors (a later "upgrade")
         strip = box(f"headlight_drl_{side}", (sx * 0.600, P.front_face_y(sx * 0.6, 0.582) + 0.016, 0.582), (0.36, 0.012, 0.010))
         out.append((strip.name, "emitter_head", strip))
@@ -139,6 +148,15 @@ def taillights():
         y = P.rear_face_y(xc, zc)
         e = box(nm, (xc, y - 0.035, zc), (w, 0.03, 0.095), bevel=0.004)
         out.append((nm, grp, e))
+    # inner structure: a chrome reflector back plate with black divider fins between the lamps
+    for sx, side in ((1, "L"), (-1, "R")):
+        y = P.rear_face_y(sx * 0.62, zc)
+        bp = box(f"tail_reflector_{side}", (sx * 0.62, y - 0.075, zc), (0.46, 0.008, 0.10))
+        out.append((bp.name, "chrome", bp))
+        for xf in (0.835, 0.625, 0.505, 0.39):
+            yf = P.rear_face_y(sx * xf, zc)
+            fin = box(f"tail_fin_{side}_{int(xf * 1000)}", (sx * xf, yf - 0.045, zc), (0.008, 0.06, 0.10))
+            out.append((fin.name, "black_trim", fin))
     # centre: a red reflector strip (not lit), with fine horizontal ribs
     for i in range(4):
         z = zc - 0.036 + i * 0.024
@@ -277,7 +295,7 @@ def fender_flares():
                 ring = []
                 for r, o in prof:
                     y = axle + r * math.cos(a)
-                    z = B.WHEEL_R + r * math.sin(a)
+                    z = B.ARCH_Z + r * math.sin(a)
                     x, n = P.side_x(y, max(z, 0.30), sx)
                     ring.append(bm.verts.new((x + sx * (o - 0.002), y, z)))
                 rings.append(ring)
@@ -296,7 +314,7 @@ def fender_flares():
                 a = lerp(math.radians(-8), math.radians(188), t)
                 r = R0 + 0.045
                 y = axle + r * math.cos(a)
-                z = B.WHEEL_R + r * math.sin(a)
+                z = B.ARCH_Z + r * math.sin(a)
                 x, n = P.side_x(y, max(z, 0.30), sx)
                 bm_cyl(bm, (x + sx * 0.040, y, z), 0.008, 0.012, seg=6, axis="X")
             ob = obj(f"flare_bolts_{an}{side}", bm)
@@ -515,20 +533,20 @@ def wheel_wells():
             for k in range(seg + 1):
                 a = lerp(a0, a1, k / seg)
                 y = axle + r * math.cos(a)
-                z = B.WHEEL_R + r * math.sin(a)
+                z = B.ARCH_Z + r * math.sin(a)
                 ringO.append(bm.verts.new((outer_x, y, z)))
                 ringI.append(bm.verts.new((inner_x, y, z)))
             for k in range(seg):
                 bm.faces.new((ringO[k], ringO[k + 1], ringI[k + 1], ringI[k]))
             # inner wall (half disc)
-            c = bm.verts.new((inner_x, axle, B.WHEEL_R - 0.08))
+            c = bm.verts.new((inner_x, axle, B.ARCH_Z - 0.08))
             for k in range(seg):
                 bm.faces.new((ringI[k], ringI[k + 1], c))
             bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
             # normals should face the wheel (into the drum)
             for f in bm.faces:
                 cen = f.calc_center_median()
-                to_axis = Vector((sx * 0.70, axle, B.WHEEL_R)) - cen
+                to_axis = Vector((sx * 0.70, axle, B.ARCH_Z)) - cen
                 if f.normal.dot(to_axis) < 0:
                     f.normal_flip()
             ob = obj(f"wheel_well_{an}{side}", bm)
@@ -541,8 +559,8 @@ def suspension():
     out = []
     for axle, an in ((B.AXLE_F, "F"), (B.AXLE_R, "R")):
         for sx, side in ((1, "L"), (-1, "R")):
-            hub = Vector((sx * 0.64, axle, B.WHEEL_R))
-            top = Vector((sx * 0.60, axle + (0.05 if an == "F" else -0.05), B.WHEEL_R + 0.36))
+            hub = Vector((sx * 0.70, axle, B.ARCH_Z))
+            top = Vector((sx * 0.64, axle + (0.05 if an == "F" else -0.05), B.ARCH_Z + 0.36))
             bot = hub + Vector((-sx * 0.01, 0, 0.09))
             # damper body + rod
             bm = bmesh.new()
@@ -572,7 +590,7 @@ def suspension():
             # lower control arm (A-arm): two tubes to the subframe
             bm = bmesh.new()
             for dy in (-0.16, 0.16):
-                bm_tube_path(bm, [tuple(hub + Vector((-sx * 0.02, 0, -0.10))), (sx * 0.30, axle + dy, B.WHEEL_R - 0.10)], 0.016, 8)
+                bm_tube_path(bm, [tuple(hub + Vector((-sx * 0.02, 0, -0.10))), (sx * 0.30, axle + dy, B.ARCH_Z - 0.10)], 0.016, 8)
             arm = obj(f"control_arm_{an}{side}", bm)
             out.append((arm.name, "suspension", arm))
             # knuckle / hub carrier
@@ -580,7 +598,7 @@ def suspension():
             out.append((kn.name, "suspension", kn))
             # driveshaft
             bm = bmesh.new()
-            bm_tube_path(bm, [tuple(hub + Vector((-sx * 0.03, 0, 0))), (sx * 0.12, axle, B.WHEEL_R - 0.02)], 0.017, 8)
+            bm_tube_path(bm, [tuple(hub + Vector((-sx * 0.03, 0, 0))), (sx * 0.12, axle, B.ARCH_Z - 0.02)], 0.017, 8)
             ds = obj(f"driveshaft_{an}{side}", bm)
             out.append((ds.name, "underbody_metal", ds))
     return out
@@ -764,3 +782,47 @@ def headliner(shell):
         f.normal_flip()
     ob = obj("headliner", bm)
     return [(ob.name, "interior_fabric", ob)]
+
+
+def glass_frit():
+    """Black ceramic frit bands round the windscreen and rear window: a thin strip lying on the
+    glass along its border, 5 cm wide, with a dotted fade painted in Pigment."""
+    out = []
+    for nm, outline in (("windscreen", P.windshield_outline()), ("rear_window", P.rear_window_outline())):
+        pts = outline
+        # densify
+        dense = []
+        n = len(pts)
+        for i in range(n):
+            a, b = pts[i], pts[(i + 1) % n]
+            L = math.hypot(b[0] - a[0], b[1] - a[1])
+            k = max(1, int(L / 0.06))
+            for j in range(k):
+                t = j / k
+                dense.append((lerp(a[0], b[0], t), lerp(a[1], b[1], t)))
+        cx = sum(p[0] for p in dense) / len(dense)
+        cy = sum(p[1] for p in dense) / len(dense)
+        bm = bmesh.new()
+        rings = []
+        for x, y in dense:
+            d = Vector((cx - x, cy - y))
+            # inset towards the centre, more along the long (x) direction scaled by the pane's shape
+            d = Vector((d.x / max(abs(d.x), 1e-6), 0)) * 0.05 if abs(d.x) > 0.45 else Vector((0, d.y / max(abs(d.y), 1e-6))) * 0.05
+            ring = []
+            for (px, py) in ((x - (0.0 if True else 0), y), (x + d.x, y + d.y)):
+                zz, nrm = P.top_z(px, py)
+                ring.append(bm.verts.new((px, py, zz + 0.0015)))
+            rings.append(ring)
+        for i in range(len(rings)):
+            A, Bq = rings[i], rings[(i + 1) % len(rings)]
+            try:
+                bm.faces.new((A[0], Bq[0], Bq[1], A[1]))
+            except ValueError:
+                pass
+        bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+        for f in bm.faces:
+            if f.normal.z < 0:
+                f.normal_flip()
+        ob = obj(f"frit_{nm}", bm)
+        out.append((ob.name, "frit", ob))
+    return out

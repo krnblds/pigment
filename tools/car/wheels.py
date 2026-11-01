@@ -114,10 +114,11 @@ def rim():
     hub = bm_obj("rim_hub", bm)
     # spokes: tapered, slightly concave boxes from the hub to the barrel
     bm = bmesh.new()
-    for i in range(6):
-        a = TAU * i / 6
-        r0, r1 = 0.070, R_RIM - 0.016
-        w0, w1 = 0.040, 0.026
+    for i in range(12):
+        # six split spokes: pairs fanning out from the hub
+        a = TAU * (i // 2) / 6 + (0.075 if i % 2 else -0.075)
+        r0, r1 = 0.072, R_RIM - 0.016
+        w0, w1 = 0.022, 0.017
         verts = []
         for (r, w, dx_front, dx_back) in ((r0, w0, 0.008, -0.030), (r1 * 0.55, (w0 + w1) / 2 * 1.04, 0.002, -0.026),
                                           (r1, w1, 0.010, -0.018)):

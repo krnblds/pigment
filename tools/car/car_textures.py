@@ -137,23 +137,24 @@ def part_decal(image, part, **kw):
 
 def bl(x, y, z):
     """Blender car coordinates (front -Y, Z up) -> Pigment / glTF world (Y up, front +Z)."""
-    return [round(x, 4), round(z, 4), round(-y, 4)]
+    return [round(x, 4), round(z - BODY_DROP, 4), round(-y, 4)]
 
 
 NO_HEIGHT = {"height": False}
+BODY_DROP = 0.03   # tools/car/body.py: the body is modelled 3 cm high, decal heights here are in that frame
 
 # ------------------------------------------------------------------ materials (values)
 
-MIDNIGHT_CANDY = {"base_color": [0.018, 0.035, 0.11], "metallic": 0.55, "roughness": 0.33, "coat": 1.0, "coat_roughness": 0.03, "flake": 0.55}
-PEARL_WHITE = {"base_color": [0.86, 0.87, 0.88], "metallic": 0.15, "roughness": 0.3, "coat": 1.0, "coat_roughness": 0.03, "flake": 0.2}
-TEAL_CANDY = {"base_color": [0.02, 0.17, 0.17], "metallic": 0.55, "roughness": 0.32, "coat": 1.0, "coat_roughness": 0.03, "flake": 0.5}
+MIDNIGHT_CANDY = {"base_color": [0.018, 0.035, 0.11], "metallic": 0.55, "roughness": 0.33, "coat": 1.0, "coat_roughness": 0.02, "flake": 0.12}
+PEARL_WHITE = {"base_color": [0.86, 0.87, 0.88], "metallic": 0.15, "roughness": 0.3, "coat": 1.0, "coat_roughness": 0.02, "flake": 0.04}
+TEAL_CANDY = {"base_color": [0.02, 0.17, 0.17], "metallic": 0.55, "roughness": 0.32, "coat": 1.0, "coat_roughness": 0.02, "flake": 0.12}
 CREAM_PAINT = {"base_color": [0.78, 0.72, 0.58], "metallic": 0.1, "roughness": 0.34, "coat": 1.0, "coat_roughness": 0.04, "flake": 0.1}
 BLACK_TRIM = {"base_color": [0.022, 0.022, 0.024], "metallic": 0.0, "roughness": 0.55}
 SATIN_BLACK_METAL = {"base_color": [0.03, 0.03, 0.032], "metallic": 0.35, "roughness": 0.42}
 RUBBER = {"base_color": [0.018, 0.018, 0.018], "metallic": 0.0, "roughness": 0.85}
 CHROME = {"base_color": [0.86, 0.86, 0.88], "metallic": 1.0, "roughness": 0.1}
 MIRROR = {"base_color": [0.92, 0.92, 0.94], "metallic": 1.0, "roughness": 0.015}
-GLASS = {"base_color": [0.05, 0.065, 0.075], "roughness": 0.02, "metallic": 0.0, "opacity": 0.42, "transmission": 0.9}
+GLASS = {"base_color": [0.05, 0.065, 0.075], "roughness": 0.02, "metallic": 0.0, "opacity": 0.3, "transmission": 0.9}
 LENS_CLEAR = {"base_color": [0.9, 0.92, 0.95], "roughness": 0.02, "metallic": 0.0, "opacity": 0.2, "transmission": 1.0}
 LENS_RED = {"base_color": [0.7, 0.02, 0.015], "roughness": 0.05, "metallic": 0.0, "opacity": 0.6, "transmission": 0.6}
 LENS_AMBER = {"base_color": [0.95, 0.42, 0.02], "roughness": 0.05, "metallic": 0.0, "opacity": 0.55, "transmission": 0.6}
@@ -167,7 +168,7 @@ def body_script(P):
     doors = [i for i in doors if P.m[i][1] == "paint"]
     shell = P.named("body_shell")
     hood = P.named("hood")
-    exterior = P.group("paint", "black_trim", "rubber", "chrome", "grille", "black_metal", "mirror", "plate", "exhaust",
+    exterior = P.group("paint", "frit", "black_trim", "rubber", "chrome", "grille", "black_metal", "mirror", "plate", "exhaust",
                        "glass", "lens_clear", "lens_red", "lens_amber")
     L = [
         {"tool": "new_project", "args": {"mesh": "assets/car/src/car_body.glb", "resolution": 4096, "material": "Matte black"}},
@@ -184,13 +185,13 @@ def body_script(P):
         # under the car and in the arches
         fill("Underseal", P.group("underbody"), UNDERSEAL, channels=NO_HEIGHT),
         fill("Underbody steel", P.group("underbody_metal"), {"base_color": [0.2, 0.18, 0.16], "metallic": 0.7, "roughness": 0.6}, channels=NO_HEIGHT),
-        fill("Underbody rust", P.group("underbody_metal"), None, "Rust", {"generator": "grunge", "amount": 0.55, "scale": 3.0, "softness": 0.2}, opacity=0.9),
+        fill("Underbody rust", P.group("underbody_metal"), None, "Rust", {"generator": "grunge", "amount": 0.55, "scale": 3.0, "softness": 0.2}, opacity=0.9, channels=NO_HEIGHT),
         fill("Suspension", P.group("suspension"), {"base_color": [0.07, 0.07, 0.075], "metallic": 0.6, "roughness": 0.5}, channels=NO_HEIGHT),
         fill("Springs", P.group("spring"), {"base_color": [0.55, 0.07, 0.03], "metallic": 0.0, "roughness": 0.4, "coat": 0.6, "coat_roughness": 0.2}, channels=NO_HEIGHT),
         # interior
         fill("Seat cloth", P.group("interior_fabric"), {"base_color": [0.06, 0.06, 0.068], "metallic": 0.0, "roughness": 0.92}, channels=NO_HEIGHT),
         fill("Cloth weave", P.group("interior_fabric"), {"base_color": [0.09, 0.09, 0.1], "roughness": 0.95, "height": -0.25},
-             {"generator": "tiles", "variant": "square", "scale": 160.0, "mortar": 0.25, "amount": 0.5}, opacity=0.6),
+             {"generator": "tiles", "variant": "square", "scale": 90.0, "mortar": 0.3, "amount": 0.5}, opacity=0.25, channels=NO_HEIGHT),
         fill("Leather", P.group("interior_leather"), {"base_color": [0.028, 0.025, 0.024], "metallic": 0.0, "roughness": 0.42}, channels=NO_HEIGHT),
         fill("Leather shine", P.group("interior_leather", "interior_fabric"), {"roughness": 0.3},
              {"generator": "edge_wear", "amount": 0.35, "softness": 0.2}, opacity=0.6, channels={"base_color": False, "metallic": False, "height": False}),
@@ -205,6 +206,7 @@ def body_script(P):
         fill("Paint: cab cream hood", hood, CREAM_PAINT, channels=NO_HEIGHT, variant="livery_cab", visible=False),
         # lamps
         fill("Glass", P.group("glass"), GLASS, channels=NO_HEIGHT),
+        fill("Ceramic frit", P.group("frit"), {"base_color": [0.012, 0.012, 0.013], "metallic": 0.0, "roughness": 0.18}, channels=NO_HEIGHT),
         fill("Headlamp lenses", P.group("lens_clear"), LENS_CLEAR, channels=NO_HEIGHT),
         fill("Tail lenses", P.group("lens_red"), LENS_RED, channels=NO_HEIGHT),
         fill("Indicator lenses", P.group("lens_amber"), LENS_AMBER, channels=NO_HEIGHT),
@@ -223,30 +225,30 @@ def body_script(P):
     ]
     # ---- wear on the paint (both liveries)
     L += [
-        fill("Coat haze", paint, {"coat_roughness": 0.22}, None, {"generator": "grunge", "amount": 0.5, "scale": 1.6, "softness": 0.3},
-             opacity=0.8, channels={"base_color": False, "roughness": False, "metallic": False, "height": False}),
+        fill("Coat haze", paint, {"coat_roughness": 0.22}, None, {"generator": "grunge", "amount": 0.35, "scale": 1.6, "softness": 0.3},
+             opacity=0.5, channels={"base_color": False, "roughness": False, "metallic": False, "height": False}),
         fill("Fine scratches", paint, {"base_color": [0.4, 0.42, 0.45], "roughness": 0.45, "coat": 0.0},
-             {"generator": "scratches", "amount": 0.25, "scale": 4.0}, opacity=0.35, channels=NO_HEIGHT),
+             {"generator": "scratches", "amount": 0.15, "scale": 4.0}, opacity=0.2, channels=NO_HEIGHT),
         fill("Edge chips: primer", paint, {"base_color": [0.36, 0.37, 0.38], "metallic": 0.0, "roughness": 0.65, "coat": 0.0, "flake": 0.0},
-             {"generator": "edge_wear", "amount": 0.3, "softness": 0.05, "breakup": 0.7, "scale": 6.0}, channels=NO_HEIGHT),
+             {"generator": "edge_wear", "amount": 0.2, "softness": 0.04, "breakup": 0.7, "scale": 6.0}, channels=NO_HEIGHT),
         fill("Edge chips: bare steel", paint, {"base_color": [0.5, 0.5, 0.52], "metallic": 1.0, "roughness": 0.35, "coat": 0.0, "flake": 0.0},
-             {"generator": "edge_wear", "amount": 0.16, "softness": 0.03, "breakup": 0.8, "scale": 8.0}, channels=NO_HEIGHT),
+             {"generator": "edge_wear", "amount": 0.1, "softness": 0.03, "breakup": 0.8, "scale": 8.0}, channels=NO_HEIGHT),
         # rust: low edges (arches, sills, bumper bottoms), spotty
         fill("Arch rust", paint + P.group("underbody_metal"), {"coat": 0.0, "flake": 0.0}, "Rust",
-             {"generator": "edge_wear", "amount": 0.55, "softness": 0.12, "breakup": 0.6, "scale": 5.0,
+             {"generator": "edge_wear", "amount": 0.45, "softness": 0.1, "breakup": 0.6, "scale": 5.0,
               "effects": [{"generator": "gradient", "op": "multiply", "amount": 0.22, "softness": 0.06, "breakup": 0.3},
-                          {"generator": "spots", "op": "multiply", "amount": 0.6, "scale": 6.0, "softness": 0.15}]}),
+                          {"generator": "spots", "op": "multiply", "amount": 0.5, "scale": 6.0, "softness": 0.15}]}, channels=NO_HEIGHT),
         fill("Rust bloom", shell, {"base_color": [0.3, 0.16, 0.08], "roughness": 0.8, "coat": 0.0, "flake": 0.0},
              {"generator": "spots", "amount": 0.35, "scale": 9.0, "softness": 0.2,
-              "effects": [{"generator": "gradient", "op": "multiply", "amount": 0.24, "softness": 0.08, "breakup": 0.4}]}, opacity=0.7, channels=NO_HEIGHT),
+              "effects": [{"generator": "gradient", "op": "multiply", "amount": 0.2, "softness": 0.06, "breakup": 0.4}]}, opacity=0.45, channels=NO_HEIGHT),
         # grime: gaps and crevices, rain streaks under the glass and trims, road dirt from the sills
         fill("Gap grime", exterior, {"base_color": [0.06, 0.055, 0.05], "roughness": 0.85, "coat": 0.0},
              {"generator": "dirt", "amount": 0.45, "softness": 0.2, "breakup": 0.5}, opacity=0.85, channels=NO_HEIGHT),
-        fill("Rain streaks", P.group("paint", "glass", "chrome", "black_trim"), {"base_color": [0.08, 0.075, 0.07], "roughness": 0.55, "coat_roughness": 0.3},
+        fill("Rain streaks", P.group("paint", "chrome", "black_trim"), {"base_color": [0.08, 0.075, 0.07], "roughness": 0.55, "coat_roughness": 0.3},
              {"generator": "leaks", "amount": 0.45, "scale": 3.0, "breakup": 0.6, "drip_length": 0.6, "ao_influence": 0.3, "softness": 0.15},
              opacity=0.55, channels=NO_HEIGHT),
         fill("Water spots", P.group("glass"), {"base_color": [0.2, 0.2, 0.2], "roughness": 0.25, "opacity": 0.55},
-             {"generator": "spots", "amount": 0.3, "scale": 40.0, "softness": 0.1}, opacity=0.5, channels=NO_HEIGHT),
+             {"generator": "spots", "amount": 0.15, "scale": 40.0, "softness": 0.1}, opacity=0.3, channels=NO_HEIGHT),
         fill("Road dirt", exterior + P.group("underbody"), ROAD_DIRT,
              {"generator": "gradient", "amount": 0.2, "softness": 0.05, "breakup": 0.55, "scale": 3.0,
               "effects": [{"generator": "grunge", "op": "multiply", "amount": 0.75, "scale": 2.5, "softness": 0.25}]},
@@ -318,7 +320,7 @@ def wheel_script(P):
         fill("Tyre rubber", tyre, RUBBER, channels=NO_HEIGHT),
         fill("Tread scuff", tyre, {"base_color": [0.04, 0.04, 0.04], "roughness": 0.95},
              {"generator": "edge_wear", "amount": 0.45, "softness": 0.15, "breakup": 0.5}, opacity=0.8, channels=NO_HEIGHT),
-        fill("Rim paint", rim, {"base_color": [0.13, 0.13, 0.14], "metallic": 0.85, "roughness": 0.3, "coat": 1.0, "coat_roughness": 0.05, "flake": 0.3}, channels=NO_HEIGHT),
+        fill("Rim paint", rim, {"base_color": [0.13, 0.13, 0.14], "metallic": 0.85, "roughness": 0.3, "coat": 1.0, "coat_roughness": 0.05, "flake": 0.08}, channels=NO_HEIGHT),
         fill("Rim lip polish", rim, {"base_color": [0.8, 0.8, 0.82], "metallic": 1.0, "roughness": 0.15, "coat": 0.0, "flake": 0.0},
              {"generator": "edge_wear", "amount": 0.35, "softness": 0.04, "breakup": 0.3}, channels=NO_HEIGHT),
         fill("Lug nuts", P.group("lug"), CHROME, channels=NO_HEIGHT),

@@ -48,7 +48,7 @@ GROUP_COLOURS = {
     "spring": (0.6, 0.1, 0.05), "interior_fabric": (0.12, 0.12, 0.13), "interior_plastic": (0.08, 0.08, 0.09),
     "interior_dark": (0.03, 0.03, 0.035), "interior_leather": (0.04, 0.03, 0.03), "interior_carpet": (0.05, 0.05, 0.05),
     "screen": (0.1, 0.4, 0.5), "tyre": (0.02, 0.02, 0.02), "rim": (0.6, 0.6, 0.62), "lug": (0.8, 0.8, 0.8),
-    "brake_disc": (0.35, 0.33, 0.32), "caliper": (0.7, 0.35, 0.02),
+    "brake_disc": (0.35, 0.33, 0.32), "caliper": (0.7, 0.35, 0.02), "frit": (0.01, 0.01, 0.01),
 }
 
 
@@ -84,6 +84,10 @@ def build_body():
         reg += fn()
     reg += PT.door_cards(pieces)
     reg += PT.headliner(pieces["body_shell"])
+    reg += PT.glass_frit()
+    # ride height: everything was modelled BODY_DROP high (arches round ARCH_Z)
+    for nm, grp, ob in reg:
+        ob.data.transform(Matrix.Translation((0, 0, -B.BODY_DROP)))
     return reg
 
 
@@ -114,7 +118,11 @@ def main():
                     n.location = (sx * B.TRACK / 2, axle, B.WHEEL_R)
                     n.rotation_euler = (0, 0, 0 if sx > 0 else math.pi)
                     tmp.append(n)
+        for (nm, grp, ob) in wheel_parts + [caliper]:
+            ob.location.z -= 50
         PV.clay(preview, views=("front34", "rear34", "side", "front", "rear", "low34", "wheel"))
+        for (nm, grp, ob) in wheel_parts + [caliper]:
+            ob.location.z += 50
         for n in tmp:
             bpy.data.objects.remove(n, do_unlink=True)
     if "--no-export" in argv:

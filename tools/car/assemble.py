@@ -268,8 +268,9 @@ def assemble(reg, wheel_parts, caliper, groups, src_dir):
     # lamp empties at the reflector / brake-lamp centres
     yh = P.front_face_y(0.6, 0.632)
     yt = P.rear_face_y(0.735, 0.825)
-    lamps = [lamp_empty("Headlight_L", (0.60, yh, 0.632), True), lamp_empty("Headlight_R", (-0.60, yh, 0.632), True),
-             lamp_empty("Taillight_L", (0.735, yt, 0.825), False), lamp_empty("Taillight_R", (-0.735, yt, 0.825), False)]
+    zh, zt = 0.632 - B.BODY_DROP, 0.825 - B.BODY_DROP
+    lamps = [lamp_empty("Headlight_L", (0.60, yh, zh), True), lamp_empty("Headlight_R", (-0.60, yh, zh), True),
+             lamp_empty("Taillight_L", (0.735, yt, zt), False), lamp_empty("Taillight_R", (-0.735, yt, zt), False)]
 
     # LOD1: no interior / under-car detail, decimated to ~10k triangles in total
     me = body.data.copy()
@@ -312,11 +313,11 @@ def assemble(reg, wheel_parts, caliper, groups, src_dir):
         "lights": {l.name: {"position": to_gltf(l.location), "direction": [0, 0, 1] if l.name.startswith("Head") else [0, 0, -1],
                             "color": [1.0, 0.93, 0.8] if l.name.startswith("Head") else [1.0, 0.05, 0.03]} for l in lamps},
         "mass_kg": 1280,
-        "center_of_mass": to_gltf((0.0, -0.05, 0.50)),
+        "center_of_mass": to_gltf((0.0, -0.05, 0.48)),
         "suspension_suggestion": {"rest_length": 0.14, "travel": 0.12, "stiffness": 38.0, "max_force": 9000.0,
                                   "damping_compression": 0.9, "damping_relaxation": 1.4, "friction_slip": 2.8},
-        "dimensions": {"length": round(B.REAR - B.FRONT, 3), "width_body": 1.78, "width_overfenders": 1.86,
-                       "height_roof": 1.39, "height_lightbar": round(max(v.co.z for v in body.data.vertices if v.co.z < 1.6), 3)},
+        "dimensions": {"length": round(B.REAR - B.FRONT, 3), "width_body": 1.784, "width_overfenders": 1.87,
+                       "height_roof": round(1.39 - B.BODY_DROP, 3), "height_lightbar": round(max(v.co.z for v in body.data.vertices if v.co.z < 1.6), 3)},
         "triangles": {"lod0": lod0, "lod0_body": tris(body), "lod0_wheel": tris(wheel_nodes[0]), "lod0_caliper": tris(caliper_nodes[0]),
                       "lod1": lod1, "collider": tris(col)},
     }

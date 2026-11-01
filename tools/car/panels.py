@@ -84,7 +84,7 @@ def arch_pts(axle, r, z0, z1, rear_side, n=10):
     """Points on an arch circle (offset r) between heights z0 and z1 on the front (rear_side=False) or rear side."""
     out = []
     for z in frange(z0, z1, n):
-        dz = z - B.WHEEL_R
+        dz = z - B.ARCH_Z
         dy = math.sqrt(max(0.0, r * r - dz * dz))
         out.append((axle + dy if rear_side else axle - dy, z))
     return out
@@ -214,7 +214,7 @@ def make_cutters():
     bm = bmesh.new()
     for axle in (B.AXLE_F, B.AXLE_R):
         for sx in (-1, 1):
-            bm_cyl(bm, (sx * 0.86, axle, B.WHEEL_R), B.ARCH_R, 0.62, seg=48, axis="X")
+            bm_cyl(bm, (sx * 0.86, axle, B.ARCH_Z), B.ARCH_R, 0.62, seg=48, axis="X")
     # headlight apertures (wrap slightly round the corner) and the grille opening
     for sx in (-1, 1):
         bm_prism(bm, rounded_rect(0.385, 0.565, 0.84, 0.700, 0.018), "Y", -2.5, -2.06) if sx > 0 else \
@@ -287,36 +287,82 @@ def make_cutters():
     return solids, gaps, wins, recess
 
 
-def flange(ob, depth=0.012, skip_glass=True):
-    """Extrude every open boundary inward (against the vertex normal) so cuts have depth."""
+def flange(ob, depth=0.012, round_r=0.0018):
+    """Turn every open boundary (a shut line or opening) into a rounded edge rolling under the
+    panel: a 45-degree roll-off ring (radius `round_r`) and then a flange `depth` deep, so the
+    gaps read as real ~4 mm shut lines with soft edges and depth."""
     bm = bmesh.new()
     bm.from_mesh(ob.data)
     bm.normal_update()
     bound = [e for e in bm.edges if e.is_boundary]
-    vnorm = {}
+    info = {}
     for e in bound:
+        f = e.link_faces[0]
+        t = (e.verts[1].co - e.verts[0].co).normalized()
+        d = f.normal.cross(t)
+        if d.dot(f.calc_center_median() - e.verts[0].co) < 0:
+            d = -d
         for v in e.verts:
-            if v not in vnorm:
-                n = Vector()
-                for f in v.link_faces:
-                    n += f.normal
-                vnorm[v] = n.normalized() if n.length > 0 else Vector((0, 0, 1))
-    res = bmesh.ops.extrude_edge_only(bm, edges=bound)
-    newv = [g for g in res["geom"] if isinstance(g, bmesh.types.BMVert)]
-    # map new verts back to the originals via the extruded faces
-    for f in [g for g in res["geom"] if isinstance(g, bmesh.types.BMFace)]:
-        pass
-    for v in newv:
-        src = None
-        for e in v.link_edges:
-            o = e.other_vert(v)
-            if o in vnorm:
-                src = o
-                break
-        if src is not None:
-            v.co = src.co - vnorm[src] * depth
+            n, inw = info.get(v, (Vector(), Vector()))
+            info[v] = (n, inw + d)
+    for v in info:
+        n = Vector()
+        for f in v.link_faces:
+            n += f.normal
+        info[v] = (n.normalized() if n.length else Vector((0, 0, 1)), info[v][1].normalized() if info[v][1].length else Vector())
+
+    def ring(edges, offset):
+        res = bmesh.ops.extrude_edge_only(bm, edges=edges)
+        newv = [g for g in res["geom"] if isinstance(g, bmesh.types.BMVert)]
+        newe = [g for g in res["geom"] if isinstance(g, bmesh.types.BMEdge) and g.is_boundary]
+        mp = {}
+        for v in newv:
+            for e in v.link_edges:
+                o = e.other_vert(v)
+                if o in src_of:
+                    mp[v] = src_of[o]
+                    break
+        for v, o in mp.items():
+            n, inw = info[o]
+            v.co = o.co + offset(n, inw)
+            src_of[v] = o
+        return newe
+    src_of = {v: v for v in info}
+    e1 = ring(bound, lambda n, inw: -n * round_r + inw * round_r * 0.6)
+    ring(e1, lambda n, inw: -n * depth + inw * round_r)
     bm.to_mesh(ob.data)
     bm.free()
+    return ob
+
+
+def transfer_normals(ob, ref, max_dist=0.004, min_dot=0.85):
+    """Copy the smooth (uncut) surface's normals onto the matching vertices of a cut piece,
+    so boolean slivers don't show in reflections. Flanges / recess walls keep their own."""
+    from mathutils.bvhtree import BVHTree
+    bm = bmesh.new()
+    bm.from_mesh(ref.data)
+    bm.transform(ref.matrix_world)
+    bm.normal_update()
+    tree = BVHTree.FromBMesh(bm)
+    me = ob.data
+    me.update()
+    vg = ob.vertex_groups.new(name="outer")
+    for v in me.vertices:
+        loc, nrm, idx, dist = tree.find_nearest(v.co)
+        if loc is not None and dist < max_dist:
+            # interpolate the smooth normal at that point
+            f = bm.faces[idx] if False else None
+            if v.normal.dot(nrm) > min_dot:
+                vg.add([v.index], 1.0, "REPLACE")
+    bm.free()
+    m = ob.modifiers.new("nrm", "DATA_TRANSFER")
+    m.object = ref
+    m.use_loop_data = True
+    m.data_types_loops = {"CUSTOM_NORMAL"}
+    m.loop_mapping = "POLYINTERP_NEAREST"
+    m.vertex_group = "outer"
+    apply_mods(ob)
+    ob.vertex_groups.clear()
     return ob
 
 
@@ -443,9 +489,12 @@ def cut_body(shell):
         p.data.materials.clear()
         thicken(p, 0.004 if nm in wins else 0.003, 0.004 if nm in wins else 0.006)
         panes[p.name] = p
-    delete([solids, gaps, recess, glass_src] + list(wins.values()) + list(lamps.values()))
+    delete([solids, gaps, recess] + list(wins.values()) + list(lamps.values()))
     shell.data.materials.clear()
     pieces = separate_pieces(shell)
     for nm, ob in pieces.items():
         flange(ob, 0.014)
+    for ob in list(pieces.values()) + list(panes.values()):
+        transfer_normals(ob, glass_src, max_dist=0.008 if ob in panes.values() else 0.004)
+    delete([glass_src])
     return pieces, panes
