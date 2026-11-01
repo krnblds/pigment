@@ -321,7 +321,12 @@ func _bench_spots(dir: String) -> void:
 	if w != null:
 		var only := String(main.args.get("spots", ""))
 		var cams := []
-		for spot in _spots(w):
+		var all_spots := _spots(w)
+		# --spot-cams=<cams.json>: extra spots from Blender cameras ([{name, loc, target, fov_y}], e.g. tools/ads_proof.py)
+		if main.args.has("spot-cams") and FileAccess.file_exists(String(main.args["spot-cams"])):
+			for c in JSON.parse_string(FileAccess.get_file_as_string(String(main.args["spot-cams"]))):
+				all_spots.append({"name": c.name, "eye": _g(c.loc), "at": _g(c.target), "fov": float(c.get("fov_y", 62.0))})
+		for spot in all_spots:
 			if only != "" and not (spot.name in only.split(",")):
 				continue
 			cams.append(_blender_cam(spot))
