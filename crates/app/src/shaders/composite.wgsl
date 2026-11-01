@@ -56,9 +56,7 @@ struct LayerParams {
     gb2: vec4<f32>,
     gc: vec4<f32>,
     gc2: vec4<f32>,
-    pbits0: vec4<u32>,        // selected parts bitset, ids 0..127
-    pbits1: vec4<u32>,        // ids 128..255
-    misc: vec4<u32>,          // x = part selection on
+    misc: vec4<u32>,          // x = part selection on, y = first word in part_bits, z = word count
     img: vec4<u32>,           // image fill: channel bits (1 colour, 2 rough, 4 height, 8 normal), projection (0 uv, 1 triplanar)
     img_xf: vec4<f32>,        // tiling u, v, offset u, v
     img_xf2: vec4<f32>,       // cos, sin (rotation), 1 / tile size (m), blend sharpness
@@ -69,6 +67,10 @@ struct LayerParams {
 // Image fills bind their tiling images in the channel slots above
 // (l_color, l_rough, l_height, l_normal) and sample them with this.
 @group(2) @binding(8) var img_samp: sampler;
+// (bindings 9, 10: l_opacity, l_transmission above)
+// Selected-parts bitsets of every visible layer, packed back to back
+// (layer: words misc.y .. misc.y + misc.z; bit k = part id k).
+@group(2) @binding(11) var<storage, read> part_bits: array<u32>;
 
 struct Acc {
     @location(0) color: vec4<f32>,
@@ -177,20 +179,11 @@ fn generator(t: vec2<i32>) -> f32 {
 // Is this texel on one of the selected mesh parts?
 fn part_selected(t: vec2<i32>) -> f32 {
     let id = textureLoad(parts, t, 0).r;
-    if (id == 0u || id > 256u) { return 0.0; }
+    if (id == 0u) { return 0.0; }
     let k = id - 1u;
     let word = k / 32u;
-    var w = 0u;
-    switch word {
-        case 0u: { w = lp.pbits0.x; }
-        case 1u: { w = lp.pbits0.y; }
-        case 2u: { w = lp.pbits0.z; }
-        case 3u: { w = lp.pbits0.w; }
-        case 4u: { w = lp.pbits1.x; }
-        case 5u: { w = lp.pbits1.y; }
-        case 6u: { w = lp.pbits1.z; }
-        default: { w = lp.pbits1.w; }
-    }
+    if (word >= lp.misc.z) { return 0.0; }
+    let w = part_bits[lp.misc.y + word];
     return f32((w >> (k % 32u)) & 1u);
 }
 

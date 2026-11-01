@@ -19,7 +19,9 @@ fn unorm16(v: f32) -> u16 {
 
 pub fn read_layer(device: &wgpu::Device, queue: &wgpu::Queue, ts: &TexSet, res: ResId) -> Option<LayerPixels> {
     let l = ts.layers.get(&res)?;
-    let rb = |i: usize| gpu::readback(device, queue, &l.ch[i]);
+    // all six channels in one GPU round trip
+    let mut chs: Vec<Option<Vec<u8>>> = gpu::readback_many(device, queue, &l.ch.each_ref()).into_iter().map(Some).collect();
+    let mut rb = |i: usize| chs[i].take().expect("each channel is read once");
     let h = rb(3);
     let height: Vec<u16> = f16_bytes_to_f32(&h)
         .enumerate()
@@ -74,28 +76,59 @@ pub fn upload_mask(device: &wgpu::Device, queue: &wgpu::Queue, ts: &mut TexSet, 
 }
 
 /// The final, seam-padded material, for export.
+/// Run `f` over `src` split into `chunk`-aligned pieces on all cores and
+/// concatenate the outputs in order.
+fn par_chunks<T: Sync, U: Send + Copy>(src: &[T], chunk: usize, f: impl Fn(&[T]) -> Vec<U> + Sync) -> Vec<U> {
+    let threads = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(4).min(16);
+    let per = src.len().div_ceil(threads).div_ceil(chunk).max(1) * chunk;
+    let parts: Vec<Vec<U>> = std::thread::scope(|s| {
+        let hs: Vec<_> = src.chunks(per).map(|c| s.spawn(|| f(c))).collect();
+        hs.into_iter().map(|h| h.join().expect("conversion thread")).collect()
+    });
+    parts.concat()
+}
+
+/// Largest finite, non-negative half in little-endian f16 bytes (0 if none).
+/// For non-negative halves the bit pattern orders like the value.
+fn f16_peak(b: &[u8], skip_alpha: bool) -> u16 {
+    b.chunks_exact(2)
+        .enumerate()
+        .filter(|(i, _)| !skip_alpha || i % 4 != 3)
+        .map(|(_, c)| u16::from_le_bytes([c[0], c[1]]))
+        .filter(|&h| h < 0x7c00) // sign bit clear, not inf / NaN
+        .max()
+        .unwrap_or(0)
+}
+
+/// A 65536-entry table over every half-float bit pattern.
+fn f16_lut<T>(f: impl Fn(f32) -> T) -> Vec<T> {
+    (0..=u16::MAX).map(|b| f(f16::from_bits(b).to_f32())).collect()
+}
+
+/// The final, seam-padded material, for export. All five maps come back in
+/// one GPU round trip; the half-float conversions are table lookups (one
+/// entry per f16 bit pattern) spread over all cores.
 pub fn read_material(device: &wgpu::Device, queue: &wgpu::Queue, ts: &TexSet) -> MaterialImages {
-    let h = gpu::readback(device, queue, &ts.material[3]);
+    let mut maps = gpu::readback_many(device, queue, &[&ts.material[0], &ts.material[1], &ts.material[2], &ts.material[3], &ts.emissive]).into_iter();
+    let (color, orm, normal, h, e) = (maps.next().unwrap(), maps.next().unwrap(), maps.next().unwrap(), maps.next().unwrap(), maps.next().unwrap());
     // emission is HDR: normalise so the brightest texel is 1, report the scale
-    let e: Vec<f32> = f16_bytes_to_f32(&gpu::readback(device, queue, &ts.emissive)).collect();
-    let peak = e.chunks_exact(4).map(|p| p[0].max(p[1]).max(p[2])).fold(0.0f32, f32::max);
+    let peak = f16::from_bits(par_chunks(&e, 8, |c| vec![f16_peak(c, true)]).into_iter().max().unwrap_or(0)).to_f32();
     let scale = if peak > 1.0 { peak } else { 1.0 };
-    let emissive = e
-        .chunks_exact(4)
-        .flat_map(|p| {
-            let c = [p[0], p[1], p[2]].map(|v| (pigment_core::blend::linear_to_srgb((v / scale).clamp(0.0, 1.0)) * 255.0).round() as u8);
-            [c[0], c[1], c[2], 255]
-        })
-        .collect();
-    MaterialImages {
-        size: ts.res,
-        color: gpu::readback(device, queue, &ts.material[0]),
-        orm: gpu::readback(device, queue, &ts.material[1]),
-        normal: gpu::readback(device, queue, &ts.material[2]),
-        height: f16_bytes_to_f32(&h).map(|v| unorm16(v * 0.5 + 0.5)).collect(),
-        emissive,
-        emissive_scale: scale,
-    }
+    let srgb = f16_lut(|v| {
+        let v = if v.is_nan() { 0.0 } else { v };
+        (pigment_core::blend::linear_to_srgb((v / scale).clamp(0.0, 1.0)) * 255.0).round() as u8
+    });
+    let emissive = par_chunks(&e, 8, |c| {
+        c.chunks_exact(8)
+            .flat_map(|p| {
+                let ch = |k: usize| srgb[u16::from_le_bytes([p[2 * k], p[2 * k + 1]]) as usize];
+                [ch(0), ch(1), ch(2), 255]
+            })
+            .collect()
+    });
+    let hl = f16_lut(|v| unorm16(v * 0.5 + 0.5));
+    let height = par_chunks(&h, 2, |c| c.chunks_exact(2).map(|p| hl[u16::from_le_bytes([p[0], p[1]]) as usize]).collect());
+    MaterialImages { size: ts.res, color, orm, normal, height, emissive, emissive_scale: scale }
 }
 
 /// Move all layer and mask pixels into `dst` (a fresh TexSet at a new
@@ -117,4 +150,29 @@ pub fn resample_into(device: &wgpu::Device, queue: &wgpu::Queue, src: &TexSet, d
         dst.unsaved.insert(*res);
     }
     queue.submit([enc.finish()]);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn half_float_tables_match_direct_conversion() {
+        let vals = [0.0f32, 0.25, 1.0, 3.5, 6.0, -2.0, 0.001, 65504.0];
+        let bytes: Vec<u8> = vals.iter().flat_map(|v| f16::from_f32(*v).to_bits().to_le_bytes()).collect();
+        // pixels (rgba): alpha (index 3, 7) is skipped by the peak
+        assert_eq!(f16::from_bits(f16_peak(&bytes, true)).to_f32(), 6.0);
+        assert_eq!(f16::from_bits(f16_peak(&bytes, false)).to_f32(), 65504.0);
+        assert_eq!(f16_peak(&f16::NAN.to_bits().to_le_bytes(), false), 0);
+        let hl = f16_lut(|v| unorm16(v * 0.5 + 0.5));
+        for v in vals {
+            assert_eq!(hl[f16::from_f32(v).to_bits() as usize], unorm16(f16::from_f32(v).to_f32() * 0.5 + 0.5));
+        }
+        let mut x = 1u32;
+        let par = par_chunks(&(0..100_003u32).collect::<Vec<_>>(), 7, |c| c.iter().map(|v| v * 2).collect());
+        assert_eq!(par.len(), 100_003);
+        assert!(par.iter().enumerate().all(|(i, v)| *v == 2 * i as u32));
+        x += par.len() as u32;
+        assert!(x > 1);
+    }
 }

@@ -83,6 +83,7 @@ mod tests {
 
     #[test]
     fn send_to_blender_writes_maps_sidecar_and_mesh() {
+        let _gpu = crate::app::automation::gpu_lock();
         let Ok(mut s) = Session::new() else { return };
         let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
         s.new_project(&json!({ "mesh": root.join("assets/neon_tubes.glb"), "resolution": 512, "material": "Neon pink" })).unwrap();

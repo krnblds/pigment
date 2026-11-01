@@ -23,6 +23,7 @@ fn reddish(m: &export::MaterialImages) -> f32 {
 
 #[test]
 fn image_fill_args_composite_and_persist() {
+    let _gpu = super::automation::gpu_lock();
     let Ok(mut s) = Session::new() else { return };
     let r = root();
     s.new_project(&json!({ "mesh": r.join("assets/ammo_box.glb"), "resolution": 512, "material": "White plastic" })).unwrap();
@@ -75,6 +76,7 @@ fn image_fill_args_composite_and_persist() {
 /// texel tangent frame conversion (UV rotation, triplanar planes).
 #[test]
 fn image_normals_agree_with_image_height() {
+    let _gpu = super::automation::gpu_lock();
     let Ok(mut s) = Session::new() else { return };
     let r = root();
     s.new_project(&json!({ "mesh": r.join("assets/ammo_box.glb"), "resolution": 512, "material": "White plastic" })).unwrap();
@@ -111,6 +113,7 @@ fn image_normals_agree_with_image_height() {
 /// folder's opacity scales it (layer folders + image fills together).
 #[test]
 fn image_fill_inside_a_folder() {
+    let _gpu = super::automation::gpu_lock();
     let Ok(mut s) = Session::new() else { return };
     let r = root();
     s.new_project(&json!({ "mesh": r.join("assets/ammo_box.glb"), "resolution": 512, "material": "White plastic" })).unwrap();
@@ -127,6 +130,7 @@ fn image_fill_inside_a_folder() {
 /// folder's opacity (layer folders + opacity channels together).
 #[test]
 fn glass_inside_a_folder() {
+    let _gpu = super::automation::gpu_lock();
     let Ok(mut s) = Session::new() else { return };
     let r = root();
     s.new_project(&json!({ "mesh": r.join("assets/ammo_box.glb"), "resolution": 512, "material": "Steel" })).unwrap();

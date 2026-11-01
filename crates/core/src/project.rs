@@ -99,15 +99,20 @@ pub fn write_layer(dir: &Path, res: ResId, px: &LayerPixels) -> Result<()> {
         }
         Ok(())
     };
-    put("base_color.png", px.color.chunks_exact(4).any(|p| p[3] != 0), &px.color, C::Rgba8)?;
-    put("roughness.png", any_coverage_rg8(&px.roughness), &px.roughness, C::La8)?;
-    put("metallic.png", any_coverage_rg8(&px.metallic), &px.metallic, C::La8)?;
-    put("height.png", px.height.chunks_exact(2).any(|p| p[1] != 0), bytemuck::cast_slice(&px.height), C::La16)?;
-    put("normal.png", px.normal.chunks_exact(4).any(|p| p[3] != 0), &px.normal, C::Rgba8)?;
-    put("emissive.png", px.emissive.chunks_exact(4).any(|p| p[3] != 0), bytemuck::cast_slice(&px.emissive), C::Rgba16)?;
-    put("opacity.png", any_coverage_rg8(&px.opacity), &px.opacity, C::La8)?;
-    put("transmission.png", any_coverage_rg8(&px.transmission), &px.transmission, C::La8)?;
-    Ok(())
+    // the eight channel PNGs encode in parallel (4K layers save several times faster)
+    std::thread::scope(|sc| {
+        let jobs = [
+            sc.spawn(|| put("base_color.png", px.color.chunks_exact(4).any(|p| p[3] != 0), &px.color, C::Rgba8)),
+            sc.spawn(|| put("roughness.png", any_coverage_rg8(&px.roughness), &px.roughness, C::La8)),
+            sc.spawn(|| put("metallic.png", any_coverage_rg8(&px.metallic), &px.metallic, C::La8)),
+            sc.spawn(|| put("height.png", px.height.chunks_exact(2).any(|p| p[1] != 0), bytemuck::cast_slice(&px.height), C::La16)),
+            sc.spawn(|| put("normal.png", px.normal.chunks_exact(4).any(|p| p[3] != 0), &px.normal, C::Rgba8)),
+            sc.spawn(|| put("emissive.png", px.emissive.chunks_exact(4).any(|p| p[3] != 0), bytemuck::cast_slice(&px.emissive), C::Rgba16)),
+            sc.spawn(|| put("opacity.png", any_coverage_rg8(&px.opacity), &px.opacity, C::La8)),
+            sc.spawn(|| put("transmission.png", any_coverage_rg8(&px.transmission), &px.transmission, C::La8)),
+        ];
+        jobs.into_iter().try_for_each(|j| j.join().unwrap_or_else(|_| Err(anyhow::anyhow!("layer save thread panicked"))))
+    })
 }
 
 fn open_resized(path: &Path, size: u32) -> Result<Option<image::DynamicImage>> {

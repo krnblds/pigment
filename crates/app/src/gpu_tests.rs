@@ -184,6 +184,56 @@ fn composite_and_export_produce_painted_material() {
     std::fs::remove_dir_all(dir).ok();
 }
 
+/// Part masks scale past the old 256-part uniform bitset: a 64 x 64 tile
+/// grid (4096 parts) with parts 0, 300, 2049 and 4095 selected lights up
+/// exactly those tiles.
+#[test]
+fn part_masks_select_parts_far_beyond_256() {
+    let Some(g) = gpu() else { return };
+    let (d, q) = (&g.device, &g.queue);
+    let n = 64u32;
+    let mesh = Mesh::tile_grid(n);
+    assert_eq!(mesh.parts().info.len(), 4096);
+    let mg = MeshGpu::new(d, &mesh);
+    let mut ts = TexSet::new(d, q, RES);
+    let (c, r) = mesh.bounding_sphere();
+    ts.prepare_mesh(d, q, &mg, c, r);
+    let mut doc = Document::new_default();
+    doc.layers.clear();
+    let mut base = doc.new_fill_layer("base");
+    if let LayerKind::Fill { values } = &mut base.kind {
+        values.base_color = [0.0, 0.0, 0.0];
+    }
+    doc.layers.push(base);
+    let selected = [0u32, 300, 2049, 4095];
+    let mut red = doc.new_fill_layer("red");
+    if let LayerKind::Fill { values } = &mut red.kind {
+        values.base_color = [1.0, 0.0, 0.0];
+    }
+    let mut m = Mask::new(doc.mint());
+    m.parts = selected.to_vec();
+    red.mask = Some(m);
+    doc.layers.push(red);
+    ts.ensure_resources(d, q, &doc);
+    ts.composite(d, q, &doc, None);
+    let img = io::read_material(d, q, &ts);
+    let cell = RES / n;
+    let texel = |part: u32| {
+        let (row, col) = (part / n, part % n);
+        let (x, y) = (col * cell + cell / 2, row * cell + cell / 2);
+        let i = (y * RES + x) as usize * 4;
+        [img.color[i], img.color[i + 1], img.color[i + 2]]
+    };
+    for p in 0..n * n {
+        let px = texel(p);
+        if selected.contains(&p) {
+            assert!(px[0] > 200 && px[1] < 40, "part {p} should be red: {px:?}");
+        } else {
+            assert!(px[0] < 40, "part {p} should not be selected: {px:?}");
+        }
+    }
+}
+
 #[test]
 fn bake_gives_occlusion_inside_the_ring_and_convex_curvature_outside() {
     let Some(mut s) = Scene::new() else { return };

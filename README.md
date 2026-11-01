@@ -40,6 +40,12 @@ the image), `export_textures`, `undo` and `redo`.
 It's registered in `.mcp.json`. Build it with
 `cargo build -p pigment --release --bin pigment-mcp`.
 It also runs without a client: `pigment-mcp --script calls.jsonl`.
+Script flags: `--keep-going` (don't stop at the first error), `--check`
+(validate every line against the tool schemas without running it); per-step
+timings go to stderr. Every call is checked against its JSON schema, so a typo
+fails with the argument's name. `get_project_info`, `batch`, and shape queries in
+`list_parts` / `pick_parts` / `mask.parts_where` are covered in
+[docs/agents/scale-mcp](docs/agents/scale-mcp/NOTES.md).
 
 ## Library
 

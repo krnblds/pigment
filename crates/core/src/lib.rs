@@ -13,6 +13,7 @@ pub mod export;
 pub mod folders;
 pub mod image_fill;
 pub mod mesh;
+pub mod partquery;
 pub mod project;
 pub mod sheet;
 pub mod smart;
