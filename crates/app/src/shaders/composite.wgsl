@@ -8,6 +8,9 @@
 //   acc_emissive   linear HDR emission
 //   acc_color.a    opacity (1 = solid)
 //   acc_rmh.w      transmission (0 = opaque, 1 = glass)
+//   acc_normal     packed: xy = detail normal xy (z = sqrt(1 - x² - y²),
+//                  tangent normals face out), z = clearcoat, w = metallic flake
+//   acc_emissive.w clearcoat roughness
 
 // ---- group 0: mesh-derived data shared by every layer ----
 @group(0) @binding(0) var bakes: texture_2d<f32>;      // r = AO, g = curvature (0.5 neutral)
@@ -39,6 +42,9 @@ struct Shared {
 @group(2) @binding(6) var l_mask: texture_2d<f32>;
 @group(2) @binding(9) var l_opacity: texture_2d<f32>;       // r value, g coverage
 @group(2) @binding(10) var l_transmission: texture_2d<f32>;  // r value, g coverage
+@group(2) @binding(12) var l_coat: texture_2d<f32>;            // r value, g coverage
+@group(2) @binding(13) var l_coat_rough: texture_2d<f32>;      // r value, g coverage
+@group(2) @binding(14) var l_flake: texture_2d<f32>;           // r value, g coverage
 struct LayerParams {
     flags: vec4<u32>,       // kind (0 paint, 1 fill), has mask, generator id, invert
     blend: vec4<u32>,       // color, rough, metal, height
@@ -62,6 +68,9 @@ struct LayerParams {
     img_xf2: vec4<f32>,       // cos, sin (rotation), 1 / tile size (m), blend sharpness
     img_tint: vec4<f32>,      // linear tint rgb, height scale
     img_amt: vec4<f32>,       // roughness lo, hi, normal strength
+    coat_fill: vec4<f32>,     // fill coat, coat roughness, flake
+    coat_blend: vec4<u32>,    // coat, coat roughness, flake
+    coat_opacity: vec4<f32>,  // coat, coat roughness, flake (layer x channel x enabled)
 };
 @group(2) @binding(7) var<uniform> lp: LayerParams;
 // Image fills bind their tiling images in the channel slots above
@@ -78,6 +87,16 @@ struct Acc {
     @location(2) normal: vec4<f32>,
     @location(3) emissive: vec4<f32>,
 };
+
+// acc_normal packing: the unit detail normal keeps only xy (z >= 0 is
+// rebuilt), which frees zw for clearcoat and flake.
+fn acc_n(v: vec4<f32>) -> vec3<f32> {
+    return vec3<f32>(v.xy, sqrt(max(1.0 - dot(v.xy, v.xy), 0.0)));
+}
+fn pack_n(n: vec3<f32>, coat: f32, flake: f32) -> vec4<f32> {
+    let u = normalize(vec3<f32>(n.xy, max(n.z, 0.0)) + vec3<f32>(0.0, 0.0, 1e-6));
+    return vec4<f32>(u.xy, coat, flake);
+}
 
 // Ridged fbm: 1 at the noise's zero crossings, falling off around them.
 fn ridged(p: vec3<f32>) -> f32 {
@@ -309,8 +328,10 @@ fn fs_layer(f: FullOut) -> Acc {
     let t = vec2<i32>(f.pos.xy);
     let dc = textureLoad(acc_color, t, 0);
     let dr = textureLoad(acc_rmh, t, 0);
-    let dn = textureLoad(acc_normal, t, 0).xyz;
-    let de = textureLoad(acc_emissive, t, 0).rgb;
+    let dn4 = textureLoad(acc_normal, t, 0);
+    let dn = acc_n(dn4);
+    let de4 = textureLoad(acc_emissive, t, 0);
+    let de = de4.rgb;
 
     var e = vec4<f32>(lp.fill_emissive.rgb, 1.0);
     var c = vec4<f32>(lp.fill_color.rgb, 1.0);
@@ -320,7 +341,13 @@ fn fs_layer(f: FullOut) -> Acc {
     var n = vec4<f32>(lp.fill_normal.xyz, 1.0);
     var op = vec2<f32>(lp.fill_color.a, 1.0);
     var tr = vec2<f32>(lp.fill_rmh.w, 1.0);
+    var cw = vec2<f32>(lp.coat_fill.x, 1.0);
+    var cr = vec2<f32>(lp.coat_fill.y, 1.0);
+    var fk = vec2<f32>(lp.coat_fill.z, 1.0);
     if (lp.flags.x == 0u) {
+        cw = textureLoad(l_coat, t, 0).rg;
+        cr = textureLoad(l_coat_rough, t, 0).rg;
+        fk = textureLoad(l_flake, t, 0).rg;
         op = textureLoad(l_opacity, t, 0).rg;
         tr = textureLoad(l_transmission, t, 0).rg;
         c = textureLoad(l_color, t, 0);
@@ -362,6 +389,9 @@ fn fs_layer(f: FullOut) -> Acc {
     let ae = select(e.a, 1.0, lp.blend2.y == 8u) * lp.opacity2.y * mask;
     let ao = select(op.y, 1.0, lp.blend2.z == 8u) * lp.opacity2.z * mask;
     let at = select(tr.y, 1.0, lp.blend2.w == 8u) * lp.opacity2.w * mask;
+    let acw = select(cw.y, 1.0, lp.coat_blend.x == 8u) * lp.coat_opacity.x * mask;
+    let acr = select(cr.y, 1.0, lp.coat_blend.y == 8u) * lp.coat_opacity.y * mask;
+    let afk = select(fk.y, 1.0, lp.coat_blend.z == 8u) * lp.coat_opacity.z * mask;
 
     var o: Acc;
     o.color = vec4<f32>(max(blend_rgb(lp.blend.x, dc.rgb, c.rgb, a.x), vec3<f32>(0.0)), clamp(blend_scalar(lp.blend2.z, dc.a, op.x, ao), 0.0, 1.0));
@@ -371,8 +401,11 @@ fn fs_layer(f: FullOut) -> Acc {
         // height is HDR (stacked dents can pass -1); clamped only on export
         clamp(blend_scalar(lp.blend.w, dr.z, h.x, a.w), -8.0, 8.0),
         clamp(blend_scalar(lp.blend2.w, dr.w, tr.x, at), 0.0, 1.0));
-    o.normal = vec4<f32>(blend_normal(lp.blend2.x, dn, n.xyz, an), 1.0);
-    o.emissive = vec4<f32>(max(blend_rgb(lp.blend2.y, de, e.rgb, ae), vec3<f32>(0.0)), 1.0);
+    o.normal = pack_n(blend_normal(lp.blend2.x, dn, n.xyz, an),
+        clamp(blend_scalar(lp.coat_blend.x, dn4.z, cw.x, acw), 0.0, 1.0),
+        clamp(blend_scalar(lp.coat_blend.z, dn4.w, fk.x, afk), 0.0, 1.0));
+    o.emissive = vec4<f32>(max(blend_rgb(lp.blend2.y, de, e.rgb, ae), vec3<f32>(0.0)),
+        clamp(blend_scalar(lp.coat_blend.y, de4.w, cr.x, acr), 0.0, 1.0));
     return o;
 }
 
@@ -382,8 +415,8 @@ fn fs_clear(f: FullOut) -> Acc {
     var o: Acc;
     o.color = vec4<f32>(srgb_to_linear(vec3<f32>(0.5)), 1.0);
     o.rmh = vec4<f32>(0.5, 0.0, 0.0, 0.0);  // w: transmission
-    o.normal = vec4<f32>(0.0, 0.0, 1.0, 1.0);
-    o.emissive = vec4<f32>(0.0, 0.0, 0.0, 1.0);
+    o.normal = vec4<f32>(0.0, 0.0, 0.0, 0.0);      // flat normal, no coat, no flake
+    o.emissive = vec4<f32>(0.0, 0.0, 0.0, 0.03);   // w: coat roughness
     return o;
 }
 
@@ -440,7 +473,7 @@ fn fs_finalize(f: FullOut) -> Material {
     let s = src_texel(t);
     let c = textureLoad(acc_color, s, 0);
     let rmh = textureLoad(acc_rmh, s, 0);
-    let detail = textureLoad(acc_normal, s, 0).xyz;
+    let detail = acc_n(textureLoad(acc_normal, s, 0));
     let ao = textureLoad(bakes, s, 0).r;
 
     // central differences in texel space; texel rows go down (+v)
@@ -457,6 +490,14 @@ fn fs_finalize(f: FullOut) -> Material {
     o.normal = vec4<f32>(nrm * 0.5 + 0.5, 1.0);
     o.height = vec4<f32>(rmh.z, 0.0, 0.0, 1.0);
     return o;
+}
+
+// Clearcoat weight, coat roughness, flake: seam padded like the rest.
+@fragment
+fn fs_finalize_coat(f: FullOut) -> @location(0) vec4<f32> {
+    let s = src_texel(vec2<i32>(f.pos.xy));
+    let n = textureLoad(acc_normal, s, 0);
+    return vec4<f32>(n.z, textureLoad(acc_emissive, s, 0).w, n.w, 1.0);
 }
 
 // Emission, seam padded like the rest of the material.

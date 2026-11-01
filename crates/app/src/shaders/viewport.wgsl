@@ -24,6 +24,39 @@ struct Globals {
 @group(2) @binding(5) var m_wnormal: texture_2d<f32>;
 @group(2) @binding(6) var m_emissive: texture_2d<f32>;
 @group(2) @binding(7) var m_samp: sampler;
+@group(2) @binding(8) var m_coat: texture_2d<f32>;   // r clearcoat, g coat roughness, b flake
+
+// Metallic flake: each ~0.4 mm world cell tilts the base normal a random
+// way, so the base specular sparkles under the coat.
+fn hash33(p: vec3<f32>) -> vec3<f32> {
+    var q = fract(p * vec3<f32>(0.1031, 0.1030, 0.0973));
+    q += dot(q, q.yxz + 33.33);
+    return fract((q.xxy + q.yxx) * q.zyx);
+}
+
+fn flake_normal(n: vec3<f32>, world: vec3<f32>, amount: f32) -> vec3<f32> {
+    if (amount <= 0.0) { return n; }
+    let h = hash33(floor(world * 2500.0)) * 2.0 - 1.0;
+    return normalize(n + h * (0.45 * amount));
+}
+
+// Clearcoat lobe (dielectric, F0 0.04) over the base: rgb = its reflection,
+// a = how much of the base it hides (coat x Fresnel).
+fn coat_layer(n: vec3<f32>, ng: vec3<f32>, v: vec3<f32>, coat: f32, coat_rough: f32, ao: f32) -> vec4<f32> {
+    if (coat <= 0.0) { return vec4<f32>(0.0); }
+    let cr = clamp(coat_rough, 0.02, 1.0);
+    let nv = clamp(dot(n, v), 1e-4, 1.0);
+    let r0 = reflect(-v, n);
+    let r = normalize(mix(n, r0, (1.0 - cr) * (sqrt(1.0 - cr) + cr)));
+    let env_c = env_radiance(r, cr * (g.params.w - 1.0));
+    let lut_uv = clamp(vec2<f32>(nv, cr), vec2<f32>(0.5 / 64.0), vec2<f32>(1.0 - 0.5 / 64.0));
+    let ab = textureSampleLevel(brdf_lut, env_samp, lut_uv, 0.0).rg;
+    let fc = 0.04 + (max(1.0 - cr, 0.04) - 0.04) * pow(1.0 - nv, 5.0);
+    let e = fc * ab.x + ab.y;
+    let horizon = clamp(1.0 + dot(r0, ng), 0.0, 1.0);
+    let so = clamp(pow(nv + ao, exp2(-16.0 * cr - 1.0)) - 1.0 + ao, 0.0, 1.0);
+    return vec4<f32>(env_c * e * so * horizon * coat, clamp(coat * fc, 0.0, 1.0));
+}
 
 struct VsOut {
     @builtin(position) clip: vec4<f32>,
@@ -147,7 +180,8 @@ fn shade(i: VsOut, front: bool) -> Shaded {
     // tangent frame; bitangent points up the image (OpenGL normal maps)
     let t = normalize(i.tangent.xyz - ng * dot(ng, i.tangent.xyz));
     let b = cross(ng, t) * i.tangent.w;
-    let n = normalize(t * tn.x + b * tn.y + ng * tn.z);
+    var n = normalize(t * tn.x + b * tn.y + ng * tn.z);
+    let coat4 = textureSample(m_coat, m_samp, i.uv);
 
     switch mode {
         case 1: { return solid(ldr(albedo)); }
@@ -164,6 +198,9 @@ fn shade(i: VsOut, front: bool) -> Shaded {
         case 10: { return solid(hdr(textureSample(m_emissive, m_samp, i.uv).rgb)); }
         case 11: { return solid(ldr(srgb_to_linear(vec3<f32>(albedo4.a)))); }   // opacity
         case 12: { return solid(ldr(srgb_to_linear(vec3<f32>(orm.a)))); }       // transmission
+        case 13: { return solid(ldr(srgb_to_linear(vec3<f32>(coat4.r)))); }     // clearcoat
+        case 14: { return solid(ldr(srgb_to_linear(vec3<f32>(coat4.g)))); }     // coat roughness
+        case 15: { return solid(ldr(srgb_to_linear(vec3<f32>(coat4.b)))); }     // flake
         case 9: {
             let l = max(dot(ng, normalize(g.eye.xyz - i.world)), 0.0);
             return solid(ldr(checker(i.uv) * (0.25 + 0.75 * l)));
@@ -172,6 +209,8 @@ fn shade(i: VsOut, front: bool) -> Shaded {
     }
 
     // --- metallic/roughness PBR, split-sum image-based lighting ---
+    let n_coat = n;
+    n = flake_normal(n, i.world, coat4.b);
     let rough = clamp(orm.g, 0.03, 1.0);
     let metal = orm.b;
     let ao = orm.r;
@@ -212,7 +251,9 @@ fn shade(i: VsOut, front: bool) -> Shaded {
     let trans = orm.a;
     let fr_avg = (ks.x + ks.y + ks.z) / 3.0;
     let cover = alpha * mix(1.0, fr_avg, trans * (1.0 - metal));
-    var color = diffuse * (1.0 - trans) + spec + textureSample(m_emissive, m_samp, i.uv).rgb * g.params2.w;
+    // Clearcoat: a second, dielectric lobe over everything the base reflects.
+    let cl = coat_layer(n_coat, ng, v, coat4.r, coat4.g, ao);
+    var color = (diffuse * (1.0 - trans) + spec) * (1.0 - cl.a) + cl.rgb + textureSample(m_emissive, m_samp, i.uv).rgb * g.params2.w;
     if (!front && cover >= 0.996) { color *= vec3<f32>(0.5, 0.25, 0.25); }
     if (cover >= 0.996) { return solid(hdr(color)); }
     return Shaded(vec4<f32>(hdr(color).rgb * alpha, 1.0), cover);

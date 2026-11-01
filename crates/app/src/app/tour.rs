@@ -137,7 +137,7 @@ impl PigmentApp {
                 let top = self.doc.layers.iter().rev().find(|l| l.is_paint()).map(|l| l.id);
                 self.select(top, false);
                 self.brush.values = material_preset("Orange paint");
-                self.brush.channels = [true, true, true, false, false, false, false, false];
+                self.brush.channels = [true, true, true, false, false, false, false, false, false, false, false];
                 self.brush.erase = false;
             }
             3 | 4 => {

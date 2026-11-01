@@ -19,6 +19,8 @@ OUT_DIR = os.path.join(os.environ.get("TEMP", tempfile.gettempdir()), "pig")
 MAP_DIR = os.path.join(OUT_DIR, "maps")
 MAP_DIR_NOEMIT = os.path.join(OUT_DIR, "maps_noemit")
 MAP_DIR_GLASS = os.path.join(OUT_DIR, "maps_glass")
+MAP_DIR_COAT = os.path.join(OUT_DIR, "maps_coat")
+os.makedirs(MAP_DIR_COAT, exist_ok=True)
 os.makedirs(MAP_DIR, exist_ok=True)
 os.makedirs(MAP_DIR_GLASS, exist_ok=True)
 os.makedirs(MAP_DIR_NOEMIT, exist_ok=True)
@@ -79,6 +81,13 @@ for k in ("BaseColor", "Roughness"):
 holes = (((xx * 16) % 1 > 0.25) & ((yy * 16) % 1 > 0.25)).astype(np.float32)
 save_png(os.path.join(MAP_DIR_GLASS, "dummy_Opacity.png"), grey(np.where(xx < 0.5, 1.0 - holes, 0.35)), mode="BW")
 save_png(os.path.join(MAP_DIR_GLASS, "dummy_Transmission.png"), grey((xx >= 0.5).astype(np.float32)), mode="BW")
+# car paint set: clearcoat everywhere, rougher coat on one half, flake on the other
+for k in ("BaseColor", "Roughness", "Metallic", "Normal_OpenGL"):
+    src = os.path.join(MAP_DIR, f"dummy_{k}.png")
+    open(os.path.join(MAP_DIR_COAT, f"dummy_{k}.png"), "wb").write(open(src, "rb").read())
+save_png(os.path.join(MAP_DIR_COAT, "dummy_Coat.png"), grey(np.ones_like(xx, dtype=np.float32)), mode="BW")
+save_png(os.path.join(MAP_DIR_COAT, "dummy_CoatRoughness.png"), grey(np.where(xx < 0.5, 0.03, 0.4).astype(np.float32)), mode="BW")
+save_png(os.path.join(MAP_DIR_COAT, "dummy_Flake.png"), grey((xx >= 0.5).astype(np.float32) * 0.8), mode="BW")
 print("maps:", sorted(os.listdir(MAP_DIR)))
 
 # ------------------------------------------------------------------ scene
@@ -179,6 +188,53 @@ for n in mat3.node_tree.nodes:
     if n.label in ("Pigment Opacity", "Pigment Transmission"):
         assert n.image.colorspace_settings.name != "sRGB" or n.image.colorspace_settings.is_data, n.label
 print("glass/cut-out variant OK")
+
+# no coat maps -> nothing wired to the coat
+assert not any(l.to_socket.name.startswith("Coat") for l in mat2.node_tree.links)
+assert not any(l.to_socket.name.startswith("Coat") for l in mat3.node_tree.links)
+
+# car paint: Coat -> Coat Weight, CoatRoughness -> Coat Roughness, painted
+# normal -> Coat Normal, flake jitters the base normal only
+cube4 = bpy.data.objects.new("Cube4", cube.data.copy())
+bpy.context.scene.collection.objects.link(cube4)
+cube4.location = (0, 3.5, 0)
+mat4 = apply_pigment_material(cube4, MAP_DIR_COAT, "dummy")
+assert has_link(mat4, "Pigment Coat", P, "Coat Weight"), link_list(mat4)
+assert has_link(mat4, "Pigment CoatRoughness", P, "Coat Roughness"), link_list(mat4)
+assert has_link(mat4, "ShaderNodeNormalMap", P, "Coat Normal"), link_list(mat4)
+assert has_link(mat4, "Pigment Flake normal", P, "Normal"), link_list(mat4)
+assert has_link(mat4, "Pigment Flake", "ShaderNodeMath", "Value"), link_list(mat4)
+for n in mat4.node_tree.nodes:
+    if n.label in ("Pigment Coat", "Pigment CoatRoughness", "Pigment Flake"):
+        assert n.image.colorspace_settings.name != "sRGB" or n.image.colorspace_settings.is_data, n.label
+# flake=False (before a glTF export): the normal map goes straight to Normal
+cube5 = bpy.data.objects.new("Cube5", cube.data.copy())
+bpy.context.scene.collection.objects.link(cube5)
+cube5.location = (0, 7.0, 0)
+mat5 = apply_pigment_material(cube5, MAP_DIR_COAT, "dummy", flake=False)
+assert mat5 is mat4  # same material name, rebuilt in place
+assert has_link(mat5, "ShaderNodeNormalMap", P, "Normal"), link_list(mat5)
+assert not any(n.label == "Pigment Flake normal" for n in mat5.node_tree.nodes)
+# glTF: the clearcoat survives as KHR_materials_clearcoat
+import json
+import struct
+glb = os.path.join(OUT_DIR, "coat_test.glb")
+for o in bpy.context.scene.objects:
+    o.select_set(o.name == "Cube5")
+bpy.context.view_layer.objects.active = cube5
+bpy.ops.export_scene.gltf(filepath=glb, export_format="GLB", use_selection=True)
+with open(glb, "rb") as fh:
+    data = fh.read()
+jlen = struct.unpack_from("<I", data, 12)[0]
+gj = json.loads(data[20:20 + jlen])
+assert "KHR_materials_clearcoat" in gj.get("extensionsUsed", []), gj.get("extensionsUsed")
+cc = gj["materials"][0]["extensions"]["KHR_materials_clearcoat"]
+print("glTF clearcoat:", cc)
+assert "clearcoatTexture" in cc or cc.get("clearcoatFactor", 0) > 0, cc
+print("clearcoat variant OK")
+cube5.data.materials.clear()
+# leave the flaked coat material on cube4 for the render
+mat4 = apply_pigment_material(cube4, MAP_DIR_COAT, "dummy")
 
 # rebuild the full material for the render
 mat = apply_pigment_material(cube, MAP_DIR, "dummy", emission_strength=8.0, use_height=True, height_scale=0.02)

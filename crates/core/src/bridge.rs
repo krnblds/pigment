@@ -45,6 +45,9 @@ pub fn source_name(s: Source) -> &'static str {
         Source::EmissiveB => "emissive_b",
         Source::Opacity => "opacity",
         Source::Transmission => "transmission",
+        Source::Coat => "coat",
+        Source::CoatRoughness => "coat_roughness",
+        Source::Flake => "flake",
         Source::One => "one",
     }
 }
@@ -70,6 +73,9 @@ fn channel_of(s: Source) -> Option<&'static str> {
         Source::EmissiveR | Source::EmissiveG | Source::EmissiveB => "emissive",
         Source::Opacity => "opacity",
         Source::Transmission => "transmission",
+        Source::Coat => "coat",
+        Source::CoatRoughness => "coat_roughness",
+        Source::Flake => "flake",
         Source::One => return None,
     })
 }
@@ -298,6 +304,7 @@ mod tests {
             height: vec![32768; 4],
             emissive: vec![e, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0, 255],
             emissive_scale: 3.5,
+            coat: vec![],
         }
     }
 
@@ -335,6 +342,26 @@ mod tests {
         let bc = |e: &Value| e["maps"].as_array().unwrap().iter().find(|m| m["suffix"] == "BaseColor").unwrap().clone();
         assert_eq!(bc(&sidecar_entry(&dir, "G", &ue, &glass, &SidecarExtra::default()))["sources"], json!(["red", "green", "blue", "opacity"]));
         assert_eq!(bc(&sidecar_entry(&dir, "S", &ue, &solid, &SidecarExtra::default()))["sources"], json!(["red", "green", "blue"]));
+    }
+
+    /// Coat / CoatRoughness / Flake maps are listed only when written.
+    #[test]
+    fn sidecar_lists_coat_maps_only_when_coated() {
+        let dir = tmp("coat");
+        let sep = preset("separate").unwrap();
+        let suffixes = |e: &Value| e["maps"].as_array().unwrap().iter().map(|m| m["suffix"].as_str().unwrap().to_string()).collect::<Vec<_>>();
+        let e = sidecar_entry(&dir, "Plain", &sep, &tiny(false), &SidecarExtra::default());
+        assert!(!suffixes(&e).iter().any(|s| s.starts_with("Coat") || s == "Flake"), "{e}");
+        let mut car = tiny(false);
+        car.coat = [255u8, 10, 128, 255].repeat(4);
+        let e = sidecar_entry(&dir, "Car", &sep, &car, &SidecarExtra::default());
+        let sx = suffixes(&e);
+        assert!(sx.contains(&"Coat".into()) && sx.contains(&"CoatRoughness".into()) && sx.contains(&"Flake".into()), "{e}");
+        let cr = e["maps"].as_array().unwrap().iter().find(|m| m["suffix"] == "CoatRoughness").unwrap();
+        assert_eq!(cr["sources"], json!(["coat_roughness"]));
+        assert_eq!(cr["colorspace"], "non-color");
+        let ch = e["channels"].as_array().unwrap();
+        assert!(ch.contains(&json!("coat")) && ch.contains(&json!("coat_roughness")) && ch.contains(&json!("flake")));
     }
 
     #[test]
