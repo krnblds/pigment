@@ -2457,6 +2457,46 @@ mod tests {
         std::fs::remove_dir_all(&tmp).ok();
     }
 
+    /// The lightbox presets put a cove floor under the model with a contact
+    /// shadow and reflection; `stage: false` hides it; dark is dark.
+    #[test]
+    fn lightbox_stage() {
+        let _gpu = gpu_lock();
+        let Ok(mut s) = Session::new() else { return };
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let tmp = std::env::temp_dir().join(format!("pigment-lightbox-{}", std::process::id()));
+        s.new_project(&json!({ "mesh": root.join("assets/barrel.glb"), "resolution": 512, "material": "Olive drab" })).unwrap();
+        let shot = |s: &mut Session, extra: Value| -> image::RgbaImage {
+            let mut a = json!({ "yaw": 30, "pitch": 35, "zoom": 0.6, "width": 240, "height": 180, "bloom": false, "path": tmp.join("shot.png") });
+            a.as_object_mut().unwrap().extend(extra.as_object().unwrap().clone());
+            image::load_from_memory(&s.render(&a).unwrap().png).unwrap().to_rgba8()
+        };
+        let luma = |img: &image::RgbaImage, x: u32, y: u32, w: u32, h: u32| {
+            let c = image::imageops::crop_imm(img, x, y, w, h).to_image();
+            c.pixels().map(|p| p.0[0] as f64 * 0.2126 + p.0[1] as f64 * 0.7152 + p.0[2] as f64 * 0.0722).sum::<f64>() / (w * h) as f64
+        };
+        let light = shot(&mut s, json!({ "lighting": "Lightbox" }));
+        assert_eq!(s.app.env.source, "lightbox");
+        // a bright cove fills the frame, the model's foot is in shadow
+        let corner = luma(&light, 0, 150, 30, 30);
+        assert!(corner > 150.0, "bright floor in the corner: {corner}");
+        let off = shot(&mut s, json!({ "stage": false }));
+        assert!(!s.app.view.stage);
+        assert_ne!(light.as_raw(), off.as_raw(), "the stage must change the picture");
+        // the floor at the barrel's foot is in its contact shadow, which goes with the stage
+        let foot = |img: &image::RgbaImage| luma(img, 108, 137, 24, 3);
+        let open = luma(&light, 176, 156, 16, 16);
+        assert!(foot(&light) < 0.92 * open, "contact shadow: foot {} vs open floor {open}", foot(&light));
+        let dark = shot(&mut s, json!({ "lighting": "lightbox_dark", "stage": true }));
+        assert!(luma(&dark, 0, 0, 240, 180) < 0.5 * luma(&light, 0, 0, 240, 180));
+        assert!(luma(&dark, 0, 0, 30, 30) < 30.0, "the dark studio is black");
+        // the turntable carries the look
+        let t = s.render_turntable(&json!({ "frames": 4, "width": 96, "height": 72, "columns": 2, "lighting": "lightbox", "path": tmp.join("turn.png") })).unwrap();
+        let img = image::load_from_memory(&t.png).unwrap();
+        assert!(img.width() >= 192);
+        std::fs::remove_dir_all(&tmp).ok();
+    }
+
     #[test]
     fn bloom_lighting_presets_and_contact_sheets() {
         let _gpu = gpu_lock();
