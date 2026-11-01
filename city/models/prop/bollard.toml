@@ -33,7 +33,7 @@ deps = [
   "tools/props/models_clutter.py",
   "tools/props/catalog.py",
 ]
-params = {}
+params = { height = 0.96 }
 
 # Writes the Pigment script below (without running Pigment).
 [recipe]

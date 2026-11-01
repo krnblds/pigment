@@ -55,6 +55,16 @@ class Prop:
         self.collider = ("box",)
         self.meta = {}        # anything extra the builder wants in the index (signals...)
 
+    def param(self, key, default):
+        """A model parameter: the smart model's [mesh] params (tools/city passes them as $CITY_PARAMS
+        JSON), else `default`. Lets a manifest change a prop's shape without editing its model."""
+        import json
+        import os
+        try:
+            return type(default)(json.loads(os.environ.get("CITY_PARAMS") or "{}").get(key, default))
+        except (TypeError, ValueError):
+            return default
+
     # ------------------------------------------------------------------ bookkeeping
     def _begin(self):
         # bmesh reuses freed slots (bevel kills faces), so new faces are found by their layer

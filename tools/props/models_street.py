@@ -188,12 +188,13 @@ def m_street_name_sign(P: Prop):
 
 @model
 def m_bollard(P: Prop):
-    P.lathe("body", "paint", [(0.0, 0.0), (0.105, 0.0), (0.105, 0.86), (0.095, 0.91), (0.065, 0.945), (0.0, 0.96)], segs=24)
-    P.lathe("reflect_band", "reflector", [(0.108, 0.70), (0.108, 0.76)], segs=24)
-    P.lathe("led_ring", "led", [(0.109, 0.80), (0.109, 0.815)], segs=24)
+    k = P.param("height", 0.96) / 0.96          # smart-model parameter (city/models/prop/bollard.toml)
+    P.lathe("body", "paint", [(0.0, 0.0), (0.105, 0.0), (0.105, 0.86 * k), (0.095, 0.91 * k), (0.065, 0.945 * k), (0.0, 0.96 * k)], segs=24)
+    P.lathe("reflect_band", "reflector", [(0.108, 0.70 * k), (0.108, 0.76 * k)], segs=24)
+    P.lathe("led_ring", "led", [(0.109, 0.80 * k), (0.109, 0.815 * k)], segs=24)
     P.cyl("base_ring", "dark_metal", 0.13, 0.03, loc=(0, 0, 0), segs=24)
-    P.collider = [("cyl", (0, 0), 0.11, 0.96)]
-    P.light("Light_Ring", (0, -0.12, 0.81), color=(0.1, 0.9, 1.0), energy=0.4, range=1.5)
+    P.collider = [("cyl", (0, 0), 0.11, 0.96 * k)]
+    P.light("Light_Ring", (0, -0.12, 0.81 * k), color=(0.1, 0.9, 1.0), energy=0.4, range=1.5)
 
 
 @model

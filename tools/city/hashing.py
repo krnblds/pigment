@@ -22,6 +22,9 @@ SKIP_SUFFIXES = (".import", ".pyc", ".uid", ".tmp")
 SKIP_DIRS = {"__pycache__", ".godot", ".git"}
 
 
+STAT_VERSION = 2
+
+
 class StatCache:
     def __init__(self, path: Path):
         self.path = path
@@ -31,6 +34,8 @@ class StatCache:
             self.data = json.loads(path.read_text(encoding="utf-8"))
         except Exception:
             self.data = {}
+        if self.data.get("_v") != STAT_VERSION:         # hashing rules changed: forget everything
+            self.data = {"_v": STAT_VERSION}
 
     def file_hash(self, p: Path) -> str | None:
         try:
@@ -43,11 +48,13 @@ class StatCache:
             e = self.data.get(key)
             if e and e[0] == sig[0] and e[1] == sig[1]:
                 return e[2]
-        h = hashlib.sha256()
-        with open(p, "rb") as f:
-            for block in iter(lambda: f.read(1 << 20), b""):
-                h.update(block)
-        d = h.hexdigest()
+        d = _normalized_hash(p)
+        if d is None:
+            h = hashlib.sha256()
+            with open(p, "rb") as f:
+                for block in iter(lambda: f.read(1 << 20), b""):
+                    h.update(block)
+            d = h.hexdigest()
         with self.lock:
             self.data[key] = [sig[0], sig[1], d]
             self.dirty = True
@@ -62,6 +69,30 @@ class StatCache:
             tmp.write_text(json.dumps(self.data, separators=(",", ":")), encoding="utf-8")
             os.replace(tmp, self.path)
             self.dirty = False
+
+
+# Files whose content carries a timestamp that changes on every identical rebuild: hash them
+# without it, so an identical Pigment export does not look like a change downstream.
+VOLATILE = {"material.json": ("exported_at",)}
+
+
+def _strip(v, keys):
+    if isinstance(v, dict):
+        return {k: _strip(x, keys) for k, x in v.items() if k not in keys}
+    if isinstance(v, list):
+        return [_strip(x, keys) for x in v]
+    return v
+
+
+def _normalized_hash(p: Path):
+    keys = VOLATILE.get(p.name)
+    if not keys:
+        return None
+    try:
+        doc = json.loads(p.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+    return "n" + hashlib.sha256(json.dumps(_strip(doc, keys), sort_keys=True).encode()).hexdigest()[1:]
 
 
 _STAT = None

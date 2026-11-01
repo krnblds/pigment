@@ -55,7 +55,7 @@ def fingerprint(me) -> str:
 
 def _writer_module():
     import importlib.util
-    here = os.environ.get("CITY_HOOK_DIR") or os.path.dirname(os.path.abspath(os.environ.get("CITY_EXPORT_HOOK", __file__)))
+    here = os.environ.get("CITY_HOOK_DIR") or os.path.dirname(os.path.abspath(os.environ["CITY_EXPORT_HOOK"]))
     spec = importlib.util.spec_from_file_location("city_glb_writer", os.path.join(here, "glb_writer.py"))
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)

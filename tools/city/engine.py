@@ -75,7 +75,9 @@ class Ctx:
         b = paths.blender()
         if not b:
             raise BuildError("Blender not found (set CITY_BLENDER)")
-        return self.run([b, "-b", "--factory-startup", "--python", paths.absp(script), "--", *args], env=env)
+        # --python-exit-code: a Python error in the script fails the step (Blender exits 0 otherwise)
+        return self.run([b, "-b", "--factory-startup", "--python-exit-code", "1", "--python", paths.absp(script), "--", *args],
+                        env=env)
 
     def python(self, script, args=(), env=None):
         return self.run([paths.python(), paths.absp(script), *args], env=env)
@@ -131,8 +133,9 @@ class Engine:
         return st
 
     # ------------------------------------------------------------ build
-    def build(self, ids) -> dict:
-        need = self.g.upstream(ids)
+    def build(self, ids, upstream=True) -> dict:
+        """Build `ids` and (unless upstream=False, `city build --only`) everything they depend on."""
+        need = self.g.upstream(ids) if upstream else set(ids)
         order = self.g.topo(need)
         total = len(order)
         done, failed = set(), set()

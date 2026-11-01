@@ -11,6 +11,7 @@
          --pool pigment=1         concurrency per pool (blender, pigment, godot, cpu)
          --keep-going             don't stop at the first failure
          --no-import              skip the Godot headless re-import
+         --only                   just the targets (leave their stale upstream alone)
          --live                   send hot-swap events to a running Godot / Blender
          -v                       stream the tools' output
     adopt [targets]               record existing outputs as built (bootstrap a checkout that
@@ -167,7 +168,7 @@ def cmd_build(a):
 
     eng = E.Engine(g, pools=_pools(a.pool), verbose=a.verbose, keep_going=a.keep_going, dry=a.dry, force=force,
                    fast=getattr(a, "fast", False), on_done=on_done)
-    res = eng.build(ids)
+    res = eng.build(ids, upstream=not a.only)
     by = E.summary(res, t0)
     _write_timings(res, t0, a)
     if by.get("failed"):
@@ -382,6 +383,7 @@ def main(argv=None):
         s.add_argument("--no-import", action="store_true")
         s.add_argument("--live", action="store_true")
         s.add_argument("--fast", action="store_true")
+        s.add_argument("--only", action="store_true", help="build just the targets, not their stale upstream")
         s.add_argument("--pool", action="append")
         s.add_argument("-v", "--verbose", action="store_true")
         if name == "watch":

@@ -161,6 +161,17 @@ class TestHashing(Sandbox):
         self.write("index.json", json.dumps(idx))
         self.assertNotEqual(h, hashing.pattern_hash("index.json::placement")[0])
 
+    def test_volatile_timestamps_are_ignored(self):
+        doc = {"format": "pigment-material", "materials": {"a": {"emissive_scale": 6.0, "exported_at": 1}}}
+        p = self.write("tex/material.json", json.dumps(doc))
+        d1 = hashing.stat_cache().file_hash(p)
+        doc["materials"]["a"]["exported_at"] = 2                  # an identical re-export
+        self.write("tex/material.json", json.dumps(doc))
+        self.assertEqual(d1, hashing.stat_cache().file_hash(p))
+        doc["materials"]["a"]["emissive_scale"] = 9.0             # a real change
+        self.write("tex/material.json", json.dumps(doc))
+        self.assertNotEqual(d1, hashing.stat_cache().file_hash(p))
+
     def test_stat_cache_reuses_hashes(self):
         p = self.write("big.bin", "x" * 1000)
         sc = hashing.stat_cache()
