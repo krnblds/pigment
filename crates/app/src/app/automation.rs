@@ -184,11 +184,12 @@ impl Session {
                     let mut o = json!({
                         "index": i,
                         "name": l.name,
-                        "kind": if l.is_paint() { "paint" } else { "fill" },
+                        "kind": if l.is_folder() { "folder" } else if l.is_paint() { "paint" } else { "fill" },
                         "visible": l.visible,
                         "opacity": l.opacity,
                         "channels": Channel::ALL.iter().filter(|c| l.channels.get(**c).enabled).map(|c| c.file_stem()).collect::<Vec<_>>(),
                     });
+                    self.folder_fields(l, &mut o);
                     if let LayerKind::Fill { values } = &l.kind {
                         o["material"] = json!(material_presets().into_iter().find(|(_, v)| v == values).map(|(n, _)| n).unwrap_or("custom"));
                     }
@@ -209,7 +210,73 @@ impl Session {
         )
     }
 
+    /// Folder info for `list_layers`: id, depth, parent index, path, and for
+    /// folders their child count and collapsed state.
+    fn folder_fields(&self, l: &Layer, o: &mut Value) {
+        let doc = &self.app.doc;
+        if !doc.layers.iter().any(|x| x.is_folder() || x.parent.is_some()) {
+            return; // folder-less stacks list exactly as before
+        }
+        o["id"] = json!(l.id);
+        o["depth"] = json!(doc.depth(l.id));
+        o["parent"] = json!(doc.ancestors(l.id).first().and_then(|p| doc.index_of(*p)));
+        o["path"] = json!(doc.layer_path(l.id));
+        if let LayerKind::Folder { collapsed } = l.kind {
+            o["children"] = json!(doc.children_of(Some(l.id)).len());
+            o["collapsed"] = json!(collapsed);
+        }
+    }
+
+    /// The stack as a tree: top-level items bottom to top, folders with
+    /// their contents nested under `layers` (same fields as the flat list).
+    pub fn layer_tree(&self) -> Value {
+        fn build(doc: &Document, flat: &Value, parent: Option<LayerId>) -> Value {
+            Value::Array(
+                doc.children_of(parent)
+                    .into_iter()
+                    .map(|i| {
+                        let mut o = flat[i].clone();
+                        if doc.layers[i].is_folder() {
+                            o["layers"] = build(doc, flat, Some(doc.layers[i].id));
+                        }
+                        o
+                    })
+                    .collect(),
+            )
+        }
+        build(&self.app.doc, &self.layers(), None)
+    }
+
+    /// `list_layers`: flat (bottom to top) or, with `tree: true`, nested.
+    pub fn list_layers(&self, a: &Value) -> Value {
+        if a.get("tree").and_then(Value::as_bool).unwrap_or(false) {
+            self.layer_tree()
+        } else {
+            self.layers()
+        }
+    }
+
+    /// A folder reference (name, "A/B" path or index) that must be a folder.
+    fn find_folder(&self, r: &Value) -> Res<LayerId> {
+        let i = self.find_layer(r)?;
+        let l = &self.app.doc.layers[i];
+        if !l.is_folder() {
+            return Err(format!("`{}` is not a folder", l.name));
+        }
+        Ok(l.id)
+    }
+
     fn find_layer(&self, r: &Value) -> Res<usize> {
+        if let Value::String(path) = r {
+            // "Folder/Sub/Layer" paths pick a layer inside folders
+            if path.contains('/') {
+                let p = path.to_ascii_lowercase();
+                let doc = &self.app.doc;
+                if let Some(i) = doc.layers.iter().rposition(|l| doc.layer_path(l.id).to_ascii_lowercase() == p) {
+                    return Ok(i);
+                }
+            }
+        }
         match r {
             Value::Number(n) => {
                 let i = n.as_u64().ok_or("layer index must be >= 0")? as usize;
@@ -395,6 +462,7 @@ impl Session {
         for (k, l) in layers.into_iter().enumerate() {
             self.app.doc.layers.insert(at + k, l);
         }
+        self.app.doc.normalize_folders();
         self.settle();
         Ok(json!({ "layers": self.layers() }))
     }
@@ -402,17 +470,47 @@ impl Session {
     pub fn add_layer(&mut self, a: &Value) -> Res<Value> {
         let kind = s(a, "kind").unwrap_or("fill");
         let name = s(a, "name").unwrap_or(if kind == "paint" { "Paint" } else { "Fill" }).to_string();
+        let parent = match a.get("parent") {
+            None | Some(Value::Null) => None,
+            Some(r) => Some(self.find_folder(r)?),
+        };
         let l = match kind {
             "paint" => self.app.doc.new_paint_layer(&name),
             "fill" => self.app.doc.fill_with(&name, s(a, "material").unwrap_or("White plastic"), None),
-            _ => return Err("`kind` must be \"fill\" or \"paint\"".into()),
+            "folder" => self.app.doc.new_folder(if s(a, "name").is_some() { &name } else { "Folder" }),
+            _ => return Err("`kind` must be \"fill\", \"paint\" or \"folder\"".into()),
         };
+        if let Some(p) = parent {
+            // inside a folder: `index` is the position among its children
+            let id = l.id;
+            self.app.doc.layers.push(l);
+            let pos = a.get("index").and_then(Value::as_u64).map(|i| i as usize);
+            if let Err(e) = self.app.doc.move_layer(id, Some(p), pos) {
+                self.app.doc.remove_layer_tree(id);
+                return Err(e);
+            }
+            let at = self.app.doc.index_of(id).unwrap();
+            let mut cfg = a.clone();
+            if let Some(o) = cfg.as_object_mut() {
+                o.remove("name");
+            }
+            if let Err(e) = self.configure(at, &cfg) {
+                self.app.doc.remove_layer_tree(id);
+                return Err(e);
+            }
+            self.settle();
+            return Ok(json!({ "added": self.app.doc.index_of(id), "path": self.app.doc.layer_path(id), "layers": self.layers() }));
+        }
         let at = match a.get("index").and_then(Value::as_u64) {
             Some(i) => (i as usize).min(self.app.doc.layers.len()),
             None if kind == "paint" => self.app.doc.layers.len(),
             None => self.app.doc.layers.iter().rposition(|l| l.is_paint()).unwrap_or(self.app.doc.layers.len()),
         };
+        let id = l.id;
         self.app.doc.layers.insert(at, l);
+        // a flat index inside a folder's range still means "top level"
+        self.app.doc.normalize_folders();
+        let at = self.app.doc.index_of(id).unwrap();
         let mut cfg = a.clone();
         if let Some(o) = cfg.as_object_mut() {
             o.remove("name");
@@ -427,11 +525,37 @@ impl Session {
 
     pub fn update_layer(&mut self, a: &Value) -> Res<Value> {
         let i = self.find_layer(a.get("layer").ok_or("missing `layer`")?)?;
+        let id = self.app.doc.layers[i].id;
+        // resolve the target folder before anything changes
+        let parent = match a.get("parent") {
+            None => None,
+            Some(Value::Null) => Some(None),
+            Some(r) => Some(Some(self.find_folder(r)?)),
+        };
         self.configure(i, a)?;
-        if let Some(to) = a.get("move_to").and_then(Value::as_u64) {
-            let l = self.app.doc.layers.remove(i);
-            let to = (to as usize).min(self.app.doc.layers.len());
-            self.app.doc.layers.insert(to, l);
+        if let Some(c) = a.get("collapsed").and_then(Value::as_bool) {
+            match &mut self.app.doc.layers[i].kind {
+                LayerKind::Folder { collapsed } => *collapsed = c,
+                _ => return Err("`collapsed` applies to folders".into()),
+            }
+        }
+        let to = a.get("move_to").and_then(Value::as_u64).map(|t| t as usize);
+        match parent {
+            // into / out of a folder; `move_to` is then the position among its children
+            Some(p) => self.app.doc.move_layer(id, p, to)?,
+            None => {
+                if let Some(to) = to {
+                    match self.app.doc.layers[i].parent {
+                        Some(cur) => self.app.doc.move_layer(id, Some(cur), Some(to))?,
+                        None => {
+                            let l = self.app.doc.layers.remove(i);
+                            let to = to.min(self.app.doc.layers.len());
+                            self.app.doc.layers.insert(to, l);
+                            self.app.doc.normalize_folders();
+                        }
+                    }
+                }
+            }
         }
         self.settle();
         Ok(json!({ "layers": self.layers() }))
@@ -439,9 +563,46 @@ impl Session {
 
     pub fn delete_layer(&mut self, a: &Value) -> Res<Value> {
         let i = self.find_layer(a.get("layer").ok_or("missing `layer`")?)?;
-        self.app.doc.layers.remove(i);
+        // a folder goes with everything inside it
+        let id = self.app.doc.layers[i].id;
+        self.app.doc.remove_layer_tree(id);
         self.settle();
         Ok(json!({ "layers": self.layers() }))
+    }
+
+    /// Save a folder (or fill layer) as a part-agnostic `.pigsmart` file.
+    pub fn save_smart_material(&mut self, a: &Value) -> Res<Value> {
+        let i = self.find_layer(a.get("layer").ok_or("missing `layer` (the folder to save)")?)?;
+        let id = self.app.doc.layers[i].id;
+        let mut path = PathBuf::from(req(a, "path")?);
+        if path.extension().is_none() {
+            path.set_extension(pigment_core::smart::SMART_EXTENSION);
+        }
+        let name = s(a, "name").map(String::from).unwrap_or_else(|| self.app.doc.layers[i].name.clone());
+        let sm = self.app.save_smart(id, &name, &path)?;
+        Ok(json!({ "saved": path, "name": sm.name, "layers": sm.layers.len(), "warnings": sm.warnings }))
+    }
+
+    /// Instance a `.pigsmart` file at the top level below the top paint
+    /// layer, or inside folder `parent`; `parts` limits it to those mesh parts.
+    pub fn apply_smart_material(&mut self, a: &Value) -> Res<Value> {
+        let path = PathBuf::from(req(a, "path")?);
+        let parts: Vec<u32> = a.get("parts").and_then(Value::as_array).map(|ps| ps.iter().filter_map(|p| p.as_u64().map(|x| x as u32)).collect()).unwrap_or_default();
+        let parent = match a.get("parent") {
+            None | Some(Value::Null) => None,
+            Some(r) => Some(self.find_folder(r)?),
+        };
+        let root = self.app.apply_smart(&path, &parts, parent)?;
+        let i = self.app.doc.index_of(root).ok_or("smart material didn't land")?;
+        // optional overrides on the new folder: name, opacity, visible, blend, channels
+        let cfg: serde_json::Map<String, Value> =
+            a.as_object().map(|o| o.iter().filter(|(k, _)| ["name", "opacity", "visible", "blend", "channels"].contains(&k.as_str())).map(|(k, v)| (k.clone(), v.clone())).collect()).unwrap_or_default();
+        if let Err(e) = self.configure(i, &Value::Object(cfg)) {
+            self.app.doc.remove_layer_tree(root);
+            return Err(e);
+        }
+        self.settle();
+        Ok(json!({ "applied": self.app.doc.layer_path(root), "index": self.app.doc.index_of(root), "layers": self.layers() }))
     }
 
     pub fn undo(&mut self, redo: bool) -> Res<Value> {
@@ -873,5 +1034,61 @@ mod tests {
         assert!(everything > only_body + 1000, "whole model glows more than one part ({everything} vs {only_body})");
         let layers = s.layers();
         assert!(layers.to_string().contains("\"parts\":[]"));
+    }
+
+    #[test]
+    fn folders_and_saved_smart_materials_over_mcp() {
+        let Ok(mut s) = Session::new() else { return };
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let out = std::env::temp_dir().join(format!("pigment-folders-{}", std::process::id()));
+        s.new_project(&json!({ "mesh": root.join("assets/ammo_box.glb"), "resolution": 512, "material": "Olive drab" })).unwrap();
+        // flat list keeps its old shape until a folder exists
+        assert!(s.layers()[0].get("depth").is_none());
+        s.add_layer(&json!({ "kind": "folder", "name": "Weathering", "opacity": 0.9 })).unwrap();
+        s.add_layer(&json!({ "name": "Grime", "material": "Grime", "parent": "Weathering", "mask": { "generator": "dirt", "amount": 0.6 } })).unwrap();
+        s.add_layer(&json!({ "kind": "folder", "name": "Rust", "parent": "Weathering" })).unwrap();
+        s.add_layer(&json!({ "name": "Spots", "material": "Rust", "parent": "Weathering/Rust", "mask": { "generator": "spots" } })).unwrap();
+        s.add_layer(&json!({ "name": "Wear", "material": "Steel", "mask": { "generator": "edge_wear" } })).unwrap();
+        // move a top-level layer into a folder, then a nested one out
+        s.update_layer(&json!({ "layer": "Wear", "parent": "Weathering", "move_to": 0 })).unwrap();
+        assert_eq!(s.app.doc.layer_path(s.app.doc.layers[s.find_layer(&json!("Wear")).unwrap()].id), "Weathering/Wear");
+        s.update_layer(&json!({ "layer": "Weathering/Rust", "collapsed": true })).unwrap();
+        assert!(s.update_layer(&json!({ "layer": "Grime", "collapsed": true })).is_err());
+        assert!(s.add_layer(&json!({ "name": "x", "parent": "Grime" })).is_err(), "parent must be a folder");
+        let tree = s.list_layers(&json!({ "tree": true }));
+        let w = tree.as_array().unwrap().iter().find(|l| l["name"] == "Weathering").expect("folder at top level");
+        assert_eq!(w["kind"], "folder");
+        assert_eq!(w["layers"].as_array().unwrap().len(), 3, "{w}");
+        assert_eq!(w["layers"][2]["layers"][0]["path"], "Weathering/Rust/Spots");
+        let flat = s.layers();
+        assert!(flat.as_array().unwrap().iter().any(|l| l["depth"] == 2));
+
+        // save the folder, reopen the project: folders persist
+        let sm = out.join("weathering.pigsmart");
+        let r = s.save_smart_material(&json!({ "layer": "Weathering", "path": sm })).unwrap();
+        assert_eq!(r["layers"], 5, "{r}");
+        s.save_project(&json!({ "path": out.join("a.pigment") })).unwrap();
+        let before = s.render(&json!({ "width": 160, "height": 120 })).unwrap().png;
+        s.open_project(&json!({ "path": out.join("a.pigment") })).unwrap();
+        assert_eq!(s.layer_tree(), tree);
+        let after = s.render(&json!({ "width": 160, "height": 120 })).unwrap().png;
+        assert_eq!(before, after, "reopened project renders the same");
+
+        // apply to another model, limited to two parts
+        s.new_project(&json!({ "mesh": root.join("assets/vending_machine.glb"), "resolution": 512, "material": "Teal paint" })).unwrap();
+        let a = s.apply_smart_material(&json!({ "path": sm, "parts": [0, 1], "opacity": 0.8 })).unwrap();
+        assert_eq!(a["applied"], "Weathering");
+        let i = s.find_layer(&json!("Weathering")).unwrap();
+        let f = &s.app.doc.layers[i];
+        assert_eq!(f.mask.as_ref().unwrap().parts, vec![0, 1]);
+        assert!((f.opacity - 0.8).abs() < 1e-6);
+        assert!(s.layers().as_array().unwrap().last().unwrap()["kind"] == "paint", "paint layer stays on top");
+        // deleting the folder removes its contents
+        let n = s.app.doc.layers.len();
+        s.delete_layer(&json!({ "layer": "Weathering" })).unwrap();
+        assert_eq!(s.app.doc.layers.len(), n - 5);
+        s.undo(false).unwrap();
+        assert_eq!(s.app.doc.layers.len(), n);
+        std::fs::remove_dir_all(out).ok();
     }
 }
