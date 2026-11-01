@@ -98,8 +98,10 @@ if __name__ == "__main__":
     what = sys.argv[2:] or ["building", "street"]
     if "building" in what:
         b = load("building_a")
-        run(b + renders("building_a_before", BUILDING_VIEWS), "building_a_before")
-        run(b + building_after(b) + renders("building_a_after", BUILDING_VIEWS), "building_a_after")
+        export0 = [{"tool": "export_textures", "args": {"dir": str(OUT / "building_a_tex_before").replace("\\", "/"), "preset": "separate", "name": "building_a"}}]
+        run(b + renders("building_a_before", BUILDING_VIEWS) + export0, "building_a_before")
+        export = [{"tool": "export_textures", "args": {"dir": str(OUT / "building_a_tex").replace("\\", "/"), "preset": "separate", "name": "building_a"}}]
+        run(b + building_after(b) + renders("building_a_after", BUILDING_VIEWS) + export, "building_a_after")
     if "street" in what:
         s = load("street_segment")
         run(s + renders("street_before", STREET_VIEWS), "street_before")
