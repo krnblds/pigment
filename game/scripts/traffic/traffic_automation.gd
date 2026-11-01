@@ -93,13 +93,17 @@ func _test(seconds: float) -> void:
 			max_dev = maxf(max_dev, dev)
 			var bad := dev > 0.6
 			if not layout.is_empty():
-				ray.from = p + Vector3.UP * 1.0
-				ray.to = p - Vector3.UP * 2.0
-				var h := space.intersect_ray(ray)
+				# three rays along the car (a single ray can slip through a run / junction mesh seam)
 				var cat := "none"
-				if h and h.collider:
-					var key := String(h.collider.name).trim_prefix("Col_")
-					cat = String(layout.meshes.get(key, {}).get("cat", "other")) if String(h.collider.name).begins_with("Col_") else "prop"
+				for k in [-0.6, 0.0, 0.6]:
+					ray.from = p + c.global_basis.z * k + Vector3.UP * 1.0
+					ray.to = ray.from - Vector3.UP * 3.0
+					var h := space.intersect_ray(ray)
+					if h and h.collider:
+						var cn := String(h.collider.name)
+						var hc := String(layout.meshes.get(cn.trim_prefix("Col_"), {}).get("cat", "other")) if cn.begins_with("Col_") else "prop"
+						if hc == "road" or cat == "none":
+							cat = hc
 				if cat != "road":
 					bad = true
 					if offroad_where.size() < 8:
@@ -147,6 +151,7 @@ func _test(seconds: float) -> void:
 		var d: Vector3 = l.dir_at_seg(l.seg_at(sp, 0))
 		car.freeze = false
 		car.place(Transform3D(Basis(Vector3.UP.cross(d).normalized(), Vector3.UP, d), p + Vector3.UP * 0.3))
+		main.cam.snap()
 		car.autopilot = true
 		car.input_throttle = 0.0
 		car.input_handbrake = true
@@ -173,6 +178,7 @@ func _test(seconds: float) -> void:
 		var to: Vector3 = (victim.global_position - car.global_position)
 		to.y = 0.0
 		car.place(Transform3D(Basis(Vector3.UP.cross(to.normalized()).normalized(), Vector3.UP, to.normalized()), car.global_position + Vector3.UP * 0.1))
+		main.cam.snap()
 		await get_tree().physics_frame
 		car.linear_velocity = to.normalized() * 9.0
 		car.input_throttle = 0.3
@@ -226,10 +232,22 @@ func _measure_for(t: float) -> Dictionary:
 	_measure = true
 	var draws := 0.0
 	var n := 0
+	var gpu := 0.0
+	var cpu_r := 0.0
+	var phys := 0.0
+	var proc := 0.0
+	var vp := get_viewport().get_viewport_rid()
+	RenderingServer.viewport_set_measure_render_time(vp, true)
+	var tick0: int = main.traffic.prof.total_us if main.traffic else 0
+	var ticks0: int = main.traffic.prof.ticks if main.traffic else 0
 	var t0 := Time.get_ticks_msec()
 	while Time.get_ticks_msec() - t0 < t * 1000.0:
 		await get_tree().process_frame
 		draws += RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME)
+		gpu += RenderingServer.viewport_get_measured_render_time_gpu(vp)
+		cpu_r += RenderingServer.viewport_get_measured_render_time_cpu(vp) + RenderingServer.get_frame_setup_time_cpu()
+		phys += Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS) * 1000.0
+		proc += Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0
 		n += 1
 	_measure = false
 	var ft := Array(_frames)
@@ -242,9 +260,48 @@ func _measure_for(t: float) -> Dictionary:
 	var r := {"avg_fps": snappedf(1.0 / maxf(avg, 1e-6), 0.1), "avg_ms": snappedf(avg * 1000.0, 0.01),
 		"p1_low_fps": snappedf(1.0 / maxf(p99, 1e-6), 0.1), "draw_calls": int(draws / maxf(1, n)),
 		"active_cars": main.traffic.active.size() if main.traffic else 0,
+		"gpu_ms": snappedf(gpu / maxf(1, n), 0.01), "render_cpu_ms": snappedf(cpu_r / maxf(1, n), 0.01),
+		"physics_ms": snappedf(phys / maxf(1, n), 0.01), "process_ms": snappedf(proc / maxf(1, n), 0.01),
+		"traffic_us_per_tick": int((main.traffic.prof.total_us - tick0) / maxf(1, main.traffic.prof.ticks - ticks0)) if main.traffic else 0,
 		"resolution": "%dx%d" % [get_viewport().get_visible_rect().size.x, get_viewport().get_visible_rect().size.y]}
 	print("BENCH ", JSON.stringify(r))
 	return r
+
+
+## A camera spot above an approach (or between two) that sees the junction centre unobstructed.
+func _clear_viewpoint(J, target: Vector3, heights: Array, dists: Array) -> Vector3:
+	var space := main.get_world_3d().direct_space_state
+	var q := PhysicsRayQueryParameters3D.new()
+	q.collision_mask = 1
+	var pq := PhysicsPointQueryParameters3D.new()
+	pq.collision_mask = 1
+	var best := J.pos + Vector3(20, 12, 20)
+	var best_score := -1.0
+	for ap in J.approaches:
+		for side in [0.0, 0.6, -0.6]:
+			var d: Vector3 = (-ap.dir).rotated(Vector3.UP, side).normalized()
+			for h in heights:
+				for r in dists:
+					var p: Vector3 = J.pos + d * r + Vector3.UP * h
+					pq.position = p
+					if not space.intersect_point(pq, 1).is_empty():
+						continue
+					var clear := 0.0
+					for off in [Vector3.ZERO, Vector3(6, 0, 0), Vector3(-6, 0, 0), Vector3(0, 0, 6), Vector3(0, 0, -6)]:
+						q.from = p
+						q.to = target + off
+						if space.intersect_ray(q).is_empty():
+							clear += 1.0
+					# a little margin around the camera too
+					for m in [Vector3(1.5, 0, 0), Vector3(-1.5, 0, 0), Vector3(0, 0, 1.5), Vector3(0, 0, -1.5)]:
+						pq.position = p + m
+						if not space.intersect_point(pq, 1).is_empty():
+							clear -= 1.0
+					var score := clear * 10.0 - absf(r - 26.0) * 0.1 - absf(h - 9.0) * 0.1
+					if score > best_score:
+						best_score = score
+						best = p
+	return best
 
 
 func _junction(nm: String):
@@ -304,11 +361,11 @@ func _shots(dir: String) -> void:
 	cam.manual = true
 	main.car.freeze = true
 	main.car.global_position = J.pos + Vector3(60, 0.5, 60)    # hero out of the frame
-	var ap0: Dictionary = J.approaches[0]
-	var cpos: Vector3 = J.pos - ap0.dir * 24.0 + Vector3.UP.cross(ap0.dir).normalized() * 9.0 + Vector3.UP * 9.0
+	var look_at_j: Vector3 = J.pos + Vector3.UP * 0.5
+	var cpos: Vector3 = _clear_viewpoint(J, look_at_j, [9.0, 7.0, 12.0, 5.0], [22.0, 30.0, 18.0, 38.0])
 	cam.fov = 62.0
 	cam.global_position = cpos
-	cam.look_at(J.pos + Vector3.UP * 0.5 + ap0.dir * 4.0, Vector3.UP)
+	cam.look_at(look_at_j, Vector3.UP)
 	await _wait(9.0)
 	await _shot(dir, "01_busy_junction")
 	perf["junction_view"] = await _measure_for(3.0)

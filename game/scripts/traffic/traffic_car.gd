@@ -46,6 +46,7 @@ var leader_gap := INF
 var half_len := 2.2
 var half_w := 0.92
 var near := false
+var far := false                ## far from the camera: pose written every 3rd tick
 var dyn_t := 0.0
 var rest_t := 0.0
 var rec_from := Transform3D()

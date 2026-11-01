@@ -676,11 +676,13 @@ func _build_exit_distances() -> void:
 
 
 ## Raise / lower lane samples onto the real road surface (call once the town collision exists).
-func snap_to_ground(space: PhysicsDirectSpaceState3D, mask := 1, exclude: Array[RID] = []) -> int:
+func snap_to_ground(space: PhysicsDirectSpaceState3D, mask := 1, exclude: Array = []) -> int:
 	var moved := 0
 	var q := PhysicsRayQueryParameters3D.new()
 	q.collision_mask = mask
-	q.exclude = exclude
+	var ex: Array[RID] = []
+	ex.assign(exclude)
+	q.exclude = ex
 	for l in lanes:
 		for i in l.pts.size():
 			var p := l.pts[i]

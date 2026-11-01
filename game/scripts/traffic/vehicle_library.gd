@@ -193,7 +193,9 @@ func _variant(m: Model, v: Dictionary, dir: String) -> Dictionary:
 		albedo_tex = load(_res(String(v.albedo), dir))
 	var cache := {}
 	for li in m.lods.size():
-		var last: bool = li == m.lods.size() - 1 and m.lods.size() > 1
+		# glass stays see-through (depth pre-pass) only on a close-up LOD; further LODs are opaque
+		# (dark glossy panes, like the town's windows): one draw per surface instead of two
+		var last: bool = (li == m.lods.size() - 1 and m.lods.size() > 1) or m.lods[li].max > 20.0
 		var lod: Dictionary = m.lods[li]
 		var per := {}
 		for group in [lod.parts] + lod.wheels.map(func(w): return w.parts):

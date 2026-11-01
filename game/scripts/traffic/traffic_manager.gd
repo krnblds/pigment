@@ -105,6 +105,10 @@ func setup(m: Node3D, opts := {}) -> bool:
 	for l in _road_lanes:
 		acc += l.length
 		_road_cum.append(acc)
+	# small maps: at most ~38 moving cars per lane-km by default (the town has 1.4 km of lanes)
+	if not fixed_count:
+		max_count = mini(max_count, maxi(min_count, int(acc / 1000.0 * 38.0)))
+		target = mini(target, max_count)
 	lib = VehicleLib.new()
 	lib.load_index()
 	print("traffic: %d vehicle models from %s" % [lib.models.size(), lib.source])
@@ -364,21 +368,37 @@ func _rebuild_occ() -> void:
 
 
 # ================================================================== per tick
+var prof := {"ticks": 0, "total_us": 0, "think_us": 0, "advance_us": 0, "occ_us": 0, "house_us": 0}
+
+
 func _physics_process(dt: float) -> void:
 	if not ready_ok:
 		return
+	var t0 := Time.get_ticks_usec()
+	_physics_inner(dt)
+	prof.ticks += 1
+	prof.total_us += Time.get_ticks_usec() - t0
+
+
+func _physics_inner(dt: float) -> void:
 	_tick += 1
 	signals.step(dt)
+	var ta := Time.get_ticks_usec()
 	if _tick % 2 == 0:
 		_rebuild_occ()
 		_collect_obstacles()
+	prof.occ_us += Time.get_ticks_usec() - ta
 	_check_hero_contacts()
 	for c in active.duplicate():
 		match c.mode:
 			TrafficCar.KINEMATIC:
 				if (c.idx + _tick) % ai_div == 0:
+					var tb := Time.get_ticks_usec()
 					_think(c, dt * ai_div)
+					prof.think_us += Time.get_ticks_usec() - tb
+				var tc := Time.get_ticks_usec()
 				_advance(c, dt)
+				prof.advance_us += Time.get_ticks_usec() - tc
 			TrafficCar.DYNAMIC:
 				_dynamic_step(c, dt)
 			TrafficCar.RECOVER:
@@ -389,7 +409,9 @@ func _physics_process(dt: float) -> void:
 		if p.mode == TrafficCar.DYNAMIC:
 			_parked_dynamic(p, dt)
 	if _tick % 30 == 0:
+		var td := Time.get_ticks_usec()
 		_housekeeping()
+		prof.house_us += Time.get_ticks_usec() - td
 	if _tick % 15 == 7:
 		_count_overlaps()
 
@@ -403,9 +425,12 @@ func _process(delta: float) -> void:
 
 func _housekeeping() -> void:
 	var pp := _player_pos()
+	var cam := _cam()
+	var cp: Vector3 = cam.global_position if cam else pp
 	for c in active.duplicate():
 		var p: Vector3 = c.global_position
 		var d := p.distance_to(pp)
+		c.far = p.distance_to(cp) > 110.0
 		c.set_collision(d < near_radius or c.mode != TrafficCar.KINEMATIC)
 		if c.mode == TrafficCar.KINEMATIC and d > ring_max + 30.0 and not _in_view(p, d):
 			_despawn(c)
@@ -455,7 +480,8 @@ func _advance(c, dt: float) -> void:
 		_enter_lane(c)
 	if c.lc_t < 1.0:
 		c.lc_t = minf(1.0, c.lc_t + dt / c.lc_dur)
-	_pose(c, dt)
+	if not c.far or (_tick + c.idx) % 3 == 0:
+		_pose(c, dt if not c.far else dt * 3.0)
 
 
 func _pose(c, dt: float) -> void:
@@ -1146,4 +1172,7 @@ func summary() -> Dictionary:
 	d["patrols_active"] = patrols.filter(func(c): return c.mode != TrafficCar.OFF).size()
 	d["signal_phase_changes"] = signals.stats.phase_changes
 	d["peds"] = peds.count() if peds else 0
+	var n: float = maxf(1.0, prof.ticks)
+	d["us_per_tick"] = {"total": int(prof.total_us / n), "think": int(prof.think_us / n), "advance": int(prof.advance_us / n),
+		"occ": int(prof.occ_us / n), "house": int(prof.house_us / n)}
 	return d
