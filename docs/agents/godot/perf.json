@@ -1,0 +1,46 @@
+{
+  "drive_sdfgi_off": {
+    "avg_fps": 281.5,
+    "avg_ms": 3.55,
+    "draw_calls": 288,
+    "frames": 1689,
+    "min_fps": 117.2,
+    "p1_low_fps": 200.4,
+    "primitives_m": 7.14,
+    "resolution": "1920x1080",
+    "sdfgi": false,
+    "vram_mb": 1079
+  },
+  "drive_sdfgi_on": {
+    "avg_fps": 241.3,
+    "avg_ms": 4.14,
+    "draw_calls": 247,
+    "frames": 2414,
+    "min_fps": 133.5,
+    "p1_low_fps": 162.9,
+    "primitives_m": 6.12,
+    "resolution": "1920x1080",
+    "sdfgi": true,
+    "vram_mb": 1451
+  },
+  "driver": "1.4.351",
+  "gpu": "NVIDIA GeForce RTX 4070 Ti",
+  "overview": {
+    "avg_fps": 275.5,
+    "avg_ms": 3.63,
+    "draw_calls": 271,
+    "frames": 698,
+    "min_fps": 10.1,
+    "p1_low_fps": 194.4,
+    "primitives_m": 3.82,
+    "resolution": "1920x1080",
+    "sdfgi": true,
+    "vram_mb": 1451
+  },
+  "town": {
+    "lights": 114,
+    "mesh_instances": 62,
+    "multimesh": 382,
+    "shapes": 659
+  }
+}
