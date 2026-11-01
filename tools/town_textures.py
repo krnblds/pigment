@@ -8,13 +8,14 @@ Blender and save the Pigment project.
     python tools/town_textures.py [asset ...]
 """
 import json
+import os
 import random
 import subprocess
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-MCP = ROOT / "target" / "showcase" / "release" / "pigment-mcp.exe"
+MCP = Path(os.environ.get("PIGMENT_MCP", ROOT / "target" / "showcase" / "release" / "pigment-mcp.exe"))
 OUT = ROOT / "scenes" / "town"
 DECALS = "assets/decals/"
 TMP = Path.home() / "AppData" / "Local" / "Temp" / "pig"
@@ -75,6 +76,15 @@ def weathering(shell):
     return [
         fill("Damp patches", "Wet concrete", shell, {"generator": "grunge", "amount": 0.45, "scale": 0.7, "softness": 0.25}, opacity=0.5, channels={"height": False, "metallic": False}),
         fill("Rain streaks", "Grime", shell, {"generator": "streaks", "amount": 0.3, "scale": 2.0, "softness": 0.15}, opacity=0.5),
+        # drip streaks under sills, AC units and ledges (drip bake), damp and dark
+        fill("Leaks", None, shell, {"generator": "leaks", "amount": 0.55, "scale": 2.5, "breakup": 0.6, "drip_length": 3.0, "ao_influence": 0.2, "softness": 0.15},
+             values={"base_color": [0.05, 0.045, 0.04], "roughness": 0.3}, opacity=0.75, channels={"height": False, "metallic": False}),
+        # moss / grime build-up on ledges, sills and in crevices
+        fill("Ledge moss", None, None, {"generator": "moss", "amount": 0.4, "scale": 3.0, "breakup": 0.7, "softness": 0.12},
+             values={"base_color": [0.09, 0.12, 0.05], "roughness": 0.85}, opacity=0.85, channels={"height": False, "metallic": False}),
+        # standing rain water on flat roofs, ledges and sills
+        fill("Rain water", None, None, {"generator": "puddles", "amount": 0.35, "scale": 0.8, "softness": 0.05},
+             values={"base_color": [0.03, 0.03, 0.032], "roughness": 0.02}, opacity=0.8, channels={"height": False, "metallic": False}),
         fill("Street grime", "Grime", None, {"generator": "dirt", "amount": 0.5, "softness": 0.25, "breakup": 0.5,
                                              "effects": [{"generator": "gradient", "op": "max", "amount": 0.12, "breakup": 0.5}]}, opacity=0.8),
     ]
@@ -214,7 +224,9 @@ def street(asset):
     L = [{"tool": "new_project", "args": {"mesh": f"assets/town/{asset}.glb", "resolution": 4096, "material": "Asphalt"}},
          {"tool": "bake", "args": {"curvature_radius": 0.004, "ao_distance": 0.1}},
          fill("Cracks", "Grime", road, {"generator": "scratches", "amount": 0.1, "scale": 1.2}, opacity=0.8),
-         fill("Puddles", None, road, {"generator": "grunge", "amount": 0.45, "scale": 0.3, "softness": 0.04}, values={"base_color": [0.07, 0.07, 0.075], "roughness": 0.015, "height": -0.05}),
+         # rain water fills the low spots of the asphalt and the gutters along the curb
+         fill("Wet rim", None, road, {"generator": "puddles", "amount": 0.62, "scale": 0.35, "breakup": 0.5, "curvature_weight": 1.5, "softness": 0.12}, values={"base_color": [0.1, 0.1, 0.105], "roughness": 0.12}, opacity=0.6, channels={"height": False, "metallic": False}),
+         fill("Puddles", None, road, {"generator": "puddles", "amount": 0.45, "scale": 0.35, "breakup": 0.5, "curvature_weight": 1.5, "softness": 0.04}, values={"base_color": [0.07, 0.07, 0.075], "roughness": 0.015, "height": -0.05}),
          fill("Curbs", "Concrete", curb),
          fill("Paving", "Concrete", walk),
          fill("Paving joints", "Panel seam", walk, {"generator": "panel_lines", "amount": 0.02, "scale": 1.5}),
