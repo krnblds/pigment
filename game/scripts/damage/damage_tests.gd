@@ -160,7 +160,7 @@ func _wall_hit(kmh: float) -> Dictionary:
 
 # ------------------------------------------------------------------ props in the world
 ## A run-up towards prop `id`: a direction with flat ground and nothing in the way. [Transform3D, ok]
-func _approach(id: int, dist := 9.0) -> Array:
+func _approach(id: int, dist := 9.0, road_side_only := false) -> Array:
 	var d: Node3D = dmg.destructibles
 	var x: Transform3D = d.xfs[id]
 	var p := x.origin
@@ -169,8 +169,11 @@ func _approach(id: int, dist := 9.0) -> Array:
 	d.arm_around(p)
 	await _tick()
 	var dirs := [x.basis.z, -x.basis.x, x.basis.x, -x.basis.z]
-	for k in 8:
-		dirs.append(Vector3(cos(k * PI / 4.0), 0, sin(k * PI / 4.0)))
+	if road_side_only:
+		dirs = [x.basis.z]                  # street lamps: the arm reaches out over the road
+	else:
+		for k in 8:
+			dirs.append(Vector3(cos(k * PI / 4.0), 0, sin(k * PI / 4.0)))
 	var why := []
 	for dd in dirs:
 		var dir: Vector3 = (dd as Vector3) * Vector3(1, 0, 1)
@@ -277,6 +280,13 @@ func _test() -> void:
 	var dented: bool = hd.deformers.any(func(df): return df.mesh != null)
 	res["after_reset"] = {"states": sc, "dented_meshes": dented, "power_scale": car.power_scale}
 	checks["reset_restores"] = sc.get("ok", 0) == hd.panels.size() and not dented and car.power_scale == 1.0
+	# a side hit loosens the front door: it must swing open on its hinge (the hinge leans, gravity opens it)
+	var door := await _door_swing()
+	res["door"] = door
+	print("  door: ", JSON.stringify(door))
+	checks["door_swings_open"] = door.get("state", "") == "loose" and door.get("open_deg", 0.0) > 12.0
+	dmg.reset_hero()
+	await _tick()
 	# 2. lamp post, 3. hydrant (in the world)
 	if main.town and main.town.layout:
 		var lamp := await _prop_hit("street_lamp", 50.0)
@@ -307,6 +317,26 @@ func _test() -> void:
 		f.store_string(JSON.stringify(res, " "))
 	await _wait(0.2)
 	get_tree().quit(0 if ok else 1)
+
+
+func _door_swing() -> Dictionary:
+	var hd: Node3D = dmg.hero_damage
+	if not hd.panels.has("Door_FL"):
+		return {}
+	var xf := Transform3D(Basis(), _pad_o + Vector3(-40, 0.05, -40))
+	await _place(xf, Vector3.ZERO)
+	_set_inputs(0.0, 0.0, 0.0, true)
+	await _wait(0.5)
+	var dp: Dictionary = hd.panels.Door_FL
+	var c: Vector3 = car.global_transform * (dp.aabb as AABB).get_center()
+	hd.apply_impact(c, -car.global_basis.x, 11000.0)
+	await _wait(2.5)
+	var out := {"state": dp.state}
+	if dp.rb and is_instance_valid(dp.rb):
+		var rel: Basis = car.global_basis.inverse() * (dp.rb as RigidBody3D).global_basis
+		out["open_deg"] = snappedf(rad_to_deg(acos(clampf(rel.z.dot(Vector3(0, 0, 1)), -1.0, 1.0))), 0.1)
+		out["outward"] = (car.global_transform.affine_inverse() * (dp.rb.global_transform * ((dp.aabb as AABB).get_center() - dp.pivot_pos))).x
+	return out
 
 
 func _jet_running() -> bool:
@@ -402,21 +432,22 @@ func _shots(dir: String) -> void:
 	DirAccess.make_dir_recursive_absolute(dir)
 	DisplayServer.window_set_size(Vector2i(1920, 1080))
 	var d: Node3D = dmg.destructibles
-	# 1. a lamp post, knocked down: sparks and the dying light
-	var lamp_ids: Array = d.near(main.town.spawn_transform().origin, 900.0, "street_lamp")
-	lamp_ids.sort_custom(func(a, b): return d.xfs[a].origin.distance_to(main.town.spawn_transform().origin) < d.xfs[b].origin.distance_to(main.town.spawn_transform().origin))
-	var done_lamp := false
+	var sp: Vector3 = main.town.spawn_transform().origin
+	var hd: Node3D = dmg.hero_damage
+	# 1. a lamp post knocked down: sparks, the dying light (seen from the side of the run)
+	var lamp_ids: Array = d.near(sp, 900.0, "street_lamp")
+	lamp_ids.sort_custom(func(a, b): return d.xfs[a].origin.distance_to(sp) < d.xfs[b].origin.distance_to(sp))
 	for id in lamp_ids.slice(0, 15):
-		var ap: Array = await _approach(id, 12.0)
+		var ap: Array = await _approach(id, 12.0, true)
 		if not ap[1]:
 			continue
 		var xf: Transform3D = ap[0]
 		var lp: Vector3 = d.xfs[id].origin
 		main.stream_now(lp)
 		car.place(xf)
-		_set_inputs(0.0, 1.0, 0.0, true)
-		_cam(lp - xf.basis.z * 11.0 + xf.basis.x * 6.0 + Vector3.UP * 2.6, lp + Vector3.UP * 2.2 + xf.basis.z * 1.0, 55.0)
-		await _wait(5.0)                        # streaming, shaders, SDFGI
+		_set_inputs(0.0, 0.0, 0.0, true)
+		_cam(lp - xf.basis.z * 9.0 + xf.basis.x * 7.0 + Vector3.UP * 2.2, lp + Vector3.UP * 2.6 + xf.basis.z * 1.0, 62.0)
+		await _wait(5.0)
 		await _place(xf, xf.basis.z * 55.0 / 3.6)
 		var t := 0.0
 		var shot := false
@@ -425,109 +456,114 @@ func _shots(dir: String) -> void:
 			await _tick()
 			t += _dt()
 			if d.state[id] == 1 and not shot:
-				await _wait(0.3)
+				await _wait(0.28)
 				await _shot(dir, "04_lamp_post_sparks")
 				shot = true
 		if shot:
-			await _wait(2.0)
-			_cam(lp - xf.basis.z * 6.0 + xf.basis.x * 5.0 + Vector3.UP * 3.5, lp + xf.basis.z * 2.5 + Vector3.UP * 0.3, 55.0)
-			await _wait(0.6)
+			await _wait(2.5)
 			await _shot(dir, "04b_lamp_post_down")
-			done_lamp = true
 			break
-	print("lamp shot: ", done_lamp)
-	# 2. into a concrete block at 60 km/h on the street: crumpled bonnet (stay in the same street)
-	var base: Transform3D = car.global_transform
-	var road: Array = main.town.nearest_road(car.global_position + Vector3(0, 0, 0))
+	# 2. a concrete block at 60 km/h: the crumpled bonnet
+	var road: Array = main.town.nearest_road(sp)
 	var rp: Vector3 = road[0]
-	var rd: Vector3 = (road[1] as Vector3) * Vector3(1, 0, 1)
-	rd = rd.normalized()
-	var blk_at: Vector3 = rp + rd * 20.0
+	var rd: Vector3 = ((road[1] as Vector3) * Vector3(1, 0, 1)).normalized()
+	var blk_at: Vector3 = rp + rd * 25.0
 	var g := _ray(blk_at + Vector3.UP * 4.0, blk_at + Vector3.DOWN * 6.0)
 	if g:
 		blk_at = g.position
+	main.stream_now(blk_at)
 	var blk := _block(blk_at, Vector3(4.0, 1.2, 1.2), atan2(rd.x, rd.z))
-	dmg.reset_hero()
 	var fbasis := Basis(Vector3.UP.cross(rd).normalized(), Vector3.UP, rd)
 	var start := Transform3D(fbasis, blk_at - rd * 16.0 + Vector3.UP * 0.1)
 	car.place(start)
-	await _wait(1.5)
-	await _place(start, rd * 62.0 / 3.6)
+	await _wait(2.0)
+	await _place(start, rd * 60.0 / 3.6)
 	var tt := 0.0
 	while tt < 2.0:
 		_set_inputs(0.3 if tt < 0.5 else 0.0, 0.0, 0.0, tt > 0.9)
 		await _tick()
 		tt += _dt()
-	await _wait(1.5)
+	blk.global_position = Vector3(0, -3000, 0)
+	await _wait(1.0)
 	var cp: Vector3 = car.global_position
 	var cz: Vector3 = car.global_basis.z
 	var cx: Vector3 = car.global_basis.x
-	_cam(cp + cz * 4.2 + cx * 2.6 + Vector3.UP * 1.5, cp + cz * 1.4 + Vector3.UP * 0.6, 50.0)
-	var spot := OmniLight3D.new()
-	spot.omni_range = 9.0
-	spot.light_energy = 2.0
-	spot.light_color = Color(0.85, 0.9, 1.0)
-	main.add_child(spot)
-	spot.global_position = cp + cz * 3.5 + cx * 1.5 + Vector3.UP * 3.0
-	await _wait(1.0)
-	await _shot(dir, "01_crumpled_bonnet")
-	# 3. side swipe into the block: a door hanging
-	blk.global_position = car.global_position + cz * 0.0 + cx * 3.2 + Vector3.UP * 0.0
-	blk.global_position.y = blk_at.y + 0.6
-	blk.global_basis = Basis(Vector3.UP, atan2(cz.x, cz.z))
-	await _tick()
-	var side_xf := car.global_transform
-	await _place(side_xf, cx * 32.0 / 3.6)
-	tt = 0.0
-	while tt < 1.6:
-		_set_inputs(0.0, 0.0, 0.0, true)
-		await _tick()
-		tt += _dt()
-	# a second slower nudge so a door comes loose if the first only dented it
-	var hd: Node3D = dmg.hero_damage
-	for nm in ["Door_FL", "Door_RL"]:
-		if hd.panels.has(nm) and hd.panels[nm].state == "ok":
-			hd.apply_impact(car.global_transform * hd.panels[nm].aabb.get_center(), -cx, 9000.0)
-	blk.global_position = Vector3(0, -3000, 0)
-	await _tick()
-	# drive off slowly so the loose door swings open
-	tt = 0.0
-	while tt < 1.2:
-		_set_inputs(0.25, 0.0, 0.25)
-		await _tick()
-		tt += _dt()
-	_set_inputs(0.0, 0.0, 0.0, true)
+	var lamp := OmniLight3D.new()
+	lamp.omni_range = 10.0
+	lamp.light_energy = 2.2
+	lamp.light_color = Color(1.0, 0.85, 0.65)
+	main.add_child(lamp)
+	lamp.global_position = cp + cz * 4.0 + cx * 2.0 + Vector3.UP * 3.5
+	_cam(cp + cz * 4.6 + cx * 2.4 + Vector3.UP * 1.7, cp + cz * 1.5 + Vector3.UP * 0.6, 55.0)
 	await _wait(1.2)
+	await _shot(dir, "01_crumpled_bonnet")
+	# 3. a door hanging off: a fresh car, a side hit on the front door
+	car.place(Transform3D(car.global_basis, cp + Vector3.UP * 0.05))
+	_set_inputs(0.0, 0.0, 0.0, true)
+	await _wait(0.8)
+	for nm in ["Door_FL"]:
+		if hd.panels.has(nm):
+			var c: Vector3 = car.global_transform * (hd.panels[nm].aabb as AABB).get_center()
+			hd.apply_impact(c + cx * 0.1, -cx, 11000.0)
+	await _wait(2.5)
 	cp = car.global_position
-	cz = car.global_basis.z
-	cx = car.global_basis.x
-	_cam(cp + cx * 4.6 + cz * 2.0 + Vector3.UP * 1.6, cp + cx * 0.8 + Vector3.UP * 0.7, 52.0)
-	spot.global_position = cp + cx * 3.5 + Vector3.UP * 3.0
+	_cam(cp + cx * 5.0 + cz * 3.0 + Vector3.UP * 1.8, cp + cx * 0.9 + cz * 0.3 + Vector3.UP * 0.8, 55.0)
+	lamp.global_position = cp + cx * 3.5 + cz * 2.0 + Vector3.UP * 3.0
 	await _wait(0.8)
 	await _shot(dir, "02_door_hanging")
-	# 4. debris on the road: knock the props near here over, plus the panels lying around
-	for id in d.near(cp, 25.0, "", "knock").slice(0, 10):
-		d.break_prop(id, Vector3(randf_range(-3, 3), 1.0, randf_range(-3, 3)), 2000.0)
-	await _wait(2.5)
-	var low := cp - cz * 6.0 + cx * 2.0 + Vector3.UP * 0.9
-	_cam(low, cp + cz * 2.0, 60.0)
-	await _wait(0.5)
-	await _shot(dir, "03_debris_on_road")
-	spot.queue_free()
-	# 5. hydrant geyser at night in the rain
+	lamp.queue_free()
+	# 4. debris on the road: drive through a cluster of loose props
+	var best := -1
+	var best_n := 0
+	for id in d.near(sp, 700.0, "", "knock"):
+		var n: int = d.near(d.xfs[id].origin, 5.0, "", "knock").size()
+		if n > best_n and d.state[id] == 0:
+			best_n = n
+			best = id
+		if best_n >= 6:
+			break
+	if best >= 0:
+		var ap: Array = await _approach(best, 14.0)
+		var xf: Transform3D = ap[0] if ap[1] else Transform3D(Basis(), d.xfs[best].origin - Vector3(0, 0, 14))
+		var bp: Vector3 = d.xfs[best].origin
+		main.stream_now(bp)
+		car.place(xf)
+		await _wait(2.0)
+		await _place(xf, xf.basis.z * 45.0 / 3.6)
+		tt = 0.0
+		while tt < 2.2:
+			_set_inputs(0.3 if tt < 0.6 else 0.0, 0.0, 0.0, tt > 1.0)
+			await _tick()
+			tt += _dt()
+		await _wait(1.5)
+		var cen := Vector3.ZERO
+		var k := 0
+		for e in dmg.debris.bodies:
+			if is_instance_valid(e.rb) and e.rb.global_position.distance_to(bp) < 15.0:
+				cen += e.rb.global_position
+				k += 1
+		cen = cen / k if k > 0 else bp
+		car.place(Transform3D(xf.basis, xf.origin - xf.basis.z * 10.0 + Vector3.UP * 0.1))
+		_set_inputs(0.0, 0.0, 0.0, true)
+		_cam(cen - xf.basis.z * 3.8 + xf.basis.x * 2.2 + Vector3.UP * 1.3, cen + Vector3.UP * 0.2, 60.0)
+		await _wait(0.6)
+		await _shot(dir, "03_debris_on_road")
+		print("debris shot: %d props near, knocked %d" % [best_n, d.stats.knocked])
+	# 5. a hydrant geyser at night in the rain
 	main.rain.emitting = true
 	main.rain.visible = true
 	main.town.set_road_rain(1.0)
-	var hyd: Array = d.near(cp, 900.0, "fire_hydrant")
-	hyd.sort_custom(func(a, b): return d.xfs[a].origin.distance_to(cp) < d.xfs[b].origin.distance_to(cp))
+	var hyd: Array = d.near(sp, 900.0, "fire_hydrant")
+	hyd.sort_custom(func(a, b): return d.xfs[a].origin.distance_to(sp) < d.xfs[b].origin.distance_to(sp))
 	for id in hyd.slice(0, 12):
+		if d.state[id] != 0:
+			continue
 		var ap: Array = await _approach(id, 10.0)
 		if not ap[1]:
 			continue
 		var xf: Transform3D = ap[0]
 		var hp: Vector3 = d.xfs[id].origin
 		main.stream_now(hp)
-		dmg.reset_hero()
 		car.place(xf)
 		await _wait(3.0)
 		await _place(xf, xf.basis.z * 42.0 / 3.6)
@@ -537,11 +573,13 @@ func _shots(dir: String) -> void:
 			await _tick()
 			t += _dt()
 		if d.state[id] == 1:
+			# the car backs off out of the picture
+			car.place(Transform3D(xf.basis, xf.origin - xf.basis.z * 14.0 + Vector3.UP * 0.1))
 			await _wait(9.0)
-			_cam(hp - xf.basis.z * 12.0 + xf.basis.x * 5.0 + Vector3.UP * 2.0, hp + Vector3.UP * 4.0, 60.0)
+			_cam(hp + xf.basis.x * 11.0 - xf.basis.z * 4.0 + Vector3.UP * 2.0, hp + Vector3.UP * 4.2, 62.0)
 			await _wait(1.5)
 			await _shot(dir, "05_hydrant_geyser_rain")
-			_cam(hp - xf.basis.z * 5.0 - xf.basis.x * 3.0 + Vector3.UP * 1.3, hp + Vector3.UP * 2.8, 70.0)
+			_cam(hp - xf.basis.z * 5.5 - xf.basis.x * 2.5 + Vector3.UP * 1.2, hp + Vector3.UP * 3.0, 72.0)
 			await _wait(0.8)
 			await _shot(dir, "05b_hydrant_geyser_close")
 			break

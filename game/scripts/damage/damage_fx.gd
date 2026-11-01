@@ -228,7 +228,7 @@ func water_jet(pos: Vector3, height := 9.0) -> Node3D:
 	pm.scale_min = 0.7
 	pm.scale_max = 1.6
 	pm.scale_curve = _curve([Vector2(0, 0.6), Vector2(0.5, 1.2), Vector2(1, 1.8)])
-	pm.color_ramp = _ramp([Color(0.85, 0.92, 1.0, 0.75), Color(0.8, 0.9, 1.0, 0.55), Color(0.75, 0.85, 1.0, 0.0)])
+	pm.color_ramp = _ramp([Color(0.9, 0.95, 1.0, 0.9), Color(0.85, 0.92, 1.0, 0.7), Color(0.8, 0.88, 1.0, 0.0)])
 	jet.process_material = pm
 	jet.draw_pass_1 = _quad(Vector2(0.06, 0.45), _mat_water(_streak))
 	root.add_child(jet)
@@ -252,7 +252,7 @@ func water_jet(pos: Vector3, height := 9.0) -> Node3D:
 	mm.scale_min = 1.2
 	mm.scale_max = 2.6
 	mm.scale_curve = _curve([Vector2(0, 0.5), Vector2(1, 1.7)])
-	mm.color_ramp = _ramp([Color(0.75, 0.82, 0.92, 0.0), Color(0.75, 0.82, 0.92, 0.16), Color(0.7, 0.78, 0.9, 0.0)])
+	mm.color_ramp = _ramp([Color(0.8, 0.86, 0.95, 0.0), Color(0.8, 0.86, 0.95, 0.24), Color(0.75, 0.82, 0.92, 0.0)])
 	mist.process_material = mm
 	mist.draw_pass_1 = _quad(Vector2(1.6, 1.6), _mat_soft(_soft))
 	root.add_child(mist)
@@ -281,6 +281,18 @@ func water_jet(pos: Vector3, height := 9.0) -> Node3D:
 	sp.draw_pass_1 = _quad(Vector2(0.03, 0.14), _mat_water(_streak))
 	sp.position = Vector3(0, 0.05, 0)
 	root.add_child(sp)
+	# the spray catches the street light: a faint cool light inside the column
+	var gl := OmniLight3D.new()
+	gl.name = "SprayGlow"
+	gl.light_color = Color(0.75, 0.85, 1.0)
+	gl.light_energy = 0.7
+	gl.omni_range = 7.0
+	gl.light_volumetric_fog_energy = 1.5
+	gl.position = Vector3(0, height * 0.35, 0)
+	gl.distance_fade_enabled = true
+	gl.distance_fade_begin = 80.0
+	gl.distance_fade_length = 20.0
+	root.add_child(gl)
 	stats.jets += 1
 	return root
 
@@ -385,7 +397,7 @@ func _mat_water(tex: Texture2D) -> StandardMaterial3D:
 	m.roughness = 0.08
 	m.metallic_specular = 1.0
 	m.emission_enabled = true
-	m.emission = Color(0.12, 0.16, 0.22)
+	m.emission = Color(0.3, 0.38, 0.5)
 	m.billboard_mode = BaseMaterial3D.BILLBOARD_FIXED_Y
 	m.billboard_keep_scale = true
 	m.disable_receive_shadows = true

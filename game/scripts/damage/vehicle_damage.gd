@@ -431,8 +431,8 @@ func _loosen(d: Dictionary, pl: Vector3, _dl: Vector3) -> void:
 	jt.node_a = jt.get_path_to(body)
 	jt.node_b = jt.get_path_to(rb)
 	jt.set_flag(HingeJoint3D.FLAG_USE_LIMIT, true)
-	var lo := minf(0.0, sign * limit)
-	var hi := maxf(0.0, sign * limit)
+	var lo := minf(0.0, -sign * limit)          # Jolt measures the hinge angle the other way round
+	var hi := maxf(0.0, -sign * limit)
 	# the joint measures B's turn relative to A about its Z; a little slack past closed
 	jt.set_param(HingeJoint3D.PARAM_LIMIT_LOWER, lo - 0.03)
 	jt.set_param(HingeJoint3D.PARAM_LIMIT_UPPER, hi + 0.03)
