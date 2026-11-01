@@ -43,3 +43,7 @@ anti_aliasing/quality/use_debanding=true
 environment/volumetric_fog/volume_size=96
 anti_aliasing/quality/use_taa=true
 mesh_lod/lod_change/threshold_pixels=2.0
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/fleet_variants/plugin.cfg")

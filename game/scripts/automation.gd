@@ -270,6 +270,10 @@ func _bench_matrix() -> void:
 	var vis: Node3D = main.town.get_node("Visuals")
 	var res := {}
 	res["base"] = await _measure_for(3.0)
+	if main.traffic:
+		main.traffic.visible = false
+		res["traffic_hidden"] = await _measure_for(3.0)
+		main.traffic.visible = true
 	moon.shadow_enabled = false
 	res["no_moon_shadow"] = await _measure_for(3.0)
 	main.set_process(false)

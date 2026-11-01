@@ -335,6 +335,23 @@ def main():
     except Exception as e:      # the roads rework may change info["runs"]
         print("no road centre lines:", e)
     juncs = [{"name": n, "pos": gpos(j["pos"])} for n, j in info.get("junctions", {}).items()]
+    # traffic: road topology (which junction arm each run starts / ends at) + cross-section
+    road_info = []
+    try:
+        for j in juncs:
+            jd = info["junctions"][j["name"]]
+            j["kind"] = jd.get("kind", "?")
+            j["arms"] = [gpos((math.cos(math.radians(a)), math.sin(math.radians(a)), 0.0)) for a in jd["arms"]]
+            j["arm_len"] = [round(float(x), 3) for x in jd["L"]]
+        for (na, ia), b, _wps in town["EDGES"]:
+            to = {"junction": b[0], "arm": b[1]} if isinstance(b[0], str) else None
+            road_info.append({"from": {"junction": na, "arm": ia}, "to": to, "half_width": town["ROAD_HALF"],
+                              "surface_dy": town["ROAD_Z"], "lanes_each_way": 1})
+        if len(road_info) != len(roads):
+            road_info = []
+    except Exception as e:
+        print("no road topology:", e)
+        road_info = []
     spawn = None
     try:
         r = info["runs"][1]
@@ -346,7 +363,7 @@ def main():
 
     layout = {"version": 1, "coords": "godot (x, y up, z = -blender y)", "generated": time.strftime("%Y-%m-%d %H:%M"),
               "meshes": meshes, "materials": materials, "instances": instances, "lights": lights,
-              "roads": roads, "junctions": juncs, "spawn": spawn,
+              "roads": roads, "road_info": road_info, "drive_side": "left", "junctions": juncs, "spawn": spawn,
               "stats": {"buildings": info.get("buildings"), "instances": len(instances), "meshes": len(meshes),
                         "lights": len(lights)}}
     with open(os.path.join(OUT, "town_layout.json"), "w", encoding="utf-8") as f:
