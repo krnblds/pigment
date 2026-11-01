@@ -250,6 +250,8 @@ func set_road_rain(v: float) -> void:
 	_wet = v
 	for m in road_materials:
 		m.set_shader_parameter("rain", v)
+	for m in ground_materials:
+		m.set_shader_parameter("rain", v)
 	if _trees:
 		_trees.set_wet(v)
 
@@ -313,6 +315,12 @@ func material(nm: String) -> Material:
 			rm.resource_name = nm
 			_mat_cache[nm] = rm
 			return rm
+	if nm == "WorldTerrain":
+		var tm := _terrain_material()
+		if tm:
+			tm.resource_name = nm
+			_mat_cache[nm] = tm
+			return tm
 	var d: Dictionary = layout.materials.get(nm, {})
 	# interior-mapped windows (docs/agents/interiors/NOTES.md): kit buildings and tower facades
 	var im := _interior_material(nm, d)
@@ -341,6 +349,41 @@ func material(nm: String) -> Material:
 			m = _flat_material(nm, d)
 	m.resource_name = nm
 	_mat_cache[nm] = m
+	return m
+
+
+## The terrain: the Pigment ground sets as two texture arrays plus the world masks (tools/godot/pack_ground.py:
+## images/ground/) with scripts/terrain.gdshader, which blends them like the Blender material
+## (tools/world/ground_material.py). null when they are not packed (the export's image material stays).
+const TERRAIN_SHADER := preload("res://scripts/terrain.gdshader")
+var ground_materials: Array[ShaderMaterial] = []
+
+
+func _terrain_material() -> ShaderMaterial:
+	var base := dir + "images/ground/"
+	if not FileAccess.file_exists(base + "ground.json") or not ResourceLoader.exists(base + "ground_albedo.png"):
+		return null
+	var meta = JSON.parse_string(FileAccess.get_file_as_string(base + "ground.json"))
+	var alb = load(base + "ground_albedo.png")
+	var nrm = load(base + "ground_nrm.png")
+	if not (alb is TextureLayered and nrm is TextureLayered) or meta == null:
+		push_warning("terrain: ground arrays missing or not imported as Texture2DArray")
+		return null
+	var m := ShaderMaterial.new()
+	m.shader = TERRAIN_SHADER
+	m.set_shader_parameter("ground_albedo", alb)
+	m.set_shader_parameter("ground_nrm", nrm)
+	m.set_shader_parameter("masks1", _tex(base + "ground_masks.png"))
+	m.set_shader_parameter("masks2", _tex(base + "ground_masks2.png"))
+	var mk: Dictionary = meta.get("masks", {"n": 2049, "cell_m": 2.0, "origin": [-2048.0, -2048.0]})
+	m.set_shader_parameter("mask_xf", Vector4(mk.origin[0], mk.origin[1], float(mk.n) * float(mk.cell_m), float(mk.cell_m)))
+	m.set_shader_parameter("tile_m", PackedFloat32Array(meta.tile_m))
+	var avg := []
+	for a in meta.avg:
+		avg.append(Vector4(a[0], a[1], a[2], a[3]))
+	m.set_shader_parameter("avg", avg)
+	m.set_shader_parameter("rain", _wet)
+	ground_materials.append(m)
 	return m
 
 

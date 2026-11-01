@@ -355,10 +355,23 @@ pub enum GeneratorKind {
     Tiles,
     /// A regular grid of windows on walls, a random fraction of them lit.
     WindowGrid,
+    /// Voronoi cells: F1 domes, F2, F2 - F1 edges, a random value per cell,
+    /// bevelled plates (cobbles, flagstones, cracked mud, rock plates).
+    Cells,
+    /// Scattered instances (bombing) with a rounded height profile each:
+    /// pebbles, flakes, leaves, twigs / needles, shells.
+    Scatter,
+    /// Domain-warped ridged rock: strata ledges, block-joint cracks along
+    /// cell edges, downhill erosion streaks.
+    Rock,
+    /// A dense field of thin grass blades: clumps, random lean, tips.
+    Blades,
+    /// Wind ripples with natural irregularity (bifurcations, fading crests).
+    Ripples,
 }
 
 impl GeneratorKind {
-    pub const ALL: [GeneratorKind; 14] = [
+    pub const ALL: [GeneratorKind; 19] = [
         GeneratorKind::EdgeWear,
         GeneratorKind::Dirt,
         GeneratorKind::Grunge,
@@ -373,6 +386,11 @@ impl GeneratorKind {
         GeneratorKind::Moss,
         GeneratorKind::Tiles,
         GeneratorKind::WindowGrid,
+        GeneratorKind::Cells,
+        GeneratorKind::Scatter,
+        GeneratorKind::Rock,
+        GeneratorKind::Blades,
+        GeneratorKind::Ripples,
     ];
     pub fn label(self) -> &'static str {
         match self {
@@ -390,6 +408,11 @@ impl GeneratorKind {
             GeneratorKind::Moss => "Moss",
             GeneratorKind::Tiles => "Tiles",
             GeneratorKind::WindowGrid => "Window grid",
+            GeneratorKind::Cells => "Cells",
+            GeneratorKind::Scatter => "Scatter",
+            GeneratorKind::Rock => "Rock",
+            GeneratorKind::Blades => "Grass blades",
+            GeneratorKind::Ripples => "Ripples",
         }
     }
     pub fn id(self) -> &'static str {
@@ -408,6 +431,11 @@ impl GeneratorKind {
             GeneratorKind::Moss => "moss",
             GeneratorKind::Tiles => "tiles",
             GeneratorKind::WindowGrid => "window_grid",
+            GeneratorKind::Cells => "cells",
+            GeneratorKind::Scatter => "scatter",
+            GeneratorKind::Rock => "rock",
+            GeneratorKind::Blades => "blades",
+            GeneratorKind::Ripples => "ripples",
         }
     }
     pub fn from_id(s: &str) -> Option<GeneratorKind> {
@@ -418,8 +446,31 @@ impl GeneratorKind {
             "grime_accumulation" | "lichen" => Some(GeneratorKind::Moss),
             "bricks" | "brick" | "tile" | "square" | "hex" => Some(GeneratorKind::Tiles),
             "windows" | "window_lights" => Some(GeneratorKind::WindowGrid),
-            _ => None,
+            "ridged" | "cliff" => Some(GeneratorKind::Rock),
+            a => crate::ground::GROUND_ALIASES.iter().find(|g| g.0 == a).and_then(|g| Self::ALL.into_iter().find(|k| k.id() == g.1)),
         })
+    }
+    /// Variant names of this generator (`Generator::variant` indexes them).
+    pub fn variant_names(self) -> &'static [&'static str] {
+        match self {
+            GeneratorKind::Tiles => &Self::TILE_VARIANTS,
+            GeneratorKind::Cells => &crate::ground::CELL_VARIANTS,
+            GeneratorKind::Scatter => &crate::ground::SCATTER_VARIANTS,
+            GeneratorKind::Rock => &crate::ground::ROCK_VARIANTS,
+            GeneratorKind::Blades => &crate::ground::BLADE_VARIANTS,
+            GeneratorKind::Ripples => &crate::ground::RIPPLE_VARIANTS,
+            _ => &[],
+        }
+    }
+    /// The variant an alias like "cobbles" or "leaves" picks, if any.
+    pub fn alias_variant(self, alias: &str) -> Option<u32> {
+        let a = alias.to_ascii_lowercase();
+        let v = crate::ground::GROUND_ALIASES.iter().find(|g| g.0 == a && g.1 == self.id())?.2;
+        self.variant_names().iter().position(|x| *x == v).map(|i| i as u32)
+    }
+    /// The ground generators (natural materials; `gen_ground.wgsl`).
+    pub fn is_ground(self) -> bool {
+        matches!(self, GeneratorKind::Cells | GeneratorKind::Scatter | GeneratorKind::Rock | GeneratorKind::Blades | GeneratorKind::Ripples)
     }
     /// Tile pattern variant names (`Generator::variant` for `Tiles`).
     pub const TILE_VARIANTS: [&'static str; 3] = ["bricks", "square", "hex"];
@@ -450,9 +501,18 @@ pub struct Generator {
     /// How strongly curvature counts (0 = noise/AO only).
     #[serde(default = "one")]
     pub curvature_weight: f32,
-    /// Pattern variant (Tiles: 0 bricks, 1 square, 2 hex). Unused elsewhere.
+    /// Pattern variant (Tiles: 0 bricks, 1 square, 2 hex; the ground
+    /// generators: see `GeneratorKind::variant_names`). Unused elsewhere.
     #[serde(default, skip_serializing_if = "is_zero")]
     pub variant: u32,
+    /// Shape parameters of the ground generators (see `ground.rs` and
+    /// `gen_ground.wgsl`); unused by the other generators.
+    #[serde(default, skip_serializing_if = "all_zero")]
+    pub extra: [f32; 4],
+}
+
+fn all_zero(v: &[f32; 4]) -> bool {
+    v.iter().all(|x| *x == 0.0)
 }
 
 fn is_zero(v: &u32) -> bool {
@@ -489,15 +549,43 @@ impl Generator {
             GeneratorKind::Tiles => (1.0, 0.01, 13.0, 0.3, 0.08),
             // scale = cell (storey) height in metres; ao_influence slot = frame width
             GeneratorKind::WindowGrid => (0.35, 0.01, 3.2, 0.3, 0.18),
+            // scale = cells per metre; ao_influence slot = point randomness
+            GeneratorKind::Cells => (1.0, 0.02, 6.0, 0.15, 1.0),
+            // amount = density; scale = cells per metre; ao_influence slot = elongation
+            GeneratorKind::Scatter => (0.8, 0.02, 12.0, 0.5, 1.4),
+            // scale = rock features per metre; ao_influence slot = strata strength
+            GeneratorKind::Rock => (1.0, 0.02, 0.8, 0.6, 0.5),
+            // amount = density; scale = blades per metre; ao_influence slot = lean
+            GeneratorKind::Blades => (0.85, 0.02, 90.0, 0.6, 0.55),
+            // scale = ripples per metre; ao_influence slot = asymmetry
+            GeneratorKind::Ripples => (1.0, 0.02, 8.0, 0.5, 0.6),
         };
         // curvature_weight doubles as a shape parameter on the new generators
         let curvature_weight = match kind {
             GeneratorKind::Leaks => 2.5,       // drip length below the feature, metres
             GeneratorKind::Tiles => 2.0,       // cell width / height (brick aspect)
             GeneratorKind::WindowGrid => 0.55, // cell width / height
+            GeneratorKind::Cells => 0.02,      // edge / bevel width, metres
+            GeneratorKind::Scatter => 0.45,    // instance radius, fraction of a cell
+            GeneratorKind::Rock => 0.6,        // crack strength
+            GeneratorKind::Blades => 0.06,     // blade length, metres
+            GeneratorKind::Ripples => 0.4,     // defects (bifurcations, fading crests)
             _ => 1.0,
         };
-        Self { kind, amount, softness, noise_scale, noise_amount, seed: 1, ao_influence, curvature_weight, variant: 0 }
+        let extra = match kind {
+            // stretch along x, height variation per cell, edge noise
+            GeneratorKind::Cells => [1.0, 0.3, 0.3, 0.0],
+            // instances per cell, alignment, outline irregularity, height variation
+            GeneratorKind::Scatter => [1.0, 0.0, 0.3, 0.4],
+            // strata bands per metre, downhill streaks, crack cells per metre
+            GeneratorKind::Rock => [1.6, 0.4, 1.2, 0.0],
+            // blade width (m), swirl (flow of the lean direction)
+            GeneratorKind::Blades => [0.0035, 0.6, 0.0, 0.0],
+            // crest direction (degrees), crest sharpness
+            GeneratorKind::Ripples => [0.0, 0.5, 0.0, 0.0],
+            _ => [0.0; 4],
+        };
+        Self { kind, amount, softness, noise_scale, noise_amount, seed: 1, ao_influence, curvature_weight, variant: 0, extra }
     }
     pub fn gpu_id(&self) -> u32 {
         match self.kind {
@@ -515,6 +603,11 @@ impl Generator {
             GeneratorKind::Moss => 12,
             GeneratorKind::Tiles => 13,
             GeneratorKind::WindowGrid => 14,
+            GeneratorKind::Cells => 15,
+            GeneratorKind::Scatter => 16,
+            GeneratorKind::Rock => 17,
+            GeneratorKind::Blades => 18,
+            GeneratorKind::Ripples => 19,
         }
     }
     pub fn with(mut self, amount: f32, noise_scale: f32) -> Self {
@@ -626,6 +719,20 @@ pub struct Layer {
     /// atlas cells, bark). The app redraws them whenever this changes.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub generated: Option<Generated>,
+    /// Fill layers only: show only where the layer's height level is above
+    /// (or below) the stack's height (see `ground.rs`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub height_blend: Option<crate::ground::HeightBlend>,
+    /// Per-instance colour / roughness variation from the mask generator.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub jitter: Option<crate::ground::InstanceJitter>,
+    /// The fill's height follows the mask generator's shape profile.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub height_profile: bool,
+    /// Fill layers: multiplies the fill's height (relief beyond -1..1 for
+    /// stacked rock, boulders, ruts; the composited height is HDR).
+    #[serde(default = "crate::ground::unit_gain", skip_serializing_if = "crate::ground::is_unit_gain")]
+    pub height_gain: f32,
 }
 
 /// What draws a generated paint layer.
@@ -987,6 +1094,10 @@ impl Document {
             variant: Default::default(),
             image: None,
             generated: None,
+            height_blend: None,
+            jitter: None,
+            height_profile: false,
+            height_gain: 1.0,
         }
     }
 
@@ -1005,6 +1116,10 @@ impl Document {
             variant: Default::default(),
             image: None,
             generated: None,
+            height_blend: None,
+            jitter: None,
+            height_profile: false,
+            height_gain: 1.0,
         }
     }
 
@@ -1029,6 +1144,10 @@ impl Document {
             variant: Default::default(),
             image: None,
             generated: None,
+            height_blend: None,
+            jitter: None,
+            height_profile: false,
+            height_gain: 1.0,
         }
     }
 

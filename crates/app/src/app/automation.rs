@@ -194,7 +194,9 @@ impl Session {
                 "coat": v.coat, "coat_roughness": v.coat_roughness, "flake": v.flake
             })).collect::<Vec<_>>(),
             "smart_materials": smart_material_names(),
-            "generators": GeneratorKind::ALL.iter().map(|k| json!({ "id": k.id(), "label": k.label(), "uses_bakes": k.uses_bakes() })).collect::<Vec<_>>(),
+            "generators": GeneratorKind::ALL.iter().map(|k| json!({ "id": k.id(), "label": k.label(), "uses_bakes": k.uses_bakes(), "variants": k.variant_names() })).collect::<Vec<_>>(),
+            "ground_aliases": pigment_core::ground::GROUND_ALIASES.iter().map(|(a, g, v)| json!({ "alias": a, "generator": g, "variant": v })).collect::<Vec<_>>(),
+            "height_blend_modes": ["above", "below"],
             "blend_modes": ["normal", "multiply", "screen", "overlay", "add", "subtract", "darken", "lighten", "replace", "combine"],
             "export_presets": export::presets().iter().map(|p| json!({ "id": p.id, "label": p.label })).collect::<Vec<_>>(),
             "views": ViewMode::ALL.iter().map(|m| m.label()).collect::<Vec<_>>(),
@@ -227,12 +229,25 @@ impl Session {
                     if let Some(img) = &l.image {
                         o["image"] = serde_json::to_value(img).unwrap_or(Value::Null);
                     }
+                    if let Some(hb) = &l.height_blend {
+                        o["height_blend"] = json!({ "mode": hb.mode.id(), "contrast": hb.contrast, "offset": hb.offset });
+                    }
+                    if let Some(j) = &l.jitter {
+                        o["jitter"] = serde_json::to_value(j).unwrap_or(Value::Null);
+                    }
+                    if l.height_profile {
+                        o["height_profile"] = json!(true);
+                    }
+                    if l.height_gain != 1.0 {
+                        o["height_gain"] = json!(l.height_gain);
+                    }
                     if let Some(m) = &l.mask {
                         o["mask"] = json!({
                             "generator": m.generator.as_ref().map(|g| json!({
                                 "kind": g.kind.id(), "amount": g.amount, "softness": g.softness, "scale": g.noise_scale,
                                 "breakup": g.noise_amount, "seed": g.seed, "ao_influence": g.ao_influence, "curvature_weight": g.curvature_weight,
-                                "variant": g.variant
+                                "variant": g.variant, "extra": g.extra,
+                                "variant_name": g.kind.variant_names().get(g.variant as usize)
                             })),
                             "effects": m.effects.iter().map(|e| json!({ "generator": e.generator.kind.id(), "op": format!("{:?}", e.op).to_lowercase(), "amount": e.generator.amount, "scale": e.generator.noise_scale })).collect::<Vec<_>>(),
                             "parts": m.parts,
@@ -442,6 +457,7 @@ impl Session {
         if let Some(img) = a.get("image") {
             configure_image(app, i, img)?;
         }
+        configure_ground(&mut app.doc.layers[i], a)?;
         match a.get("mask") {
             None => {}
             Some(Value::Null) => app.doc.layers[i].mask = None,
@@ -456,6 +472,10 @@ impl Session {
                 app.doc.layers[i].mask = Some(Mask::new(res));
             }
             Some(m) => {
+                check_ground_variant(m)?;
+                for e in m.get("effects").and_then(Value::as_array).into_iter().flatten() {
+                    check_ground_variant(e)?;
+                }
                 let kind = match s(m, "generator") {
                     Some(k) => Some(GeneratorKind::from_id(k).ok_or_else(|| unknown_generator("mask.generator", k))?),
                     None => None,
@@ -1848,6 +1868,7 @@ fn apply_generator_fields(g: &mut Generator, m: &Value) {
         g.curvature_weight = x;
     }
     apply_weather_fields(g, m);
+    apply_ground_fields(g, m);
 }
 
 /// Named parameters of the weathering / pattern generators, mapped onto the
@@ -1882,6 +1903,125 @@ fn apply_weather_fields(g: &mut Generator, m: &Value) {
     if let Some(x) = f(m, "fill") {
         g.amount = x;
     }
+}
+
+/// Named parameters of the ground generators (cells, scatter, rock, blades,
+/// ripples), mapped onto the generic slots and `Generator::extra` (see
+/// `gen_ground.wgsl` and docs/agents/ground/NOTES.md). `variant` takes the
+/// generator's own names (`GeneratorKind::variant_names`); aliases such as
+/// "cobbles" or "leaves" pick theirs.
+fn apply_ground_fields(g: &mut Generator, m: &Value) {
+    if !g.kind.is_ground() {
+        return;
+    }
+    let names = g.kind.variant_names();
+    match m.get("variant") {
+        Some(Value::String(v)) => {
+            if let Some(i) = names.iter().position(|n| n.eq_ignore_ascii_case(v)) {
+                g.variant = i as u32;
+            }
+        }
+        Some(v) if v.is_u64() => g.variant = (v.as_u64().unwrap_or(0) as u32).min(names.len().saturating_sub(1) as u32),
+        _ => {
+            if let Some(i) = s(m, "generator").and_then(|a| g.kind.alias_variant(a)) {
+                g.variant = i;
+            }
+        }
+    }
+    if let Some(e) = m.get("extra").and_then(Value::as_array) {
+        for (k, x) in e.iter().take(4).enumerate() {
+            if let Some(x) = x.as_f64() {
+                g.extra[k] = x as f32;
+            }
+        }
+    }
+    // (arg, slot): 0 amount, 1 breakup, 2 ao slot, 3 curvature slot, 4.. extra[0..4]
+    let named: &[(&str, usize)] = match g.kind {
+        GeneratorKind::Cells => &[("warp", 1), ("randomness", 2), ("edge_width", 3), ("bevel", 3), ("stretch", 4), ("height_variation", 5), ("edge_noise", 6)],
+        GeneratorKind::Scatter => &[("density", 0), ("size_variation", 1), ("elongation", 2), ("size", 3), ("radius", 3), ("per_cell", 4), ("align", 5), ("irregularity", 6), ("height_variation", 7)],
+        GeneratorKind::Rock => &[("warp", 1), ("strata", 2), ("cracks", 3), ("bands", 4), ("streaks", 5), ("crack_scale", 6)],
+        GeneratorKind::Blades => &[("density", 0), ("clumping", 1), ("lean", 2), ("length", 3), ("width", 4), ("swirl", 5), ("level", 6)],
+        GeneratorKind::Ripples => &[("irregularity", 1), ("asymmetry", 2), ("defects", 3), ("angle", 4), ("sharpness", 5)],
+        _ => &[],
+    };
+    for (k, slot) in named {
+        if let Some(x) = f(m, k) {
+            match slot {
+                0 => g.amount = x,
+                1 => g.noise_amount = x,
+                2 => g.ao_influence = x,
+                3 => g.curvature_weight = x,
+                n => g.extra[n - 4] = x,
+            }
+        }
+    }
+}
+
+/// A ground generator's `variant` must be one of its names (or an index).
+fn check_ground_variant(m: &Value) -> Res<()> {
+    let Some(k) = s(m, "generator").and_then(GeneratorKind::from_id) else { return Ok(()) };
+    if let (true, Some(v)) = (k.is_ground(), s(m, "variant")) {
+        if !k.variant_names().iter().any(|n| n.eq_ignore_ascii_case(v)) {
+            return Err(format!("`variant` = \"{v}\": {} takes one of: {}", k.id(), k.variant_names().join(", ")));
+        }
+    }
+    Ok(())
+}
+
+/// Layer args `height_blend`, `jitter`, `height_profile` (fill layers).
+fn configure_ground(l: &mut Layer, a: &Value) -> Res<()> {
+    use pigment_core::ground::{HeightBlend, HeightBlendMode, InstanceJitter};
+    let fill = matches!(l.kind, LayerKind::Fill { .. });
+    let any = ["height_blend", "jitter", "height_profile", "height_gain"].iter().any(|k| a.get(*k).is_some_and(|v| !v.is_null()));
+    if any && !fill {
+        return Err("`height_blend`, `jitter`, `height_profile` and `height_gain` apply to fill layers only".into());
+    }
+    match a.get("height_blend") {
+        None => {}
+        Some(Value::Null) => l.height_blend = None,
+        Some(Value::String(m)) => {
+            let mode = HeightBlendMode::from_id(m).ok_or_else(|| format!("`height_blend` = \"{m}\": one of above (fill the lows), below (the tops)"))?;
+            l.height_blend = Some(HeightBlend { mode, ..l.height_blend.unwrap_or_default() });
+        }
+        Some(v) => {
+            let mut hb = l.height_blend.unwrap_or_default();
+            if let Some(m) = s(v, "mode") {
+                hb.mode = HeightBlendMode::from_id(m).ok_or_else(|| format!("`height_blend.mode` = \"{m}\": one of above (fill the lows), below (the tops)"))?;
+            }
+            if let Some(x) = f(v, "contrast") {
+                hb.contrast = x.max(0.0);
+            }
+            if let Some(x) = f(v, "offset") {
+                hb.offset = x;
+            }
+            l.height_blend = Some(hb);
+        }
+    }
+    match a.get("jitter") {
+        None => {}
+        Some(Value::Null) => l.jitter = None,
+        Some(v) if v.is_number() => l.jitter = Some(InstanceJitter { value: v.as_f64().unwrap_or(0.0) as f32, ..l.jitter.unwrap_or_default() }),
+        Some(v) => {
+            let mut j = l.jitter.unwrap_or_default();
+            for (k, slot) in [("value", &mut j.value), ("hue", &mut j.hue), ("saturation", &mut j.saturation), ("roughness", &mut j.roughness)] {
+                if let Some(x) = f(v, k) {
+                    *slot = x;
+                }
+            }
+            l.jitter = Some(j);
+        }
+    }
+    if let Some(x) = f(a, "height_gain") {
+        l.height_gain = x.clamp(0.0, 8.0);
+        l.channels.height.enabled = true;
+    }
+    if let Some(b) = a.get("height_profile").and_then(Value::as_bool) {
+        l.height_profile = b;
+        if b {
+            l.channels.height.enabled = true;
+        }
+    }
+    Ok(())
 }
 
 /// Session tests take turns on the shared GPU: each Session allocates a

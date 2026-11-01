@@ -36,3 +36,7 @@ scenes/trees/stencils/
 scenes/trees/textures/
 scenes/trees/projects/
 scenes/trees/impostors/
+
+# ground masks (regenerate: python tools/world/ground_masks.py)
+scenes/world/ground_masks*
+scenes/world/ground_spots.json

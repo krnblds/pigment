@@ -483,6 +483,8 @@ impl Panel for PropertiesPanel {
                 });
                 ds::section(ui, "Image fill");
                 ds::card(ui, |ui| image_fill_editor(ui, &mut l.image, &mut l.channels, &image_bases, &tile_sets, &mut app.ui.image_thumbs));
+                ds::section(ui, "Ground");
+                ds::card(ui, |ui| ground_editor(ui, l));
             }
             LayerKind::Paint { .. } => {
                 ds::card(ui, |ui| {
@@ -701,6 +703,11 @@ fn generator_blurb(k: GeneratorKind) -> &'static str {
         GeneratorKind::Moss => "Moss and grime on up-facing ledges and in crevices.",
         GeneratorKind::Tiles => "Bricks, square tiles or hexagons with per-cell jitter. Invert for mortar.",
         GeneratorKind::WindowGrid => "A grid of windows on walls; Amount = fraction lit. Use with an emissive fill.",
+        GeneratorKind::Cells => "Voronoi cells: domes, edges (cracks), a value per cell or bevelled plates (cobbles, flagstones, cracked mud).",
+        GeneratorKind::Scatter => "Scattered pebbles, flakes, leaves, twigs or shells, each with a rounded height. Amount = density.",
+        GeneratorKind::Rock => "Ridged, warped rock with strata ledges, block-joint cracks and downhill streaks.",
+        GeneratorKind::Blades => "A dense field of grass blades in clumps, leaning; Amount = density. Tips variant for dry tips.",
+        GeneratorKind::Ripples => "Wind ripples in sand: asymmetric crests that curve, fork and fade.",
     }
 }
 
@@ -713,7 +720,25 @@ fn weather_slider_labels(kind: GeneratorKind) -> SliderLabels {
         GeneratorKind::Moss => (Some("Clump scale"), Some("Growth in crevices"), 0.0..=1.5, Some("Growth in cavities"), 0.0..=2.0),
         GeneratorKind::Tiles => (Some("Rows per metre"), Some("Mortar width"), 0.0..=0.5, Some("Cell aspect (w/h)"), 0.25..=6.0),
         GeneratorKind::WindowGrid => (Some("Cell height (m)"), Some("Frame width"), 0.0..=0.45, Some("Cell aspect (w/h)"), 0.1..=4.0),
+        GeneratorKind::Cells => (Some("Cells per metre"), Some("Randomness"), 0.0..=1.0, Some("Edge width (m)"), 0.001..=0.25),
+        GeneratorKind::Scatter => (Some("Cells per metre"), Some("Elongation"), 1.0..=16.0, Some("Radius (cells)"), 0.05..=1.5),
+        GeneratorKind::Rock => (Some("Features per metre"), Some("Strata"), 0.0..=1.0, Some("Cracks"), 0.0..=2.0),
+        GeneratorKind::Blades => (Some("Blades per metre"), Some("Lean"), 0.0..=1.0, Some("Blade length (m)"), 0.005..=0.3),
+        GeneratorKind::Ripples => (Some("Ripples per metre"), Some("Asymmetry"), 0.0..=1.0, Some("Defects"), 0.0..=1.0),
         _ => (None, None, 0.0..=1.5, None, 0.0..=2.0),
+    }
+}
+
+/// Labels / ranges of the ground generators' extra shape parameters and of
+/// their breakup slot.
+fn ground_extra_labels(kind: GeneratorKind) -> (&'static str, [Option<(&'static str, std::ops::RangeInclusive<f32>)>; 4]) {
+    match kind {
+        GeneratorKind::Cells => ("Warp", [Some(("Stretch x", 0.2..=5.0)), Some(("Height variation", 0.0..=1.0)), Some(("Edge noise", 0.0..=1.5)), None]),
+        GeneratorKind::Scatter => ("Size variation", [Some(("Per cell", 1.0..=8.0)), Some(("Alignment", 0.0..=1.0)), Some(("Irregular outline", 0.0..=1.5)), Some(("Height variation", 0.0..=1.0))]),
+        GeneratorKind::Rock => ("Warp", [Some(("Strata bands /m", 0.2..=12.0)), Some(("Downhill streaks", 0.0..=1.5)), Some(("Crack cells /m", 0.1..=8.0)), None]),
+        GeneratorKind::Blades => ("Clumping", [Some(("Blade width (m)", 0.0005..=0.02)), Some(("Swirl", 0.0..=1.0)), Some(("Tips / clumps level", 0.0..=1.0)), None]),
+        GeneratorKind::Ripples => ("Irregularity", [Some(("Direction (deg)", -90.0..=90.0)), Some(("Crest sharpness", 0.0..=1.0)), None, None]),
+        _ => ("Breakup", [None, None, None, None]),
     }
 }
 
@@ -838,7 +863,24 @@ impl Panel for MaskPanel {
                         });
                     });
                 }
-                ds::slider_row(ui, "Breakup", &mut g.noise_amount, 0.0..=1.5, ds::Unit::Plain(2));
+                if g.kind.is_ground() {
+                    let names = g.kind.variant_names();
+                    ui.horizontal(|ui| {
+                        ds::prop_label(ui, "Output", Some("Which shape / output of the generator"));
+                        egui::ComboBox::from_id_salt("ground variant").selected_text(names[(g.variant as usize).min(names.len() - 1)]).show_ui(ui, |ui| {
+                            for (i, v) in names.iter().enumerate() {
+                                ui.selectable_value(&mut g.variant, i as u32, *v);
+                            }
+                        });
+                    });
+                    let (_, extra) = ground_extra_labels(g.kind);
+                    for (k, e) in extra.into_iter().enumerate() {
+                        if let Some((label, range)) = e {
+                            ds::slider_row(ui, label, &mut g.extra[k], range, ds::Unit::Plain(3));
+                        }
+                    }
+                }
+                ds::slider_row(ui, ground_extra_labels(g.kind).0, &mut g.noise_amount, 0.0..=1.5, ds::Unit::Plain(2));
                 if !pattern && shape_label.is_none() {
                     ds::slider_row(ui, "Curvature weight", &mut g.curvature_weight, 0.0..=2.0, ds::Unit::Plain(2));
                 }
@@ -921,5 +963,40 @@ impl Panel for MaskPanel {
             app.paint_mask = false;
         }
         let _ = icon::SM;
+    }
+}
+
+/// Ground options of a fill layer (`pigment_core::ground`): height follows
+/// the generator's shape, height blend against the stack, per-instance jitter.
+fn ground_editor(ui: &mut egui::Ui, l: &mut Layer) {
+    use pigment_core::ground::{HeightBlend, HeightBlendMode, InstanceJitter};
+    ds::toggle(ui, &mut l.height_profile, "Height follows the generator shape")
+        .on_hover_text("A dome per pebble, a blade's rise to its tip... instead of a flat plateau under the mask");
+    ds::slider_row(ui, "Height gain", &mut l.height_gain, 0.0..=8.0, ds::Unit::Plain(2));
+    let mut on = l.height_blend.is_some();
+    if ds::toggle(ui, &mut on, "Blend by height").on_hover_text("Show only where this layer's height is above (fills the lows) or below (the tops) the layers under it").changed() {
+        l.height_blend = on.then(HeightBlend::default);
+    }
+    if let Some(hb) = l.height_blend.as_mut() {
+        ui.horizontal(|ui| {
+            ds::prop_label(ui, "Where", None);
+            egui::ComboBox::from_id_salt("height blend mode").selected_text(hb.mode.label()).show_ui(ui, |ui| {
+                for m in HeightBlendMode::ALL {
+                    ui.selectable_value(&mut hb.mode, m, m.label());
+                }
+            });
+        });
+        ds::slider_row(ui, "Level offset", &mut hb.offset, -1.0..=1.0, ds::Unit::Plain(2));
+        ds::slider_row(ui, "Contrast", &mut hb.contrast, 0.0..=0.5, ds::Unit::Plain(3));
+    }
+    let mut jon = l.jitter.is_some();
+    if ds::toggle(ui, &mut jon, "Per-instance variation").on_hover_text("Each pebble, cell, blade or rock block gets its own tone (needs a ground generator mask)").changed() {
+        l.jitter = jon.then(|| InstanceJitter { value: 0.2, hue: 0.02, saturation: 0.1, roughness: 0.1 });
+    }
+    if let Some(j) = l.jitter.as_mut() {
+        ds::slider_row(ui, "Value", &mut j.value, 0.0..=1.0, ds::Unit::Plain(2));
+        ds::slider_row(ui, "Hue", &mut j.hue, 0.0..=0.25, ds::Unit::Plain(3));
+        ds::slider_row(ui, "Saturation", &mut j.saturation, 0.0..=1.0, ds::Unit::Plain(2));
+        ds::slider_row(ui, "Roughness", &mut j.roughness, 0.0..=0.5, ds::Unit::Plain(2));
     }
 }

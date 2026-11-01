@@ -34,6 +34,8 @@ mod tour;
 mod image_fill_tests;
 #[cfg(test)]
 mod tile_tests;
+#[cfg(test)]
+mod ground_tests;
 mod ui;
 pub mod design;
 pub mod dock;

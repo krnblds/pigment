@@ -14,6 +14,7 @@ pub mod export;
 pub mod folders;
 pub mod foliage;
 pub mod foliage_set;
+pub mod ground;
 pub mod image_fill;
 pub mod interior;
 pub mod mesh;

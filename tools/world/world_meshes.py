@@ -122,7 +122,17 @@ def tex_dir(root, name):
 # ---------------------------------------------------------------- terrain / water
 
 
-def terrain_material(root):
+def terrain_material(root, legacy=False):
+    """The nine Pigment ground sets (tools/ground_textures.py) blended by the
+    world ground masks, slope and height (tools/world/ground_material.py), when
+    they are exported; else the older four tiles below."""
+    import ground_material as GM
+    if not legacy and not os.environ.get("GROUND_LEGACY") and GM.available(root):
+        return GM.terrain_material(root)
+    return terrain_material_legacy(root)
+
+
+def terrain_material_legacy(root):
     """Rock / grass / dirt / sand Pigment tiles blended by slope, height and
     noise; city lots ('urban' attribute) get the road concrete and paving."""
     m, nt, bsdf = _nodes("WorldTerrain")
