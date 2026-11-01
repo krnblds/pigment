@@ -316,6 +316,12 @@ func open(g: Node3D) -> void:
 		cfg.variant = String(main.car.get_meta("livery", cfg.variant))
 	entry_cfg = cfg.duplicate(true)
 	_park(main.car)
+	if not main.car.has_meta("garage_cfg"):
+		# a car the garage did not build (the legacy hero export, --vehicle): rebuild it from the fleet glb so
+		# the livery tables, wheels and body shell are the ones the customisation works on
+		inside = true
+		_rebuild()
+		inside = false
 	cam.current = true
 	yaw = 0.7
 	pitch = 0.18

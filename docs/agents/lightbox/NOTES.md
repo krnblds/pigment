@@ -98,3 +98,125 @@ The hero keeps the original layout. The top 900 px are `pigment_ui_car.png`. A 7
 - **Framing.** Framing uses the vertices of the visible meshes, so alpha-0 hidden parts still count, such as the Tsubame's light bar in civilian liveries. Wheels count too.
 - **Rigs.** The light rigs are tuned for assets that face -Y (the repo's glTF +Z front). Other assets still frame correctly, but presets like `front34` then show a different side.
 - **GPU sharing.** Livery sheets use 64 samples per 480x300 cell, enough after denoise at the sheet's final 200x125. Raise `--samples` for print.
+
+## Godot showroom
+
+The game has drive-in garages: three garages in the open world that you drive into to customise the car. The original showroom is still there, as a shortcut. Code: `game/scripts/garage/`, the pause menu in `game/scripts/pause_menu.gd`, lot data in `game/data/garages.json`.
+
+![exterior](showroom_exterior.png)
+![wide](showroom_wide.png)
+![custom](showroom_custom.png)
+![livery](showroom_livery.png)
+![menu](showroom_menu.png)
+
+### Garages in the city
+- `yoimachi_mods`: **Yoimachi Mod Shop** (magenta and cyan). It is on road r40, near the spawn, at Godot (-654, 4.4, 82).
+- `hoshikawa_downtown`: **Hoshikawa Motors** dealership downtown (cyan and white). It is on road r95, at (-131, 4.8, 219).
+- `port_chop`: **Minato Chop Shop** in the port, an underground chop shop (orange and red, with hazard posts). It is on road r195, at (1385, 3.5, 966).
+- `game/tools/pick_garages.py` picks each lot from `assets/world/world_layout.json` (Godot coordinates and mesh AABBs) and `world.json` (road widths, heightfield). A lot sits behind the sidewalk of a straight, flat street or avenue, at least 30 m from junctions. Another road, a lamp, pole, signal, tower, warehouse, bridge or crane must not touch the lot, and the terrain must not rise into the floor.
+- The city is built wall to wall, so a lot may replace ordinary buildings with their footing, shop signs, alley lights and street clutter. These are listed in `remove` and `remove_lights`. `Garage.prepare()` hands them to the town loader before `load_town`, through the new `skip_instances` and `skip_lights`.
+- Re-run the picker after the world is regenerated. The world export and `tools/world/` were not changed.
+- `garage_exterior.gd` builds each garage, with collision:
+  - foundation, walls and roof;
+  - an apron over the sidewalk gap;
+  - a lit bay behind a half-rolled roller door, with an LED frame and lamps over the apron;
+  - a neon **GARAGE** sign plus the shop name on the facade, and a vertical blade sign at the corner that reads along the road;
+  - a bobbing chevron marker, and an `Area3D` trigger inside the bay.
+- Within 70 m the HUD shows "◆ <shop> — 42 m  drive in through the lit roller door". A screen-space "▼ GARAGE / n m" tag stays on the door within 400 m.
+- Parked traffic cars spawned on a driveway are removed after traffic setup.
+
+### Interior (`garage_interior.gd`)
+- It is a dark lightbox, built in code at (6000, 800, 6000), outside the world, with its own `Environment`.
+- The set:
+  - a glossy floor that sweeps through a 3.6 m cove into the back wall;
+  - SSR and a box-projected `ReflectionProbe`;
+  - neon strips: the cove edge, back-wall verticals, floor corners and ceiling bars;
+  - a softbox panel over the turntable, with a soft-shadow (PCSS) key spot;
+  - magenta and cyan fills, a rim spot and cove uplights;
+  - a light volumetric haze;
+  - a turntable lift with a neon ring and ticks;
+  - pegboard tool walls with wall washes, red tool chests, tyre stacks and workbenches;
+  - the roller door you came through;
+  - the shop name in neon on the back wall.
+- The interior lights have `light_specular = 0`. Highlights on the paint come from the emissive panel and strips, through SSR and the probe. Point-light specular showed up on the mirror floor as big blobs.
+- While you are inside:
+  - the world environment, moon, rain, HUD and traffic are switched off, and restored when you leave;
+  - the player car is frozen on the turntable, with collision and processing off.
+
+### Controls
+| Input | Action |
+|---|---|
+| drive into a garage door | Enter (with a fade). |
+| ENTER | Drive out with the changes; they are saved. You are placed on the apron outside the door, facing the road. |
+| ESC (inside) | Leave without the changes. |
+| **V** | Open the garage anywhere as a showroom. Leaving puts the car back where it was. V was free; G is GI. |
+| **ESC** / pad Start | Pause menu: RESUME, GARAGE / SHOWROOM, QUIT. ESC used to quit straight away. |
+| W/S or Up/Down | Select a row. |
+| A/D or Left/Right, or the ◀ ▶ buttons | Change the selected row. |
+| TAB / Shift+TAB, PgUp / PgDn | Next / previous vehicle. |
+| `[` `]` | Previous / next livery. |
+| mouse drag, Q/E | Orbit. |
+| mouse wheel, Z/X | Zoom. |
+| SPACE | Turntable on / off. |
+| P, or click the plate | Edit the plate. |
+| colour swatch next to PAINT / UNDERGLOW | Open a colour picker. |
+
+The rows are: vehicle (every fleet vehicle in `assets/vehicles/index.json`), livery (every variant), paint (off or a 12-colour palette, plus a custom picker), finish (stock / pearl / chrome / matte), window tint, underglow, rims, rim colour, ride height, camber, front lip, rear wing, light bar, engine, brakes, tyres, suspension and plate. The right panel shows the specs from the real (not "easy") physics data: mass, dimensions, wheelbase, drive and gearbox, power at rpm, torque at rpm, top speed (gear, drag or limiter), braking g, tyre grip and tyre size. Tuned values appear as `stock → tuned`.
+
+### How it works
+- **Vehicle swap at run time.**
+  - `garage.build_car()` does what `--vehicle=<id>` does: `car.gd` `setup(glb, json, id)`. The physics come from `data/vehicles/<id>.json` and the class defaults.
+  - `install_car()` makes the new car `main.car` and rewires the chase camera, HUD and tach, impact and bump shake, the town's `collision_focus`, the traffic hero RID and collision mask, and the garages' player.
+  - The old car is freed. The legacy hero car is rebuilt from its fleet glb the first time you enter.
+- **Livery.**
+  - It uses the fleet_variants swap: the `gltf_variants` meta from `addons/fleet_variants/vehicle_variants.gd`. Without that, the `<id>_<variant>` materials come from a runtime glTF parse.
+  - The material goes onto the car's mesh copies by node name (`fleet.gd`).
+- **Paint** (`car_paint.gdshader`).
+  - It replaces the body material, with every texture and parameter copied from the livery's `StandardMaterial3D`, including the glTF emission multiply.
+  - Texels close to the livery's paint colour are recoloured and keep their shading, so decals, wear, trim and glass stay.
+  - The paint colour is found once per livery. The body mesh is binned into its outer shell: the highest up-facing triangle per 8 cm cell, and the outermost side-facing triangle per cell. The albedo is sampled under that shell, and the most common colour that shows on both the top and the sides wins.
+  - The finish changes roughness, metallic and clearcoat inside the mask; pearl also adds a grazing-angle sheen. Window tint darkens the see-through part of the atlas.
+- **Wheels.** The `Wheel_*` meshes come from another vehicle's glb, scaled to this tyre's radius and width. Rim colour uses the same shader in "bright metal" mask mode, so the tyres stay black. Camber adds a `Camber` node between `car.gd`'s steering pivot and its spinning meshes.
+- **Physics.** Changes are applied relative to the values the car was built with (meta `tune_base`), so they never compound:
+  - engine torque curve and peak ×1 / 1.12 / 1.25 / 1.4 (the torque look-up table is reset);
+  - brake torque ×1 / 1.12 / 1.25 / 1.4;
+  - tyre μ ×1 / 1.05 / 1.10 / 1.16, plus 0.8 % per degree of camber;
+  - springs and anti-roll bars ×1 / 1.12 / 1.25 / 1.4, dampers ×√ of that;
+  - ride height: −2 / −4 / −6 cm, which moves the hubs up in the body.
+- **Body kit.** The lip, wing and light bar are made from boxes sized from the body's vertices: nose height, rear-deck height and roof. The light-bar lenses flash with `car.gd`'s L light bar. Plates are `Label3D`s on plates at both ends.
+- **Save.**
+  - Leaving with ENTER writes `user://garage.json` (or the `--garage-save=<path>` file).
+  - On a normal launch, `garage.setup()` builds the player car from the save: "garage: loaded the saved car ...". This was tested with a hand-written save.
+  - Automation flags (`--drive-test`, `--traffic-test`, `--autoshot`, `--vehicle`, ...) and `--no-garage-save` ignore the save.
+
+### Flags and tests
+- `--showroom-test` is headless, and `--fixed-fps 120` makes it faster. It prints `SHOWROOMTEST {...}` and `SHOWROOMTEST PASS/FAIL`; exit code 0 means pass. It takes about 20 s of game time.
+  - It opens the garage and cycles **6 vehicles and 45 liveries**. For each, it asserts that the car was rebuilt with that vehicle's physics id, parked on the turntable, and that the Body material is the livery's.
+  - It applies all **11 categories** and asserts each effect:
+    - paint: shader params, plus the livery textures kept;
+    - finish and tint params;
+    - underglow lights and their colour;
+    - a rim mesh from another vehicle, and the rim shader;
+    - ride height on `w.rest`, and the camber node;
+    - the lip, wing and bar nodes;
+    - performance factors on `P.engine.peak_torque`, `P.brakes.max_torque`, `w.mu` and `w.k`, which stay put when applied again;
+    - the plate text;
+    - that the save round-trips, and that a car built from the save matches.
+  - It drives **every vehicle about 8–15 m** in the city after driving out.
+  - It **drives into all three garages** through the door: the trigger must open the garage. After that, the car must stand outside the door, facing the road, and drive off.
+- `--showroom-shot=<dir> [--shots=ext,wide,custom1,custom2,menu] [--shot-garage=<i>]` opens a short-lived window, saves 1600-px PNGs and quits.
+
+Results on this branch:
+- `--showroom-test`: PASS (6 vehicles, 45 liveries, 11 categories, 6 drives, 3 garage entries).
+- `--drive-test`: all checks pass.
+- `--traffic-test=60`: PASS.
+- `--road-clear-test`: `body_hits` `{}`, so no garage geometry is on any lane.
+
+### Limits
+- Garages exist on the open-world map only. The small `--map=town` has no lots in `garages.json`, but V still opens the showroom there.
+- The paint mask is a colour match. Liveries whose decals share the paint colour get recoloured with it, and two-tone liveries recolour only the main tone.
+- Rim swaps scale another car's wheel. A narrow donor on a wide car looks stretched.
+- The kit parts are simple boxes, not modelled parts. The lip is placed from the body's lowest nose vertex, and can float or clip on unusual bumpers.
+- Camber is mostly visual: it gives 0.8 % more μ per degree, and the tyre model has no camber thrust.
+- Calipers do not follow camber.
+- Inside the garage, traffic is paused (its process mode is disabled). Cars resume where they were.
