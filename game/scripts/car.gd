@@ -1258,6 +1258,8 @@ func needs_reset() -> bool:
 
 
 func place(xf: Transform3D) -> void:
+	if has_node("Damage"):                 # a teleport / reset starts whole (scripts/damage/)
+		get_node("Damage").reset()
 	global_transform = xf
 	linear_velocity = Vector3.ZERO
 	angular_velocity = Vector3.ZERO

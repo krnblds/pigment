@@ -141,7 +141,7 @@ func dent(car_xf: Transform3D, pl: Vector3, dl: Vector3, radius: float, depth: f
 								_f(p + Vector3(0, h, 0), c, radius, depth) - f,
 								_f(p + Vector3(0, 0, h), c, radius, depth) - f) / h
 							var n := norms[i]
-							var nn := n - grad * d.dot(n)
+							var nn := n - grad * d.dot(n) * 0.6
 							if nn.length_squared() > 1e-8:
 								norms[i] = nn.normalized()
 						moved += 1

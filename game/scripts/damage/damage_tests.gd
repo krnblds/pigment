@@ -415,7 +415,7 @@ func _shots(dir: String) -> void:
 		main.stream_now(lp)
 		car.place(xf)
 		_set_inputs(0.0, 1.0, 0.0, true)
-		_cam(lp + xf.basis.x * 9.0 - xf.basis.z * 3.0 + Vector3.UP * 2.4, lp + Vector3.UP * 2.0, 55.0)
+		_cam(lp - xf.basis.z * 11.0 + xf.basis.x * 6.0 + Vector3.UP * 2.6, lp + Vector3.UP * 2.2 + xf.basis.z * 1.0, 55.0)
 		await _wait(5.0)                        # streaming, shaders, SDFGI
 		await _place(xf, xf.basis.z * 55.0 / 3.6)
 		var t := 0.0
@@ -425,12 +425,12 @@ func _shots(dir: String) -> void:
 			await _tick()
 			t += _dt()
 			if d.state[id] == 1 and not shot:
-				await _wait(0.42)
+				await _wait(0.3)
 				await _shot(dir, "04_lamp_post_sparks")
 				shot = true
 		if shot:
 			await _wait(2.0)
-			_cam(lp + xf.basis.x * 7.0 + xf.basis.z * 5.0 + Vector3.UP * 3.0, lp + xf.basis.z * 3.0 + Vector3.UP * 0.5, 55.0)
+			_cam(lp - xf.basis.z * 6.0 + xf.basis.x * 5.0 + Vector3.UP * 3.5, lp + xf.basis.z * 2.5 + Vector3.UP * 0.3, 55.0)
 			await _wait(0.6)
 			await _shot(dir, "04b_lamp_post_down")
 			done_lamp = true
@@ -455,7 +455,7 @@ func _shots(dir: String) -> void:
 	await _place(start, rd * 62.0 / 3.6)
 	var tt := 0.0
 	while tt < 2.0:
-		_set_inputs(0.3 if tt < 0.5 else 0.0, 0.0 if tt < 0.9 else 0.8, 0.0)
+		_set_inputs(0.3 if tt < 0.5 else 0.0, 0.0, 0.0, tt > 0.9)
 		await _tick()
 		tt += _dt()
 	await _wait(1.5)
@@ -480,7 +480,7 @@ func _shots(dir: String) -> void:
 	await _place(side_xf, cx * 32.0 / 3.6)
 	tt = 0.0
 	while tt < 1.6:
-		_set_inputs(0.0, 0.4, 0.0)
+		_set_inputs(0.0, 0.0, 0.0, true)
 		await _tick()
 		tt += _dt()
 	# a second slower nudge so a door comes loose if the first only dented it
@@ -533,15 +533,15 @@ func _shots(dir: String) -> void:
 		await _place(xf, xf.basis.z * 42.0 / 3.6)
 		var t := 0.0
 		while t < 2.0:
-			_set_inputs(0.2 if t < 0.4 else 0.0, 0.0 if t < 0.6 else 0.9, 0.0)
+			_set_inputs(0.2 if t < 0.4 else 0.0, 0.0, 0.0, t > 0.6)
 			await _tick()
 			t += _dt()
 		if d.state[id] == 1:
 			await _wait(9.0)
-			_cam(hp + xf.basis.x * 9.0 + xf.basis.z * 6.0 + Vector3.UP * 2.2, hp + Vector3.UP * 4.0, 60.0)
+			_cam(hp - xf.basis.z * 12.0 + xf.basis.x * 5.0 + Vector3.UP * 2.0, hp + Vector3.UP * 4.0, 60.0)
 			await _wait(1.5)
 			await _shot(dir, "05_hydrant_geyser_rain")
-			_cam(hp + xf.basis.z * 4.0 - xf.basis.x * 4.0 + Vector3.UP * 1.4, hp + Vector3.UP * 2.5, 70.0)
+			_cam(hp - xf.basis.z * 5.0 - xf.basis.x * 3.0 + Vector3.UP * 1.3, hp + Vector3.UP * 2.8, 70.0)
 			await _wait(0.8)
 			await _shot(dir, "05b_hydrant_geyser_close")
 			break

@@ -264,7 +264,7 @@ func apply_impact(pw: Vector3, dir: Vector3, j: float, other: Object = null) -> 
 		var depth := clampf(0.0095 * e, 0.0, 0.21)
 		var t0 := Time.get_ticks_usec()
 		for df in deformers:
-			if df.mi.is_visible_in_tree() and _attached(df.mi):
+			if is_instance_valid(df.mi) and df.mi.is_visible_in_tree() and _attached(df.mi):
 				var mv: int = df.dent(body.global_transform, pl, dl, radius, depth)
 				stats.deformed += mv
 				if _debug:
@@ -413,13 +413,17 @@ func _loosen(d: Dictionary, pl: Vector3, _dl: Vector3) -> void:
 	stats.loose += 1
 	var xf := pv.global_transform
 	var rb: RigidBody3D = world.debris.spawn([pv], _shapes_for(d), xf, d.mass,
-		{"vel": body.linear_velocity, "angvel": body.angular_velocity, "kind": "metal", "pinned": true, "name": "Panel_" + d.node})
+		{"vel": body.linear_velocity, "angvel": body.angular_velocity, "kind": "metal", "pinned": true, "name": "Panel_" + d.node,
+		"on_free": _reclaim.bind(d.node)})
 	pv.transform = Transform3D()      # the pivot node now sits at the body's origin
 	rb.add_collision_exception_with(body)
 	body.add_collision_exception_with(rb)
 	var jt := HingeJoint3D.new()
 	jt.name = "Hinge_" + d.node
 	world.debris.add_child(jt)
+	if d.kind == "door":
+		# a sprung hinge sags: the axis leans out at the top, so gravity swings the door open
+		axis_local = Vector3(0.24 * signf(d.pivot_pos.x), 1.0, 0.0).normalized()
 	var ax_w: Vector3 = (body.global_basis * axis_local).normalized()
 	var up := Vector3.UP if absf(ax_w.dot(Vector3.UP)) < 0.9 else Vector3.RIGHT
 	var x := up.cross(ax_w).normalized()
@@ -462,12 +466,31 @@ func _detach(d: Dictionary, dl: Vector3, j: float) -> void:
 	var kick := body.global_basis * (-dl) * clampf(j / 2500.0, 0.5, 6.0) + Vector3.UP * randf_range(0.5, 2.0)
 	var rb: RigidBody3D = world.debris.spawn([pv], _shapes_for(d), xf, d.mass,
 		{"vel": body.linear_velocity * 0.85 + kick, "angvel": Vector3(randf_range(-4, 4), randf_range(-4, 4), randf_range(-4, 4)),
-		"kind": "metal", "life": 150.0, "name": "Panel_" + d.node})
+		"kind": "metal", "life": 150.0, "name": "Panel_" + d.node, "on_free": _reclaim.bind(d.node)})
 	pv.transform = Transform3D()
 	rb.add_collision_exception_with(body)
 	d.rb = rb
 	if world.audio:
 		world.audio.play("plastic_clatter" if d.kind in ["mirror", "bumper"] else "metal_crunch_light", xf.origin, 0.7)
+
+
+## The debris pool lets a fallen panel go (far away / old): its pivot comes back to the car, hidden,
+## so reset() can put it on again (the pool frees what is left in the body).
+func _reclaim(rb: RigidBody3D, nm: String) -> void:
+	if not panels.has(nm) or not is_instance_valid(body):
+		return
+	var d: Dictionary = panels[nm]
+	var pv: Node3D = d.pivot
+	if is_instance_valid(pv) and pv.get_parent() == rb:
+		rb.remove_child(pv)
+		_root.add_child(pv)
+		pv.visible = false
+		d["hidden_pivot"] = true
+	if d.rb == rb:
+		d.rb = null
+	if is_instance_valid(d.joint):
+		d.joint.queue_free()
+		d.joint = null
 
 
 func _crack(d: Dictionary, pl: Vector3) -> void:
@@ -612,6 +635,8 @@ func reset() -> void:
 						(c as Node3D).position -= shift
 				d.pivot_pos = pvp[0]
 		pv.transform = Transform3D(Basis(), d.pivot_pos) if par == _root else Transform3D(Basis(), d.pivot_pos - panels[d.parent].pivot_pos)
+		pv.visible = true
+		d.erase("hidden_pivot")
 		d.health = 100.0
 		d.state = "ok"
 		var mi: MeshInstance3D = d.mi

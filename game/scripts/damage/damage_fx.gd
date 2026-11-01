@@ -63,8 +63,8 @@ func _make(kind: String) -> GPUParticles3D:
 	pm.direction = Vector3.UP
 	match kind:
 		"sparks":
-			p.amount = 48
-			p.lifetime = 0.55
+			p.amount = 120
+			p.lifetime = 0.7
 			p.randomness = 0.6
 			pm.spread = 70.0
 			pm.initial_velocity_min = 3.0
@@ -76,7 +76,7 @@ func _make(kind: String) -> GPUParticles3D:
 			pm.scale_min = 0.6
 			pm.scale_max = 1.3
 			pm.color_ramp = _ramp([Color(5.0, 4.2, 2.6), Color(4.0, 1.6, 0.35), Color(1.2, 0.25, 0.05, 0.0)])
-			p.draw_pass_1 = _quad(Vector2(0.018, 0.16), _mat_add(_streak, true))
+			p.draw_pass_1 = _quad(Vector2(0.03, 0.26), _mat_add(_streak, true))
 		"glass":
 			p.amount = 70
 			p.lifetime = 1.4
