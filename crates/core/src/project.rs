@@ -39,6 +39,12 @@ pub struct LayerPixels {
     pub opacity: Vec<u8>,
     /// RG8: transmission + coverage.
     pub transmission: Vec<u8>,
+    /// RG8: clearcoat weight + coverage.
+    pub coat: Vec<u8>,
+    /// RG8: clearcoat roughness + coverage.
+    pub coat_roughness: Vec<u8>,
+    /// RG8: metallic flake + coverage.
+    pub flake: Vec<u8>,
 }
 
 impl LayerPixels {
@@ -47,7 +53,7 @@ impl LayerPixels {
         // height value slots hold the neutral code (32768 = 0.0) so an empty layer
         // round-trips exactly through the GPU's float format
         let height = (0..n).flat_map(|_| [32768u16, 0]).collect();
-        Self { size, color: vec![0; n * 4], roughness: vec![0; n * 2], metallic: vec![0; n * 2], height, normal: vec![0; n * 4], emissive: vec![0; n * 4], opacity: vec![0; n * 2], transmission: vec![0; n * 2] }
+        Self { size, color: vec![0; n * 4], roughness: vec![0; n * 2], metallic: vec![0; n * 2], height, normal: vec![0; n * 4], emissive: vec![0; n * 4], opacity: vec![0; n * 2], transmission: vec![0; n * 2], coat: vec![0; n * 2], coat_roughness: vec![0; n * 2], flake: vec![0; n * 2] }
     }
 }
 
@@ -110,6 +116,9 @@ pub fn write_layer(dir: &Path, res: ResId, px: &LayerPixels) -> Result<()> {
             sc.spawn(|| put("emissive.png", px.emissive.chunks_exact(4).any(|p| p[3] != 0), bytemuck::cast_slice(&px.emissive), C::Rgba16)),
             sc.spawn(|| put("opacity.png", any_coverage_rg8(&px.opacity), &px.opacity, C::La8)),
             sc.spawn(|| put("transmission.png", any_coverage_rg8(&px.transmission), &px.transmission, C::La8)),
+            sc.spawn(|| put("coat.png", any_coverage_rg8(&px.coat), &px.coat, C::La8)),
+            sc.spawn(|| put("coat_roughness.png", any_coverage_rg8(&px.coat_roughness), &px.coat_roughness, C::La8)),
+            sc.spawn(|| put("flake.png", any_coverage_rg8(&px.flake), &px.flake, C::La8)),
         ];
         jobs.into_iter().try_for_each(|j| j.join().unwrap_or_else(|_| Err(anyhow::anyhow!("layer save thread panicked"))))
     })
@@ -155,6 +164,15 @@ pub fn read_layer(dir: &Path, res: ResId, size: u32) -> Result<LayerPixels> {
     }
     if let Some(i) = open_resized(&d.join("transmission.png"), size)? {
         px.transmission = i.to_luma_alpha8().into_raw();
+    }
+    if let Some(i) = open_resized(&d.join("coat.png"), size)? {
+        px.coat = i.to_luma_alpha8().into_raw();
+    }
+    if let Some(i) = open_resized(&d.join("coat_roughness.png"), size)? {
+        px.coat_roughness = i.to_luma_alpha8().into_raw();
+    }
+    if let Some(i) = open_resized(&d.join("flake.png"), size)? {
+        px.flake = i.to_luma_alpha8().into_raw();
     }
     Ok(px)
 }

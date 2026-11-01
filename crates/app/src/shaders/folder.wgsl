@@ -36,14 +36,18 @@ fn fs_folder(f: FullOut) -> Acc {
     let br4 = textureLoad(base_rmh, t, 0);     // w = transmission
     let bc = bc4.rgb;
     let br = br4.xyz;
-    let bn = textureLoad(base_normal, t, 0).xyz;
-    let be = textureLoad(base_emissive, t, 0).rgb;
+    let bn4 = textureLoad(base_normal, t, 0);    // packed normal xy, coat, flake
+    let bn = acc_n(bn4);
+    let be4 = textureLoad(base_emissive, t, 0);  // w = coat roughness
+    let be = be4.rgb;
     let cc4 = textureLoad(acc_color, t, 0);
     let cr4 = textureLoad(acc_rmh, t, 0);
     let cc = cc4.rgb;
     let cr = cr4.xyz;
-    let cn = textureLoad(acc_normal, t, 0).xyz;
-    let ce = textureLoad(acc_emissive, t, 0).rgb;
+    let cn4 = textureLoad(acc_normal, t, 0);
+    let cn = acc_n(cn4);
+    let ce4 = textureLoad(acc_emissive, t, 0);
+    let ce = ce4.rgb;
 
     let mask = folder_mask(t);
     let a = lp.opacity * mask;
@@ -51,6 +55,9 @@ fn fs_folder(f: FullOut) -> Acc {
     let ae = lp.opacity2.y * mask;
     let ao = lp.opacity2.z * mask;
     let at = lp.opacity2.w * mask;
+    let acw = lp.coat_opacity.x * mask;
+    let acr = lp.coat_opacity.y * mask;
+    let afk = lp.coat_opacity.z * mask;
 
     var o: Acc;
     o.color = vec4<f32>(max(blend_rgb(lp.blend.x, bc, cc, a.x), vec3<f32>(0.0)), clamp(blend_scalar(lp.blend2.z, bc4.a, cc4.a, ao), 0.0, 1.0));
@@ -59,7 +66,10 @@ fn fs_folder(f: FullOut) -> Acc {
         clamp(blend_scalar(lp.blend.z, br.y, cr.y, a.z), 0.0, 1.0),
         clamp(blend_scalar(lp.blend.w, br.z, cr.z, a.w), -8.0, 8.0),
         clamp(blend_scalar(lp.blend2.w, br4.w, cr4.w, at), 0.0, 1.0));
-    o.normal = vec4<f32>(normalize(mix(bn, cn, an) + vec3<f32>(0.0, 0.0, 1e-5)), 1.0);
-    o.emissive = vec4<f32>(max(blend_rgb(lp.blend2.y, be, ce, ae), vec3<f32>(0.0)), 1.0);
+    o.normal = pack_n(normalize(mix(bn, cn, an) + vec3<f32>(0.0, 0.0, 1e-5)),
+        clamp(blend_scalar(lp.coat_blend.x, bn4.z, cn4.z, acw), 0.0, 1.0),
+        clamp(blend_scalar(lp.coat_blend.z, bn4.w, cn4.w, afk), 0.0, 1.0));
+    o.emissive = vec4<f32>(max(blend_rgb(lp.blend2.y, be, ce, ae), vec3<f32>(0.0)),
+        clamp(blend_scalar(lp.coat_blend.y, be4.w, ce4.w, acr), 0.0, 1.0));
     return o;
 }

@@ -15,6 +15,9 @@ Pigment's "separate" export preset writes, for base name N:
     N_Emissive.png         sRGB RGB, black = no emission (optional)
     N_Opacity.png          L8 alpha, 255 = solid, 0 = cut away (only when not solid)
     N_Transmission.png     L8, 255 = clear glass (only when the material has any)
+    N_Coat.png             L8 clearcoat weight (only when the material has a coat)
+    N_CoatRoughness.png    L8 clearcoat roughness (with the coat)
+    N_Flake.png            L8 metallic flake amount (only when used)
     material.json          sidecar: maps, emissive_scale, normal convention, resolution, project
 Other presets (unreal/unity/godot: packed ORM, DirectX normals, opacity in
 the base colour's alpha...) work too.
@@ -23,6 +26,11 @@ Opacity drives the Principled BSDF's Alpha (cut-outs, partly see-through
 glass) and Transmission its Transmission Weight (refracting glass). The
 material is then switched to a see-through render method for EEVEE; Cycles
 needs no settings (`configure_see_through`).
+
+Coat drives Coat Weight and CoatRoughness Coat Roughness (image nodes linked
+directly, so Blender's glTF exporter writes KHR_materials_clearcoat). Flake
+jitters the base normal per 0.4 mm Voronoi cell (`flake=False` skips it,
+e.g. before a glTF export, which can't carry a procedural normal).
 
 Usage inside Blender:
     exec(open(r".../tools/blender_pigment.py").read())
@@ -47,6 +55,9 @@ PIGMENT_MAPS = {
     "Emissive": ("_Emissive.png", True),
     "Opacity": ("_Opacity.png", False),
     "Transmission": ("_Transmission.png", False),
+    "Coat": ("_Coat.png", False),
+    "CoatRoughness": ("_CoatRoughness.png", False),
+    "Flake": ("_Flake.png", False),
 }
 
 
@@ -92,7 +103,7 @@ pigment_core = _load_core()
 configure_see_through = pigment_core.configure_see_through
 
 
-def apply_pigment_material(obj, folder, name, emission_strength=None, use_height=False, height_scale=0.01):
+def apply_pigment_material(obj, folder, name, emission_strength=None, use_height=False, height_scale=0.01, flake=True):
     """Build material "Pigment_<name>" from Pigment's exported maps and assign it to obj.
 
     Replaces all of obj's material slots with the new material (rebuilt in place
@@ -108,6 +119,7 @@ def apply_pigment_material(obj, folder, name, emission_strength=None, use_height
         "height_mode": "BUMP" if use_height else "NONE",
         "bump_distance": float(height_scale),
         "emission_override": 0.0,
+        "flake_normal": bool(flake),
     }
     if emission_strength is not None:
         opts["emission_override"] = float(emission_strength)

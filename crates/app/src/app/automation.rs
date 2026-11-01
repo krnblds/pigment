@@ -180,7 +180,8 @@ impl Session {
             "materials": material_presets().into_iter().map(|(n, v)| json!({
                 "name": n, "base_color": v.base_color, "roughness": v.roughness, "metallic": v.metallic, "height": v.height,
                 "emissive": v.emissive, "emissive_strength": v.emissive_strength,
-                "opacity": v.opacity, "transmission": v.transmission
+                "opacity": v.opacity, "transmission": v.transmission,
+                "coat": v.coat, "coat_roughness": v.coat_roughness, "flake": v.flake
             })).collect::<Vec<_>>(),
             "smart_materials": smart_material_names(),
             "generators": GeneratorKind::ALL.iter().map(|k| json!({ "id": k.id(), "label": k.label(), "uses_bakes": k.uses_bakes() })).collect::<Vec<_>>(),
@@ -396,6 +397,21 @@ impl Session {
             let (see, trans) = v.is_see_through();
             l.channels.opacity.enabled |= see || vals.get("opacity").is_some();
             l.channels.transmission.enabled |= trans || vals.get("transmission").is_some();
+            // clearcoat: on when given or coated; coat roughness rides with the coat
+            if let Some(x) = f(vals, "coat") {
+                v.coat = x.clamp(0.0, 1.0);
+            }
+            if let Some(x) = f(vals, "coat_roughness") {
+                v.coat_roughness = x.clamp(0.0, 1.0);
+            }
+            if let Some(x) = f(vals, "flake") {
+                v.flake = x.clamp(0.0, 1.0);
+            }
+            let (coat, flake) = v.is_coated();
+            let coat_given = vals.get("coat").is_some();
+            l.channels.coat.enabled |= coat || coat_given;
+            l.channels.coat_roughness.enabled |= coat || coat_given || vals.get("coat_roughness").is_some();
+            l.channels.flake.enabled |= flake || vals.get("flake").is_some();
             if height_set {
                 l.channels.height.enabled = true;
             }
@@ -880,16 +896,21 @@ impl Session {
             }
             b.values = material_preset(name);
             let (see, trans) = b.values.is_see_through();
-            b.channels = [true, true, true, b.values.height.abs() > 1e-3, false, b.values.emissive_strength > 0.0, see, trans];
+            let (coat, flake) = b.values.is_coated();
+            b.channels = [true, true, true, b.values.height.abs() > 1e-3, false, b.values.emissive_strength > 0.0, see, trans, coat, coat, flake];
         }
         if let Some(vals) = a.get("values") {
             apply_material_values(&mut b.values, vals);
             let (see, trans) = b.values.is_see_through();
             b.channels[6] |= see || vals.get("opacity").is_some();
             b.channels[7] |= trans || vals.get("transmission").is_some();
+            let (coat, flake) = b.values.is_coated();
+            b.channels[8] |= coat || vals.get("coat").is_some();
+            b.channels[9] |= coat || vals.get("coat").is_some() || vals.get("coat_roughness").is_some();
+            b.channels[10] |= flake || vals.get("flake").is_some();
         }
         if let Some(chs) = a.get("channels").and_then(Value::as_array) {
-            b.channels = [false; 8];
+            b.channels = [false; 11];
             for c in chs.iter().filter_map(Value::as_str) {
                 b.channels[channel(c)?.index()] = true;
             }
@@ -1014,7 +1035,7 @@ impl Session {
                 b.values.base_color[k] = x.as_f64().unwrap_or(1.0) as f32;
             }
         }
-        b.channels = [true, true, true, false, false, false, false, false];
+        b.channels = [true, true, true, false, false, false, false, false, false, false, false];
         if let Some(e) = f(a, "emissive_strength") {
             b.values.emissive = b.values.base_color;
             b.values.emissive_strength = e;
@@ -1028,9 +1049,12 @@ impl Session {
             apply_material_values(&mut b.values, vals);
             b.channels[6] |= vals.get("opacity").is_some();
             b.channels[7] |= vals.get("transmission").is_some();
+            b.channels[8] |= vals.get("coat").is_some();
+            b.channels[9] |= vals.get("coat").is_some() || vals.get("coat_roughness").is_some();
+            b.channels[10] |= vals.get("flake").is_some();
         }
         if let Some(chs) = a.get("channels").and_then(Value::as_array) {
-            b.channels = [false; 8];
+            b.channels = [false; 11];
             for c in chs.iter().filter_map(Value::as_str) {
                 b.channels[channel(c)?.index()] = true;
             }
@@ -1758,6 +1782,15 @@ fn apply_material_values(v: &mut MaterialValues, vals: &Value) {
     if let Some(x) = f(vals, "transmission") {
         v.transmission = x.clamp(0.0, 1.0);
     }
+    if let Some(x) = f(vals, "coat") {
+        v.coat = x.clamp(0.0, 1.0);
+    }
+    if let Some(x) = f(vals, "coat_roughness") {
+        v.coat_roughness = x.clamp(0.0, 1.0);
+    }
+    if let Some(x) = f(vals, "flake") {
+        v.flake = x.clamp(0.0, 1.0);
+    }
 }
 
 fn apply_generator_fields(g: &mut Generator, m: &Value) {
@@ -1905,6 +1938,79 @@ mod tests {
         s.export_textures(&json!({ "dir": out, "preset": "separate", "name": "Reopened" })).unwrap();
         let again = image::open(out.join("Reopened_Opacity.png")).unwrap().to_luma8();
         assert_eq!(holes.as_raw(), again.as_raw());
+        std::fs::remove_dir_all(out).ok();
+    }
+
+    #[test]
+    fn clearcoat_and_flake_flow_through_fill_brush_folder_viewport_export_and_save() {
+        let _gpu = gpu_lock();
+        let Ok(mut s) = Session::new() else { return };
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        s.new_project(&json!({ "mesh": root.join("assets/ammo_box.glb"), "resolution": 512, "material": "Steel" })).unwrap();
+        let out = std::env::temp_dir().join(format!("pigment-coat-{}", std::process::id()));
+        // uncoated: no coat maps
+        let e = s.export_textures(&json!({ "dir": out, "preset": "separate", "name": "Bare" })).unwrap();
+        assert!(!e["files"].to_string().contains("Coat") && !e["files"].to_string().contains("Flake"), "{e}");
+        let bare = s.render(&json!({ "width": 160, "height": 120 })).unwrap();
+        // candy paint fill: coat, coat roughness and flake channels on
+        s.add_layer(&json!({ "name": "Paint job", "values": { "base_color": [0.5, 0.05, 0.3], "metallic": 0.6, "roughness": 0.3, "coat": 1.0, "coat_roughness": 0.1, "flake": 0.6 } })).unwrap();
+        let l = s.layers();
+        let pj = l.as_array().unwrap().iter().find(|l| l["name"] == "Paint job").unwrap();
+        for c in ["coat", "coat_roughness", "flake"] {
+            assert!(pj["channels"].as_array().unwrap().contains(&json!(c)), "{pj}");
+        }
+        let e = s.export_textures(&json!({ "dir": out, "preset": "separate", "name": "Car" })).unwrap();
+        assert!(e["files"].to_string().contains("Car_Coat.png") && e["files"].to_string().contains("Car_CoatRoughness.png") && e["files"].to_string().contains("Car_Flake.png"), "{e}");
+        let mid = |n: &str| {
+            let i = image::open(out.join(n)).unwrap().to_luma8();
+            i.get_pixel(i.width() / 2, i.height() / 2).0[0] as i32
+        };
+        assert!(mid("Car_Coat.png") >= 250, "coat {}", mid("Car_Coat.png"));
+        assert!((mid("Car_CoatRoughness.png") - 26).abs() <= 2, "coat roughness {}", mid("Car_CoatRoughness.png"));
+        assert!((mid("Car_Flake.png") - 153).abs() <= 2, "flake {}", mid("Car_Flake.png"));
+        // the normal map survives the packed accumulator: still flat-ish (z up)
+        let nrm = image::open(out.join("Car_Normal_OpenGL.png")).unwrap().to_rgb8();
+        let np = nrm.get_pixel(256, 256).0;
+        assert!(np[2] > 240, "normal {np:?}");
+        // material.json lists the coat maps
+        let side: Value = serde_json::from_str(&std::fs::read_to_string(out.join("material.json")).unwrap()).unwrap();
+        let ch = side["materials"]["Car"]["channels"].as_array().unwrap();
+        assert!(ch.contains(&json!("coat")) && ch.contains(&json!("coat_roughness")) && ch.contains(&json!("flake")), "{side}");
+        // the viewport shows the coat: renders differ, coat views work
+        let coated = s.render(&json!({ "width": 160, "height": 120 })).unwrap();
+        assert_ne!(bare.png, coated.png);
+        for v in ["coat", "coat roughness", "flake"] {
+            assert!(s.render(&json!({ "view": v, "width": 64, "height": 48 })).unwrap().png.len() > 100, "{v}");
+        }
+        // a dirt fill with coat 0 strips the coat (giving the key turns the channel on)
+        s.add_layer(&json!({ "name": "Strip", "values": { "base_color": [0.2, 0.15, 0.1], "coat": 0.0 } })).unwrap();
+        s.export_textures(&json!({ "dir": out, "preset": "separate", "name": "Stripped" })).unwrap();
+        assert!(!out.join("Stripped_Coat.png").exists(), "coat map written for an uncoated result");
+        s.delete_layer(&json!({ "layer": "Strip" })).unwrap();
+        // folder at half opacity halves the coat
+        s.add_layer(&json!({ "name": "Clear", "kind": "folder" })).unwrap();
+        s.update_layer(&json!({ "layer": "Paint job", "parent": "Clear" })).unwrap();
+        s.update_layer(&json!({ "layer": "Clear", "opacity": 0.5 })).unwrap();
+        s.export_textures(&json!({ "dir": out, "preset": "separate", "name": "Half" })).unwrap();
+        assert!((mid("Half_Coat.png") - 128).abs() <= 4, "half coat {}", mid("Half_Coat.png"));
+        s.delete_layer(&json!({ "layer": "Clear" })).unwrap();
+        // brush: paint a coat stroke on the paint layer
+        let p = s.paint_stroke(&json!({ "points": [[0.4, 0.5], [0.6, 0.5]], "size": 60, "yaw": 0, "pitch": 0, "values": { "coat": 1.0, "coat_roughness": 0.5 }, "channels": ["coat", "coat_roughness"] })).unwrap();
+        assert_eq!(p["painted_on"], "Paint");
+        s.export_textures(&json!({ "dir": out, "preset": "separate", "name": "Brushed" })).unwrap();
+        let coat = image::open(out.join("Brushed_Coat.png")).unwrap().to_luma8();
+        assert!(coat.pixels().any(|p| p.0[0] > 245), "no coat painted");
+        assert!(coat.pixels().any(|p| p.0[0] == 0));
+        // save + reopen keeps the painted coat
+        s.save_project(&json!({ "path": out.join("coat.pigment") })).unwrap();
+        assert!(out.join("coat.pigment/layers").read_dir().unwrap().flatten().any(|d| d.path().join("coat.png").exists()));
+        s.open_project(&json!({ "path": out.join("coat.pigment") })).unwrap();
+        s.export_textures(&json!({ "dir": out, "preset": "separate", "name": "Reopened" })).unwrap();
+        let again = image::open(out.join("Reopened_Coat.png")).unwrap().to_luma8();
+        assert_eq!(coat.as_raw(), again.as_raw());
+        // presets
+        let lib = s.library();
+        assert!(lib["materials"].as_array().unwrap().iter().any(|m| m["name"] == "Candy paint" && m["flake"].as_f64().unwrap() > 0.0), "{lib}");
         std::fs::remove_dir_all(out).ok();
     }
 

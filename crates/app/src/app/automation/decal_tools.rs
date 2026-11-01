@@ -137,7 +137,7 @@ impl Session {
                 b.values.base_color[k] = x.as_f64().unwrap_or(1.0) as f32;
             }
         }
-        b.channels = [true, true, true, false, false, false, false, false];
+        b.channels = [true, true, true, false, false, false, false, false, false, false, false];
         if let Some(e) = f(a, "emissive_strength") {
             b.values.emissive = b.values.base_color;
             b.values.emissive_strength = e;
@@ -151,9 +151,12 @@ impl Session {
             apply_material_values(&mut b.values, vals);
             b.channels[6] |= vals.get("opacity").is_some();
             b.channels[7] |= vals.get("transmission").is_some();
+            b.channels[8] |= vals.get("coat").is_some();
+            b.channels[9] |= vals.get("coat").is_some() || vals.get("coat_roughness").is_some();
+            b.channels[10] |= vals.get("flake").is_some();
         }
         if let Some(chs) = a.get("channels").and_then(Value::as_array) {
-            b.channels = [false; 8];
+            b.channels = [false; 11];
             for c in chs.iter().filter_map(Value::as_str) {
                 b.channels[channel(c)?.index()] = true;
             }

@@ -22,7 +22,13 @@ pub struct MaterialImages {
     pub emissive: Vec<u8>,
     /// Multiply the emissive map by this in the engine to get the painted brightness.
     pub emissive_scale: f32,
+    /// RGBA8: R = clearcoat weight, G = coat roughness, B = metallic flake.
+    /// Empty = no coat anywhere (coat 0, coat roughness 0.03, flake 0).
+    pub coat: Vec<u8>,
 }
+
+/// Coat roughness of an uncoated material (0.03 as 8-bit).
+pub const NEUTRAL_COAT_ROUGHNESS: u8 = 8;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Source {
@@ -48,6 +54,12 @@ pub enum Source {
     Opacity,
     /// 0 = opaque, 255 = clear glass.
     Transmission,
+    /// Clearcoat weight: 0 = none.
+    Coat,
+    /// Clearcoat roughness (only meaningful where there is a coat).
+    CoatRoughness,
+    /// Metallic flake amount under the coat.
+    Flake,
 }
 
 impl Source {
@@ -57,6 +69,8 @@ impl Source {
         match self {
             Source::Opacity => Some(65535),
             Source::Transmission => Some(0),
+            Source::Coat | Source::Flake => Some(0),
+            Source::CoatRoughness => Some(NEUTRAL_COAT_ROUGHNESS as u16 * 257),
             _ => None,
         }
     }
@@ -146,6 +160,9 @@ pub fn presets() -> Vec<Preset> {
                 o("Emissive", Rgb8, &[EmissiveR, EmissiveG, EmissiveB]),
                 o("Opacity", L8, &[Opacity]),
                 o("Transmission", L8, &[Transmission]),
+                o("Coat", L8, &[Coat]),
+                o("CoatRoughness", L8, &[CoatRoughness]),
+                o("Flake", L8, &[Flake]),
             ],
         },
     ]
@@ -227,7 +244,19 @@ fn sample(m: &MaterialImages, src: Source, i: usize) -> u16 {
         Source::One => 65535,
         Source::Opacity => b(m.color[4 * i + 3]),
         Source::Transmission => b(m.orm[4 * i + 3]),
+        Source::Coat => b(coat_at(m, 0, i)),
+        Source::CoatRoughness => b(coat_at(m, 1, i)),
+        Source::Flake => b(coat_at(m, 2, i)),
     }
+}
+
+/// Coat / coat roughness / flake (k = 0, 1, 2) at pixel i; an empty coat
+/// buffer is an uncoated material.
+fn coat_at(m: &MaterialImages, k: usize, i: usize) -> u8 {
+    if m.coat.is_empty() {
+        return [0, NEUTRAL_COAT_ROUGHNESS, 0][k];
+    }
+    m.coat[4 * i + k]
 }
 
 pub enum Packed {
@@ -241,6 +270,8 @@ enum Plane<'a> {
     Rgba8(&'a [u8], usize, bool),
     Height(&'a [u16]),
     One,
+    /// A constant byte (an absent coat buffer).
+    Const(u8),
 }
 
 fn plane(m: &MaterialImages, src: Source) -> Plane<'_> {
@@ -263,6 +294,18 @@ fn plane(m: &MaterialImages, src: Source) -> Plane<'_> {
         EmissiveB => Plane::Rgba8(&m.emissive, 2, false),
         Opacity => Plane::Rgba8(&m.color, 3, false),
         Transmission => Plane::Rgba8(&m.orm, 3, false),
+        Coat | CoatRoughness | Flake => {
+            let k = match src {
+                Coat => 0,
+                CoatRoughness => 1,
+                _ => 2,
+            };
+            if m.coat.is_empty() {
+                Plane::Const([0, NEUTRAL_COAT_ROUGHNESS, 0][k])
+            } else {
+                Plane::Rgba8(&m.coat, k, false)
+            }
+        }
         One => Plane::One,
     }
 }
@@ -288,6 +331,7 @@ pub fn pack(out: &OutputMap, m: &MaterialImages) -> Packed {
                     Plane::Rgba8(buf, off, true) => dst.zip(buf[off..].iter().step_by(4)).for_each(|(d, s)| *d = 255 - *s),
                     Plane::Height(h) => dst.zip(h.iter()).for_each(|(d, s)| *d = (*s >> 8) as u8),
                     Plane::One => dst.for_each(|d| *d = 255),
+                    Plane::Const(c) => dst.for_each(|d| *d = c),
                 }
             }
             Packed::Bytes(v)
@@ -320,6 +364,10 @@ pub fn write_packed_with(path: &Path, size: u32, format: PixelFormat, data: &Pac
 
 /// Does `src` hold its neutral value (solid / not transmissive) everywhere?
 fn is_neutral(m: &MaterialImages, src: Source) -> bool {
+    // coat roughness carries no information where there is no coat
+    if src == Source::CoatRoughness && is_neutral(m, Source::Coat) {
+        return true;
+    }
     match src.neutral() {
         Some(v) => (0..(m.size * m.size) as usize).all(|i| sample(m, src, i) == v),
         None => false,
@@ -387,6 +435,7 @@ mod tests {
             height: vec![40000, 32768, 32768, 32768],
             emissive: vec![255, 0, 128, 255, 0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0, 255],
             emissive_scale: 6.0,
+            coat: vec![],
         }
     }
 
@@ -446,9 +495,9 @@ mod tests {
             x
         };
         let mut b = |k: usize| (0..k).map(|_| (r() >> 24) as u8).collect::<Vec<u8>>();
-        let (color, orm, normal, emissive) = (b(4 * n), b(4 * n), b(4 * n), b(4 * n));
+        let (color, orm, normal, emissive, coat) = (b(4 * n), b(4 * n), b(4 * n), b(4 * n), b(4 * n));
         let height = (0..n).map(|i| (i as u32).wrapping_mul(2654435761) as u16).collect();
-        MaterialImages { size, color, orm, normal, height, emissive, emissive_scale: 1.0 }
+        MaterialImages { size, color, orm, normal, height, emissive, emissive_scale: 1.0, coat }
     }
 
     #[test]
@@ -488,6 +537,34 @@ mod tests {
         }
         assert_eq!(Compression::from_id("default"), Some(Compression::Fast));
         assert_eq!(Compression::from_id("zip"), None);
+    }
+
+    #[test]
+    fn coat_maps_are_written_only_when_coated() {
+        let dir = std::env::temp_dir().join(format!("pigment-export-coat-{}", std::process::id()));
+        let sep = preset("separate").unwrap();
+        // uncoated (empty buffer): no coat maps
+        let files = export(&dir, "Plain", &sep, &tiny()).unwrap();
+        assert!(!files.iter().any(|f| f.to_string_lossy().contains("Coat") || f.to_string_lossy().contains("Flake")), "{files:?}");
+        // uncoated but explicit buffer: same
+        let mut m = tiny();
+        m.coat = [0u8, NEUTRAL_COAT_ROUGHNESS, 0, 255].repeat(4);
+        assert!(!export(&dir, "Plain", &sep, &m).unwrap().iter().any(|f| f.to_string_lossy().contains("Coat")));
+        // coated pixel 0: coat 255, coat roughness 20, flake 0 -> Coat + CoatRoughness, no Flake
+        m.coat[0] = 255;
+        m.coat[1] = 20;
+        let files = export(&dir, "Car", &sep, &m).unwrap();
+        assert!(files.iter().any(|f| f.ends_with("Car_Coat.png")) && files.iter().any(|f| f.ends_with("Car_CoatRoughness.png")));
+        assert!(!files.iter().any(|f| f.ends_with("Car_Flake.png")));
+        assert_eq!(image::open(dir.join("Car_Coat.png")).unwrap().to_luma8().get_pixel(0, 0).0, [255]);
+        assert_eq!(image::open(dir.join("Car_CoatRoughness.png")).unwrap().to_luma8().get_pixel(0, 0).0, [20]);
+        m.coat[2] = 200;
+        export(&dir, "Car", &sep, &m).unwrap();
+        assert_eq!(image::open(dir.join("Car_Flake.png")).unwrap().to_luma8().get_pixel(0, 0).0, [200]);
+        // re-exporting uncoated removes the stale maps
+        export(&dir, "Car", &sep, &tiny()).unwrap();
+        assert!(!dir.join("Car_Coat.png").exists() && !dir.join("Car_CoatRoughness.png").exists() && !dir.join("Car_Flake.png").exists());
+        std::fs::remove_dir_all(dir).ok();
     }
 
     #[test]

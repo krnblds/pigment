@@ -34,10 +34,13 @@ pub enum ViewMode {
     Emissive = 10,
     Opacity = 11,
     Transmission = 12,
+    Coat = 13,
+    CoatRoughness = 14,
+    Flake = 15,
 }
 
 impl ViewMode {
-    pub const ALL: [ViewMode; 13] = [
+    pub const ALL: [ViewMode; 16] = [
         ViewMode::Material,
         ViewMode::BaseColor,
         ViewMode::Roughness,
@@ -51,6 +54,9 @@ impl ViewMode {
         ViewMode::Emissive,
         ViewMode::Opacity,
         ViewMode::Transmission,
+        ViewMode::Coat,
+        ViewMode::CoatRoughness,
+        ViewMode::Flake,
     ];
     pub fn label(self) -> &'static str {
         match self {
@@ -67,6 +73,9 @@ impl ViewMode {
             ViewMode::Emissive => "Emission",
             ViewMode::Opacity => "Opacity",
             ViewMode::Transmission => "Transmission",
+            ViewMode::Coat => "Coat",
+            ViewMode::CoatRoughness => "Coat roughness",
+            ViewMode::Flake => "Flake",
         }
     }
 }
@@ -175,7 +184,7 @@ impl Viewport {
         let mat_bgl = gpu::bgl(
             device,
             "viewport material",
-            &[gpu::ftex(0), gpu::ftex(1), gpu::ftex(2), gpu::ftex(3), gpu::ftex(4), gpu::ftex(5), gpu::ftex(6), gpu::sampler_entry(7, wgpu::SamplerBindingType::Filtering)],
+            &[gpu::ftex(0), gpu::ftex(1), gpu::ftex(2), gpu::ftex(3), gpu::ftex(4), gpu::ftex(5), gpu::ftex(6), gpu::sampler_entry(7, wgpu::SamplerBindingType::Filtering), gpu::ftex(8)],
         );
         let layout = gpu::layout(device, "viewport", &[&g_bgl, &env_bgl, &mat_bgl]);
         let depth_layout = gpu::layout(device, "viewport depth", &[&g_bgl]);
@@ -474,6 +483,7 @@ impl Viewport {
                 wgpu::BindingResource::TextureView(&ts.wnormal.view),
                 wgpu::BindingResource::TextureView(&ts.emissive.view),
                 wgpu::BindingResource::Sampler(&self.sampler),
+                wgpu::BindingResource::TextureView(&ts.coat.view),
             ],
         );
         let Some(t) = self.targets.as_ref() else { return };
