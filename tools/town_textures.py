@@ -12,15 +12,21 @@ story decal recorded (see tools/make_story_decals.py for the world), then
     scenes/town/textures/<asset>__<variant>/<asset>_BaseColor.png ...
     scenes/town/textures/<asset>__<variant>/variant.json   (emissive_scale, decals shown)
 
-Signage is zoned: corporate (Hoshikawa / Meridian / Dreamlink / Noctis)
-billboards high up and all over building_c (the corporate tower);
-street-economy shops (memory pawn, implant repair, score reset, capsule
-hotel, noodles, clinic) at ground level; authority plates by the doors;
-resistance graffiti, UNPLUG posters and MISSING posters at street level.
-Lit windows are a seeded random subset of the glass parts per variant.
+Signage follows real-world placement rules (see "story signage" below and
+docs/agents/decalfix/NOTES.md): corporate (Hoshikawa / Meridian / Dreamlink /
+Noctis) billboards only on framed billboard panels (rooftop, back wall,
+building_c's crown); street-economy shops (memory pawn, implant repair, score
+reset, capsule hotel, noodles, clinic) on the fascia / sign boxes over the
+ground-floor entrances; authority plates on the enamel plates by the doors;
+resistance graffiti, UNPLUG and MISSING posters on blank street-level wall.
+Every decal is an exact world-space box decal on one flat surface;
+tools/decal_audit.py checks every variant. Lit windows are a seeded random
+subset of the glass parts per variant.
 
     python tools/town_textures.py [asset ...]        (all assets by default)
     PIGMENT_MCP=path/to/pigment-mcp.exe python tools/town_textures.py building_a
+    PIG_TMP=dir                                       (scratch scripts and previews; default %TEMP%/pig)
+    python tools/decal_audit.py                       (then audit the placements)
 """
 import json
 import os
@@ -33,7 +39,7 @@ MCP = Path(os.environ.get("PIGMENT_MCP", ROOT / "target" / "release" / "pigment-
 OUT = ROOT / "scenes" / "town"
 DECALS = "assets/decals/"
 STORY = "assets/decals/story/"
-TMP = Path.home() / "AppData" / "Local" / "Temp" / "pig"
+TMP = Path(os.environ.get("PIG_TMP", Path.home() / "AppData" / "Local" / "Temp" / "pig"))
 PREVIEWS = TMP / "town_variants"
 # texture size per asset (variants multiply the textures Blender has to hold)
 RES = {"building_a": 2048, "building_b": 2048, "building_c": 4096, "overhead_sign": 1024}
@@ -48,9 +54,15 @@ def run(lines, label):
     return r.stdout
 
 
+_PARTS = {}
+
+
 def parts_of(asset):
+    if asset in _PARTS:
+        return _PARTS[asset]
     out = run([{"tool": "new_project", "args": {"mesh": f"assets/town/{asset}.glb", "resolution": 512}}, {"tool": "list_parts", "args": {}}], f"{asset}_parts")
-    return json.loads(out[out.index("[list_parts] ") + 13:])
+    _PARTS[asset] = json.loads(out[out.index("[list_parts] ") + 13:])
+    return _PARTS[asset]
 
 
 def classify(p):
@@ -210,6 +222,17 @@ def building(asset, base, shell_extra):
     return L, c
 
 # ------------------------------------------------------------------ story signage
+# Placement rules (docs/agents/decalfix/NOTES.md; checked by tools/decal_audit.py):
+#   billboard   only on a billboard panel (a "panel" part inside its own frame)
+#   ghost       a faded wall-painted ad: low opacity, heavy wear, blank wall, sparingly
+#   shop        centred on the fascia / sign box over a ground-floor entrance
+#   blade       on the faces of the blade sign box only
+#   logo, corp  corporate signage on a crown panel, the lobby fascia or a sign box
+#   plate       eye height (centre 1.4-1.9 m) on flat wall beside a door
+#   poster      street level (0.8-2.2 m) on blank wall, scattered with `fit` and wear
+#   graffiti    ground level up to ~3 m on blank wall, shutters or doors
+# Every decal is a precise world-space box decal (position + normal + size in
+# metres) on ONE flat surface, so nothing wraps over a window, ledge or corner.
 
 # Neon colours per sign: a street reads as many shops, not one palette.
 NEON = {
@@ -222,50 +245,133 @@ NEON = {
     "blade_soba": [1.0, 0.4, 0.1], "blade_yume": [1.0, 0.3, 0.75], "blade_pachinko": [0.4, 1.0, 0.3],
 }
 
-
-def wall(axis, at, a0, a1, b0, b1):
-    """A thin box on a wall: `axis` (x or z) is the wall normal at coordinate
-    `at`; (a0, a1) spans the other horizontal axis, (b0, b1) the height."""
-    if axis == "x":
-        return {"min": [at - 0.05, b0, a0], "max": [at + 0.05, b1, a1]}
-    return {"min": [a0, b0, at - 0.05], "max": [a1, b1, at + 0.05]}
+AXES = {"+x": (1, 0, 0), "-x": (-1, 0, 0), "+y": (0, 1, 0), "-y": (0, -1, 0), "+z": (0, 0, 1), "-z": (0, 0, -1)}
 
 
-def look(image, where):
-    """project_decal args for a story image at a placement (part / box)."""
-    a = {"image": STORY + image + ".png"}
-    a.update(where)
-    if image in NEON:                                   # white glyphs: tint + glow
-        a.update(tint=NEON[image], emissive_strength=6.0, material="Neon pink")
-    elif image.startswith("billboard"):                 # backlit corporate ads
-        a.update(emissive_strength=1.6, material="White plastic")
-    elif image.startswith("logo"):
-        a.update(image=DECALS + image + ".png", tint=[0.85, 0.92, 1.0], emissive_strength=2.0)
-    else:                                               # paper, paint, enamel
-        a.update(material="White plastic", opacity=0.95)
-    return a
+def image_path(image):
+    return (DECALS if image.startswith("logo") else STORY) + image + ".png"
+
+
+def image_aspect(image):
+    """width / height of a story (or logo) decal image."""
+    from PIL import Image
+    with Image.open(ROOT / image_path(image)) as im:
+        return im.size[0] / im.size[1]
+
+
+def find_part(parts, center, size, tol=0.06):
+    """The part whose bounds match `center` / `size` (metres, glTF axes): part ids
+    move when the kit changes, shapes don't. Fails loudly if nothing matches."""
+    d = lambda p: max(max(abs(a - b) for a, b in zip(p["center"], center)), max(abs(a - b) for a, b in zip(p["size"], size)))
+    best = min(parts, key=d)
+    if d(best) > tol:
+        raise SystemExit(f"no part at {center} size {size} (closest: {best['id']} {best['center']} {best['size']})")
+    return best["id"]
+
+
+def face_of(part, facing):
+    """(centre of the part's face on `facing`, normal, (width, height)) from its bounds."""
+    n = AXES[facing]
+    k = [abs(x) for x in n].index(1)
+    if k == 1:
+        raise SystemExit("signage goes on vertical faces")
+    c = list(part["center"])
+    c[k] += n[k] * part["size"][k] / 2
+    w = part["size"][2] if k == 0 else part["size"][0]
+    return c, n, (w, part["size"][1])
+
+
+def fit_size(aspect, w, h, margin):
+    """Largest image of `aspect` that fits w x h minus a margin all round (contain)."""
+    w, h = w - 2 * margin, h - 2 * margin
+    return (w, w / aspect) if w / aspect <= h else (h * aspect, h)
+
+
+def on_part(kind, parts, center, size, facing, margin=0.06):
+    """A slot on the face of a part found by its bounds: the image is centred and sized to fit."""
+    pid = find_part(parts, center, size)
+    p = next(q for q in parts if q["id"] == pid)
+    c, n, (w, h) = face_of(p, facing)
+    return {"kind": kind, "part": pid, "position": [round(x, 4) for x in c], "normal": list(n), "box": (w, h), "margin": margin}
+
+
+def on_wall(kind, at, facing, width, **kw):
+    """A slot on flat wall: centre `at` (on the wall plane), image `width` in metres."""
+    return dict(kind=kind, position=list(at), normal=list(AXES[facing]), width=width, **kw)
+
+
+def scatter_slot(parts_ids, region, seed, count=4):
+    """Posters: scattered on blank street-level wall (`fit`: never over an opening or an edge)."""
+    return {"kind": "poster", "scatter": {"parts": parts_ids, "region": region, "count": count, "seed": seed}}
+
+
+def look(kind, image):
+    """Paper tears and fades, paint is grungy, enamel barely ages, neon glows."""
+    if kind in ("shop", "blade", "corp") and image in NEON:            # white glyphs: tint + glow
+        return dict(tint=NEON[image], emissive_strength=6.0, material="Neon pink")
+    if kind == "billboard":                                            # backlit corporate ads
+        return dict(emissive_strength=1.6, material="White plastic")
+    if kind == "logo":
+        return dict(tint=[0.85, 0.92, 1.0], emissive_strength=2.0)
+    if kind == "ghost":                                                # an old painted ad, mostly gone
+        return dict(material="White plastic", tint=[0.82, 0.78, 0.72], opacity=0.45, wear=0.45, fade=0.6,
+                    wear_style="grunge", wear_scale=2.0, paper_rim=0.0)
+    if kind == "graffiti":
+        return dict(material="White plastic", opacity=0.92, fade=0.25, wear_style="grunge", wear_scale=3.0, paper_rim=0.0)
+    if kind == "plate":
+        return dict(material="White plastic", opacity=0.97, fade=0.15, wear_scale=6.0)
+    return dict(material="White plastic", opacity=0.95, wear=0.3, fade=0.3, wear_scale=3.5)   # paper
+
+
+def placement(slot, image):
+    """(tool, args) for one slot and image (a list of images for a poster cluster)."""
+    if "scatter" in slot:
+        s = slot["scatter"]
+        imgs = image if isinstance(image, list) else [image]
+        a = {"images": [image_path(i) for i in imgs], "count": s["count"], "seed": s["seed"], "parts": s["parts"],
+             "region": s["region"], "height": [0.8, 2.2], "size": [0.5, 0.62], "rotation_jitter": 4, "min_spacing": 0.38, "fit": True}
+        a.update(look("poster", imgs[0]))
+        return "scatter_decals", a
+    a = {"image": image_path(image), "position": slot["position"], "normal": slot["normal"]}
+    if "box" in slot:
+        w, h = fit_size(image_aspect(image), *slot["box"], slot["margin"])
+    else:
+        w = slot["width"]
+        h = w / image_aspect(image)
+    a["size"] = [round(w, 4), round(h, 4)]
+    if slot.get("rotation"):
+        a["rotation"] = slot["rotation"]
+    a.update(look(slot["kind"], image))
+    return "project_decal", a
+
+
+KIND_ORDER = {"billboard": 0, "logo": 0, "corp": 0, "shop": 0, "blade": 0, "ghost": 1, "poster": 2, "plate": 3, "graffiti": 4}
 
 
 def story(slots, variants):
-    """Record every (slot, image) decal once on a "Story" paint layer, tagged
-    "story", enabled only if the first variant uses it. A slot can have
-    several placements (both faces of a blade sign): they share a name.
+    """Record every (slot, image) decal once on a "Story decals" paint layer,
+    tagged "story", enabled only if the first variant uses it. Paper goes down
+    before plates and graffiti (variants replay decals in record order).
     Returns the script lines and the export_variants definitions."""
+    for v in variants:
+        for slot in v["on"]:
+            if slot not in slots:
+                raise SystemExit(f"variant {v['name']}: no slot `{slot}`")
+    key = lambda img: "+".join(img) if isinstance(img, list) else img
     used = {}
     for v in variants:
         for slot, img in v["on"].items():
             if img:
-                used.setdefault((slot, img), True)
-    first = {(s, i) for s, i in variants[0]["on"].items() if i}
+                used.setdefault((slot, key(img)), img)
+    first = {(s, key(i)) for s, i in variants[0]["on"].items() if i}
     L = [{"tool": "add_layer", "args": {"kind": "paint", "name": "Story decals"}}]
-    for (slot, img) in used:
-        for where in slots[slot]:
-            a = look(img, where)
-            a.update(layer="Story decals", name=f"{slot}/{img}", variant="story", enabled=(slot, img) in first)
-            L.append({"tool": "project_decal", "args": a})
+    for (slot, k), img in sorted(used.items(), key=lambda e: KIND_ORDER[slots[e[0][0]]["kind"]]):
+        tool, a = placement(slots[slot], img)
+        a.update(layer="Story decals", name=f"{slot}/{k}", variant="story", enabled=(slot, k) in first)
+        L.append({"tool": tool, "args": a})
     defs = []
     for v in variants:
-        enable = [f"{s}/{i}" for s, i in v["on"].items() if i]
+        enable = [f"{s}/{key(i)}" for s, i in v["on"].items() if i]
         disable = ["story"]
         if v.get("lights") == "few":
             disable.append("lights")
@@ -294,8 +400,10 @@ def finish(L, asset, defs=None):
     (OUT / "scripts").mkdir(parents=True, exist_ok=True)
     (OUT / "scripts" / f"{asset}.jsonl").write_text("\n".join(json.dumps(l) for l in L), encoding="utf8")
     out = run(L, asset)
+    (TMP / f"town_{asset}.log").write_text(out, encoding="utf8")
+    warn = [line for line in out.splitlines() if '"warning"' in line]
     scale = [line for line in out.splitlines() if "emissive_scale" in line]
-    print(asset, "ok", scale[-1].strip() if scale else "")
+    print(asset, "ok", scale[-1].strip() if scale else "", f"({len(warn)} texel warnings)" if warn else "")
 
 
 PREVIEW_VIEW = {
@@ -307,74 +415,103 @@ PREVIEW_VIEW = {
 
 # ------------------------------------------------------------------ building A: narrow 6-storey walk-up
 
-# front +z (wall at z=5), sides x=+-4, back z=-5; ground floor y 0..4.2
-A_SLOTS = {
-    "blade": [{"part": 154, "fit": "contain", "facing": "+x"}, {"part": 154, "fit": "contain", "facing": "-x"}],
-    "shop": [{"box": wall("z", 5.0, -3.5, 1.3, 3.05, 4.15), "fit": "contain"}],
-    "high": [{"box": wall("x", 4.0, -4.6, 4.6, 13.0, 17.6), "fit": "contain", "facing": "+x"}],
-    "back": [{"box": wall("z", -5.0, -3.0, 3.4, 9.0, 12.2), "fit": "contain", "facing": "-z"}],
-    "tag_e": [{"box": wall("x", 4.0, -4.6, 2.6, 0.5, 3.6), "fit": "contain", "facing": "+x"}],
-    "plate": [{"box": wall("x", 4.0, 3.1, 4.7, 1.5, 2.3), "fit": "contain", "facing": "+x"}],
-    "post_w1": [{"box": wall("x", -4.0, 3.6, 4.6, 0.9, 2.3), "fit": "contain", "facing": "-x"}],
-    "post_w2": [{"box": wall("x", -4.0, 2.4, 3.4, 0.9, 2.3), "fit": "contain", "facing": "-x"}],
-    "tag_w": [{"box": wall("x", -4.0, -4.6, 2.0, 0.5, 3.6), "fit": "contain", "facing": "-x"}],
-}
+# glTF axes: front +z (wall z=5), sides x=+-4 (windows only above the ground
+# floor), blank back wall z=-5 (pipes at x 0.9 / 1.12 / -3.55). Ground floor
+# y 0..4.2: shop recess x -3.6..1.4 under a fascia lightbox, stair door x 2.0..3.2.
+
+
+def a_slots(parts):
+    shell = [find_part(parts, (0, 2.1, 0), (8, 4.2, 10))]          # ground-floor wall
+    return {
+        "blade_e": on_part("blade", parts, (3.708, 10.0, 5.75), (0.012, 5.88, 1.08), "+x", margin=0.05),
+        "blade_w": on_part("blade", parts, (3.392, 10.0, 5.75), (0.012, 5.88, 1.08), "-x", margin=0.05),
+        "shop": on_part("shop", parts, (-1.1, 3.64, 5.2), (5.3, 0.8, 0.4), "+z", margin=0.07),
+        "roof": on_part("billboard", parts, (0.0, 24.1, 3.4), (6.4, 3.2, 0.08), "+z", margin=0.04),
+        "back": on_part("billboard", parts, (0.4, 10.6, -5.42), (6.4, 3.2, 0.08), "-z", margin=0.04),
+        # ghost sign: blank back wall above the billboard, clear of the pipes
+        "ghost": on_wall("ghost", (-1.35, 15.4, -5.0), "-z", 3.5),
+        # enamel plate (its own kit part) on the pier between the shop and the stair door
+        "plate": on_part("plate", parts, (1.7, 1.62, 5.007), (0.46, 0.23, 0.012), "+z", margin=0.008),
+        "tag_e": on_wall("graffiti", (4.0, 1.55, -1.2), "+x", 2.8, rotation=2),
+        "tag_w": on_wall("graffiti", (-4.0, 1.6, -2.4), "-x", 2.6, rotation=-3),
+        "posters_w": scatter_slot(shell, {"min": [-4.3, 0.0, -2.6], "max": [-3.7, 3.0, 0.6]}, seed=5),
+        "posters_e": scatter_slot(shell, {"min": [3.7, 0.0, 1.2], "max": [4.3, 3.0, 4.6]}, seed=9, count=3),
+    }
+
+
+def blade(img):
+    return {"blade_e": img, "blade_w": img}
+
+
 A_VARIANTS = [
-    {"name": "memory_pawn", "seed": 11, "on": {"blade": "blade_kioku", "shop": "sign_memory_pawn", "high": "billboard_noctis",
-                                               "tag_e": "graffiti_who_owns", "plate": "plate_observed", "post_w1": "poster_missing_aiko", "post_w2": "poster_missing_ren"}},
-    {"name": "implants", "seed": 23, "on": {"blade": "blade_gitai", "shop": "sign_implant_repair", "high": "billboard_score",
-                                            "tag_w": "graffiti_not_data", "plate": "plate_loitering", "post_w1": "poster_unplug"}},
-    {"name": "capsules", "seed": 37, "on": {"blade": "blade_capsule", "shop": "sign_capsule_2h", "high": "billboard_dreamlink", "back": "billboard_jobs",
-                                            "tag_e": "graffiti_unplug", "plate": "plate_curfew", "post_w1": "poster_missing_mika"}},
-    {"name": "soba", "seed": 41, "on": {"blade": "blade_soba", "shop": "sign_dumplings", "high": "billboard_meridian",
-                                        "tag_w": "graffiti_lying", "plate": "plate_observed", "post_w2": "poster_missing_ren"}},
-    {"name": "dream_den", "seed": 53, "on": {"blade": "blade_yume", "shop": "sign_dreams", "high": "billboard_jobs", "back": "billboard_dreamlink",
-                                             "tag_e": "stencil_eye_crossed", "plate": "plate_curfew", "post_w1": "poster_unplug", "post_w2": "poster_missing_aiko"}},
-    {"name": "evicted", "seed": 67, "lights": "few", "on": {"shop": "plate_property", "high": "billboard_defaced",
-                                                           "tag_e": "graffiti_unplug", "tag_w": "stencil_eye_crossed", "post_w1": "poster_missing_mika", "post_w2": "poster_unplug"}},
-    {"name": "fixers", "seed": 79, "on": {"blade": "blade_pachinko", "shop": "sign_score_reset", "high": "billboard_meridian", "back": "billboard_score",
-                                          "tag_w": "graffiti_who_owns", "plate": "plate_loitering", "post_w1": "poster_missing_ren"}},
+    {"name": "memory_pawn", "seed": 11, "on": {**blade("blade_kioku"), "shop": "sign_memory_pawn", "roof": "billboard_noctis",
+                                               "tag_e": "graffiti_who_owns", "plate": "plate_observed", "posters_w": ["poster_missing_aiko", "poster_missing_ren"]}},
+    {"name": "implants", "seed": 23, "on": {**blade("blade_gitai"), "shop": "sign_implant_repair", "roof": "billboard_score",
+                                            "tag_w": "graffiti_not_data", "plate": "plate_loitering", "posters_w": ["poster_unplug"]}},
+    {"name": "capsules", "seed": 37, "on": {**blade("blade_capsule"), "shop": "sign_capsule_2h", "roof": "billboard_dreamlink", "back": "billboard_jobs",
+                                            "tag_e": "graffiti_unplug", "plate": "plate_curfew", "posters_w": ["poster_missing_mika"]}},
+    {"name": "soba", "seed": 41, "on": {**blade("blade_soba"), "shop": "sign_dumplings", "roof": "billboard_meridian", "ghost": "billboard_noctis",
+                                        "tag_w": "graffiti_lying", "plate": "plate_observed", "posters_e": ["poster_missing_ren", "poster_unplug"]}},
+    {"name": "dream_den", "seed": 53, "on": {**blade("blade_yume"), "shop": "sign_dreams", "roof": "billboard_jobs", "back": "billboard_dreamlink",
+                                             "tag_e": "stencil_eye_crossed", "plate": "plate_curfew", "posters_w": ["poster_unplug", "poster_missing_aiko"]}},
+    # evicted: the shop is gone (dark fascia), a seizure plate, an old ghost ad, everything torn
+    {"name": "evicted", "seed": 67, "lights": "few", "on": {"roof": "billboard_defaced", "ghost": "billboard_jobs", "plate": "plate_property",
+                                                           "tag_e": "graffiti_unplug", "tag_w": "stencil_eye_crossed",
+                                                           "posters_w": ["poster_missing_mika", "poster_unplug", "poster_missing_ren"]}},
+    {"name": "fixers", "seed": 79, "on": {**blade("blade_pachinko"), "shop": "sign_score_reset", "roof": "billboard_meridian", "back": "billboard_score",
+                                          "tag_w": "graffiti_who_owns", "plate": "plate_loitering", "posters_e": ["poster_missing_ren"]}},
 ]
 
 
 def build_a():
     shell_extra = lambda shell: [fill("Slab joints", "Panel seam", shell, {"generator": "panel_lines", "amount": 0.012, "scale": 0.6})]
     L, _ = building("building_a", "Concrete", shell_extra)
-    S, defs = story(A_SLOTS, A_VARIANTS)
+    S, defs = story(a_slots(parts_of("building_a")), A_VARIANTS)
     finish(L + S, "building_a", defs)
 
 # ------------------------------------------------------------------ building B: wide 3-storey with 4 shop bays + roof billboard
 
-# front +z (upper wall z=6, bays recessed to z=4.1), sides x=+-8, back z=-6; ground floor y 0..4.5
-B_SLOTS = {
-    "bay1": [{"part": 5, "fit": "contain", "margin": 0.08}],
-    "bay2": [{"part": 18, "fit": "contain", "margin": 0.08}],
-    "bay3": [{"box": wall("z", 6.0, 0.4, 3.5, 3.7, 4.4), "fit": "contain"}],
-    "bay4": [{"box": wall("z", 6.0, 4.3, 7.4, 3.7, 4.4), "fit": "contain"}],
-    "roof": [{"part": 183, "fit": "fill", "margin": 0.0}],
-    "tag_e": [{"box": wall("x", 8.0, -5.6, 2.4, 0.5, 4.1), "fit": "contain", "facing": "+x"}],
-    "plate": [{"box": wall("x", 8.0, 3.2, 5.4, 1.5, 2.5), "fit": "contain", "facing": "+x"}],
-    "post_w1": [{"box": wall("x", -8.0, 4.4, 5.5, 0.9, 2.4), "fit": "contain", "facing": "-x"}],
-    "post_w2": [{"box": wall("x", -8.0, 3.1, 4.2, 0.9, 2.4), "fit": "contain", "facing": "-x"}],
-    "tag_w": [{"box": wall("x", -8.0, -5.6, 2.4, 0.5, 4.1), "fit": "contain", "facing": "-x"}],
-    "back": [{"box": wall("z", -6.0, -7.0, 7.0, 0.5, 4.0), "fit": "contain", "facing": "-z"}],
-}
+# glTF axes: front +z (upper wall z=6, bays recessed to z=4.0, bay centres
+# x -5.85 / -1.95 / 1.95 / 5.85, each with a fascia sign box), sides x=+-8 and
+# back z=-6 blank below the band at 4.5. Stair door at the back of bay 4.
+
+
+def b_slots(parts):
+    shell = [find_part(parts, (0, 2.25, 0), (16, 4.5, 12))]        # ground-floor wall
+    bay = lambda u: (u, 3.93, 6.123)
+    return {
+        "bay1": on_part("shop", parts, bay(-5.85), (3.2, 0.85, 0.25), "+z"),
+        "bay2": on_part("shop", parts, bay(-1.95), (3.2, 0.85, 0.25), "+z"),
+        "bay3": on_part("shop", parts, bay(1.95), (3.2, 0.85, 0.25), "+z"),
+        "bay4": on_part("shop", parts, bay(5.85), (3.2, 0.85, 0.25), "+z"),
+        "roof": on_part("billboard", parts, (2.2, 18.4, 3.6), (8.0, 4.0, 0.08), "+z", margin=0.04),
+        # enamel plate (its own kit part) on bay 4's side wall, beside the stair door
+        "plate": on_part("plate", parts, (4.157, 1.62, 4.45), (0.012, 0.23, 0.46), "+x", margin=0.008),
+        "tag_e": on_wall("graffiti", (8.0, 1.6, -2.0), "+x", 3.0, rotation=-2),
+        "tag_w": on_wall("graffiti", (-8.0, 1.65, -1.6), "-x", 3.0, rotation=3),
+        "back": on_wall("graffiti", (-1.5, 1.7, -6.0), "-z", 3.4, rotation=1),
+        "posters_w": scatter_slot(shell, {"min": [-8.3, 0.0, -1.2], "max": [-7.7, 3.0, 2.2]}, seed=7),
+        "posters_e": scatter_slot(shell, {"min": [7.7, 0.0, 1.6], "max": [8.3, 3.0, 5.0]}, seed=13, count=3),
+    }
+
+
 B_VARIANTS = [
     {"name": "noodle_row", "seed": 12, "on": {"bay1": "sign_dumplings", "bay2": "sign_karaoke", "bay3": "sign_charge", "bay4": "sign_offgrid",
-                                              "roof": "billboard_meridian", "tag_e": "graffiti_unplug", "post_w1": "poster_missing_aiko", "plate": "plate_curfew"}},
+                                              "roof": "billboard_meridian", "tag_e": "graffiti_unplug", "posters_w": ["poster_missing_aiko"], "plate": "plate_curfew"}},
     {"name": "body_shop", "seed": 24, "on": {"bay1": "sign_implant_repair", "bay2": "sign_organ_credit", "bay3": "sign_clinic", "bay4": "sign_jailbreak",
-                                             "roof": "billboard_noctis", "tag_w": "graffiti_lying", "post_w1": "poster_unplug", "plate": "plate_loitering"}},
+                                             "roof": "billboard_noctis", "tag_w": "graffiti_lying", "posters_e": ["poster_unplug"], "plate": "plate_loitering"}},
     {"name": "dream_strip", "seed": 36, "on": {"bay1": "sign_dreams", "bay2": "sign_capsule_2h", "bay3": "sign_karaoke", "bay4": "sign_memory_pawn",
-                                               "roof": "billboard_dreamlink", "tag_e": "graffiti_who_owns", "post_w1": "poster_missing_mika", "post_w2": "poster_missing_ren", "plate": "plate_observed"}},
+                                               "roof": "billboard_dreamlink", "tag_e": "graffiti_who_owns", "posters_w": ["poster_missing_mika", "poster_missing_ren"], "plate": "plate_observed"}},
     {"name": "score_fixers", "seed": 48, "on": {"bay1": "sign_score_reset", "bay2": "sign_jailbreak", "bay3": "sign_dumplings", "bay4": "sign_charge",
-                                                "roof": "billboard_score", "tag_w": "graffiti_not_data", "back": "graffiti_unplug", "post_w2": "poster_missing_ren", "plate": "plate_loitering"}},
+                                                "roof": "billboard_score", "tag_w": "graffiti_not_data", "back": "graffiti_unplug", "posters_e": ["poster_missing_ren"], "plate": "plate_loitering"}},
     {"name": "pawn_row", "seed": 60, "on": {"bay1": "sign_memory_pawn", "bay2": "sign_offgrid", "bay3": "sign_implant_repair", "bay4": "sign_dreams",
-                                            "roof": "billboard_jobs", "tag_e": "stencil_eye_crossed", "post_w1": "poster_unplug", "plate": "plate_curfew"}},
-    {"name": "seized", "seed": 72, "lights": "few", "on": {"bay1": "sign_clinic", "bay4": "sign_organ_credit", "bay3": "plate_property",
+                                            "roof": "billboard_jobs", "tag_e": "stencil_eye_crossed", "posters_w": ["poster_unplug"], "plate": "plate_curfew"}},
+    # seized: two shops still trading, the shuttered bay dark, a seizure plate by the stairs
+    {"name": "seized", "seed": 72, "lights": "few", "on": {"bay1": "sign_clinic", "bay4": "sign_organ_credit",
                                                           "roof": "billboard_defaced", "tag_e": "graffiti_unplug", "tag_w": "graffiti_who_owns", "back": "graffiti_lying",
-                                                          "post_w1": "poster_missing_aiko", "post_w2": "poster_missing_mika", "plate": "plate_property"}},
+                                                          "posters_w": ["poster_missing_aiko", "poster_missing_mika"], "plate": "plate_property"}},
     {"name": "night_market", "seed": 84, "on": {"bay1": "sign_organ_credit", "bay2": "sign_score_reset", "bay3": "sign_capsule_2h", "bay4": "sign_clinic",
-                                                "roof": "billboard_meridian", "tag_w": "stencil_eye_crossed", "post_w1": "poster_missing_ren", "plate": "plate_observed"}},
+                                                "roof": "billboard_meridian", "tag_w": "stencil_eye_crossed", "posters_e": ["poster_missing_ren", "poster_missing_aiko"], "plate": "plate_observed"}},
 ]
 
 
@@ -385,23 +522,34 @@ def build_b():
                 fill("Panel seams", "Panel seam", shell, {"generator": "panel_lines", "amount": 0.01, "scale": 0.8}),
                 fill("Chipped paint", "Steel", shell, wear, values={"height": -0.3})]
     L, _ = building("building_b", "Concrete", shell_extra)
-    S, defs = story(B_SLOTS, B_VARIANTS)
+    S, defs = story(b_slots(parts_of("building_b")), B_VARIANTS)
     finish(L + S, "building_b", defs)
 
 # ------------------------------------------------------------------ building C: the Hoshikawa / Meridian tower
 
-# front +z (wall z=7), sides x=+-7, back z=-7; crown (y 30.6..35.8) faces at +-5
-C_SLOTS = {
-    "lobby": [{"part": 0, "fit": "contain", "margin": 0.15}],
-    "band": [{"box": wall("z", 7.0, -3.4, 3.4, 4.3, 4.95), "fit": "contain"}],
-    "crown_n": [{"box": wall("z", 5.0, -4.7, 4.7, 31.0, 35.4), "fit": "fill", "margin": 0.02}],
-    "crown_e": [{"box": wall("x", 5.0, -4.7, 4.7, 31.0, 35.4), "fit": "fill", "margin": 0.02, "facing": "+x"}],
-    "crown_w": [{"box": wall("x", -5.0, -4.7, 4.7, 31.0, 35.4), "fit": "fill", "margin": 0.02, "facing": "-x"}],
-    "crown_s": [{"box": wall("z", -5.0, -4.7, 4.7, 31.0, 35.4), "fit": "fill", "margin": 0.02, "facing": "-z"}],
-    "plate": [{"box": wall("z", 7.0, 3.6, 5.6, 1.6, 2.6), "fit": "contain"}],
-    "tag_e": [{"box": wall("x", 7.0, -6.0, 3.0, 0.5, 4.2), "fit": "contain", "facing": "+x"}],
-    "tag_w": [{"box": wall("x", -7.0, -6.0, 3.0, 0.5, 4.2), "fit": "contain", "facing": "-x"}],
-}
+# glTF axes: front +z (wall z=7, lobby recess x -3.2..3.2 back to z 5.5), sides
+# x=+-7 (lobby side windows: east z 0.75..4.25, west z -4.25..-0.75), back
+# z=-7. The crown (y 31.4..35.8) carries a framed 8 x 3.6 m panel per face at +-5.3.
+
+
+def c_slots(parts):
+    shell = [find_part(parts, (0, 2.5, 0), (14, 5.0, 14))]         # ground-floor wall
+    crown = lambda c, s, f: on_part("billboard", parts, c, s, f, margin=0.04)
+    return {
+        "lobby": on_part("logo", parts, (0.0, 4.985, 9.0), (6.4, 0.9, 0.2), "+z", margin=0.08),
+        "band": on_part("corp", parts, (-5.1, 3.2, 7.078), (2.9, 0.5, 0.15), "+z", margin=0.05),
+        "crown_n": crown((0.0, 33.55, 5.3), (8.0, 3.6, 0.08), "+z"),
+        "crown_e": crown((5.3, 33.55, 0.0), (0.08, 3.6, 8.0), "+x"),
+        "crown_s": crown((0.0, 33.55, -5.3), (8.0, 3.6, 0.08), "-z"),
+        "crown_w": crown((-5.3, 33.55, 0.0), (0.08, 3.6, 8.0), "-x"),
+        # enamel plate (its own kit part) on the lobby recess's side wall, beside the doors
+        "plate": on_part("plate", parts, (3.193, 1.62, 6.35), (0.012, 0.23, 0.46), "-x", margin=0.008),
+        "tag_e": on_wall("graffiti", (7.0, 1.6, -3.4), "+x", 3.0, rotation=-2),
+        "tag_w": on_wall("graffiti", (-7.0, 1.6, 3.4), "-x", 3.0, rotation=2),
+        "posters_w": scatter_slot(shell, {"min": [-7.3, 0.0, 1.2], "max": [-6.7, 3.0, 4.6]}, seed=17),
+    }
+
+
 C_VARIANTS = [
     {"name": "hoshikawa_hq", "seed": 13, "on": {"lobby": "logo_hoshikawa_dynamics", "band": "sign_hoshikawa_security", "crown_n": "billboard_meridian",
                                                 "crown_e": "billboard_score", "crown_w": "billboard_jobs", "crown_s": "billboard_meridian",
@@ -411,7 +559,8 @@ C_VARIANTS = [
                                             "plate": "plate_observed", "tag_e": "graffiti_lying"}},
     {"name": "dreamlink", "seed": 39, "on": {"lobby": "logo_hoshikawa_dynamics", "band": "sign_hoshikawa_security", "crown_n": "billboard_dreamlink",
                                              "crown_e": "billboard_noctis", "crown_w": "billboard_defaced", "crown_s": "billboard_dreamlink",
-                                             "plate": "plate_curfew", "tag_e": "graffiti_unplug", "tag_w": "graffiti_not_data"}},
+                                             "plate": "plate_curfew", "tag_e": "graffiti_unplug", "tag_w": "graffiti_not_data",
+                                             "posters_w": ["poster_unplug", "poster_missing_aiko"]}},
 ]
 
 
@@ -421,8 +570,9 @@ def build_c():
                 fill("Cladding seams", "Panel seam", shell, {"generator": "panel_lines", "amount": 0.008, "scale": 0.5}),
                 fill("Scratches", "Brushed steel", shell, {"generator": "scratches", "amount": 0.08, "scale": 3.0}, opacity=0.35)]
     L, _ = building("building_c", "Concrete", shell_extra)
-    S, defs = story(C_SLOTS, C_VARIANTS)
+    S, defs = story(c_slots(parts_of("building_c")), C_VARIANTS)
     finish(L + S, "building_c", defs)
+
 
 # ------------------------------------------------------------------ streets and small props
 
@@ -492,7 +642,7 @@ SIGN_VARIANTS = [
     ("jailbreak", "sign_jailbreak", "sign_offgrid"),     # two shops share the sign
     ("organ_credit", "sign_organ_credit", "sign_organ_credit"),
     ("karaoke", "sign_karaoke", "sign_dreams"),
-    ("kiosk", "sign_meridian_kiosk", "sign_charge"),     # Meridian's terminal next to a charging stall
+    ("charging", "sign_charge", "sign_offgrid"),         # a charging stall next to an off-grid repair shop
 ]
 
 
@@ -514,8 +664,11 @@ def fence():
 def sign_extra(parts):
     faces = sorted([p for p in parts if sorted(p["size"])[0] <= 0.03 and sorted(p["size"])[1] >= 0.8], key=lambda p: p["center"][0])
     L = [fill("Sign backing", None, [f["id"] for f in faces], values={"base_color": [0.015, 0.015, 0.02], "roughness": 0.3, "metallic": 0.0})]
-    slots = {"face_w": [{"part": faces[0]["id"], "fit": "contain", "margin": 0.08, "facing": "-x"}],
-             "face_e": [{"part": faces[-1]["id"], "fit": "contain", "margin": 0.08, "facing": "+x"}]}
+
+    def face(p, facing):
+        c, n, (w, h) = face_of(p, facing)
+        return {"kind": "shop", "part": p["id"], "position": [round(x, 4) for x in c], "normal": list(n), "box": (w, h), "margin": 0.08}
+    slots = {"face_w": face(faces[0], "-x"), "face_e": face(faces[-1], "+x")}
     variants = [{"name": n, "seed": 100 + 7 * k, "on": {"face_w": w, "face_e": e}} for k, (n, w, e) in enumerate(SIGN_VARIANTS)]
     S, defs = story(slots, variants)
     return L + S, defs

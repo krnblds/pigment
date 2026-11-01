@@ -200,8 +200,9 @@
         "enabled": true,
         "parts": [
           1,
-          39,
-          40
+          37,
+          38,
+          152
         ]
       }
     },
@@ -302,41 +303,41 @@
         "parts": [
           2,
           3,
-          43,
-          46,
-          49,
+          41,
+          44,
+          47,
+          50,
           52,
           54,
           56,
           58,
-          60,
-          63,
-          69,
+          61,
+          67,
+          70,
           72,
           74,
           76,
           78,
-          80,
-          86,
-          89,
+          84,
+          87,
+          90,
           92,
           94,
           96,
           98,
-          100,
-          103,
-          109,
+          101,
+          107,
+          110,
           112,
           114,
           116,
           118,
-          120,
-          123,
-          126,
+          121,
+          124,
+          127,
           129,
           131,
-          133,
-          135
+          133
         ]
       }
     },
@@ -437,41 +438,41 @@
         "parts": [
           2,
           3,
-          43,
-          46,
-          49,
+          41,
+          44,
+          47,
+          50,
           52,
           54,
           56,
           58,
-          60,
-          63,
-          69,
+          61,
+          67,
+          70,
           72,
           74,
           76,
           78,
-          80,
-          86,
-          89,
+          84,
+          87,
+          90,
           92,
           94,
           96,
           98,
-          100,
-          103,
-          109,
+          101,
+          107,
+          110,
           112,
           114,
           116,
           118,
-          120,
-          123,
-          126,
+          121,
+          124,
+          127,
           129,
           131,
-          133,
-          135
+          133
         ]
       },
       "variant": {
@@ -580,41 +581,41 @@
         "parts": [
           2,
           3,
-          43,
-          46,
-          49,
+          41,
+          44,
+          47,
+          50,
           52,
           54,
           56,
           58,
-          60,
-          63,
-          69,
+          61,
+          67,
+          70,
           72,
           74,
           76,
           78,
-          80,
-          86,
-          89,
+          84,
+          87,
+          90,
           92,
           94,
           96,
           98,
-          100,
-          103,
-          109,
+          101,
+          107,
+          110,
           112,
           114,
           116,
           118,
-          120,
-          123,
-          126,
+          121,
+          124,
+          127,
           129,
           131,
-          133,
-          135
+          133
         ]
       },
       "variant": {
@@ -723,41 +724,41 @@
         "parts": [
           2,
           3,
-          43,
-          46,
-          49,
+          41,
+          44,
+          47,
+          50,
           52,
           54,
           56,
           58,
-          60,
-          63,
-          69,
+          61,
+          67,
+          70,
           72,
           74,
           76,
           78,
-          80,
-          86,
-          89,
+          84,
+          87,
+          90,
           92,
           94,
           96,
           98,
-          100,
-          103,
-          109,
+          101,
+          107,
+          110,
           112,
           114,
           116,
           118,
-          120,
-          123,
-          126,
+          121,
+          124,
+          127,
           129,
           131,
-          133,
-          135
+          133
         ]
       },
       "variant": {
@@ -866,41 +867,41 @@
         "parts": [
           2,
           3,
-          43,
-          46,
-          49,
+          41,
+          44,
+          47,
+          50,
           52,
           54,
           56,
           58,
-          60,
-          63,
-          69,
+          61,
+          67,
+          70,
           72,
           74,
           76,
           78,
-          80,
-          86,
-          89,
+          84,
+          87,
+          90,
           92,
           94,
           96,
           98,
-          100,
-          103,
-          109,
+          101,
+          107,
+          110,
           112,
           114,
           116,
           118,
-          120,
-          123,
-          126,
+          121,
+          124,
+          127,
           129,
           131,
-          133,
-          135
+          133
         ]
       },
       "variant": {
@@ -1009,41 +1010,41 @@
         "parts": [
           2,
           3,
-          43,
-          46,
-          49,
+          41,
+          44,
+          47,
+          50,
           52,
           54,
           56,
           58,
-          60,
-          63,
-          69,
+          61,
+          67,
+          70,
           72,
           74,
           76,
           78,
-          80,
-          86,
-          89,
+          84,
+          87,
+          90,
           92,
           94,
           96,
           98,
-          100,
-          103,
-          109,
+          101,
+          107,
+          110,
           112,
           114,
           116,
           118,
-          120,
-          123,
-          126,
+          121,
+          124,
+          127,
           129,
           131,
-          133,
-          135
+          133
         ]
       },
       "variant": {
@@ -1162,41 +1163,41 @@
         "parts": [
           2,
           3,
-          43,
-          46,
-          49,
+          41,
+          44,
+          47,
+          50,
           52,
           54,
           56,
           58,
-          60,
-          63,
-          69,
+          61,
+          67,
+          70,
           72,
           74,
           76,
           78,
-          80,
-          86,
-          89,
+          84,
+          87,
+          90,
           92,
           94,
           96,
           98,
-          100,
-          103,
-          109,
+          101,
+          107,
+          110,
           112,
           114,
           116,
           118,
-          120,
-          123,
-          126,
+          121,
+          124,
+          127,
           129,
           131,
-          133,
-          135
+          133
         ]
       },
       "variant": {
@@ -1305,41 +1306,41 @@
         "parts": [
           2,
           3,
-          43,
-          46,
-          49,
+          41,
+          44,
+          47,
+          50,
           52,
           54,
           56,
           58,
-          60,
-          63,
-          69,
+          61,
+          67,
+          70,
           72,
           74,
           76,
           78,
-          80,
-          86,
-          89,
+          84,
+          87,
+          90,
           92,
           94,
           96,
           98,
-          100,
-          103,
-          109,
+          101,
+          107,
+          110,
           112,
           114,
           116,
           118,
-          120,
-          123,
-          126,
+          121,
+          124,
+          127,
           129,
           131,
-          133,
-          135
+          133
         ]
       },
       "variant": {
@@ -1446,8 +1447,8 @@
         "invert": false,
         "enabled": true,
         "parts": [
-          155,
-          156
+          154,
+          155
         ]
       }
     },
@@ -1548,52 +1549,53 @@
         "parts": [
           0,
           5,
-          42,
-          45,
-          48,
+          40,
+          43,
+          46,
+          49,
           51,
           53,
           55,
           57,
-          59,
-          62,
+          60,
+          63,
+          64,
           65,
           66,
-          67,
-          68,
+          69,
           71,
           73,
           75,
           77,
-          79,
+          80,
+          81,
           82,
           83,
-          84,
-          85,
-          88,
+          86,
+          89,
           91,
           93,
           95,
           97,
-          99,
-          102,
+          100,
+          103,
+          104,
           105,
           106,
-          107,
-          108,
+          109,
           111,
           113,
           115,
           117,
-          119,
-          122,
-          125,
+          120,
+          123,
+          126,
           128,
           130,
           132,
-          134,
+          165,
           166,
-          167
+          186
         ]
       }
     },
@@ -1692,7 +1694,9 @@
         "invert": false,
         "enabled": true,
         "parts": [
-          41
+          39,
+          175,
+          193
         ]
       }
     },
@@ -1792,44 +1796,57 @@
         "enabled": true,
         "parts": [
           32,
-          33,
           34,
           35,
-          37,
-          38,
-          44,
-          47,
-          50,
-          61,
-          64,
-          70,
-          81,
-          87,
-          90,
-          101,
-          104,
-          110,
-          121,
-          124,
-          127,
-          138,
-          141,
-          144,
-          147,
-          150,
+          36,
+          42,
+          45,
+          48,
+          59,
+          62,
+          68,
+          79,
+          85,
+          88,
+          99,
+          102,
+          108,
+          119,
+          122,
+          125,
+          136,
+          139,
+          142,
+          145,
+          148,
+          151,
           153,
-          154,
+          156,
           157,
           158,
           159,
           160,
           161,
           162,
-          163,
-          169,
+          168,
+          170,
           171,
           172,
-          173
+          177,
+          178,
+          179,
+          180,
+          181,
+          182,
+          194,
+          195,
+          196,
+          197,
+          198,
+          199,
+          200,
+          201,
+          202
         ]
       }
     },
@@ -1929,7 +1946,7 @@
         "enabled": true,
         "parts": [
           4,
-          36
+          33
         ]
       }
     },
@@ -2039,7 +2056,7 @@
         "enabled": true,
         "parts": [
           4,
-          36
+          33
         ]
       }
     },
@@ -2138,10 +2155,20 @@
         "invert": false,
         "enabled": true,
         "parts": [
+          163,
           164,
-          165,
-          168,
-          170
+          167,
+          169,
+          176,
+          183,
+          184,
+          185,
+          187,
+          188,
+          189,
+          190,
+          191,
+          192
         ]
       }
     },
@@ -2250,10 +2277,20 @@
         "invert": false,
         "enabled": true,
         "parts": [
+          163,
           164,
-          165,
-          168,
-          170
+          167,
+          169,
+          176,
+          183,
+          184,
+          185,
+          187,
+          188,
+          189,
+          190,
+          191,
+          192
         ]
       }
     },
@@ -2352,12 +2389,12 @@
         "invert": false,
         "enabled": true,
         "parts": [
-          136,
-          139,
-          142,
-          145,
-          148,
-          151
+          134,
+          137,
+          140,
+          143,
+          146,
+          149
         ]
       }
     },
@@ -2456,12 +2493,12 @@
         "invert": false,
         "enabled": true,
         "parts": [
-          137,
-          140,
-          143,
-          146,
-          149,
-          152
+          135,
+          138,
+          141,
+          144,
+          147,
+          150
         ]
       }
     },
@@ -2560,12 +2597,12 @@
         "invert": false,
         "enabled": true,
         "parts": [
-          137,
-          140,
-          143,
-          146,
-          149,
-          152
+          135,
+          138,
+          141,
+          144,
+          147,
+          150
         ]
       }
     },
@@ -2674,12 +2711,12 @@
         "invert": false,
         "enabled": true,
         "parts": [
-          137,
-          140,
-          143,
-          146,
-          149,
-          152
+          135,
+          138,
+          141,
+          144,
+          147,
+          150
         ]
       }
     },
@@ -2901,7 +2938,7 @@
         "enabled": true,
         "parts": [
           30,
-          174
+          173
         ]
       }
     },
@@ -3001,7 +3038,7 @@
         "enabled": true,
         "parts": [
           31,
-          175
+          174
         ]
       }
     },
@@ -3111,8 +3148,9 @@
         "enabled": true,
         "parts": [
           1,
-          39,
-          40
+          37,
+          38,
+          152
         ]
       }
     },
@@ -3222,8 +3260,9 @@
         "enabled": true,
         "parts": [
           1,
-          39,
-          40
+          37,
+          38,
+          152
         ]
       }
     },
@@ -3333,8 +3372,9 @@
         "enabled": true,
         "parts": [
           1,
-          39,
-          40
+          37,
+          38,
+          152
         ]
       }
     },
@@ -3445,35 +3485,35 @@
         "parts": [
           1,
           32,
-          33,
           34,
           35,
+          36,
           37,
           38,
-          39,
-          40,
-          44,
-          47,
-          50,
-          61,
-          64,
-          70,
-          81,
-          87,
-          90,
-          101,
-          104,
-          110,
-          121,
-          124,
-          127,
-          138,
-          141,
-          144,
-          147,
-          150,
+          42,
+          45,
+          48,
+          59,
+          62,
+          68,
+          79,
+          85,
+          88,
+          99,
+          102,
+          108,
+          119,
+          122,
+          125,
+          136,
+          139,
+          142,
+          145,
+          148,
+          151,
+          152,
           153,
-          154,
+          156,
           157,
           158,
           159,
@@ -3482,13 +3522,37 @@
           162,
           163,
           164,
-          165,
+          167,
           168,
           169,
           170,
           171,
           172,
-          173
+          176,
+          177,
+          178,
+          179,
+          180,
+          181,
+          182,
+          183,
+          184,
+          185,
+          187,
+          188,
+          189,
+          190,
+          191,
+          192,
+          194,
+          195,
+          196,
+          197,
+          198,
+          199,
+          200,
+          201,
+          202
         ]
       }
     },
@@ -3599,35 +3663,35 @@
         "parts": [
           1,
           32,
-          33,
           34,
           35,
+          36,
           37,
           38,
-          39,
-          40,
-          44,
-          47,
-          50,
-          61,
-          64,
-          70,
-          81,
-          87,
-          90,
-          101,
-          104,
-          110,
-          121,
-          124,
-          127,
-          138,
-          141,
-          144,
-          147,
-          150,
+          42,
+          45,
+          48,
+          59,
+          62,
+          68,
+          79,
+          85,
+          88,
+          99,
+          102,
+          108,
+          119,
+          122,
+          125,
+          136,
+          139,
+          142,
+          145,
+          148,
+          151,
+          152,
           153,
-          154,
+          156,
           157,
           158,
           159,
@@ -3636,13 +3700,37 @@
           162,
           163,
           164,
-          165,
+          167,
           168,
           169,
           170,
           171,
           172,
-          173
+          176,
+          177,
+          178,
+          179,
+          180,
+          181,
+          182,
+          183,
+          184,
+          185,
+          187,
+          188,
+          189,
+          190,
+          191,
+          192,
+          194,
+          195,
+          196,
+          197,
+          198,
+          199,
+          200,
+          201,
+          202
         ]
       }
     },
@@ -3903,16 +3991,27 @@
       "variant": {
         "decals": [
           {
-            "name": "blade/blade_kioku",
+            "name": "blade_e/blade_kioku",
             "group": "story",
             "enabled": true,
             "args": {
               "emissive_strength": 6.0,
-              "facing": "+x",
-              "fit": "contain",
               "image": "assets/decals/story/blade_kioku.png",
               "material": "Neon pink",
-              "part": 154,
+              "normal": [
+                1,
+                0,
+                0
+              ],
+              "position": [
+                3.714,
+                10.0,
+                5.75
+              ],
+              "size": [
+                0.98,
+                3.5088
+              ],
               "tint": [
                 1.0,
                 0.6,
@@ -3921,16 +4020,27 @@
             }
           },
           {
-            "name": "blade/blade_kioku",
+            "name": "blade_w/blade_kioku",
             "group": "story",
             "enabled": true,
             "args": {
               "emissive_strength": 6.0,
-              "facing": "-x",
-              "fit": "contain",
               "image": "assets/decals/story/blade_kioku.png",
               "material": "Neon pink",
-              "part": 154,
+              "normal": [
+                -1,
+                0,
+                0
+              ],
+              "position": [
+                3.386,
+                10.0,
+                5.75
+              ],
+              "size": [
+                0.98,
+                3.5088
+              ],
               "tint": [
                 1.0,
                 0.6,
@@ -3943,22 +4053,23 @@
             "group": "story",
             "enabled": true,
             "args": {
-              "box": {
-                "max": [
-                  1.3,
-                  4.15,
-                  5.05
-                ],
-                "min": [
-                  -3.5,
-                  3.05,
-                  4.95
-                ]
-              },
               "emissive_strength": 6.0,
-              "fit": "contain",
               "image": "assets/decals/story/sign_memory_pawn.png",
               "material": "Neon pink",
+              "normal": [
+                0,
+                0,
+                1
+              ],
+              "position": [
+                -1.1,
+                3.64,
+                5.398
+              ],
+              "size": [
+                1.2704,
+                0.66
+              ],
               "tint": [
                 1.0,
                 0.6,
@@ -3967,136 +4078,51 @@
             }
           },
           {
-            "name": "high/billboard_noctis",
+            "name": "roof/billboard_noctis",
             "group": "story",
             "enabled": true,
             "args": {
-              "box": {
-                "max": [
-                  4.05,
-                  17.6,
-                  4.6
-                ],
-                "min": [
-                  3.95,
-                  13.0,
-                  -4.6
-                ]
-              },
               "emissive_strength": 1.6,
-              "facing": "+x",
-              "fit": "contain",
               "image": "assets/decals/story/billboard_noctis.png",
-              "material": "White plastic"
-            }
-          },
-          {
-            "name": "tag_e/graffiti_who_owns",
-            "group": "story",
-            "enabled": true,
-            "args": {
-              "box": {
-                "max": [
-                  4.05,
-                  3.6,
-                  2.6
-                ],
-                "min": [
-                  3.95,
-                  0.5,
-                  -4.6
-                ]
-              },
-              "facing": "+x",
-              "fit": "contain",
-              "image": "assets/decals/story/graffiti_who_owns.png",
               "material": "White plastic",
-              "opacity": 0.95
+              "normal": [
+                0,
+                0,
+                1
+              ],
+              "position": [
+                0.0,
+                24.1,
+                3.44
+              ],
+              "size": [
+                6.24,
+                3.12
+              ]
             }
           },
           {
-            "name": "plate/plate_observed",
-            "group": "story",
-            "enabled": true,
-            "args": {
-              "box": {
-                "max": [
-                  4.05,
-                  2.3,
-                  4.7
-                ],
-                "min": [
-                  3.95,
-                  1.5,
-                  3.1
-                ]
-              },
-              "facing": "+x",
-              "fit": "contain",
-              "image": "assets/decals/story/plate_observed.png",
-              "material": "White plastic",
-              "opacity": 0.95
-            }
-          },
-          {
-            "name": "post_w1/poster_missing_aiko",
-            "group": "story",
-            "enabled": true,
-            "args": {
-              "box": {
-                "max": [
-                  -3.95,
-                  2.3,
-                  4.6
-                ],
-                "min": [
-                  -4.05,
-                  0.9,
-                  3.6
-                ]
-              },
-              "facing": "-x",
-              "fit": "contain",
-              "image": "assets/decals/story/poster_missing_aiko.png",
-              "material": "White plastic",
-              "opacity": 0.95
-            }
-          },
-          {
-            "name": "post_w2/poster_missing_ren",
-            "group": "story",
-            "enabled": true,
-            "args": {
-              "box": {
-                "max": [
-                  -3.95,
-                  2.3,
-                  3.4
-                ],
-                "min": [
-                  -4.05,
-                  0.9,
-                  2.4
-                ]
-              },
-              "facing": "-x",
-              "fit": "contain",
-              "image": "assets/decals/story/poster_missing_ren.png",
-              "material": "White plastic",
-              "opacity": 0.95
-            }
-          },
-          {
-            "name": "blade/blade_gitai",
+            "name": "blade_e/blade_gitai",
             "group": "story",
             "enabled": false,
             "args": {
               "emissive_strength": 6.0,
-              "facing": "+x",
-              "fit": "contain",
               "image": "assets/decals/story/blade_gitai.png",
               "material": "Neon pink",
-              "part": 154,
+              "normal": [
+                1,
+                0,
+                0
+              ],
+              "position": [
+                3.714,
+                10.0,
+                5.75
+              ],
+              "size": [
+                0.98,
+                1.9188
+              ],
               "tint": [
                 0.2,
                 0.9,
@@ -4105,16 +4131,27 @@
             }
           },
           {
-            "name": "blade/blade_gitai",
+            "name": "blade_w/blade_gitai",
             "group": "story",
             "enabled": false,
             "args": {
               "emissive_strength": 6.0,
-              "facing": "-x",
-              "fit": "contain",
               "image": "assets/decals/story/blade_gitai.png",
               "material": "Neon pink",
-              "part": 154,
+              "normal": [
+                -1,
+                0,
+                0
+              ],
+              "position": [
+                3.386,
+                10.0,
+                5.75
+              ],
+              "size": [
+                0.98,
+                1.9188
+              ],
               "tint": [
                 0.2,
                 0.9,
@@ -4127,22 +4164,23 @@
             "group": "story",
             "enabled": false,
             "args": {
-              "box": {
-                "max": [
-                  1.3,
-                  4.15,
-                  5.05
-                ],
-                "min": [
-                  -3.5,
-                  3.05,
-                  4.95
-                ]
-              },
               "emissive_strength": 6.0,
-              "fit": "contain",
               "image": "assets/decals/story/sign_implant_repair.png",
               "material": "Neon pink",
+              "normal": [
+                0,
+                0,
+                1
+              ],
+              "position": [
+                -1.1,
+                3.64,
+                5.398
+              ],
+              "size": [
+                1.3022,
+                0.66
+              ],
               "tint": [
                 0.2,
                 0.9,
@@ -4151,112 +4189,51 @@
             }
           },
           {
-            "name": "high/billboard_score",
+            "name": "roof/billboard_score",
             "group": "story",
             "enabled": false,
             "args": {
-              "box": {
-                "max": [
-                  4.05,
-                  17.6,
-                  4.6
-                ],
-                "min": [
-                  3.95,
-                  13.0,
-                  -4.6
-                ]
-              },
               "emissive_strength": 1.6,
-              "facing": "+x",
-              "fit": "contain",
               "image": "assets/decals/story/billboard_score.png",
-              "material": "White plastic"
-            }
-          },
-          {
-            "name": "tag_w/graffiti_not_data",
-            "group": "story",
-            "enabled": false,
-            "args": {
-              "box": {
-                "max": [
-                  -3.95,
-                  3.6,
-                  2.0
-                ],
-                "min": [
-                  -4.05,
-                  0.5,
-                  -4.6
-                ]
-              },
-              "facing": "-x",
-              "fit": "contain",
-              "image": "assets/decals/story/graffiti_not_data.png",
               "material": "White plastic",
-              "opacity": 0.95
+              "normal": [
+                0,
+                0,
+                1
+              ],
+              "position": [
+                0.0,
+                24.1,
+                3.44
+              ],
+              "size": [
+                6.24,
+                3.12
+              ]
             }
           },
           {
-            "name": "plate/plate_loitering",
-            "group": "story",
-            "enabled": false,
-            "args": {
-              "box": {
-                "max": [
-                  4.05,
-                  2.3,
-                  4.7
-                ],
-                "min": [
-                  3.95,
-                  1.5,
-                  3.1
-                ]
-              },
-              "facing": "+x",
-              "fit": "contain",
-              "image": "assets/decals/story/plate_loitering.png",
-              "material": "White plastic",
-              "opacity": 0.95
-            }
-          },
-          {
-            "name": "post_w1/poster_unplug",
-            "group": "story",
-            "enabled": false,
-            "args": {
-              "box": {
-                "max": [
-                  -3.95,
-                  2.3,
-                  4.6
-                ],
-                "min": [
-                  -4.05,
-                  0.9,
-                  3.6
-                ]
-              },
-              "facing": "-x",
-              "fit": "contain",
-              "image": "assets/decals/story/poster_unplug.png",
-              "material": "White plastic",
-              "opacity": 0.95
-            }
-          },
-          {
-            "name": "blade/blade_capsule",
+            "name": "blade_e/blade_capsule",
             "group": "story",
             "enabled": false,
             "args": {
               "emissive_strength": 6.0,
-              "facing": "+x",
-              "fit": "contain",
               "image": "assets/decals/story/blade_capsule.png",
               "material": "Neon pink",
-              "part": 154,
+              "normal": [
+                1,
+                0,
+                0
+              ],
+              "position": [
+                3.714,
+                10.0,
+                5.75
+              ],
+              "size": [
+                0.98,
+                3.3903
+              ],
               "tint": [
                 0.6,
                 0.35,
@@ -4265,16 +4242,27 @@
             }
           },
           {
-            "name": "blade/blade_capsule",
+            "name": "blade_w/blade_capsule",
             "group": "story",
             "enabled": false,
             "args": {
               "emissive_strength": 6.0,
-              "facing": "-x",
-              "fit": "contain",
               "image": "assets/decals/story/blade_capsule.png",
               "material": "Neon pink",
-              "part": 154,
+              "normal": [
+                -1,
+                0,
+                0
+              ],
+              "position": [
+                3.386,
+                10.0,
+                5.75
+              ],
+              "size": [
+                0.98,
+                3.3903
+              ],
               "tint": [
                 0.6,
                 0.35,
@@ -4287,22 +4275,23 @@
             "group": "story",
             "enabled": false,
             "args": {
-              "box": {
-                "max": [
-                  1.3,
-                  4.15,
-                  5.05
-                ],
-                "min": [
-                  -3.5,
-                  3.05,
-                  4.95
-                ]
-              },
               "emissive_strength": 6.0,
-              "fit": "contain",
               "image": "assets/decals/story/sign_capsule_2h.png",
               "material": "Neon pink",
+              "normal": [
+                0,
+                0,
+                1
+              ],
+              "position": [
+                -1.1,
+                3.64,
+                5.398
+              ],
+              "size": [
+                1.3571,
+                0.66
+              ],
               "tint": [
                 0.6,
                 0.35,
@@ -4311,27 +4300,27 @@
             }
           },
           {
-            "name": "high/billboard_dreamlink",
+            "name": "roof/billboard_dreamlink",
             "group": "story",
             "enabled": false,
             "args": {
-              "box": {
-                "max": [
-                  4.05,
-                  17.6,
-                  4.6
-                ],
-                "min": [
-                  3.95,
-                  13.0,
-                  -4.6
-                ]
-              },
               "emissive_strength": 1.6,
-              "facing": "+x",
-              "fit": "contain",
               "image": "assets/decals/story/billboard_dreamlink.png",
-              "material": "White plastic"
+              "material": "White plastic",
+              "normal": [
+                0,
+                0,
+                1
+              ],
+              "position": [
+                0.0,
+                24.1,
+                3.44
+              ],
+              "size": [
+                6.24,
+                3.12
+              ]
             }
           },
           {
@@ -4339,108 +4328,47 @@
             "group": "story",
             "enabled": false,
             "args": {
-              "box": {
-                "max": [
-                  3.4,
-                  12.2,
-                  -4.95
-                ],
-                "min": [
-                  -3.0,
-                  9.0,
-                  -5.05
-                ]
-              },
               "emissive_strength": 1.6,
-              "facing": "-z",
-              "fit": "contain",
               "image": "assets/decals/story/billboard_jobs.png",
-              "material": "White plastic"
-            }
-          },
-          {
-            "name": "tag_e/graffiti_unplug",
-            "group": "story",
-            "enabled": false,
-            "args": {
-              "box": {
-                "max": [
-                  4.05,
-                  3.6,
-                  2.6
-                ],
-                "min": [
-                  3.95,
-                  0.5,
-                  -4.6
-                ]
-              },
-              "facing": "+x",
-              "fit": "contain",
-              "image": "assets/decals/story/graffiti_unplug.png",
               "material": "White plastic",
-              "opacity": 0.95
+              "normal": [
+                0,
+                0,
+                -1
+              ],
+              "position": [
+                0.4,
+                10.6,
+                -5.46
+              ],
+              "size": [
+                6.24,
+                3.12
+              ]
             }
           },
           {
-            "name": "plate/plate_curfew",
-            "group": "story",
-            "enabled": false,
-            "args": {
-              "box": {
-                "max": [
-                  4.05,
-                  2.3,
-                  4.7
-                ],
-                "min": [
-                  3.95,
-                  1.5,
-                  3.1
-                ]
-              },
-              "facing": "+x",
-              "fit": "contain",
-              "image": "assets/decals/story/plate_curfew.png",
-              "material": "White plastic",
-              "opacity": 0.95
-            }
-          },
-          {
-            "name": "post_w1/poster_missing_mika",
-            "group": "story",
-            "enabled": false,
-            "args": {
-              "box": {
-                "max": [
-                  -3.95,
-                  2.3,
-                  4.6
-                ],
-                "min": [
-                  -4.05,
-                  0.9,
-                  3.6
-                ]
-              },
-              "facing": "-x",
-              "fit": "contain",
-              "image": "assets/decals/story/poster_missing_mika.png",
-              "material": "White plastic",
-              "opacity": 0.95
-            }
-          },
-          {
-            "name": "blade/blade_soba",
+            "name": "blade_e/blade_soba",
             "group": "story",
             "enabled": false,
             "args": {
               "emissive_strength": 6.0,
-              "facing": "+x",
-              "fit": "contain",
               "image": "assets/decals/story/blade_soba.png",
               "material": "Neon pink",
-              "part": 154,
+              "normal": [
+                1,
+                0,
+                0
+              ],
+              "position": [
+                3.714,
+                10.0,
+                5.75
+              ],
+              "size": [
+                0.98,
+                2.003
+              ],
               "tint": [
                 1.0,
                 0.4,
@@ -4449,16 +4377,27 @@
             }
           },
           {
-            "name": "blade/blade_soba",
+            "name": "blade_w/blade_soba",
             "group": "story",
             "enabled": false,
             "args": {
               "emissive_strength": 6.0,
-              "facing": "-x",
-              "fit": "contain",
               "image": "assets/decals/story/blade_soba.png",
               "material": "Neon pink",
-              "part": 154,
+              "normal": [
+                -1,
+                0,
+                0
+              ],
+              "position": [
+                3.386,
+                10.0,
+                5.75
+              ],
+              "size": [
+                0.98,
+                2.003
+              ],
               "tint": [
                 1.0,
                 0.4,
@@ -4471,22 +4410,23 @@
             "group": "story",
             "enabled": false,
             "args": {
-              "box": {
-                "max": [
-                  1.3,
-                  4.15,
-                  5.05
-                ],
-                "min": [
-                  -3.5,
-                  3.05,
-                  4.95
-                ]
-              },
               "emissive_strength": 6.0,
-              "fit": "contain",
               "image": "assets/decals/story/sign_dumplings.png",
               "material": "Neon pink",
+              "normal": [
+                0,
+                0,
+                1
+              ],
+              "position": [
+                -1.1,
+                3.64,
+                5.398
+              ],
+              "size": [
+                1.7509,
+                0.66
+              ],
               "tint": [
                 1.0,
                 0.35,
@@ -4495,64 +4435,51 @@
             }
           },
           {
-            "name": "high/billboard_meridian",
+            "name": "roof/billboard_meridian",
             "group": "story",
             "enabled": false,
             "args": {
-              "box": {
-                "max": [
-                  4.05,
-                  17.6,
-                  4.6
-                ],
-                "min": [
-                  3.95,
-                  13.0,
-                  -4.6
-                ]
-              },
               "emissive_strength": 1.6,
-              "facing": "+x",
-              "fit": "contain",
               "image": "assets/decals/story/billboard_meridian.png",
-              "material": "White plastic"
-            }
-          },
-          {
-            "name": "tag_w/graffiti_lying",
-            "group": "story",
-            "enabled": false,
-            "args": {
-              "box": {
-                "max": [
-                  -3.95,
-                  3.6,
-                  2.0
-                ],
-                "min": [
-                  -4.05,
-                  0.5,
-                  -4.6
-                ]
-              },
-              "facing": "-x",
-              "fit": "contain",
-              "image": "assets/decals/story/graffiti_lying.png",
               "material": "White plastic",
-              "opacity": 0.95
+              "normal": [
+                0,
+                0,
+                1
+              ],
+              "position": [
+                0.0,
+                24.1,
+                3.44
+              ],
+              "size": [
+                6.24,
+                3.12
+              ]
             }
           },
           {
-            "name": "blade/blade_yume",
+            "name": "blade_e/blade_yume",
             "group": "story",
             "enabled": false,
             "args": {
               "emissive_strength": 6.0,
-              "facing": "+x",
-              "fit": "contain",
               "image": "assets/decals/story/blade_yume.png",
               "material": "Neon pink",
-              "part": 154,
+              "normal": [
+                1,
+                0,
+                0
+              ],
+              "position": [
+                3.714,
+                10.0,
+                5.75
+              ],
+              "size": [
+                0.98,
+                1.9225
+              ],
               "tint": [
                 1.0,
                 0.3,
@@ -4561,16 +4488,27 @@
             }
           },
           {
-            "name": "blade/blade_yume",
+            "name": "blade_w/blade_yume",
             "group": "story",
             "enabled": false,
             "args": {
               "emissive_strength": 6.0,
-              "facing": "-x",
-              "fit": "contain",
               "image": "assets/decals/story/blade_yume.png",
               "material": "Neon pink",
-              "part": 154,
+              "normal": [
+                -1,
+                0,
+                0
+              ],
+              "position": [
+                3.386,
+                10.0,
+                5.75
+              ],
+              "size": [
+                0.98,
+                1.9225
+              ],
               "tint": [
                 1.0,
                 0.3,
@@ -4583,22 +4521,23 @@
             "group": "story",
             "enabled": false,
             "args": {
-              "box": {
-                "max": [
-                  1.3,
-                  4.15,
-                  5.05
-                ],
-                "min": [
-                  -3.5,
-                  3.05,
-                  4.95
-                ]
-              },
               "emissive_strength": 6.0,
-              "fit": "contain",
               "image": "assets/decals/story/sign_dreams.png",
               "material": "Neon pink",
+              "normal": [
+                0,
+                0,
+                1
+              ],
+              "position": [
+                -1.1,
+                3.64,
+                5.398
+              ],
+              "size": [
+                1.0225,
+                0.66
+              ],
               "tint": [
                 0.8,
                 0.5,
@@ -4607,27 +4546,27 @@
             }
           },
           {
-            "name": "high/billboard_jobs",
+            "name": "roof/billboard_jobs",
             "group": "story",
             "enabled": false,
             "args": {
-              "box": {
-                "max": [
-                  4.05,
-                  17.6,
-                  4.6
-                ],
-                "min": [
-                  3.95,
-                  13.0,
-                  -4.6
-                ]
-              },
               "emissive_strength": 1.6,
-              "facing": "+x",
-              "fit": "contain",
               "image": "assets/decals/story/billboard_jobs.png",
-              "material": "White plastic"
+              "material": "White plastic",
+              "normal": [
+                0,
+                0,
+                1
+              ],
+              "position": [
+                0.0,
+                24.1,
+                3.44
+              ],
+              "size": [
+                6.24,
+                3.12
+              ]
             }
           },
           {
@@ -4635,179 +4574,71 @@
             "group": "story",
             "enabled": false,
             "args": {
-              "box": {
-                "max": [
-                  3.4,
-                  12.2,
-                  -4.95
-                ],
-                "min": [
-                  -3.0,
-                  9.0,
-                  -5.05
-                ]
-              },
               "emissive_strength": 1.6,
-              "facing": "-z",
-              "fit": "contain",
               "image": "assets/decals/story/billboard_dreamlink.png",
-              "material": "White plastic"
-            }
-          },
-          {
-            "name": "tag_e/stencil_eye_crossed",
-            "group": "story",
-            "enabled": false,
-            "args": {
-              "box": {
-                "max": [
-                  4.05,
-                  3.6,
-                  2.6
-                ],
-                "min": [
-                  3.95,
-                  0.5,
-                  -4.6
-                ]
-              },
-              "facing": "+x",
-              "fit": "contain",
-              "image": "assets/decals/story/stencil_eye_crossed.png",
               "material": "White plastic",
-              "opacity": 0.95
+              "normal": [
+                0,
+                0,
+                -1
+              ],
+              "position": [
+                0.4,
+                10.6,
+                -5.46
+              ],
+              "size": [
+                6.24,
+                3.12
+              ]
             }
           },
           {
-            "name": "post_w2/poster_missing_aiko",
+            "name": "roof/billboard_defaced",
             "group": "story",
             "enabled": false,
             "args": {
-              "box": {
-                "max": [
-                  -3.95,
-                  2.3,
-                  3.4
-                ],
-                "min": [
-                  -4.05,
-                  0.9,
-                  2.4
-                ]
-              },
-              "facing": "-x",
-              "fit": "contain",
-              "image": "assets/decals/story/poster_missing_aiko.png",
-              "material": "White plastic",
-              "opacity": 0.95
-            }
-          },
-          {
-            "name": "shop/plate_property",
-            "group": "story",
-            "enabled": false,
-            "args": {
-              "box": {
-                "max": [
-                  1.3,
-                  4.15,
-                  5.05
-                ],
-                "min": [
-                  -3.5,
-                  3.05,
-                  4.95
-                ]
-              },
-              "fit": "contain",
-              "image": "assets/decals/story/plate_property.png",
-              "material": "White plastic",
-              "opacity": 0.95
-            }
-          },
-          {
-            "name": "high/billboard_defaced",
-            "group": "story",
-            "enabled": false,
-            "args": {
-              "box": {
-                "max": [
-                  4.05,
-                  17.6,
-                  4.6
-                ],
-                "min": [
-                  3.95,
-                  13.0,
-                  -4.6
-                ]
-              },
               "emissive_strength": 1.6,
-              "facing": "+x",
-              "fit": "contain",
               "image": "assets/decals/story/billboard_defaced.png",
-              "material": "White plastic"
-            }
-          },
-          {
-            "name": "tag_w/stencil_eye_crossed",
-            "group": "story",
-            "enabled": false,
-            "args": {
-              "box": {
-                "max": [
-                  -3.95,
-                  3.6,
-                  2.0
-                ],
-                "min": [
-                  -4.05,
-                  0.5,
-                  -4.6
-                ]
-              },
-              "facing": "-x",
-              "fit": "contain",
-              "image": "assets/decals/story/stencil_eye_crossed.png",
               "material": "White plastic",
-              "opacity": 0.95
+              "normal": [
+                0,
+                0,
+                1
+              ],
+              "position": [
+                0.0,
+                24.1,
+                3.44
+              ],
+              "size": [
+                6.24,
+                3.12
+              ]
             }
           },
           {
-            "name": "post_w2/poster_unplug",
-            "group": "story",
-            "enabled": false,
-            "args": {
-              "box": {
-                "max": [
-                  -3.95,
-                  2.3,
-                  3.4
-                ],
-                "min": [
-                  -4.05,
-                  0.9,
-                  2.4
-                ]
-              },
-              "facing": "-x",
-              "fit": "contain",
-              "image": "assets/decals/story/poster_unplug.png",
-              "material": "White plastic",
-              "opacity": 0.95
-            }
-          },
-          {
-            "name": "blade/blade_pachinko",
+            "name": "blade_e/blade_pachinko",
             "group": "story",
             "enabled": false,
             "args": {
               "emissive_strength": 6.0,
-              "facing": "+x",
-              "fit": "contain",
               "image": "assets/decals/story/blade_pachinko.png",
               "material": "Neon pink",
-              "part": 154,
+              "normal": [
+                1,
+                0,
+                0
+              ],
+              "position": [
+                3.714,
+                10.0,
+                5.75
+              ],
+              "size": [
+                0.98,
+                3.3789
+              ],
               "tint": [
                 0.4,
                 1.0,
@@ -4816,16 +4647,27 @@
             }
           },
           {
-            "name": "blade/blade_pachinko",
+            "name": "blade_w/blade_pachinko",
             "group": "story",
             "enabled": false,
             "args": {
               "emissive_strength": 6.0,
-              "facing": "-x",
-              "fit": "contain",
               "image": "assets/decals/story/blade_pachinko.png",
               "material": "Neon pink",
-              "part": 154,
+              "normal": [
+                -1,
+                0,
+                0
+              ],
+              "position": [
+                3.386,
+                10.0,
+                5.75
+              ],
+              "size": [
+                0.98,
+                3.3789
+              ],
               "tint": [
                 0.4,
                 1.0,
@@ -4838,22 +4680,23 @@
             "group": "story",
             "enabled": false,
             "args": {
-              "box": {
-                "max": [
-                  1.3,
-                  4.15,
-                  5.05
-                ],
-                "min": [
-                  -3.5,
-                  3.05,
-                  4.95
-                ]
-              },
               "emissive_strength": 6.0,
-              "fit": "contain",
               "image": "assets/decals/story/sign_score_reset.png",
               "material": "Neon pink",
+              "normal": [
+                0,
+                0,
+                1
+              ],
+              "position": [
+                -1.1,
+                3.64,
+                5.398
+              ],
+              "size": [
+                0.8143,
+                0.66
+              ],
               "tint": [
                 1.0,
                 0.2,
@@ -4866,23 +4709,1201 @@
             "group": "story",
             "enabled": false,
             "args": {
-              "box": {
-                "max": [
-                  3.4,
-                  12.2,
-                  -4.95
-                ],
-                "min": [
-                  -3.0,
-                  9.0,
-                  -5.05
-                ]
-              },
               "emissive_strength": 1.6,
-              "facing": "-z",
-              "fit": "contain",
               "image": "assets/decals/story/billboard_score.png",
-              "material": "White plastic"
+              "material": "White plastic",
+              "normal": [
+                0,
+                0,
+                -1
+              ],
+              "position": [
+                0.4,
+                10.6,
+                -5.46
+              ],
+              "size": [
+                6.24,
+                3.12
+              ]
+            }
+          },
+          {
+            "name": "ghost/billboard_noctis",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "fade": 0.6,
+              "image": "assets/decals/story/billboard_noctis.png",
+              "material": "White plastic",
+              "normal": [
+                0,
+                0,
+                -1
+              ],
+              "opacity": 0.45,
+              "paper_rim": 0.0,
+              "position": [
+                -1.35,
+                15.4,
+                -5.0
+              ],
+              "size": [
+                3.5,
+                1.75
+              ],
+              "tint": [
+                0.82,
+                0.78,
+                0.72
+              ],
+              "wear": 0.45,
+              "wear_scale": 2.0,
+              "wear_style": "grunge"
+            }
+          },
+          {
+            "name": "ghost/billboard_jobs",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "fade": 0.6,
+              "image": "assets/decals/story/billboard_jobs.png",
+              "material": "White plastic",
+              "normal": [
+                0,
+                0,
+                -1
+              ],
+              "opacity": 0.45,
+              "paper_rim": 0.0,
+              "position": [
+                -1.35,
+                15.4,
+                -5.0
+              ],
+              "size": [
+                3.5,
+                1.75
+              ],
+              "tint": [
+                0.82,
+                0.78,
+                0.72
+              ],
+              "wear": 0.45,
+              "wear_scale": 2.0,
+              "wear_style": "grunge"
+            }
+          },
+          {
+            "name": "posters_w/poster_missing_aiko+poster_missing_ren",
+            "group": "story",
+            "enabled": true,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.1258781999349594,
+              "fade": 0.4483179450035095,
+              "image": "assets/decals/story/poster_missing_aiko.png",
+              "material": "White plastic",
+              "normal": [
+                -1.0,
+                0.0,
+                0.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                -4.0,
+                1.5919631719589233,
+                -0.8790984153747559
+              ],
+              "rotation": -2.950474262237549,
+              "size": [
+                0.5035127997398376,
+                0.7191033363342285
+              ],
+              "wear": 0.33940231800079346,
+              "wear_scale": 3.5,
+              "wear_seed": 81.46104431152344
+            }
+          },
+          {
+            "name": "posters_w/poster_missing_aiko+poster_missing_ren",
+            "group": "story",
+            "enabled": true,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.14581680297851562,
+              "fade": 0.19324418902397156,
+              "image": "assets/decals/story/poster_missing_ren.png",
+              "material": "White plastic",
+              "normal": [
+                -1.0,
+                0.0,
+                0.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                -4.0,
+                1.336707353591919,
+                -0.008205890655517578
+              ],
+              "rotation": -0.4583258628845215,
+              "size": [
+                0.5832672119140625,
+                0.8330064415931702
+              ],
+              "wear": 0.35856637358665466,
+              "wear_scale": 3.5,
+              "wear_seed": 17.49962043762207
+            }
+          },
+          {
+            "name": "posters_w/poster_missing_aiko+poster_missing_ren",
+            "group": "story",
+            "enabled": true,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.14360074698925018,
+              "fade": 0.25992441177368164,
+              "image": "assets/decals/story/poster_missing_aiko.png",
+              "material": "White plastic",
+              "normal": [
+                -1.0,
+                0.0,
+                0.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                -4.0,
+                1.399874210357666,
+                -0.5173006057739258
+              ],
+              "rotation": -2.0042219161987305,
+              "size": [
+                0.5744029879570007,
+                0.8203468322753906
+              ],
+              "wear": 0.3453454375267029,
+              "wear_scale": 3.5,
+              "wear_seed": 98.09278869628906
+            }
+          },
+          {
+            "name": "posters_w/poster_missing_aiko+poster_missing_ren",
+            "group": "story",
+            "enabled": true,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.12795262038707733,
+              "fade": 0.18215395510196686,
+              "image": "assets/decals/story/poster_missing_ren.png",
+              "material": "White plastic",
+              "normal": [
+                -1.0,
+                0.0,
+                0.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                -4.0,
+                1.4136450290679932,
+                -2.398662567138672
+              ],
+              "rotation": -3.689035654067993,
+              "size": [
+                0.5118104815483093,
+                0.7309538722038269
+              ],
+              "wear": 0.3255288004875183,
+              "wear_scale": 3.5,
+              "wear_seed": 90.1852035522461
+            }
+          },
+          {
+            "name": "posters_w/poster_unplug",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.13128788769245148,
+              "fade": 0.4483179450035095,
+              "image": "assets/decals/story/poster_unplug.png",
+              "material": "White plastic",
+              "normal": [
+                -1.0,
+                0.0,
+                0.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                -4.0,
+                1.22900390625,
+                -0.823373556137085
+              ],
+              "rotation": 2.6176109313964844,
+              "size": [
+                0.5251515507698059,
+                0.7500072121620178
+              ],
+              "wear": 0.33940231800079346,
+              "wear_scale": 3.5,
+              "wear_seed": 81.46104431152344
+            }
+          },
+          {
+            "name": "posters_w/poster_unplug",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.13153548538684845,
+              "fade": 0.19324418902397156,
+              "image": "assets/decals/story/poster_unplug.png",
+              "material": "White plastic",
+              "normal": [
+                -1.0,
+                0.0,
+                0.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                -4.0,
+                1.6492046117782593,
+                -1.0074355602264404
+              ],
+              "rotation": -0.826991617679596,
+              "size": [
+                0.5261419415473938,
+                0.7514216899871826
+              ],
+              "wear": 0.35856637358665466,
+              "wear_scale": 3.5,
+              "wear_seed": 17.49962043762207
+            }
+          },
+          {
+            "name": "posters_w/poster_unplug",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.150854229927063,
+              "fade": 0.25992441177368164,
+              "image": "assets/decals/story/poster_unplug.png",
+              "material": "White plastic",
+              "normal": [
+                -1.0,
+                0.0,
+                0.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                -4.0,
+                1.6379119157791138,
+                0.4599432945251465
+              ],
+              "rotation": 1.4893946647644043,
+              "size": [
+                0.603416919708252,
+                0.8617837429046631
+              ],
+              "wear": 0.3453454375267029,
+              "wear_scale": 3.5,
+              "wear_seed": 98.09278869628906
+            }
+          },
+          {
+            "name": "posters_w/poster_unplug",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.14768925309181213,
+              "fade": 0.18215395510196686,
+              "image": "assets/decals/story/poster_unplug.png",
+              "material": "White plastic",
+              "normal": [
+                -1.0,
+                0.0,
+                0.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                -4.0,
+                1.444470763206482,
+                -1.8446040153503418
+              ],
+              "rotation": -2.804896831512451,
+              "size": [
+                0.5907570123672485,
+                0.8437032103538513
+              ],
+              "wear": 0.3255288004875183,
+              "wear_scale": 3.5,
+              "wear_seed": 90.1852035522461
+            }
+          },
+          {
+            "name": "posters_w/poster_missing_mika",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.13128788769245148,
+              "fade": 0.4483179450035095,
+              "image": "assets/decals/story/poster_missing_mika.png",
+              "material": "White plastic",
+              "normal": [
+                -1.0,
+                0.0,
+                0.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                -4.0,
+                1.22900390625,
+                -0.823373556137085
+              ],
+              "rotation": 2.6176109313964844,
+              "size": [
+                0.5251515507698059,
+                0.7500072121620178
+              ],
+              "wear": 0.33940231800079346,
+              "wear_scale": 3.5,
+              "wear_seed": 81.46104431152344
+            }
+          },
+          {
+            "name": "posters_w/poster_missing_mika",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.13153548538684845,
+              "fade": 0.19324418902397156,
+              "image": "assets/decals/story/poster_missing_mika.png",
+              "material": "White plastic",
+              "normal": [
+                -1.0,
+                0.0,
+                0.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                -4.0,
+                1.6492046117782593,
+                -1.0074355602264404
+              ],
+              "rotation": -0.826991617679596,
+              "size": [
+                0.5261419415473938,
+                0.7514216899871826
+              ],
+              "wear": 0.35856637358665466,
+              "wear_scale": 3.5,
+              "wear_seed": 17.49962043762207
+            }
+          },
+          {
+            "name": "posters_w/poster_missing_mika",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.150854229927063,
+              "fade": 0.25992441177368164,
+              "image": "assets/decals/story/poster_missing_mika.png",
+              "material": "White plastic",
+              "normal": [
+                -1.0,
+                0.0,
+                0.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                -4.0,
+                1.6379119157791138,
+                0.4599432945251465
+              ],
+              "rotation": 1.4893946647644043,
+              "size": [
+                0.603416919708252,
+                0.8617837429046631
+              ],
+              "wear": 0.3453454375267029,
+              "wear_scale": 3.5,
+              "wear_seed": 98.09278869628906
+            }
+          },
+          {
+            "name": "posters_w/poster_missing_mika",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.14768925309181213,
+              "fade": 0.18215395510196686,
+              "image": "assets/decals/story/poster_missing_mika.png",
+              "material": "White plastic",
+              "normal": [
+                -1.0,
+                0.0,
+                0.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                -4.0,
+                1.444470763206482,
+                -1.8446040153503418
+              ],
+              "rotation": -2.804896831512451,
+              "size": [
+                0.5907570123672485,
+                0.8437032103538513
+              ],
+              "wear": 0.3255288004875183,
+              "wear_scale": 3.5,
+              "wear_seed": 90.1852035522461
+            }
+          },
+          {
+            "name": "posters_e/poster_missing_ren+poster_unplug",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.145236998796463,
+              "fade": 0.22670644521713257,
+              "image": "assets/decals/story/poster_missing_ren.png",
+              "material": "White plastic",
+              "normal": [
+                1.0,
+                0.0,
+                0.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                4.0,
+                1.5884709358215332,
+                2.5577802658081055
+              ],
+              "rotation": -3.1464459896087646,
+              "size": [
+                0.580947995185852,
+                0.8296942114830017
+              ],
+              "wear": 0.4343053102493286,
+              "wear_scale": 3.5,
+              "wear_seed": 13.088226318359375
+            }
+          },
+          {
+            "name": "posters_e/poster_missing_ren+poster_unplug",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.15380987524986267,
+              "fade": 0.15598100423812866,
+              "image": "assets/decals/story/poster_unplug.png",
+              "material": "White plastic",
+              "normal": [
+                1.0,
+                0.0,
+                0.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                4.0,
+                1.3809309005737305,
+                4.001243591308594
+              ],
+              "rotation": -3.386549949645996,
+              "size": [
+                0.6152395009994507,
+                0.8786684274673462
+              ],
+              "wear": 0.3806554079055786,
+              "wear_scale": 3.5,
+              "wear_seed": 80.49408721923828
+            }
+          },
+          {
+            "name": "posters_e/poster_missing_ren+poster_unplug",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.12751860916614532,
+              "fade": 0.24638819694519043,
+              "image": "assets/decals/story/poster_unplug.png",
+              "material": "White plastic",
+              "normal": [
+                1.0,
+                0.0,
+                0.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                4.0,
+                1.5093059539794922,
+                3.3930001258850098
+              ],
+              "rotation": -1.6125125885009766,
+              "size": [
+                0.5100744366645813,
+                0.728474497795105
+              ],
+              "wear": 0.3508261442184448,
+              "wear_scale": 3.5,
+              "wear_seed": 20.034503936767578
+            }
+          },
+          {
+            "name": "posters_w/poster_unplug+poster_missing_aiko",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.1258781999349594,
+              "fade": 0.4483179450035095,
+              "image": "assets/decals/story/poster_unplug.png",
+              "material": "White plastic",
+              "normal": [
+                -1.0,
+                0.0,
+                0.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                -4.0,
+                1.5919631719589233,
+                -0.8790984153747559
+              ],
+              "rotation": -2.950474262237549,
+              "size": [
+                0.5035127997398376,
+                0.7191033363342285
+              ],
+              "wear": 0.33940231800079346,
+              "wear_scale": 3.5,
+              "wear_seed": 81.46104431152344
+            }
+          },
+          {
+            "name": "posters_w/poster_unplug+poster_missing_aiko",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.14581680297851562,
+              "fade": 0.19324418902397156,
+              "image": "assets/decals/story/poster_missing_aiko.png",
+              "material": "White plastic",
+              "normal": [
+                -1.0,
+                0.0,
+                0.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                -4.0,
+                1.336707353591919,
+                -0.008205890655517578
+              ],
+              "rotation": -0.4583258628845215,
+              "size": [
+                0.5832672119140625,
+                0.8330064415931702
+              ],
+              "wear": 0.35856637358665466,
+              "wear_scale": 3.5,
+              "wear_seed": 17.49962043762207
+            }
+          },
+          {
+            "name": "posters_w/poster_unplug+poster_missing_aiko",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.14360074698925018,
+              "fade": 0.25992441177368164,
+              "image": "assets/decals/story/poster_unplug.png",
+              "material": "White plastic",
+              "normal": [
+                -1.0,
+                0.0,
+                0.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                -4.0,
+                1.399874210357666,
+                -0.5173006057739258
+              ],
+              "rotation": -2.0042219161987305,
+              "size": [
+                0.5744029879570007,
+                0.8203468322753906
+              ],
+              "wear": 0.3453454375267029,
+              "wear_scale": 3.5,
+              "wear_seed": 98.09278869628906
+            }
+          },
+          {
+            "name": "posters_w/poster_unplug+poster_missing_aiko",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.12795262038707733,
+              "fade": 0.18215395510196686,
+              "image": "assets/decals/story/poster_missing_aiko.png",
+              "material": "White plastic",
+              "normal": [
+                -1.0,
+                0.0,
+                0.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                -4.0,
+                1.4136450290679932,
+                -2.398662567138672
+              ],
+              "rotation": -3.689035654067993,
+              "size": [
+                0.5118104815483093,
+                0.7309538722038269
+              ],
+              "wear": 0.3255288004875183,
+              "wear_scale": 3.5,
+              "wear_seed": 90.1852035522461
+            }
+          },
+          {
+            "name": "posters_w/poster_missing_mika+poster_unplug+poster_missing_ren",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.12993812561035156,
+              "fade": 0.4483179450035095,
+              "image": "assets/decals/story/poster_missing_ren.png",
+              "material": "White plastic",
+              "normal": [
+                -1.0,
+                0.0,
+                0.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                -4.0,
+                1.260783314704895,
+                -1.5443835258483887
+              ],
+              "rotation": -2.979592800140381,
+              "size": [
+                0.5197525024414062,
+                0.7422964572906494
+              ],
+              "wear": 0.33940231800079346,
+              "wear_scale": 3.5,
+              "wear_seed": 81.46104431152344
+            }
+          },
+          {
+            "name": "posters_w/poster_missing_mika+poster_unplug+poster_missing_ren",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.1520032286643982,
+              "fade": 0.19324418902397156,
+              "image": "assets/decals/story/poster_unplug.png",
+              "material": "White plastic",
+              "normal": [
+                -1.0,
+                0.0,
+                0.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                -4.0,
+                1.3441312313079834,
+                -0.4472622871398926
+              ],
+              "rotation": 1.4445066452026367,
+              "size": [
+                0.6080129146575928,
+                0.8683475852012634
+              ],
+              "wear": 0.35856637358665466,
+              "wear_scale": 3.5,
+              "wear_seed": 17.49962043762207
+            }
+          },
+          {
+            "name": "posters_w/poster_missing_mika+poster_unplug+poster_missing_ren",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.12795262038707733,
+              "fade": 0.25992441177368164,
+              "image": "assets/decals/story/poster_missing_mika.png",
+              "material": "White plastic",
+              "normal": [
+                -1.0,
+                0.0,
+                0.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                -4.0,
+                1.4136450290679932,
+                -2.398662567138672
+              ],
+              "rotation": -3.689035654067993,
+              "size": [
+                0.5118104815483093,
+                0.7309538722038269
+              ],
+              "wear": 0.3453454375267029,
+              "wear_scale": 3.5,
+              "wear_seed": 98.09278869628906
+            }
+          },
+          {
+            "name": "posters_w/poster_missing_mika+poster_unplug+poster_missing_ren",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.15357407927513123,
+              "fade": 0.18215395510196686,
+              "image": "assets/decals/story/poster_missing_mika.png",
+              "material": "White plastic",
+              "normal": [
+                -1.0,
+                0.0,
+                0.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                -4.0,
+                1.5224394798278809,
+                -1.2082645893096924
+              ],
+              "rotation": 3.492880344390869,
+              "size": [
+                0.6142963171005249,
+                0.8773213624954224
+              ],
+              "wear": 0.3255288004875183,
+              "wear_scale": 3.5,
+              "wear_seed": 90.1852035522461
+            }
+          },
+          {
+            "name": "posters_e/poster_missing_ren",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.1374509483575821,
+              "fade": 0.22670644521713257,
+              "image": "assets/decals/story/poster_missing_ren.png",
+              "material": "White plastic",
+              "normal": [
+                1.0,
+                0.0,
+                0.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                4.0,
+                1.3087996244430542,
+                3.994340181350708
+              ],
+              "rotation": 3.7690858840942383,
+              "size": [
+                0.5498037934303284,
+                0.785214900970459
+              ],
+              "wear": 0.4343053102493286,
+              "wear_scale": 3.5,
+              "wear_seed": 13.088226318359375
+            }
+          },
+          {
+            "name": "posters_e/poster_missing_ren",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.14172415435314178,
+              "fade": 0.15598100423812866,
+              "image": "assets/decals/story/poster_missing_ren.png",
+              "material": "White plastic",
+              "normal": [
+                1.0,
+                0.0,
+                0.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                4.0,
+                1.413699984550476,
+                2.1610629558563232
+              ],
+              "rotation": 0.8541660308837891,
+              "size": [
+                0.5668966174125671,
+                0.8096264004707336
+              ],
+              "wear": 0.3806554079055786,
+              "wear_scale": 3.5,
+              "wear_seed": 80.49408721923828
+            }
+          },
+          {
+            "name": "posters_e/poster_missing_ren",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.14586828649044037,
+              "fade": 0.24638819694519043,
+              "image": "assets/decals/story/poster_missing_ren.png",
+              "material": "White plastic",
+              "normal": [
+                1.0,
+                0.0,
+                0.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                4.0,
+                1.6811209917068481,
+                4.545262336730957
+              ],
+              "rotation": 0.5654492378234863,
+              "size": [
+                0.5834731459617615,
+                0.8333005309104919
+              ],
+              "wear": 0.3508261442184448,
+              "wear_scale": 3.5,
+              "wear_seed": 20.034503936767578
+            }
+          },
+          {
+            "name": "plate/plate_observed",
+            "group": "story",
+            "enabled": true,
+            "args": {
+              "fade": 0.15,
+              "image": "assets/decals/story/plate_observed.png",
+              "material": "White plastic",
+              "normal": [
+                0,
+                0,
+                1
+              ],
+              "opacity": 0.97,
+              "position": [
+                1.7,
+                1.62,
+                5.013
+              ],
+              "size": [
+                0.444,
+                0.1925
+              ],
+              "wear_scale": 6.0
+            }
+          },
+          {
+            "name": "plate/plate_loitering",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "fade": 0.15,
+              "image": "assets/decals/story/plate_loitering.png",
+              "material": "White plastic",
+              "normal": [
+                0,
+                0,
+                1
+              ],
+              "opacity": 0.97,
+              "position": [
+                1.7,
+                1.62,
+                5.013
+              ],
+              "size": [
+                0.428,
+                0.214
+              ],
+              "wear_scale": 6.0
+            }
+          },
+          {
+            "name": "plate/plate_curfew",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "fade": 0.15,
+              "image": "assets/decals/story/plate_curfew.png",
+              "material": "White plastic",
+              "normal": [
+                0,
+                0,
+                1
+              ],
+              "opacity": 0.97,
+              "position": [
+                1.7,
+                1.62,
+                5.013
+              ],
+              "size": [
+                0.444,
+                0.1925
+              ],
+              "wear_scale": 6.0
+            }
+          },
+          {
+            "name": "plate/plate_property",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "fade": 0.15,
+              "image": "assets/decals/story/plate_property.png",
+              "material": "White plastic",
+              "normal": [
+                0,
+                0,
+                1
+              ],
+              "opacity": 0.97,
+              "position": [
+                1.7,
+                1.62,
+                5.013
+              ],
+              "size": [
+                0.428,
+                0.214
+              ],
+              "wear_scale": 6.0
+            }
+          },
+          {
+            "name": "tag_e/graffiti_who_owns",
+            "group": "story",
+            "enabled": true,
+            "args": {
+              "fade": 0.25,
+              "image": "assets/decals/story/graffiti_who_owns.png",
+              "material": "White plastic",
+              "normal": [
+                1,
+                0,
+                0
+              ],
+              "opacity": 0.92,
+              "paper_rim": 0.0,
+              "position": [
+                4.0,
+                1.55,
+                -1.2
+              ],
+              "rotation": 2,
+              "size": [
+                2.8,
+                0.6945
+              ],
+              "wear_scale": 3.0,
+              "wear_style": "grunge"
+            }
+          },
+          {
+            "name": "tag_w/graffiti_not_data",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "fade": 0.25,
+              "image": "assets/decals/story/graffiti_not_data.png",
+              "material": "White plastic",
+              "normal": [
+                -1,
+                0,
+                0
+              ],
+              "opacity": 0.92,
+              "paper_rim": 0.0,
+              "position": [
+                -4.0,
+                1.6,
+                -2.4
+              ],
+              "rotation": -3,
+              "size": [
+                2.6,
+                0.8684
+              ],
+              "wear_scale": 3.0,
+              "wear_style": "grunge"
+            }
+          },
+          {
+            "name": "tag_e/graffiti_unplug",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "fade": 0.25,
+              "image": "assets/decals/story/graffiti_unplug.png",
+              "material": "White plastic",
+              "normal": [
+                1,
+                0,
+                0
+              ],
+              "opacity": 0.92,
+              "paper_rim": 0.0,
+              "position": [
+                4.0,
+                1.55,
+                -1.2
+              ],
+              "rotation": 2,
+              "size": [
+                2.8,
+                1.1977
+              ],
+              "wear_scale": 3.0,
+              "wear_style": "grunge"
+            }
+          },
+          {
+            "name": "tag_w/graffiti_lying",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "fade": 0.25,
+              "image": "assets/decals/story/graffiti_lying.png",
+              "material": "White plastic",
+              "normal": [
+                -1,
+                0,
+                0
+              ],
+              "opacity": 0.92,
+              "paper_rim": 0.0,
+              "position": [
+                -4.0,
+                1.6,
+                -2.4
+              ],
+              "rotation": -3,
+              "size": [
+                2.6,
+                0.5357
+              ],
+              "wear_scale": 3.0,
+              "wear_style": "grunge"
+            }
+          },
+          {
+            "name": "tag_e/stencil_eye_crossed",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "fade": 0.25,
+              "image": "assets/decals/story/stencil_eye_crossed.png",
+              "material": "White plastic",
+              "normal": [
+                1,
+                0,
+                0
+              ],
+              "opacity": 0.92,
+              "paper_rim": 0.0,
+              "position": [
+                4.0,
+                1.55,
+                -1.2
+              ],
+              "rotation": 2,
+              "size": [
+                2.8,
+                2.2148
+              ],
+              "wear_scale": 3.0,
+              "wear_style": "grunge"
+            }
+          },
+          {
+            "name": "tag_w/stencil_eye_crossed",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "fade": 0.25,
+              "image": "assets/decals/story/stencil_eye_crossed.png",
+              "material": "White plastic",
+              "normal": [
+                -1,
+                0,
+                0
+              ],
+              "opacity": 0.92,
+              "paper_rim": 0.0,
+              "position": [
+                -4.0,
+                1.6,
+                -2.4
+              ],
+              "rotation": -3,
+              "size": [
+                2.6,
+                2.0566
+              ],
+              "wear_scale": 3.0,
+              "wear_style": "grunge"
             }
           },
           {
@@ -4890,47 +5911,28 @@
             "group": "story",
             "enabled": false,
             "args": {
-              "box": {
-                "max": [
-                  -3.95,
-                  3.6,
-                  2.0
-                ],
-                "min": [
-                  -4.05,
-                  0.5,
-                  -4.6
-                ]
-              },
-              "facing": "-x",
-              "fit": "contain",
+              "fade": 0.25,
               "image": "assets/decals/story/graffiti_who_owns.png",
               "material": "White plastic",
-              "opacity": 0.95
-            }
-          },
-          {
-            "name": "post_w1/poster_missing_ren",
-            "group": "story",
-            "enabled": false,
-            "args": {
-              "box": {
-                "max": [
-                  -3.95,
-                  2.3,
-                  4.6
-                ],
-                "min": [
-                  -4.05,
-                  0.9,
-                  3.6
-                ]
-              },
-              "facing": "-x",
-              "fit": "contain",
-              "image": "assets/decals/story/poster_missing_ren.png",
-              "material": "White plastic",
-              "opacity": 0.95
+              "normal": [
+                -1,
+                0,
+                0
+              ],
+              "opacity": 0.92,
+              "paper_rim": 0.0,
+              "position": [
+                -4.0,
+                1.6,
+                -2.4
+              ],
+              "rotation": -3,
+              "size": [
+                2.6,
+                0.6449
+              ],
+              "wear_scale": 3.0,
+              "wear_style": "grunge"
             }
           }
         ]
@@ -4952,13 +5954,13 @@
         "name": "memory_pawn",
         "seed": 11,
         "enable": [
-          "blade/blade_kioku",
+          "blade_e/blade_kioku",
+          "blade_w/blade_kioku",
           "shop/sign_memory_pawn",
-          "high/billboard_noctis",
+          "roof/billboard_noctis",
           "tag_e/graffiti_who_owns",
           "plate/plate_observed",
-          "post_w1/poster_missing_aiko",
-          "post_w2/poster_missing_ren"
+          "posters_w/poster_missing_aiko+poster_missing_ren"
         ],
         "disable": [
           "story"
@@ -4968,12 +5970,13 @@
         "name": "implants",
         "seed": 23,
         "enable": [
-          "blade/blade_gitai",
+          "blade_e/blade_gitai",
+          "blade_w/blade_gitai",
           "shop/sign_implant_repair",
-          "high/billboard_score",
+          "roof/billboard_score",
           "tag_w/graffiti_not_data",
           "plate/plate_loitering",
-          "post_w1/poster_unplug"
+          "posters_w/poster_unplug"
         ],
         "disable": [
           "story"
@@ -4983,13 +5986,14 @@
         "name": "capsules",
         "seed": 37,
         "enable": [
-          "blade/blade_capsule",
+          "blade_e/blade_capsule",
+          "blade_w/blade_capsule",
           "shop/sign_capsule_2h",
-          "high/billboard_dreamlink",
+          "roof/billboard_dreamlink",
           "back/billboard_jobs",
           "tag_e/graffiti_unplug",
           "plate/plate_curfew",
-          "post_w1/poster_missing_mika"
+          "posters_w/poster_missing_mika"
         ],
         "disable": [
           "story"
@@ -4999,12 +6003,14 @@
         "name": "soba",
         "seed": 41,
         "enable": [
-          "blade/blade_soba",
+          "blade_e/blade_soba",
+          "blade_w/blade_soba",
           "shop/sign_dumplings",
-          "high/billboard_meridian",
+          "roof/billboard_meridian",
+          "ghost/billboard_noctis",
           "tag_w/graffiti_lying",
           "plate/plate_observed",
-          "post_w2/poster_missing_ren"
+          "posters_e/poster_missing_ren+poster_unplug"
         ],
         "disable": [
           "story"
@@ -5014,14 +6020,14 @@
         "name": "dream_den",
         "seed": 53,
         "enable": [
-          "blade/blade_yume",
+          "blade_e/blade_yume",
+          "blade_w/blade_yume",
           "shop/sign_dreams",
-          "high/billboard_jobs",
+          "roof/billboard_jobs",
           "back/billboard_dreamlink",
           "tag_e/stencil_eye_crossed",
           "plate/plate_curfew",
-          "post_w1/poster_unplug",
-          "post_w2/poster_missing_aiko"
+          "posters_w/poster_unplug+poster_missing_aiko"
         ],
         "disable": [
           "story"
@@ -5031,12 +6037,12 @@
         "name": "evicted",
         "seed": 67,
         "enable": [
-          "shop/plate_property",
-          "high/billboard_defaced",
+          "roof/billboard_defaced",
+          "ghost/billboard_jobs",
+          "plate/plate_property",
           "tag_e/graffiti_unplug",
           "tag_w/stencil_eye_crossed",
-          "post_w1/poster_missing_mika",
-          "post_w2/poster_unplug",
+          "posters_w/poster_missing_mika+poster_unplug+poster_missing_ren",
           "lights_few"
         ],
         "disable": [
@@ -5048,13 +6054,14 @@
         "name": "fixers",
         "seed": 79,
         "enable": [
-          "blade/blade_pachinko",
+          "blade_e/blade_pachinko",
+          "blade_w/blade_pachinko",
           "shop/sign_score_reset",
-          "high/billboard_meridian",
+          "roof/billboard_meridian",
           "back/billboard_score",
           "tag_w/graffiti_who_owns",
           "plate/plate_loitering",
-          "post_w1/poster_missing_ren"
+          "posters_e/poster_missing_ren"
         ],
         "disable": [
           "story"

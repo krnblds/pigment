@@ -31,7 +31,8 @@ Terrain
 Hillside detail
     Stairs climb along retaining walls, railings run along wall tops, alleys
     open between buildings, power lines sag between poles and story posters,
-    graffiti and Meridian billboards are pasted on the (Blender-side) walls.
+    graffiti on the (Blender-side) walls, and Meridian billboards on them in
+    wall-mounted frames (rails, end posts, a backing cabinet, a flood light).
 
 Buildings
     Front rows face the street; back rows fill the hillside.  Every building
@@ -1312,7 +1313,8 @@ def build(root=None, export_junctions=False, quick=False):
                 ground = max(level(*(r[0] + r[5] * (WALL_HALF + 0.6))) for r in ends + [recs[i]])
                 top = min(r[3] for r in ends + [recs[i]]) + 0.1
                 cz = ground + zc if kind != "billboard" else (ground + top) / 2
-                if cz - hh < ground + 0.15 or cz + hh > top - 0.1 or any((r[5] - low).length > 0.3 for r in ends):
+                pad = 0.2 if kind == "billboard" else 0.0     # room for the frame rails
+                if cz - hh - pad < ground + 0.15 or cz + hh + pad > top - 0.1 or any((r[5] - low).length > 0.3 for r in ends):
                     i += 4
                     continue
                 bm = bmesh.new()
@@ -1323,7 +1325,8 @@ def build(root=None, export_junctions=False, quick=False):
                     along = (r[0] - q).dot(t)
                     if abs(along) > hw:
                         continue
-                    p = r[0] + r[5] * (WALL_HALF + 0.012)
+                    # billboards stand proud of the wall in a frame (below); paper and paint sit on it
+                    p = r[0] + r[5] * (WALL_HALF + (0.11 if kind == "billboard" else 0.012))
                     rowv.append((along, bm.verts.new((p.x, p.y, cz - hh)), bm.verts.new((p.x, p.y, cz + hh))))
                 if len(rowv) < 2:
                     bm.free()
@@ -1344,6 +1347,31 @@ def build(root=None, export_junctions=False, quick=False):
                 dme.materials.append(decal_material(img, emit))
                 put(dme, (0, 0, 0), name="StoryDecal_" + os.path.basename(img)[:-4])
                 if kind == "billboard":
+                    # a wall-mounted billboard: frame rails above and below the face, end posts,
+                    # and a backing cabinet, following the wall (it may curve)
+                    fb = bmesh.new()
+                    rows = [recs[i + k] for k in range(-span, span + 1) if abs((recs[i + k][0] - q).dot(t)) <= hw + 0.12]
+
+                    def slab(ra, rb, d0, d1, z0, z1, ea=0.0, eb=0.0):
+                        pa, pb = ra[0] - t * ea, rb[0] + t * eb
+                        vs = [fb.verts.new((P.x, P.y, z)) for P in (pa + ra[5] * (WALL_HALF + d0), pb + rb[5] * (WALL_HALF + d0),
+                                                                     pb + rb[5] * (WALL_HALF + d1), pa + ra[5] * (WALL_HALF + d1)) for z in (z0, z1)]
+                        b0, t0, b1, t1, b2, t2, b3, t3 = vs
+                        for f in ((b0, b1, b2, b3), (t3, t2, t1, t0), (b0, t0, t1, b1), (b1, t1, t2, b2), (b2, t2, t3, b3), (b3, t3, t0, b0)):
+                            fb.faces.new(f)
+                    for ra, rb in zip(rows, rows[1:]):
+                        slab(ra, rb, 0.012, 0.1, cz - hh, cz + hh)                        # cabinet behind the face
+                        slab(ra, rb, 0.012, 0.16, cz + hh, cz + hh + 0.14)                # top rail
+                        slab(ra, rb, 0.012, 0.16, cz - hh - 0.14, cz - hh)                # bottom rail
+                    if len(rows) > 1:
+                        slab(rows[0], rows[0], 0.012, 0.16, cz - hh - 0.14, cz + hh + 0.14, 0.12, 0.0)   # end posts
+                        slab(rows[-1], rows[-1], 0.012, 0.16, cz - hh - 0.14, cz + hh + 0.14, 0.0, 0.12)
+                    bmesh.ops.recalc_face_normals(fb, faces=fb.faces)
+                    fme = bpy.data.meshes.new("BillboardFrame")
+                    fb.to_mesh(fme)
+                    fb.free()
+                    fme.materials.append(M["metal"])
+                    put(fme, (0, 0, 0), name="BillboardFrame")
                     li = bpy.data.lights.new("BillboardLight", "AREA")
                     li.energy = 120
                     li.size = width * 0.7

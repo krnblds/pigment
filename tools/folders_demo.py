@@ -30,8 +30,8 @@ WEATHERING = {"Street grime"} | WALL_STAINS
 # (opacity, mask amount) for the weathering layers
 BOOST = {"Rain streaks": (0.9, 0.45), "Damp patches": (0.75, 0.55), "Street grime": (1.0, 0.6)}
 # building_b's painted walls (the parts its wall weathering used)
-B_WALLS = [1, 180, 181, 182]
-A_WALLS = [1, 39, 40]
+B_WALLS = [1, 183, 184, 185, 186]   # upper + ground-floor shell, band, cornice, coping (kit after decalfix)
+A_WALLS = [1, 152, 37, 38]          # upper + ground-floor shell, band, cornice (kit after decalfix)
 
 
 def load(name):
