@@ -45,7 +45,7 @@ def main():
     info = ns["build"](root=ROOT)
     res = tuple(int(v) for v in opt("--res", "1280x720").split("x"))
     D["setup_render"](int(opt("--samples", "96")), res)
-    out = opt("--out", os.path.join(ROOT, "docs", "agents", "roads", "after"))
+    out = os.path.join(ROOT, opt("--out", os.path.join("docs", "agents", "roads", "after")))
     os.makedirs(os.path.dirname(out), exist_ok=True)
     want = opt("--shots", "join,junction,night,top").split(",")
     sc = bpy.context.scene

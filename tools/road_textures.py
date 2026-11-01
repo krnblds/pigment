@@ -224,12 +224,12 @@ def paving():
     add = lambda **a: s.append(L("add_layer", **a))
     add(name="Joint moss", values={"base_color": [0.05, 0.08, 0.03], "roughness": 0.9}, opacity=0.8,
         mask={"generator": "moss", "amount": 0.35, "scale": 3.0, "breakup": 0.8, "seed": 2})
-    add(name="Slabs", values={"base_color": [0.3, 0.295, 0.285], "roughness": 0.82, "height": 0.25},
+    add(name="Slabs", values={"base_color": [0.44, 0.43, 0.41], "roughness": 0.82, "height": 0.25},
         mask={"generator": "tiles", "variant": "square", "scale": 2.0, "aspect": 1.0, "mortar": 0.035, "breakup": 0.6, "softness": 0.012, "seed": 3})
-    add(name="Slab tone", values={"base_color": [0.23, 0.225, 0.215], "roughness": 0.85}, opacity=0.8,
+    add(name="Slab tone", values={"base_color": [0.36, 0.35, 0.335], "roughness": 0.85}, opacity=0.8,
         channels={"height": False},
         mask={"generator": "tiles", "variant": "square", "scale": 2.0, "aspect": 1.0, "mortar": 0.035, "amount": 0.35, "softness": 0.012, "seed": 7})
-    add(name="Slab grain", values={"base_color": [0.38, 0.37, 0.355], "height": 0.1}, opacity=0.5,
+    add(name="Slab grain", values={"base_color": [0.5, 0.49, 0.47], "height": 0.1}, opacity=0.5,
         mask={"generator": "spots", "amount": 0.25, "scale": 90.0, "softness": 0.05, "seed": 11})
     add(name="Chips", values={"base_color": [0.17, 0.165, 0.16], "height": -0.3}, opacity=0.9,
         mask={"generator": "scratches", "amount": 0.04, "scale": 2.5, "softness": 0.02, "seed": 17})
