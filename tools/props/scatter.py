@@ -16,7 +16,8 @@ context = {
     {"slot": "alley_span", "points": [...], "width": 6.5},   # alley centreline + wall-to-wall width
     ...],                                    # slots: curb walk frontage facade roadside median alley alley_span
   "points": [                                # junction corners / crossing ends
-    {"slot": "corner", "pos": [x, y, z], "dir": [dx, dz], "district": ...}],  # dir: from the walk into the road
+    {"slot": "corner", "pos": [x, y, z], "dir": [dx, dz], "district": ...,   # dir: from the walk into the road
+     "curbs": [[dx, dz], [dx, dz]]}],         # optional: curb directions away from the apex (default: square corner)
   "areas": [                                 # rooftop / plaza / road polygons (y = height of the area)
     {"slot": "rooftop", "polygon": [[x, y, z], ...], "district": ...}],
   "blocked": [{"pos": [x, y, z], "radius": 1.5}],   # doors, driveways, lamps already placed...
@@ -251,6 +252,13 @@ def scatter_props(context, rules=None, *, index=None, seed=None, density_scale=1
                         break
                     pk, (tkx, tkz) = _at(pts, cum, sk)
                     off = rule.get("offset", 0.0)
+                    if isinstance(off, dict):
+                        off = off.get(slot, off.get("default", 0.0))
+                    fpd = fp.get("radius", 0.4) if rule.get("facing") == "random" else fp.get("d", 0.6) / 2
+                    if slot == "curb":          # always back from the curb face onto the walk, clear of it
+                        off = -max(abs(off), fpd + 0.1)
+                    elif slot in ("frontage", "alley"):   # always out from the wall, clear of it
+                        off = max(abs(off), fpd + 0.05)
                     if slot == "alley_span":
                         width = line.get("width", props[name].get("span", 8.0))
                         mh = rule.get("mount_height", [5.0, 6.0])
@@ -264,6 +272,8 @@ def scatter_props(context, rules=None, *, index=None, seed=None, density_scale=1
                         a = rnd.uniform(0, math.tau)
                         rr = rule.get("cluster_radius", 1.0) * math.sqrt(rnd.random())
                         pos = [p[0] + n[0] * off + math.cos(a) * rr, p[1], p[2] + n[1] * off + math.sin(a) * rr]
+                    if rule.get("stack") and k:     # pallets: stack the cluster
+                        pos = [p[0] + n[0] * off, p[1] + k * props[name].get("size_m", [0, 0.15, 0])[1], p[2] + n[1] * off]
                     if slot == "facade":
                         mh = rule.get("mount_height", [3.0, 4.0])
                         pos[1] += rnd.uniform(*mh)
@@ -278,6 +288,7 @@ def scatter_props(context, rules=None, *, index=None, seed=None, density_scale=1
                 s += step * rnd.uniform(0.6, 1.4) + (count - 1) * gap
 
     # ---------------- points
+    c45 = s45 = math.sqrt(0.5)
     for pt in context.get("points", []):
         slot = pt["slot"]
         district = pt.get("district", default_d)
@@ -292,15 +303,24 @@ def scatter_props(context, rules=None, *, index=None, seed=None, density_scale=1
             if rnd.random() >= min(1.0, dens(rule, district)):
                 continue
             a0, a1 = rule.get("along", [0.8, 2.0])
+            # curb directions away from the apex: given, or -dir turned by +-45 deg (a square corner)
+            curbs = pt.get("curbs") or [(-(dx * c45 - dz * s45 * k), -(dx * s45 * k + dz * c45)) for k in (1, -1)]
             for _ in range(4):
-                side = rnd.choice((-1, 1))
+                cx, cz = rnd.choice(curbs)
+                cl = math.hypot(cx, cz) or 1.0
+                cx, cz = cx / cl, cz / cl
+                # walk side of this curb: the perpendicular pointing away from the road (towards -dir)
+                nx, nz = -cz, cx
+                if nx * dx + nz * dz > 0:
+                    nx, nz = -nx, -nz
                 a = rnd.uniform(a0, a1)
-                off = rule.get("offset", -0.5)
-                pos = [P[0] + (-dz) * side * a + dx * off, P[1], P[2] + dx * side * a + dz * off]
+                # distance back from the curb face onto the walk: at least the prop's footprint radius
+                back = max(abs(rule.get("offset", -0.5)), props[name].get("footprint", {}).get("radius", 0.3) + 0.15)
+                pos = [P[0] + cx * a + nx * back, P[1], P[2] + cz * a + nz * back]
                 if rule.get("facing") == "random":
                     yaw = rnd.uniform(-math.pi, math.pi)
-                else:
-                    yaw = math.atan2(dx, dz) + math.radians(rnd.uniform(-1, 1) * rule.get("yaw_jitter", 0))
+                else:   # face the road, square to the curb
+                    yaw = math.atan2(-nx, -nz) + math.radians(rnd.uniform(-1, 1) * rule.get("yaw_jitter", 0))
                 if place(name, rule, pos, yaw, slot, district):
                     break
 

@@ -40,7 +40,7 @@ Decal art: `tools/props/make_prop_decals.py` -> `assets/decals/props/` (72 image
 |---|---|---|
 | model | `blender -b --factory-startup --python tools/props/build_props.py [-- names] [--clay DIR]` | `assets/props/src/<name>.glb` (untextured, final UVs) + `<name>.json` (pieces, groups, bboxes, lights, sockets, collider shapes) |
 | decals | `python tools/props/make_prop_decals.py` | `assets/decals/props/*.png` |
-| textures | `python tools/props/props_textures.py [names] [--jobs 2] [--no-run]` | `scenes/props/scripts/*.jsonl`, `scenes/props/projects/*.pigment`, `scenes/props/textures/` (git-ignored) |
+| textures | `python tools/props/props_textures.py [names] [--jobs 2] [--no-run]` | `scenes/props/scripts/*.jsonl` (committed), `scenes/props/projects/*.pigment` and `scenes/props/textures/` (both git-ignored: 24 MB + textures, rebuilt by the script) |
 | export | `blender -b --factory-startup --python tools/props/export_props.py [-- names] [--no-index]` | `assets/props/<name>.glb`, `<name>_lod1.glb`, then runs `write_index.py` |
 | index | `python tools/props/write_index.py` | `assets/props/index.json`, `assets/props/variants/*` |
 | proof | `blender ... tools/props/render_proof.py -- lineup --cpu` / `-- street`; `python tools/props/contact_sheet.py` | `docs/agents/props/` |
@@ -130,7 +130,7 @@ placements = scatter_props(context, rules=None, seed=None, density_scale=1.0)
 
 `context` (Godot space, metres): `seed`, `district`, `lines` (`slot`, `points`, `district`,
 `side` or `toward`, `width` for `alley_span`), `points` (corner / crossing: `pos`, `dir` into the
-road), `areas` (rooftop / plaza / road polygons with height in y), `blocked` (discs to keep free).
+road, optional `curbs` directions; default a square corner), `areas` (rooftop / plaza / road polygons with height in y), `blocked` (discs to keep free).
 `rules`: None (all props, index rules), a list of names, or `{name: partial rule}` overrides.
 Returns `{prop, file, lod1, pos, yaw, scale, variant, slot, district, collider, xform}` per prop;
 `xform` is a Godot `Transform3D` as 12 floats (basis columns, then origin), the same format as
@@ -140,8 +140,14 @@ Returns `{prop, file, lod1, pos, yaw, scale, variant, slot, district, collider, 
 don't repeat back to back. `demo_context()` builds a crossroads to try it; `python
 tools/props/scatter.py --demo` prints what each district gets.
 
+## Sizes
+
+`assets/props`: 22.7 MB for 38 LOD0 glbs, 18 LOD1 glbs and the variant swaps (`index.json` `total_bytes`),
+plus 2.7 MB of Pigment source meshes in `assets/props/src/` and 6 MB of decal PNGs.
+
 ## Testing
-- `python tools/props/test_scatter.py`: passes.
+- `python tools/props/test_scatter.py`: passes (determinism, seeds, spacing, blocked discs, curb props facing the road, nothing on the walk landing in the road, district mixes, Godot xform, rule list / overrides).
+- Offsets are per slot: `curb` props always sit back on the walk and `frontage` / `alley` props out from the wall, at least half their depth; corner props move along one of the two curbs.
 - The Pigment previews (`%TEMP%/pig_props/*.png`), the clay renders (`build_props.py --clay`) and
   the Cycles lineup were checked by eye for every prop.
 - No Rust changes: `cargo test --release` is unaffected by this workstream.

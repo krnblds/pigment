@@ -45,6 +45,12 @@ def main():
             to_road = (0.0, -math.copysign(1, z)) if abs(z) < abs(x) else (-math.copysign(1, x), 0.0)
             assert fx * to_road[0] + fz * to_road[1] > 0.7, f"{p['prop']} at {p['pos']} does not face the road"
 
+    # nothing on the walk / corners ends up in the demo's roads (|x| < 6 or |z| < 6); cones may stray
+    for d in ("commercial", "market", "luxury"):
+        for p in scatter.scatter_props(scatter.demo_context(7, d), index=idx):
+            if p["slot"] in ("corner", "crossing", "curb", "walk", "frontage") and p["prop"] != "traffic_cone":
+                assert abs(p["pos"][0]) >= 6 and abs(p["pos"][2]) >= 6, f"{p['prop']} in the road at {p['pos']}"
+
     # luxury gets palms, market gets food stalls / trash, no palms
     lux = scatter.summary(scatter.scatter_props(scatter.demo_context(3, "luxury"), index=idx))
     mkt = scatter.summary(a)

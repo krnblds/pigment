@@ -225,14 +225,13 @@ def street():
     tt = town_tex_dir()
     bpy.ops.wm.read_factory_settings(use_empty=True)
     cycles(samples, 1920, 1080)
-    night_world(0.6, (0.03, 0.045, 0.09))
+    night_world(0.9, (0.03, 0.045, 0.09))
     R, W, A = 6.0, 4.0, 60.0
     asphalt = tiled_material("Asphalt", os.path.join(tt, "roads", "asphalt"), "asphalt", 4.0)
     paving = tiled_material("Paving", os.path.join(tt, "roads", "paving"), "paving", 2.0)
     concrete = tiled_material("Concrete", os.path.join(tt, "roads", "concrete"), "concrete", 4.0)
     # road cross and four raised sidewalk blocks (Blender: x, y; Godot z = -y)
-    slab("road_x", -A, A, -R, R, -0.2, 0.0, asphalt)
-    slab("road_y", -R, R, -A, A, -0.2, 0.0, asphalt)
+    slab("road", -A, A, -A, A, -0.25, 0.0, asphalt)
     for sx in (-1, 1):
         for sy in (-1, 1):
             x0, x1 = sorted((sx * R, sx * A))
@@ -247,6 +246,8 @@ def street():
         objs = import_glb(os.path.join(ROOT, "assets", "town", f"{k}.glb"))
         mesh = next(o for o in objs if o.type == "MESH")
         kits[k] = mesh
+        if not mesh.data.materials:
+            mesh.data.materials.append(bpy.data.materials.new(f"{k}_slot"))
         mesh.hide_render = True
         mesh.location = (0, 0, -100)
     variants = {"building_a": ["soba", "memory_pawn", "capsules", "implants"], "building_b": ["noodle_row", "night_market", "dream_strip", "pawn_row"]}
@@ -294,6 +295,7 @@ def street():
                     off = Matrix.Rotation(yaw, 3, "Z") @ Vector(((cmin.x + cmax.x) / 2, (cmin.y + cmax.y) / 2, cmin.z))
                     o.location = pos - off
                     along += w + 0.4
+    BP.apply_pigment_material(kits["street_lamp"], os.path.join(tt, "street_lamp"), "street_lamp", flake=False)
     # street lamps on the curbs, with a sodium point light each
     for sx in (-1, 1):
         for sy in (-1, 1):
@@ -309,13 +311,12 @@ def street():
                     if not o.data.materials or not o.data.materials[0].name.startswith("Pigment"):
                         pass
                     ld = bpy.data.lights.new("lamp", "POINT")
-                    ld.energy = 900
+                    ld.energy = 1400
                     ld.color = (1.0, 0.62, 0.32)
                     ld.shadow_soft_size = 0.2
                     lo = bpy.data.objects.new("lamp", ld)
                     bpy.context.scene.collection.objects.link(lo)
                     lo.location = (x - 0 * sx, y, 6.5)
-    lamp_mat = BP.apply_pigment_material(kits["street_lamp"], os.path.join(tt, "street_lamp"), "street_lamp", flake=False)
 
     # scatter the props with the public API on the same layout (Godot coords: z = -blender y)
     ctx = scatter.demo_context(seed, "commercial")

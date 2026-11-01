@@ -36,7 +36,7 @@
  "scatter_fields": {
   "slots": "which slots the prop may use (keys of SLOTS)",
   "density": "per district: instances per 100 m of line (line slots), per 100 m2 (area slots) or probability per point (corner / crossing); 'default' is the fallback",
-  "offset": "metres from the slot line along the front direction (negative = behind it)",
+  "offset": "metres from the slot line along the front direction (negative = behind it); may be {slot: value}. curb: always onto the walk, frontage / alley: always out from the wall, at least half the prop's depth; corner / crossing: back from the curb face",
   "spacing": "minimum distance (m) to another instance of the same prop",
   "clearance": "radius (m) kept free of other props (and of context['blocked'])",
   "facing": "front: 'road' = along the slot's front; 'wall' = opposite; 'along' = parallel to the line; 'random'",
