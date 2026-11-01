@@ -133,7 +133,7 @@ pub struct BloomSettings {
 
 impl Default for BloomSettings {
     fn default() -> Self {
-        Self { enabled: true, threshold: 1.0, intensity: 0.5, radius: 0.65 }
+        Self { enabled: true, threshold: 0.8, intensity: 1.0, radius: 0.6 }
     }
 }
 
@@ -408,7 +408,7 @@ impl Viewport {
             inv_view_proj: vp.inverse().to_cols_array_2d(),
             eye: [eye.x, eye.y, eye.z, 1.0],
             params: [settings.mode as u32 as f32, settings.exposure, settings.env_rotation, ENV_MIPS as f32],
-            params2: [settings.show_env as u32 as f32, 2.5, ts.baked as u32 as f32, settings.emission],
+            params2: [settings.show_env as u32 as f32, 1.0, ts.baked as u32 as f32, settings.emission],
             sh,
         };
         queue.write_buffer(&self.globals, 0, bytemuck::bytes_of(&globals));
