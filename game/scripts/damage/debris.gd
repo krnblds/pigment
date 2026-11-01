@@ -36,7 +36,10 @@ func _physics_process(delta: float) -> void:
 	if _t > 0.0:
 		return
 	_t = CHECK_EVERY
+	var t0 := Time.get_ticks_usec()
 	housekeeping()
+	if get_parent() and get_parent().has_method("prof_add"):
+		get_parent().prof_add("debris", Time.get_ticks_usec() - t0)
 
 
 ## Budget pass (also called by the tests).
@@ -176,7 +179,8 @@ func _release_entry(e: Dictionary) -> void:
 	rb.freeze = true
 	rb.linear_velocity = Vector3.ZERO
 	rb.angular_velocity = Vector3.ZERO
-	rb.global_position = Vector3(0, -5000, 0)
+	if rb.get_parent():
+		rb.get_parent().remove_child(rb)      # out of the physics world while pooled
 	_pool.append(rb)
 	stats.released += 1
 

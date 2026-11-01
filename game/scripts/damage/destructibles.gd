@@ -23,8 +23,8 @@ extends Node3D
 
 const DATA := "res://data/damage/props.json"
 const GRID := 8.0
-const ARM_R := 45.0
-const DISARM_R := 60.0
+const ARM_R := 32.0
+const DISARM_R := 42.0
 const ARM_EVERY := 0.25
 const JET_TIME := 240.0           ## a burst hydrant runs this long, then dies down
 const JET_FAR := 220.0            ## beyond this the geyser stops drawing (it keeps its time)
@@ -122,11 +122,17 @@ func near(p: Vector3, r: float, prop := "", kind := "") -> Array:
 func _physics_process(delta: float) -> void:
 	if keys.is_empty() or world == null:
 		return
+	var _t0 := Time.get_ticks_usec()
+	_tick(delta)
+	world.prof_add("destructibles", Time.get_ticks_usec() - _t0)
+
+
+func _tick(delta: float) -> void:
 	var hero: RigidBody3D = world.hero
 	if not is_instance_valid(hero):
 		return
 	_arm_t -= delta
-	if _arm_t <= 0.0 or hero.global_position.distance_to(_arm_at) > 6.0:
+	if _arm_t <= 0.0 and hero.global_position.distance_to(_arm_at) > 8.0:
 		_arm_t = ARM_EVERY
 		arm_around(hero.global_position)
 	for car in world.hitters():
@@ -139,10 +145,7 @@ func arm_around(p: Vector3) -> void:
 	_arm_at = p
 	var want := {}
 	for id in near(p, ARM_R):
-		if state[id] == 1:
-			continue
-		var d: Dictionary = defs[names[id]]
-		if String(d.kind) in ["knock", "heavy"] or bool(d.get("loader_collision", false)):
+		if state[id] == 1 or not _armable(names[id]):
 			continue
 		want[id] = true
 		if not armed.has(id):
@@ -175,8 +178,19 @@ func _free_static(sb: StaticBody3D) -> void:
 	for c in sb.get_children():
 		sb.remove_child(c)
 		c.queue_free()
-	sb.global_position = Vector3(0, -6000, 0)
+	if sb.get_parent():
+		sb.get_parent().remove_child(sb)      # out of the physics world while pooled
 	_static_pool.append(sb)
+
+
+var _armable_cache := {}
+
+
+func _armable(nm: String) -> bool:
+	if not _armable_cache.has(nm):
+		var d: Dictionary = defs[nm]
+		_armable_cache[nm] = not (String(d.kind) in ["knock", "heavy"] or bool(d.get("loader_collision", false)))
+	return _armable_cache[nm]
 
 
 ## [[Shape3D, local Transform3D]] from the def's collider list (prop space).
@@ -204,7 +218,17 @@ func _shapes(nm: String) -> Array:
 
 
 ## Footprint radius and height of a prop (from its bounds).
+var _ext_cache := {}
+
+
 func _extent(nm: String) -> Vector2:
+	if _ext_cache.has(nm):
+		return _ext_cache[nm]
+	_ext_cache[nm] = _extent_of(nm)
+	return _ext_cache[nm]
+
+
+func _extent_of(nm: String) -> Vector2:
 	var d: Dictionary = defs[nm]
 	var b = d.get("bounds")
 	if b is Dictionary:

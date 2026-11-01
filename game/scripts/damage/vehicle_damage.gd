@@ -164,6 +164,12 @@ func total() -> float:
 func _physics_process(delta: float) -> void:
 	if not _setup_ok or not is_instance_valid(body):
 		return
+	var t0 := Time.get_ticks_usec()
+	_tick(delta)
+	world.prof_add("vehicle_hero" if hero else "vehicle_traffic", Time.get_ticks_usec() - t0)
+
+
+func _tick(delta: float) -> void:
 	if body.freeze:
 		_last_v = body.linear_velocity
 		_flush()
@@ -260,8 +266,8 @@ func apply_impact(pw: Vector3, dir: Vector3, j: float, other: Object = null) -> 
 		world.fx.burst("dust", pw, Vector3.UP, clampf(e / 20.0, 0.3, 1.4))
 	# soft deformation
 	if deform_enabled and e > 2.5 and _may_deform():
-		var radius := clampf(0.32 + 0.024 * e, 0.32, 0.95)
-		var depth := clampf(0.0095 * e, 0.0, 0.21)
+		var radius := clampf(0.4 + 0.03 * e, 0.4, 1.15)
+		var depth := clampf(0.016 * e, 0.0, 0.36)
 		var t0 := Time.get_ticks_usec()
 		for df in deformers:
 			if is_instance_valid(df.mi) and df.mi.is_visible_in_tree() and _attached(df.mi):

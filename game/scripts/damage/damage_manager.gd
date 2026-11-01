@@ -164,7 +164,34 @@ func _traffic_damage(c: RigidBody3D) -> Node3D:
 	return d
 
 
+## --damage-prof: script time per physics tick of the damage parts, printed every 5 s.
+var prof := {}
+var _prof_on := OS.get_cmdline_user_args().has("--damage-prof")
+var _prof_t := 0.0
+var _prof_ticks := 0
+
+
+func prof_add(key: String, us: int) -> void:
+	prof[key] = int(prof.get(key, 0)) + us
+
+
+func _process(delta: float) -> void:
+	if not _prof_on:
+		return
+	_prof_t += delta
+	if _prof_t > 5.0:
+		var out := {}
+		for k in prof:
+			out[k] = snappedf(float(prof[k]) / maxf(_prof_ticks, 1), 0.1)
+		print("damage prof us/tick ", JSON.stringify(out), " debris ", debris.bodies.size(), " awake ", debris.awake_count(),
+			" armed ", destructibles.armed.size(), " broken ", destructibles.stats.broken)
+		prof.clear()
+		_prof_t = 0.0
+		_prof_ticks = 0
+
+
 func _physics_process(delta: float) -> void:
+	_prof_ticks += 1
 	_traffic_t -= delta
 	if _traffic_t > 0.0:
 		return

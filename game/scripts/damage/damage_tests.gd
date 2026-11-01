@@ -39,8 +39,10 @@ func _ready() -> void:
 		_test.call_deferred()
 
 
+## Waits in simulated time (physics ticks): a slow windowed frame rate must not cut the physics short.
 func _wait(t: float) -> void:
-	await get_tree().create_timer(t, true, true, true).timeout
+	for i in maxi(1, int(t * Engine.physics_ticks_per_second)):
+		await get_tree().physics_frame
 
 
 func _tick() -> void:
@@ -324,13 +326,29 @@ func _door_swing() -> Dictionary:
 	if not hd.panels.has("Door_FL"):
 		return {}
 	var xf := Transform3D(Basis(), _pad_o + Vector3(-40, 0.05, -40))
+	if main.args.has("door-city"):
+		var r: Array = main.town.nearest_road(main.town.spawn_transform().origin)
+		xf = main.town.car_transform(r[0], r[1])
+		main.stream_now(xf.origin)
 	await _place(xf, Vector3.ZERO)
 	_set_inputs(0.0, 0.0, 0.0, true)
 	await _wait(0.5)
 	var dp: Dictionary = hd.panels.Door_FL
 	var c: Vector3 = car.global_transform * (dp.aabb as AABB).get_center()
+	if main.args.has("door-twice"):        # knock it off, reset, then loosen it again (pool reuse)
+		hd.apply_impact(c, -car.global_basis.x, 30000.0)
+		await _wait(1.0)
+		print("    door first: ", dp.state)
+		dmg.reset_hero()
+		await _wait(0.5)
+		c = car.global_transform * (dp.aabb as AABB).get_center()
 	hd.apply_impact(c, -car.global_basis.x, 11000.0)
-	await _wait(2.5)
+	for k in 5:
+		await _wait(0.5)
+		if dp.rb and is_instance_valid(dp.rb):
+			var rb2: RigidBody3D = dp.rb
+			print("    door t=%.1f pf %d open %.1f sleeping %s frozen %s v %s contacts %d" % [k * 0.5, Engine.get_physics_frames(), rad_to_deg(acos(clampf((car.global_basis.inverse() * rb2.global_basis).z.dot(Vector3(0, 0, 1)), -1, 1))),
+				rb2.sleeping, rb2.freeze, rb2.angular_velocity, rb2.get_contact_count()])
 	var out := {"state": dp.state}
 	if dp.rb and is_instance_valid(dp.rb):
 		var rel: Basis = car.global_basis.inverse() * (dp.rb as RigidBody3D).global_basis
@@ -446,7 +464,7 @@ func _shots(dir: String) -> void:
 		main.stream_now(lp)
 		car.place(xf)
 		_set_inputs(0.0, 0.0, 0.0, true)
-		_cam(lp - xf.basis.z * 9.0 + xf.basis.x * 7.0 + Vector3.UP * 2.2, lp + Vector3.UP * 2.6 + xf.basis.z * 1.0, 62.0)
+		_cam(lp - xf.basis.z * 6.5 + xf.basis.x * 5.0 + Vector3.UP * 2.4, lp + Vector3.UP * 3.0 + xf.basis.z * 0.5, 62.0)
 		await _wait(5.0)
 		await _place(xf, xf.basis.z * 55.0 / 3.6)
 		var t := 0.0
@@ -456,12 +474,28 @@ func _shots(dir: String) -> void:
 			await _tick()
 			t += _dt()
 			if d.state[id] == 1 and not shot:
-				await _wait(0.28)
+				await _wait(0.18)
 				await _shot(dir, "04_lamp_post_sparks")
 				shot = true
 		if shot:
 			await _wait(2.5)
+			car.place(Transform3D(xf.basis, xf.origin - xf.basis.z * 12.0 + Vector3.UP * 0.1))
+			_set_inputs(0.0, 0.0, 0.0, true)
+			var lamp_rb: Node3D = null
+			for e in dmg.debris.bodies:
+				if is_instance_valid(e.rb) and String(e.rb.name) == "street_lamp":
+					lamp_rb = e.rb
+			var at: Vector3 = lamp_rb.global_position if lamp_rb else lp
+			_cam(at - xf.basis.z * 3.5 + xf.basis.x * 3.0 + Vector3.UP * 2.2, at + Vector3.UP * 0.3, 65.0)
+			var fill := OmniLight3D.new()
+			fill.omni_range = 12.0
+			fill.light_energy = 2.5
+			fill.light_color = Color(0.8, 0.85, 1.0)
+			main.add_child(fill)
+			fill.global_position = at - xf.basis.z * 3.0 + Vector3.UP * 4.0
+			await _wait(1.0)
 			await _shot(dir, "04b_lamp_post_down")
+			fill.queue_free()
 			break
 	# 2. a concrete block at 60 km/h: the crumpled bonnet
 	var road: Array = main.town.nearest_road(sp)
@@ -506,6 +540,12 @@ func _shots(dir: String) -> void:
 			var c: Vector3 = car.global_transform * (hd.panels[nm].aabb as AABB).get_center()
 			hd.apply_impact(c + cx * 0.1, -cx, 11000.0)
 	await _wait(2.5)
+	var dpn: Dictionary = hd.panels.get("Door_FL", {})
+	if dpn and dpn.rb and is_instance_valid(dpn.rb):
+		var relb: Basis = car.global_basis.inverse() * (dpn.rb as RigidBody3D).global_basis
+		print("door shot: %s, open %.1f deg" % [dpn.state, rad_to_deg(acos(clampf(relb.z.dot(Vector3(0, 0, 1)), -1.0, 1.0)))])
+	else:
+		print("door shot: ", dpn.get("state", "?"))
 	cp = car.global_position
 	_cam(cp + cx * 5.0 + cz * 3.0 + Vector3.UP * 1.8, cp + cx * 0.9 + cz * 0.3 + Vector3.UP * 0.8, 55.0)
 	lamp.global_position = cp + cx * 3.5 + cz * 2.0 + Vector3.UP * 3.0
@@ -515,8 +555,11 @@ func _shots(dir: String) -> void:
 	# 4. debris on the road: drive through a cluster of loose props
 	var best := -1
 	var best_n := 0
-	for id in d.near(sp, 700.0, "", "knock"):
-		var n: int = d.near(d.xfs[id].origin, 5.0, "", "knock").size()
+	var loose_kinds := ["trash_bag_pile", "cardboard_boxes", "crate_stack", "traffic_cone", "trash_bin", "pallet"]
+	for id in d.near(sp, 900.0, "", "knock"):
+		if not (d.names[id] in loose_kinds):
+			continue
+		var n: int = d.near(d.xfs[id].origin, 5.0, "", "knock").filter(func(q): return d.names[q] in loose_kinds).size()
 		if n > best_n and d.state[id] == 0:
 			best_n = n
 			best = id
