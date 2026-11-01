@@ -13,6 +13,7 @@ pub mod envmath;
 pub mod export;
 pub mod folders;
 pub mod image_fill;
+pub mod interior;
 pub mod mesh;
 pub mod partquery;
 pub mod project;
