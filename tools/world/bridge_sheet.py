@@ -48,7 +48,7 @@ def main(lst):
     print("sheet ->", p)
 
 
-def pairs(bdir, adir, W=720, H=405):
+def pairs(bdir, adir, W=600, H=338):
     tags = ["port", "expressway", "kagero", "tenjin"]
     for tag in tags:
         names = [n for n in sorted(os.listdir(adir)) if n.startswith(tag + "_") and n.endswith(".png")]
@@ -73,8 +73,28 @@ def pairs(bdir, adir, W=720, H=405):
         print(out, os.path.getsize(out) // 1024, "KB")
 
 
+def godot(bdir, adir, names, out, W=600, H=338):
+    """Godot screenshots (game --bridge-shots) before | after in one sheet."""
+    head = 40
+    sheet = Image.new("RGB", (2 * W + 30, len(names) * (H + 28) + head + 10), (18, 19, 22))
+    dr = ImageDraw.Draw(sheet)
+    dr.text((10, 8), "Godot (game --bridge-shots): before (left)  /  after (right)", font=font(22, True), fill=(235, 235, 235))
+    y = head
+    for n in names:
+        dr.text((10, y + 4), n.replace("godot_", ""), font=font(16), fill=(200, 200, 200))
+        for k, d in enumerate((bdir, adir)):
+            pth = os.path.join(d, n + ".png")
+            if os.path.isfile(pth):
+                sheet.paste(Image.open(pth).convert("RGB").resize((W, H), Image.LANCZOS), (10 + k * (W + 10), y + 24))
+        y += H + 28
+    sheet.save(out, optimize=True)
+    print(out, os.path.getsize(out) // 1024, "KB")
+
+
 if __name__ == "__main__":
-    if sys.argv[1] == "--pairs":
+    if sys.argv[1] == "--godot":
+        godot(sys.argv[2], sys.argv[3], sys.argv[5].split(","), sys.argv[4])
+    elif sys.argv[1] == "--pairs":
         pairs(sys.argv[2], sys.argv[3])
     else:
         main(sys.argv[1])
