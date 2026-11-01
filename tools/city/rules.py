@@ -50,7 +50,7 @@ def build_graph(models: dict | None = None) -> G.Graph:
     layout = _json(paths.WORLD_EXPORT / "world_layout.json", {}) or {}
     town_layout = _json(ROOT / "game/assets/town/town_layout.json", {}) or {}
     shared_keys = {}            # world mesh key -> model id
-    tools_city = ["tools/city/actions.py"]
+    tools_city = []        # the action code itself is keyed per node (actions.impl), not per file
 
     for mid, doc in models.items():
         m = doc["model"]
@@ -205,6 +205,9 @@ def build_graph(models: dict | None = None) -> G.Graph:
     g.add(G.Node(id="verify:decals", kind="verify.decals", title="decal audit (tools/decal_audit.py, when present)",
                  tools=tools_city, inputs=["tools/decal_audit.py"], always=True, cache=False, pool="cpu",
                  run=A.run_decal_audit()))
+    for nd in g.nodes.values():
+        if getattr(nd.run, "impl", None):
+            nd.params["_impl"] = nd.run.impl
     return g.link()
 
 

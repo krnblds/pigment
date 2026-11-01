@@ -20,11 +20,31 @@ LAYOUT_LOCK = threading.Lock()
 WORLD_DIR = "game/assets/world"
 
 
+def impl(factory, also=()):
+    """Mark the run function a factory makes with a hash of the factory's source (and helpers'),
+    so a node's key changes when *its* action changes, not when any other action in this file does."""
+    import functools
+    import hashlib
+    import inspect
+
+    def digest():
+        src = inspect.getsource(factory) + "".join(inspect.getsource(f) for f in also)
+        return factory.__name__ + ":" + hashlib.sha256(src.encode()).hexdigest()[:16]
+
+    @functools.wraps(factory)
+    def wrapper(*a, **k):
+        fn = factory(*a, **k)
+        fn.impl = digest()
+        return fn
+    return wrapper
+
+
 def _env_params(params):
     return {"CITY_PARAMS": json.dumps(params or {})}
 
 
 # ---------------------------------------------------------------- generators / tools
+@impl
 def run_generator(sec):
     def run(ctx):
         args = [str(a) for a in sec.get("args", [])]
@@ -36,6 +56,7 @@ def run_generator(sec):
     return run
 
 
+@impl
 def run_tool(sec):
     def run(ctx):
         args = [str(a) for a in sec.get("args", [])]
@@ -46,6 +67,7 @@ def run_tool(sec):
     return run
 
 
+@impl
 def run_recipe(rec):
     def run(ctx):
         r = rec["runner"]
@@ -70,16 +92,16 @@ def pigment_node(nid, mid, script, pig):
     if pin:     # the project saved in the Pigment app is the source (see tools/city/pins.py)
         proj = pin["project"]
         return G.Node(id=nid, kind="pigment.project", model=mid, title=f"Pigment: export pinned {Path(proj).name}",
-                      tools=["tools/city/actions.py", "tools/city/pins.py"], inputs=[proj],
+                      tools=["tools/city/pins.py"], inputs=[proj],
                       outputs=[o for o in sc["outputs"] if o != proj], params={"pinned": proj}, pool="pigment",
                       run=_run_pigment(nid, script, [], sc, pinned=proj))
     return G.Node(id=nid, kind="pigment.script", model=mid, title=f"Pigment: {Path(script).name}",
-                  tools=["tools/city/actions.py", "tools/city/pigscript.py"],
+                  tools=["tools/city/pigscript.py"],
                   inputs=[script] + sc["inputs"], outputs=sc["outputs"],
                   params={"patch": patches}, pool="pigment", run=_run_pigment(nid, script, patches, sc))
 
 
-def _run_pigment(nid, script, patches, scan, pinned=None):
+def _run_pigment_factory(nid, script, patches, scan, pinned=None):
     def run(ctx):
         mcp = paths.pigment_mcp()
         if not mcp:
@@ -175,6 +197,7 @@ def patch_layout(mapname, fn):
     return False
 
 
+@impl
 def run_world_mesh(kind, asset, keys):
     def run(ctx):
         out = ROOT / WORLD_DIR / "meshes"
@@ -203,6 +226,7 @@ def run_world_mesh(kind, asset, keys):
     return run
 
 
+@impl
 def run_world_build(w, overrides, shared_keys):
     def run(ctx):
         wdir = paths.CACHE / "world"
@@ -228,13 +252,36 @@ def run_world_build(w, overrides, shared_keys):
         t0 = time.time()
         ctx.blender("tools/world/world_driver.py", args, env=env)
         rep = json.loads(report.read_text(encoding="utf-8")) if report.is_file() else {}
-        ctx.note = (f"{len(rep.get('written', []))} glb(s) re-exported, {rep.get('unchanged', '?')} unchanged, "
-                    f"{rep.get('shared_skipped', '?')} shared (per asset); {time.time() - t0:.0f} s")
+        if not rep:
+            raise RuntimeError("the export hook wrote no report (see the log)")
+        chunks = _chunks_of(rep.get("written", []))
+        rep["chunks"] = sorted(chunks)
+        report.write_text(json.dumps(rep, indent=1), encoding="utf-8")
+        ctx.note = (f"{len(rep.get('written', []))} glb(s) re-exported in {len(chunks)} chunk(s) of 256 m, "
+                    f"{rep.get('unchanged', '?')} unchanged, {rep.get('shared_skipped', '?')} shared (per asset); "
+                    f"export {rep.get('total_s', '?')} s, total {time.time() - t0:.0f} s")
         if rep.get("written"):
             ctx.events.append({"type": "layout", "map": "world", "keys": rep["written"][:2000]})
     return run
 
 
+def _chunks_of(keys, size=256.0):
+    """256 m world chunks (Godot x / z) the given mesh keys sit in, from the layout's bounds.
+    Unique world pieces are exported in world space, so their bounds are their place."""
+    lay = json.loads((ROOT / WORLD_DIR / "world_layout.json").read_text(encoding="utf-8"))
+    out = set()
+    for k in keys:
+        m = lay.get("meshes", {}).get(k)
+        if not m:
+            if k.startswith("terrain_lod/"):
+                out.add(k.split("/")[1].split("_")[0])
+            continue
+        (x0, _, z0), (x1, _, z1) = m["aabb"]
+        out.add(f"{int((x0 + x1) / 2 // size)}_{int((z0 + z1) / 2 // size)}")
+    return out
+
+
+@impl
 def run_world_verify():
     def run(ctx):
         ctx.blender("tools/world/world_driver.py", ["--stages", "build,verify", "--no-lights"])
@@ -275,6 +322,7 @@ def _load_function(path, name):
     return ns[name]
 
 
+@impl
 def run_road_scan():
     def run(ctx):
         clear = _load_function(ROOT / "tools/world/world_gen.py", "clear_carriageways")
@@ -331,6 +379,7 @@ def texture_meta(src: Path, name: str) -> dict:
             "opacity": (src / f"{name}_Opacity.png").is_file()}
 
 
+@impl
 def run_pack(src, folder, name, maps):
     def run(ctx):
         P = _pack_module()
@@ -375,6 +424,7 @@ def image_sources(layout) -> dict:
     return {w: index[Path(w).name] for w in sorted(want) if Path(w).name in index}
 
 
+@impl
 def run_images(imgs):
     def run(ctx):
         sc = hashing.stat_cache()
@@ -393,6 +443,7 @@ def run_images(imgs):
     return run
 
 
+@impl
 def run_godot_import():
     def run(ctx):
         gd = paths.godot()
@@ -402,6 +453,7 @@ def run_godot_import():
     return run
 
 
+@impl
 def run_script_check(scripts):
     def run(ctx):
         mcp = paths.pigment_mcp()
@@ -420,6 +472,7 @@ def run_script_check(scripts):
     return run
 
 
+@impl
 def run_decal_audit():
     def run(ctx):
         p = ROOT / "tools/decal_audit.py"
@@ -428,3 +481,6 @@ def run_decal_audit():
             return
         ctx.python("tools/decal_audit.py", [])
     return run
+
+
+_run_pigment = impl(_run_pigment_factory, also=(_decal_fast_path,))

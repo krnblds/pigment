@@ -191,6 +191,8 @@ def cmd_adopt(a):
     """Stamp nodes whose outputs already exist as built, in dependency order, without running them."""
     g, models, _ = _graph()
     ids = g.upstream(_targets(g, a.targets))
+    if a.exclude:
+        ids -= g.select(a.exclude)
     n_ok = n_skip = 0
     for n in g.topo(ids):
         node = g.nodes[n]
@@ -236,7 +238,11 @@ def cmd_verify(a):
 
 def cmd_graph(a):
     g, models, _ = _graph()
-    ids = g.upstream(_targets(g, a.targets)) if a.targets else set(g.nodes)
+    if a.targets:       # a model's neighbourhood: what feeds it and what it feeds
+        sel = _targets(g, a.targets)
+        ids = g.upstream(sel) | g.downstream(sel)
+    else:
+        ids = set(g.nodes)
     out = Path(a.out or (paths.CACHE / "graph.html"))
     out.parent.mkdir(parents=True, exist_ok=True)
     st = E.Engine(g).status(ids) if not a.no_status else {}
@@ -392,6 +398,7 @@ def main(argv=None):
             s.add_argument("--import-after", action="store_true", help="also run the Godot re-import after each swap")
         s.set_defaults(fn=cmd_build if name == "build" else cmd_watch)
     s = sub.add_parser("adopt"); s.add_argument("targets", nargs="*"); s.add_argument("--no-store", action="store_true")
+    s.add_argument("--exclude", action="append", help="leave these nodes stale (patterns like targets)")
     s.set_defaults(fn=cmd_adopt)
     s = sub.add_parser("verify"); s.add_argument("gates", nargs="*"); s.add_argument("--skip", action="append")
     s.add_argument("-v", "--verbose", action="store_true"); s.set_defaults(fn=cmd_verify)
