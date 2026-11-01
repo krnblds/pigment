@@ -322,8 +322,46 @@ def _welded_components(me):
     return len(used)
 
 
+def uv_boost(o, k):
+    """Give piece o k times the texel density of the rest (signage faces that
+    carry readable decals: billboard panels, sign boxes, fascias)."""
+    o["uvw"] = float(k)
+    return o
+
+
+def _boost_uvs(me):
+    """Scale the UVs of boosted faces (attribute "uvw" != 1) about each
+    connected piece's UV centre; pack_islands then lays everything out again
+    with these relative sizes."""
+    a = me.attributes.get("uvw")
+    if a is None:
+        return
+    w = [d.value for d in a.data]
+    if all(abs(x - 1.0) < 1e-6 for x in w):
+        return
+    uv = me.uv_layers[0].data
+    n, vcomp = _components(me)
+    groups = {}
+    for p in me.polygons:
+        if abs(w[p.index] - 1.0) > 1e-6:
+            groups.setdefault(vcomp[p.vertices[0]], []).append(p)
+    for comp, polys in groups.items():
+        loops = [li for p in polys for li in p.loop_indices]
+        cu = sum(uv[li].uv.x for li in loops) / len(loops)
+        cv = sum(uv[li].uv.y for li in loops) / len(loops)
+        k = w[polys[0].index]
+        for li in loops:
+            uv[li].uv = (cu + (uv[li].uv.x - cu) * k, cv + (uv[li].uv.y - cv) * k)
+    print(f"UV boost: {len(groups)} pieces")
+
+
 def export(name, centre_xy=True, max_tris=80000, max_parts=240, close=(), view=(-1.0, -1.45, 0.75)):
     """close: extra preview shots [(suffix, centre, radius, view_dir)] in final coordinates."""
+    for o in parts:
+        # per-face UV weight survives the join as a face attribute
+        k = float(o.get("uvw", 1.0))
+        a = o.data.attributes.get("uvw") or o.data.attributes.new("uvw", "FLOAT", "FACE")
+        a.data.foreach_set("value", [k] * len(o.data.polygons))
     for o in parts:
         bpy.ops.object.select_all(action="DESELECT")
         bpy.context.view_layer.objects.active = o
@@ -348,8 +386,15 @@ def export(name, centre_xy=True, max_tris=80000, max_parts=240, close=(), view=(
     bpy.ops.object.mode_set(mode="EDIT")
     bpy.ops.mesh.select_all(action="SELECT")
     bpy.ops.uv.smart_project(angle_limit=math.radians(60), island_margin=0.004, area_weight=0.0, scale_to_bounds=False)
+    bpy.ops.object.mode_set(mode="OBJECT")
+    _boost_uvs(me)
+    bpy.ops.object.mode_set(mode="EDIT")
+    bpy.ops.mesh.select_all(action="SELECT")
+    bpy.ops.uv.select_all(action="SELECT")
     bpy.ops.uv.pack_islands(rotate=True, margin=0.004)
     bpy.ops.object.mode_set(mode="OBJECT")
+    if "uvw" in me.attributes:
+        me.attributes.remove(me.attributes["uvw"])
 
     assert len(me.uv_layers) == 1, len(me.uv_layers)
     uv = me.uv_layers[0].data

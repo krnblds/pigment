@@ -6,8 +6,10 @@
 # repeated floors of ribbon windows on all four sides (one mullioned frame
 # per ribbon, glass split into three panes), a proud floor-slab band per
 # floor, vertical corner channels each holding a thin light strip (to become
-# LED strips), wall AC units, a set-back crown with its own ribbon and corner
-# strips, an antenna mast and a dish. Front faces -Y.
+# LED strips), wall AC units, a set-back crown with corner strips and
+# framed sign panels on all four crown faces, an antenna mast and a
+# dish. A corporate fascia stands on the canopy and a sign box hangs left of
+# the lobby. Front faces -Y.
 
 import math
 import os
@@ -46,6 +48,10 @@ for s in (-1, 1):
     box("lobby_door", (1.17, 0.05, 2.36), F.pos("S", s * 0.6, LD - 0.15, 0.01 + 1.18), bevel=0.008)
 box("canopy", (LW + 2.0, 2.2, 0.25), F.pos("S", 0, -1.098, LH + 0.4), bevel=0.02)
 box("canopy_led", (LW + 1.9, 0.05, 0.06), F.pos("S", 0, -2.23, LH + 0.4), bevel=0.0)
+# corporate fascia standing on the canopy's front edge (the lobby logo goes on it)
+uv_boost(box("lobby_fascia", (LW, 0.2, 0.9), F.pos("S", 0, -2.0, LH + 0.535 + 0.45), bevel=0.02), 3)
+# a wall sign box left of the lobby (security / kiosk notice)
+uv_boost(box("lobby_sign", (2.9, 0.15, 0.5), F.pos("S", -5.1, -0.078, 3.2), bevel=0.015), 3)
 for u in (-2.0, 2.0):
     box("canopy_light", (0.8, 0.8, 0.04), F.pos("S", u, -1.1, LH + 0.255), bevel=0.006)
 # lobby side windows and a service door
@@ -92,10 +98,17 @@ ccuts = [cutter((CW - 0.6, CW - 0.6, 2.0), (0, 0, CDECK + 1.0))]
 for sx in (-1, 1):
     for sy in (-1, 1):
         ccuts.append(cutter((NOTCH, NOTCH, 4.0), (sx * CW / 2, sy * CW / 2, TOP + 0.4 + 2.0)))
-for side in "SENW":
-    window(CF, ccuts, side, 0.0, TOP + 1.2, 8.0, 2.2, mullions=3, panes=1, sill=False, name="crown_ribbon")
 cut(crown, ccuts)
 finish(crown, 0.03, 2, angle=40)
+# crown sign panels: an 8 x 3.6 m framed panel on each face, on brackets 0.3 m off the wall
+CPW, CPH, CPZ = 8.0, 3.6, TOP + 0.35   # panel size, bottom
+for side in "SENW":
+    r = CF.rot(side)
+    uv_boost(box("crown_panel", (CPW, 0.08, CPH), CF.pos(side, 0, -0.3, CPZ + CPH / 2), bevel=0.004, rot=(0, 0, r)), 2)
+    holed("crown_frame", (CPW + 0.4, 0.2, CPH + 0.4), [(0, 0, CPW - 0.04, CPH - 0.04)], CF.pos(side, 0, -0.27, CPZ + CPH / 2), r, bevel=0.02)
+    for u in (-3.0, 0.0, 3.0):
+        for z in (CPZ + 0.5, CPZ + CPH - 0.5):
+            box("crown_bracket", (0.12, 0.15, 0.12), CF.pos(side, u, -0.085, z), bevel=0.01, rot=(0, 0, r))
 for sx in (-1, 1):
     for sy in (-1, 1):
         box("crown_strip", (0.1, 0.1, 3.7), (sx * (CW / 2 - 0.15), sy * (CW / 2 - 0.15), TOP + 0.55 + 1.85), bevel=0.01)

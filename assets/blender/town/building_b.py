@@ -4,7 +4,8 @@
 #
 # Ground floor is a four-bay arcade: a ramen shop (shopfront, door, noren
 # flaps, paper lanterns, fascia sign box), an arcade-game shop, a shuttered
-# unit and a stair entrance. Three upper floors of horizontal window bands
+# unit and a stair entrance, each bay with a fascia sign box over its mouth.
+# Three upper floors of horizontal window bands
 # (one mullioned frame per band, glass split into separate panes). On the roof
 # an 8 x 4 m billboard (frame and panel are separate parts) on posts with a
 # catwalk and flood lamps, HVAC units, mushroom vents and a stair hut.
@@ -43,7 +44,12 @@ def shopfront(u, name, door_right=True):
     box(f"{name}_glass", (1.76, 0.012, 1.66), F.pos("S", u - s * 0.65, BD - 0.03, fz), bevel=0.002)
     box(f"{name}_transom_glass", (3.06, 0.012, 0.56), F.pos("S", u, BD - 0.03, fz + 1.25), bevel=0.002)
     box(f"{name}_door", (0.98, 0.05, 2.58), F.pos("S", u + s * 0.95, BD - 0.1, 0.01 + 1.29), bevel=0.008)
-    box(f"{name}_sign", (BW - 0.2, 0.25, 0.62), F.pos("S", u, -0.123, 4.05), bevel=0.02)
+    sign_box(u, name)
+
+
+def sign_box(u, name):
+    """Fascia sign box over a bay mouth (the shop sign decal goes on its front)."""
+    uv_boost(box(f"{name}_sign", (BW - 0.2, 0.25, 0.85), F.pos("S", u, -0.123, 3.93), bevel=0.02), 3)
 
 
 # ramen shop: noren flaps on a rod over the door, two paper lanterns at the bay mouth
@@ -62,10 +68,12 @@ shopfront(bays[1], "arcade", door_right=False)
 grooves = [(-BH / 2 + 0.15 + 0.11 * k, 0.02, 0.008) for k in range(31)]
 grooved("shutter", (BW - 0.04, 0.05, BH - 0.02), grooves, F.pos("S", bays[2], BD - 0.3, BH / 2), bevel=0.006)
 box("shutter_housing", (BW - 0.02, 0.3, 0.3), F.pos("S", bays[2], BD - 0.17, BH - 0.17), bevel=0.02)
+sign_box(bays[2], "shuttered")
 # stair entrance: door, mailboxes, intercom
 box("stair_door", (1.2, 0.06, 2.4), F.pos("S", bays[3] - 0.6, BD - 0.03, 1.21), bevel=0.008)
 box("mailboxes", (1.0, 0.25, 0.7), F.pos("S", bays[3] + 0.9, BD - 0.128, 1.45), bevel=0.012)
 box("intercom", (0.16, 0.06, 0.26), F.pos("S", bays[3] + 0.25, BD - 0.03, 1.4), bevel=0.008)
+sign_box(bays[3], "stair")
 # arcade soffit light boxes
 for u in bays:
     box("soffit_light", (1.6, 0.25, 0.08), F.pos("S", u, 1.0, BH - 0.038), bevel=0.01)
@@ -94,7 +102,7 @@ finish(cap, 0.015)
 # --- roof billboard: 8 x 4 m panel in a separate frame, on posts, facing -Y ---
 bx, by, bz0 = 2.2, -3.6, ROOF + 2.3  # centre x, panel plane y, bottom of the panel
 PW, PH = 8.0, 4.0
-box("billboard_panel", (PW, 0.08, PH), (bx, by, bz0 + PH / 2), bevel=0.004)
+uv_boost(box("billboard_panel", (PW, 0.08, PH), (bx, by, bz0 + PH / 2), bevel=0.004), 2)
 holed("billboard_frame", (PW + 0.44, 0.26, PH + 0.44), [(0, 0, PW - 0.04, PH - 0.04)], (bx, by + 0.04, bz0 + PH / 2), bevel=0.02)
 for k in (-1, 0, 1):
     px = bx + k * 3.2
