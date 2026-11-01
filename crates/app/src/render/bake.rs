@@ -11,6 +11,13 @@ use pigment_core::{curvature, BakeSettings, Mesh};
 use wgpu::util::DeviceExt;
 
 const SHADOW_SIZE: u32 = 2048;
+/// Drip map: the upward-looking depth maps aim for this texel size (metres)
+/// within these sizes; how far up (metres) a wall texel looks for a
+/// protrusion, and the most slices through the mesh.
+const DRIP_TEXEL: f32 = 0.008;
+const DRIP_SIZES: (u32, u32) = (512, 4096);
+const DRIP_RANGE: f32 = 6.0;
+const DRIP_MAX_SLICES: f32 = 256.0;
 
 pub struct Baker {
     depth_pipe: wgpu::RenderPipeline,
@@ -24,6 +31,7 @@ pub struct Baker {
     blur_pipe: wgpu::RenderPipeline,
     blur_bgl: wgpu::BindGroupLayout,
     cmp_sampler: wgpu::Sampler,
+    drip_pipe: wgpu::RenderPipeline,
 }
 
 #[repr(C)]
@@ -129,7 +137,7 @@ impl Baker {
                 cull: None,
             },
         );
-        let resolve_bgl = gpu::bgl(device, "bake resolve", &[gpu::ntex(0), gpu::ntex(1), gpu::utex(2)]);
+        let resolve_bgl = gpu::bgl(device, "bake resolve", &[gpu::ntex(0), gpu::ntex(1), gpu::utex(2), gpu::ntex(3)]);
         let resolve_pipe = gpu::fullscreen(
             device,
             "bake resolve",
@@ -155,7 +163,105 @@ impl Baker {
             compare: Some(wgpu::CompareFunction::LessEqual),
             ..Default::default()
         });
-        Self { depth_pipe, accum_pipe, light_bgl, accum_bgl, curv_pipe, curv_bgl, resolve_pipe, resolve_bgl, blur_pipe, blur_bgl, cmp_sampler }
+        let drip_pipe = gpu::fullscreen(
+            device,
+            "drip",
+            &ao,
+            "fs_drip",
+            &gpu::layout(device, "drip", &[&accum_bgl]),
+            &[gpu::target(wgpu::TextureFormat::R16Float, None)],
+        );
+        Self { depth_pipe, accum_pipe, light_bgl, accum_bgl, curv_pipe, curv_bgl, resolve_pipe, resolve_bgl, blur_pipe, blur_bgl, cmp_sampler, drip_pipe }
+    }
+
+    /// Drip map (see `fs_drip`): for wall texels, 1 / (1 + metres down from
+    /// the nearest protrusion above), 0 where nothing sticks out above.
+    fn bake_drip(&self, device: &wgpu::Device, queue: &wgpu::Queue, mesh: &Mesh, mg: &MeshGpu, ts: &TexSet) -> Tex {
+        let drip = Tex::target(device, "drip", ts.res, wgpu::TextureFormat::R16Float);
+        let mut enc = device.create_command_encoder(&Default::default());
+        drop(gpu::pass(&mut enc, "drip clear", &[&drip.view], Some(wgpu::Color::TRANSPARENT)));
+        queue.submit([enc.finish()]);
+        if mesh.vertices.is_empty() {
+            return drip;
+        }
+        let (mut lo, mut hi) = (Vec3::splat(f32::MAX), Vec3::splat(f32::MIN));
+        for v in &mesh.vertices {
+            lo = lo.min(Vec3::from(v.position));
+            hi = hi.max(Vec3::from(v.position));
+        }
+        let half = ((hi.x - lo.x).max(hi.z - lo.z) * 0.5 + 0.05).max(1e-3);
+        let (cx, cz) = ((lo.x + hi.x) * 0.5, (lo.z + hi.z) * 0.5);
+        let height = (hi.y - lo.y).max(1e-3);
+        let range = DRIP_RANGE.min(height);
+        let step = (height / DRIP_MAX_SLICES).max(0.02);
+        let size = ((2.0 * half / DRIP_TEXEL) as u32).next_power_of_two().clamp(DRIP_SIZES.0, DRIP_SIZES.1);
+        let texel = 2.0 * half / size as f32;
+        let offset = texel * 2.5;
+        let depth = Tex::new(
+            device,
+            "drip depth",
+            size,
+            size,
+            wgpu::TextureFormat::Depth32Float,
+            wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+            1,
+        );
+        let slices = (height / step).ceil() as u32 + 1;
+        let mut enc = device.create_command_encoder(&Default::default());
+        for k in 0..slices {
+            let top = lo.y + step * (k as f32 + 1.0);
+            let eye = Vec3::new(cx, top, cz);
+            let view = glam::camera::rh::view::look_at_mat4(eye, eye + Vec3::Y, Vec3::Z);
+            let proj = glam::camera::rh::proj::directx::orthographic(-half, half, -half, half, 0.0, range);
+            let light = LightGpu { view_proj: (proj * view).to_cols_array_2d(), dir: [top, step, offset, 0.0], range: [range, 0.0, 0.0, 0.0] };
+            let buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("drip slice"),
+                contents: bytemuck::bytes_of(&light),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
+            {
+                let lbg = gpu::bind_group(device, "light", &self.light_bgl, &[buf.as_entire_binding()]);
+                let mut pass = enc.begin_render_pass(&wgpu::RenderPassDescriptor {
+                    label: Some("drip depth"),
+                    color_attachments: &[],
+                    depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                        view: &depth.view,
+                        depth_ops: Some(wgpu::Operations { load: wgpu::LoadOp::Clear(1.0), store: wgpu::StoreOp::Store }),
+                        stencil_ops: None,
+                    }),
+                    timestamp_writes: None,
+                    occlusion_query_set: None,
+                    multiview_mask: None,
+                });
+                pass.set_pipeline(&self.depth_pipe);
+                pass.set_bind_group(0, &lbg, &[]);
+                pass.set_vertex_buffer(0, mg.vertices.slice(..));
+                pass.set_index_buffer(mg.indices.slice(..), wgpu::IndexFormat::Uint32);
+                pass.draw_indexed(0..mg.index_count, 0, 0..1);
+            }
+            let bg = gpu::bind_group(
+                device,
+                "drip",
+                &self.accum_bgl,
+                &[
+                    buf.as_entire_binding(),
+                    wgpu::BindingResource::TextureView(&depth.view),
+                    wgpu::BindingResource::Sampler(&self.cmp_sampler),
+                    wgpu::BindingResource::TextureView(&ts.position.view),
+                    wgpu::BindingResource::TextureView(&ts.wnormal.view),
+                ],
+            );
+            let mut pass = gpu::pass(&mut enc, "drip", &[&drip.view], None);
+            pass.set_pipeline(&self.drip_pipe);
+            pass.set_bind_group(0, &bg, &[]);
+            pass.draw(0..3, 0..1);
+            drop(pass);
+            if k % 32 == 31 {
+                queue.submit([std::mem::replace(&mut enc, device.create_command_encoder(&Default::default())).finish()]);
+            }
+        }
+        queue.submit([enc.finish()]);
+        drip
     }
 
     pub fn bake(&self, device: &wgpu::Device, queue: &wgpu::Queue, mesh: &Mesh, mg: &MeshGpu, ts: &mut TexSet, s: &BakeSettings) {
@@ -237,6 +343,9 @@ impl Baker {
             queue.submit([enc.finish()]);
         }
 
+        // ---- drip map (leaks generator) ----
+        let drip = self.bake_drip(device, queue, mesh, mg, ts);
+
         // ---- curvature ----
         let cd = curvature::compute(mesh);
         let mut verts = Vec::with_capacity(mesh.indices.len());
@@ -306,6 +415,7 @@ impl Baker {
                     wgpu::BindingResource::TextureView(&acc.view),
                     wgpu::BindingResource::TextureView(&curv.view),
                     wgpu::BindingResource::TextureView(&ts.nearest.view),
+                    wgpu::BindingResource::TextureView(&drip.view),
                 ],
             );
             let mut pass = gpu::pass(&mut enc, "bake resolve", &[&ts.bakes.view], None);
