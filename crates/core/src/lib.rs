@@ -12,6 +12,7 @@ pub mod document;
 pub mod envmath;
 pub mod export;
 pub mod folders;
+pub mod foliage;
 pub mod image_fill;
 pub mod mesh;
 pub mod partquery;
