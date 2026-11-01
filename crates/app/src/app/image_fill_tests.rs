@@ -122,3 +122,28 @@ fn image_fill_inside_a_folder() {
     let off = material(&mut s);
     assert!(reddish(&off) < 0.01, "folder opacity 0 hides the image fill ({})", reddish(&off));
 }
+
+/// Opacity and transmission pass through a folder pass, scaled by the
+/// folder's opacity (layer folders + opacity channels together).
+#[test]
+fn glass_inside_a_folder() {
+    let Ok(mut s) = Session::new() else { return };
+    let r = root();
+    s.new_project(&json!({ "mesh": r.join("assets/ammo_box.glb"), "resolution": 512, "material": "Steel" })).unwrap();
+    s.add_layer(&json!({ "kind": "folder", "name": "Windows" })).unwrap();
+    s.add_layer(&json!({ "name": "Glass", "parent": "Windows", "values": { "base_color": [0.9, 0.95, 1.0], "roughness": 0.05, "opacity": 0.3, "transmission": 1.0 } })).unwrap();
+    let out = std::env::temp_dir().join(format!("pigment-folder-glass-{}", std::process::id()));
+    let mid = |name: &str| {
+        let i = image::open(out.join(name)).unwrap().to_luma8();
+        i.get_pixel(i.width() / 2, i.height() / 2).0[0] as i32
+    };
+    s.export_textures(&json!({ "dir": out, "preset": "separate", "name": "Full" })).unwrap();
+    assert!((mid("Full_Opacity.png") - 77).abs() <= 3, "opacity {}", mid("Full_Opacity.png"));
+    assert!(mid("Full_Transmission.png") >= 250);
+    // half folder opacity: alpha mixes halfway back to solid, transmission halfway to 0
+    s.update_layer(&json!({ "layer": "Windows", "opacity": 0.5 })).unwrap();
+    s.export_textures(&json!({ "dir": out, "preset": "separate", "name": "Half" })).unwrap();
+    assert!((mid("Half_Opacity.png") - 166).abs() <= 4, "opacity {}", mid("Half_Opacity.png"));
+    assert!((mid("Half_Transmission.png") - 128).abs() <= 4, "transmission {}", mid("Half_Transmission.png"));
+    std::fs::remove_dir_all(out).ok();
+}

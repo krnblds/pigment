@@ -10,7 +10,7 @@
 //!    that atlas is the undo record. Undo/redo swap atlas and live tiles.
 
 use super::gpu::{self, Tex};
-use super::texset::{TexSet, LAYER_FORMATS, MASK_FORMAT};
+use super::texset::{TexSet, LAYER_FORMATS, MAIN_LAYER_CHANNELS, MASK_FORMAT};
 use super::MeshGpu;
 use eframe::egui_wgpu::wgpu;
 use pigment_core::tiles::{TileSet, GRID};
@@ -55,6 +55,8 @@ pub struct BrushGpu {
     pub enabled2: [f32; 4], // normal, erase, mask value
     pub emissive: [f32; 4], // linear rgb x strength
     pub enabled3: [f32; 4], // emissive
+    /// opacity value, transmission value, opacity on, transmission on
+    pub extra: [f32; 4],
 }
 
 /// Pixels of the dirty tiles of one target, packed into atlases.
@@ -86,6 +88,8 @@ pub struct Painter {
     stamp_bgl: wgpu::BindGroupLayout,
     apply_pipe: wgpu::RenderPipeline,
     apply_mask_pipe: wgpu::RenderPipeline,
+    /// Second apply pass for the opacity / transmission channels.
+    apply_extra_pipe: wgpu::RenderPipeline,
     apply_bgl: wgpu::BindGroupLayout,
     view_buf: wgpu::Buffer,
     stamp_buf: wgpu::Buffer,
@@ -97,7 +101,7 @@ pub struct Painter {
     decal_bgl: wgpu::BindGroupLayout,
     decal_buf: wgpu::Buffer,
     decal_sampler: wgpu::Sampler,
-    before: [Tex; 6],
+    before: [Tex; 8],
     before_mask: Tex,
     active: Option<Target>,
 }
@@ -111,7 +115,7 @@ impl Painter {
         let apply_bgl = gpu::bgl(
             device,
             "apply",
-            &[gpu::ntex(0), gpu::ntex(1), gpu::ntex(2), gpu::ntex(3), gpu::ntex(4), gpu::ntex(5), gpu::ntex(6), gpu::uniform_entry(7, false), gpu::ntex(8)],
+            &[gpu::ntex(0), gpu::ntex(1), gpu::ntex(2), gpu::ntex(3), gpu::ntex(4), gpu::ntex(5), gpu::ntex(6), gpu::uniform_entry(7, false), gpu::ntex(8), gpu::ntex(9), gpu::ntex(10)],
         );
         let attrs = wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3, 2 => Float32x2, 3 => Float32x4];
         let mesh_layout = [Some(wgpu::VertexBufferLayout {
@@ -159,8 +163,10 @@ impl Painter {
         });
         let decal_sampler = gpu::linear_sampler(device, 8);
         let apply_layout = gpu::layout(device, "apply", &[&apply_bgl]);
-        let layer_targets: Vec<_> = LAYER_FORMATS.iter().map(|f| gpu::target(*f, None)).collect();
+        let layer_targets: Vec<_> = LAYER_FORMATS[..MAIN_LAYER_CHANNELS].iter().map(|f| gpu::target(*f, None)).collect();
         let apply_pipe = gpu::fullscreen(device, "apply", &am, "fs_apply", &apply_layout, &layer_targets);
+        let extra_targets: Vec<_> = LAYER_FORMATS[MAIN_LAYER_CHANNELS..].iter().map(|f| gpu::target(*f, None)).collect();
+        let apply_extra_pipe = gpu::fullscreen(device, "apply extra", &am, "fs_apply_extra", &apply_layout, &extra_targets);
         let apply_mask_pipe = gpu::fullscreen(device, "apply mask", &am, "fs_apply_mask", &apply_layout, &[gpu::target(MASK_FORMAT, None)]);
         let ubuf = |label, size| {
             device.create_buffer(&wgpu::BufferDescriptor {
@@ -186,6 +192,7 @@ impl Painter {
             stamp_bgl,
             apply_pipe,
             apply_mask_pipe,
+            apply_extra_pipe,
             apply_bgl,
             view_buf,
             stamp_buf,
@@ -202,10 +209,10 @@ impl Painter {
         }
     }
 
-    fn scratch(device: &wgpu::Device, res: u32) -> (Tex, [Tex; 6], Tex) {
+    fn scratch(device: &wgpu::Device, res: u32) -> (Tex, [Tex; 8], Tex) {
         (
             Tex::target(device, "stroke mask", res, wgpu::TextureFormat::R16Float),
-            [0, 1, 2, 3, 4, 5].map(|i| Tex::target(device, "before", res, LAYER_FORMATS[i])),
+            LAYER_FORMATS.map(|f| Tex::target(device, "before", res, f)),
             Tex::target(device, "before mask", res, MASK_FORMAT),
         )
     }
@@ -334,7 +341,7 @@ impl Painter {
     fn apply(&self, device: &wgpu::Device, queue: &wgpu::Queue, target: Target, live: &[&Tex], rect: [u32; 4]) {
         let mut enc = device.create_command_encoder(&Default::default());
         let (pipe, before): (&wgpu::RenderPipeline, Vec<&Tex>) = match target {
-            Target::Layer(_) => (&self.apply_pipe, self.before.iter().collect()),
+            Target::Layer(_) => (&self.apply_pipe, self.before[..MAIN_LAYER_CHANNELS].iter().collect()),
             // mask apply reads the before-mask in slot 1; other slots are unused fillers
             Target::Mask(_) => (&self.apply_mask_pipe, vec![&self.before_mask, &self.before[1], &self.before[2], &self.before[3], &self.before[4], &self.before[5]]),
         };
@@ -342,13 +349,22 @@ impl Painter {
         res.extend(before.iter().map(|t| tv(t)));
         res.push(self.brush_buf.as_entire_binding());
         res.push(tv(&self.decal_color));
+        res.extend(self.before[MAIN_LAYER_CHANNELS..].iter().map(tv));
         let bg = gpu::bind_group(device, "apply", &self.apply_bgl, &res);
+        let [x, y, w, h] = rect;
         {
-            let views: Vec<&wgpu::TextureView> = live.iter().map(|t| &t.view).collect();
+            let views: Vec<&wgpu::TextureView> = live.iter().take(MAIN_LAYER_CHANNELS).map(|t| &t.view).collect();
             let mut pass = gpu::pass(&mut enc, "apply", &views, None);
-            let [x, y, w, h] = rect;
             pass.set_scissor_rect(x, y, w.min(self.res - x), h.min(self.res - y));
             pass.set_pipeline(pipe);
+            pass.set_bind_group(0, &bg, &[]);
+            pass.draw(0..3, 0..1);
+        }
+        if matches!(target, Target::Layer(_)) && live.len() > MAIN_LAYER_CHANNELS {
+            let views: Vec<&wgpu::TextureView> = live[MAIN_LAYER_CHANNELS..].iter().map(|t| &t.view).collect();
+            let mut pass = gpu::pass(&mut enc, "apply extra", &views, None);
+            pass.set_scissor_rect(x, y, w.min(self.res - x), h.min(self.res - y));
+            pass.set_pipeline(&self.apply_extra_pipe);
             pass.set_bind_group(0, &bg, &[]);
             pass.draw(0..3, 0..1);
         }

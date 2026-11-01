@@ -10,9 +10,9 @@ use std::path::{Path, PathBuf};
 /// Final material pixels, row-major, `size × size`.
 pub struct MaterialImages {
     pub size: u32,
-    /// RGBA8, sRGB-encoded colour.
+    /// RGBA8, sRGB-encoded colour; A = opacity (255 = solid).
     pub color: Vec<u8>,
-    /// RGBA8: R = ambient occlusion, G = roughness, B = metallic.
+    /// RGBA8: R = ambient occlusion, G = roughness, B = metallic, A = transmission.
     pub orm: Vec<u8>,
     /// RGBA8 tangent-space normal, OpenGL convention (+Y up), encoded n*0.5+0.5.
     pub normal: Vec<u8>,
@@ -44,6 +44,22 @@ pub enum Source {
     EmissiveG,
     EmissiveB,
     One,
+    /// Alpha: 255 = solid, 0 = cut away.
+    Opacity,
+    /// 0 = opaque, 255 = clear glass.
+    Transmission,
+}
+
+impl Source {
+    /// Value of a fully solid, non-transmissive material, for sources that
+    /// may be left out of an export when they carry no information.
+    fn neutral(self) -> Option<u16> {
+        match self {
+            Source::Opacity => Some(65535),
+            Source::Transmission => Some(0),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -87,7 +103,7 @@ pub fn presets() -> Vec<Preset> {
             id: "unreal",
             label: "Unreal Engine (packed ORM, DirectX normal)",
             outputs: vec![
-                o("BaseColor", Rgb8, &[Red, Green, Blue]),
+                o("BaseColor", Rgba8, &[Red, Green, Blue, Opacity]),
                 o("Normal", Rgb8, &[NormalX, NormalYFlipped, NormalZ]),
                 o("OcclusionRoughnessMetallic", Rgb8, &[Ao, Roughness, Metallic]),
                 o("Height", L16, &[Height]),
@@ -98,7 +114,7 @@ pub fn presets() -> Vec<Preset> {
             id: "unity",
             label: "Unity (URP / Built-in metallic)",
             outputs: vec![
-                o("Albedo", Rgb8, &[Red, Green, Blue]),
+                o("Albedo", Rgba8, &[Red, Green, Blue, Opacity]),
                 o("Normal", Rgb8, &[NormalX, NormalY, NormalZ]),
                 o("MetallicSmoothness", Rgba8, &[Metallic, Metallic, Metallic, Smoothness]),
                 o("Occlusion", L8, &[Ao]),
@@ -110,7 +126,7 @@ pub fn presets() -> Vec<Preset> {
             id: "godot",
             label: "Godot (ORM material)",
             outputs: vec![
-                o("albedo", Rgb8, &[Red, Green, Blue]),
+                o("albedo", Rgba8, &[Red, Green, Blue, Opacity]),
                 o("normal", Rgb8, &[NormalX, NormalY, NormalZ]),
                 o("orm", Rgb8, &[Ao, Roughness, Metallic]),
                 o("height", L16, &[Height]),
@@ -128,6 +144,8 @@ pub fn presets() -> Vec<Preset> {
                 o("Normal_OpenGL", Rgb8, &[NormalX, NormalY, NormalZ]),
                 o("Height", L16, &[Height]),
                 o("Emissive", Rgb8, &[EmissiveR, EmissiveG, EmissiveB]),
+                o("Opacity", L8, &[Opacity]),
+                o("Transmission", L8, &[Transmission]),
             ],
         },
     ]
@@ -157,6 +175,8 @@ fn sample(m: &MaterialImages, src: Source, i: usize) -> u16 {
         Source::EmissiveG => b(m.emissive[4 * i + 1]),
         Source::EmissiveB => b(m.emissive[4 * i + 2]),
         Source::One => 65535,
+        Source::Opacity => b(m.color[4 * i + 3]),
+        Source::Transmission => b(m.orm[4 * i + 3]),
     }
 }
 
@@ -196,13 +216,44 @@ pub fn write_packed(path: &Path, size: u32, format: PixelFormat, data: &Packed) 
     image::save_buffer(path, &bytes, size, size, color).with_context(|| format!("writing {}", path.display()))
 }
 
+/// Does `src` hold its neutral value (solid / not transmissive) everywhere?
+fn is_neutral(m: &MaterialImages, src: Source) -> bool {
+    match src.neutral() {
+        Some(v) => (0..(m.size * m.size) as usize).all(|i| sample(m, src, i) == v),
+        None => false,
+    }
+}
+
+/// The output as actually written for this material: an alpha channel that
+/// is solid everywhere is dropped (RGBA -> RGB), and a single-channel map of
+/// a neutral opacity / transmission is skipped entirely (`None`).
+pub fn effective_output(out: &OutputMap, m: &MaterialImages) -> Option<OutputMap> {
+    let last = *out.sources.last()?;
+    if !is_neutral(m, last) {
+        return Some(out.clone());
+    }
+    match out.format {
+        PixelFormat::Rgba8 => Some(OutputMap { suffix: out.suffix, format: PixelFormat::Rgb8, sources: out.sources[..3].to_vec() }),
+        PixelFormat::L8 | PixelFormat::L16 => None,
+        PixelFormat::Rgb8 => Some(out.clone()),
+    }
+}
+
 /// Write every output of `preset` into `dir` as `<base>_<suffix>.png`.
+/// Opacity / transmission maps of a solid material are not written (and a
+/// stale one from an earlier export is removed).
 pub fn export(dir: &Path, base: &str, preset: &Preset, m: &MaterialImages) -> Result<Vec<PathBuf>> {
     std::fs::create_dir_all(dir)?;
     let mut written = Vec::new();
     for out in &preset.outputs {
         let path = dir.join(format!("{base}_{}.png", out.suffix));
-        write_packed(&path, m.size, out.format, &pack(out, m))?;
+        let Some(out) = effective_output(out, m) else {
+            if path.exists() {
+                std::fs::remove_file(&path)?;
+            }
+            continue;
+        };
+        write_packed(&path, m.size, out.format, &pack(&out, m))?;
         written.push(path);
     }
     Ok(written)
@@ -217,7 +268,7 @@ mod tests {
         MaterialImages {
             size: 2,
             color: vec![10, 20, 30, 255, 0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0, 255],
-            orm: vec![200, 100, 50, 255, 255, 128, 0, 255, 255, 128, 0, 255, 255, 128, 0, 255],
+            orm: vec![200, 100, 50, 0, 255, 128, 0, 0, 255, 128, 0, 0, 255, 128, 0, 0], // A = transmission
             normal: vec![128, 200, 255, 255, 128, 128, 255, 255, 128, 128, 255, 255, 128, 128, 255, 255],
             height: vec![40000, 32768, 32768, 32768],
             emissive: vec![255, 0, 128, 255, 0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0, 255],
@@ -267,6 +318,34 @@ mod tests {
         assert_eq!(img.get_pixel(0, 0).0, [200, 100, 50]);
         let h = image::open(dir.join("Crate_Height.png")).unwrap().to_luma16();
         assert_eq!(h.get_pixel(0, 0).0, [40000]);
+        std::fs::remove_dir_all(dir).ok();
+    }
+
+    #[test]
+    fn opacity_goes_to_base_color_alpha_and_separate_maps_only_when_used() {
+        let dir = std::env::temp_dir().join(format!("pigment-export-alpha-{}", std::process::id()));
+        // solid: RGB base colour, no opacity / transmission maps
+        let files = export(&dir, "Solid", &preset("separate").unwrap(), &tiny()).unwrap();
+        assert!(!files.iter().any(|f| f.to_string_lossy().contains("Opacity")));
+        let files = export(&dir, "Solid", &preset("unreal").unwrap(), &tiny()).unwrap();
+        assert_eq!(files.len(), 5);
+        assert_eq!(image::open(dir.join("Solid_BaseColor.png")).unwrap().color(), image::ColorType::Rgb8);
+        // glass: alpha 64, transmission 255 on pixel 0
+        let mut m = tiny();
+        m.color[3] = 64;
+        m.orm[3] = 255;
+        export(&dir, "Glass", &preset("unreal").unwrap(), &m).unwrap();
+        let bc = image::open(dir.join("Glass_BaseColor.png")).unwrap().to_rgba8();
+        assert_eq!(bc.get_pixel(0, 0).0, [10, 20, 30, 64]);
+        assert_eq!(bc.get_pixel(1, 0).0[3], 255);
+        let files = export(&dir, "Glass", &preset("separate").unwrap(), &m).unwrap();
+        assert!(files.iter().any(|f| f.ends_with("Glass_Opacity.png")));
+        assert_eq!(image::open(dir.join("Glass_Opacity.png")).unwrap().to_luma8().get_pixel(0, 0).0, [64]);
+        assert_eq!(image::open(dir.join("Glass_Transmission.png")).unwrap().to_luma8().get_pixel(0, 0).0, [255]);
+        // re-exporting as solid removes the stale maps
+        export(&dir, "Glass", &preset("separate").unwrap(), &tiny()).unwrap();
+        assert!(!dir.join("Glass_Opacity.png").exists());
+        assert!(!dir.join("Glass_Transmission.png").exists());
         std::fs::remove_dir_all(dir).ok();
     }
 

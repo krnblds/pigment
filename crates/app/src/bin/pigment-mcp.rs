@@ -47,6 +47,17 @@ fn tools() -> Value {
             "normal_strength": { "type": "number", "description": "default 1, 0 = flat" }
         }
     });
+    // material values beyond the basics: emission, opacity (cut-outs), transmission (glass)
+    let value_extras = json!({
+        "emissive": { "type": "array", "items": { "type": "number" }, "description": "emitted colour, sRGB 0..1" },
+        "emissive_strength": { "type": "number" },
+        "opacity": { "type": "number", "description": "material alpha 0..1: 1 = solid, 0 = hole (cut-out: fences, grilles). Not the layer opacity." },
+        "transmission": { "type": "number", "description": "0..1, 1 = clear glass (refracts; pair with low roughness and opacity < 1 for see-through windows)" }
+    });
+    for (k, v) in value_extras.as_object().unwrap() {
+        layer_fields["values"]["properties"][k] = v.clone();
+    }
+    let brush_values = json!({ "type": "object", "description": "brush material values (same keys as a fill's values: base_color, roughness, metallic, height, emissive, emissive_strength, opacity, transmission); opacity/transmission given here are painted too", "properties": layer_fields["values"]["properties"].clone() });
     let camera = json!({
         "yaw": { "type": "number", "description": "degrees around the model (default 35)" },
         "pitch": { "type": "number", "description": "degrees above (default 20)" },
@@ -74,11 +85,12 @@ fn tools() -> Value {
         ("mask", json!({ "type": "boolean", "description": "paint the layer's mask instead" })),
         ("mask_value", json!({ "type": "string", "enum": ["white", "black"] })),
         ("erase", json!({ "type": "boolean" })),
+        ("values", brush_values.clone()),
     ] {
         paint_props[k] = v;
     }
     let mut render_props = camera;
-    render_props["view"] = json!({ "type": "string", "description": "material (default), base color, roughness, metallic, height, normal, ambient occlusion, curvature, world normal, uv checker" });
+    render_props["view"] = json!({ "type": "string", "description": "material (default), base color, roughness, metallic, height, normal, ambient occlusion, curvature, world normal, uv checker, emission, opacity, transmission" });
     render_props["path"] = json!({ "type": "string", "description": "where to save the PNG (default: temp)" });
     render_props["exposure"] = json!({ "type": "number" });
     render_props["background"] = json!({ "type": "boolean" });
@@ -128,7 +140,8 @@ fn tools() -> Value {
                   "yaw": { "type": "number" }, "pitch": { "type": "number" }, "zoom": { "type": "number" },
                   "tint": { "type": "array", "items": { "type": "number" } }, "material": { "type": "string", "description": "preset for roughness/metallic (default plain paint)" },
                   "emissive_strength": { "type": "number" }, "height": { "type": "number" }, "opacity": { "type": "number" },
-                  "layer": {}, "mask": { "type": "boolean" }, "alpha_from_luminance": { "type": "boolean" },
+                  "layer": {}, "mask": { "type": "boolean" }, "alpha_from_luminance": { "type": "boolean" }, "values": brush_values,
+                  "channels": { "type": "array", "items": { "type": "string" }, "description": "channels to paint (e.g. [\"opacity\"] with values {opacity: 0} punches holes in the image's shape)" },
                   "name": { "type": "string", "description": "decal name for export_variants (default: image file stem)" },
                   "variant": { "type": "string", "description": "variant group tag" },
                   "enabled": { "type": "boolean", "description": "false = record it for variants but don't paint it in the authored look" } }), &["image"]),
@@ -136,7 +149,7 @@ fn tools() -> Value {
         t("render_turntable", "Render `frames` views evenly around the model (at `pitch`) as one labelled contact-sheet PNG: see the whole asset in one call. Takes the same lighting / bloom / view args as render.", sheet_props, &[]),
         t("export_lighting", "Write a built-in lighting preset as an equirectangular .hdr (e.g. to light a Blender world exactly like Pigment's viewport).",
           json!({ "lighting": { "type": "string", "enum": ["studio", "night", "overcast"] }, "path": { "type": "string" }, "width": { "type": "integer", "description": "default 2048" } }), &["path"]),
-        t("export_textures", "Export PNG texture maps. Presets: unreal, unity, godot, separate (glTF/Blender: BaseColor, Roughness, Metallic, AO, Normal_OpenGL, Height).",
+        t("export_textures", "Export PNG texture maps. Presets: unreal, unity, godot, separate (glTF/Blender: BaseColor, Roughness, Metallic, AO, Normal_OpenGL, Height, Emissive, plus Opacity / Transmission when the material has any). unreal/unity/godot put opacity in the base colour's alpha (RGBA) when it isn't solid.",
           json!({ "dir": { "type": "string" }, "preset": { "type": "string" }, "name": { "type": "string" } }), &["dir"]),
         t("export_variants", "Export N texture sets from this project without re-running the script: one folder per variant, <dir>/<name>__<variant>/<name>_<map>.png. Each variant starts from the authored stack, sets `seed` (random part subsets such as lit windows, and generator noise), switches off `disable` then on `enable` (layer names, decal names, variant groups, or \"*\" = everything tagged), and swaps decal images (decals on changed layers are replayed). Definitions are stored in the project (save_project to keep them); omit `variants` to reuse the stored ones.",
           json!({ "dir": { "type": "string" }, "name": { "type": "string", "description": "file/folder name (default: mesh name)" },

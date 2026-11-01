@@ -117,8 +117,8 @@ fn tilt_edit(ui: &mut egui::Ui, n: &mut [f32; 2]) {
 }
 
 /// Editable material values in a two-column grid, optionally with per-channel toggles.
-fn material_grid(ui: &mut egui::Ui, id: &str, v: &mut MaterialValues, enabled: Option<&mut [bool; 6]>) {
-    let mut dummy = [true; 6];
+fn material_grid(ui: &mut egui::Ui, id: &str, v: &mut MaterialValues, enabled: Option<&mut [bool; 8]>) {
+    let mut dummy = [true; 8];
     let has_toggles = enabled.is_some();
     let en = enabled.unwrap_or(&mut dummy);
     egui::Grid::new(id).num_columns(2).spacing([10.0, 6.0]).show(ui, |ui| {
@@ -149,6 +149,12 @@ fn material_grid(ui: &mut egui::Ui, id: &str, v: &mut MaterialValues, enabled: O
             srgb_edit(ui, &mut v.emissive);
             ui.add(egui::DragValue::new(&mut v.emissive_strength).range(0.0..=50.0).speed(0.05).prefix("× "));
         });
+        ui.end_row();
+        row(ui, &mut en[6], "Opacity");
+        ui.add(egui::Slider::new(&mut v.opacity, 0.0..=1.0)).on_hover_text("1 = solid, 0 = a hole (cut-out)");
+        ui.end_row();
+        row(ui, &mut en[7], "Transmission");
+        ui.add(egui::Slider::new(&mut v.transmission, 0.0..=1.0)).on_hover_text("Glass: light passes through (refracts) instead of scattering");
         ui.end_row();
     });
 }
@@ -517,7 +523,8 @@ impl PigmentApp {
                         .inner;
                     if r.clicked() {
                         self.brush.values = v.clone();
-                        self.brush.channels = [true, true, true, v.height.abs() > 0.01, false, v.emissive_strength > 0.0];
+                        let (see, trans) = v.is_see_through();
+                        self.brush.channels = [true, true, true, v.height.abs() > 0.01, false, v.emissive_strength > 0.0, see, trans];
                         self.brush.erase = false;
                     }
                     if k % 2 == 1 {
@@ -1321,6 +1328,7 @@ impl PigmentApp {
                         (ViewMode::Ao, "AO"),
                         (ViewMode::Curvature, "Curvature"),
                         (ViewMode::Emissive, "Glow"),
+                        (ViewMode::Opacity, "Alpha"),
                         (ViewMode::UvChecker, "UVs"),
                     ] {
                         ui.selectable_value(&mut self.view.mode, m, RichText::new(short).size(12.0)).on_hover_text(m.label());

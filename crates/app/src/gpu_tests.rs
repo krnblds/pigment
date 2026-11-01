@@ -22,7 +22,7 @@ struct Gpu {
 fn gpu() -> Option<Gpu> {
     let instance = wgpu::Instance::default();
     let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions::default())).ok()?;
-    let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor::default())).ok()?;
+    let (device, queue) = pollster::block_on(adapter.request_device(&crate::render::gpu::device_descriptor(&adapter))).ok()?;
     Some(Gpu { device, queue })
 }
 
@@ -91,6 +91,7 @@ impl Scene {
             enabled2: [0.0, 0.0, 1.0, 0.0],
             emissive: [0.0; 4],
             enabled3: [0.0; 4],
+            extra: [1.0, 0.0, 0.0, 0.0],
         };
         let mut frames = vec![sampler.begin(from)];
         for i in 1..=8 {
@@ -380,7 +381,7 @@ fn perf_targets() {
     let target = doc.layers.iter().rev().find_map(|l| l.paint_res()).unwrap();
     let mut painter = Painter::new(d, res);
     painter.begin(d, q, &ts, Target::Layer(target));
-    let brush = BrushGpu { color: [1.0, 0.0, 0.0, 1.0], rmh: [0.5; 4], normal: [0.0, 0.0, 1.0, 0.0], enabled: [1.0; 4], enabled2: [0.0, 0.0, 1.0, 0.0], emissive: [0.0; 4], enabled3: [0.0; 4] };
+    let brush = BrushGpu { color: [1.0, 0.0, 0.0, 1.0], rmh: [0.5; 4], normal: [0.0, 0.0, 1.0, 0.0], enabled: [1.0; 4], enabled2: [0.0, 0.0, 1.0, 0.0], emissive: [0.0; 4], enabled3: [0.0; 4], extra: [1.0, 0.0, 0.0, 0.0] };
     let mut x = 600.0;
     let depth = viewport.paint_depth().unwrap();
     let paint_ms = time("paint frame: 8 stamps + apply + composite", 30, &mut || {

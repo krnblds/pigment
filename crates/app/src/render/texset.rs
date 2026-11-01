@@ -14,14 +14,19 @@ use std::collections::{HashMap, HashSet};
 use wgpu::util::DeviceExt;
 
 /// Paint layer channel formats, indexed by `Channel`.
-pub const LAYER_FORMATS: [wgpu::TextureFormat; 6] = [
+pub const LAYER_FORMATS: [wgpu::TextureFormat; 8] = [
     wgpu::TextureFormat::Rgba8UnormSrgb, // base colour + coverage
     wgpu::TextureFormat::Rg8Unorm,       // roughness + coverage
     wgpu::TextureFormat::Rg8Unorm,       // metallic + coverage
     wgpu::TextureFormat::Rg16Float,      // height (-1..1) + coverage
     wgpu::TextureFormat::Rgba8Unorm,     // encoded normal + coverage
     wgpu::TextureFormat::Rgba16Float,    // emission (linear HDR) + coverage
+    wgpu::TextureFormat::Rg8Unorm,       // opacity + coverage
+    wgpu::TextureFormat::Rg8Unorm,       // transmission + coverage
 ];
+/// Layer channels written by the brush's main apply pass (the rest go
+/// through a second pass: the main one is at the 32-byte attachment limit).
+pub const MAIN_LAYER_CHANNELS: usize = 6;
 pub const EMISSIVE: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
 pub const MASK_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::R8Unorm;
 const ACC: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
@@ -39,7 +44,7 @@ const LAYER_UNIFORM_STRIDE: u64 = 512;
 const PARTS: wgpu::TextureFormat = wgpu::TextureFormat::R16Uint;
 
 pub struct LayerTex {
-    pub ch: [Tex; 6],
+    pub ch: [Tex; 8],
 }
 
 impl LayerTex {
@@ -99,12 +104,14 @@ fn layer_params(l: &Layer, variant_seed: u32) -> LayerParams {
     let (oh, bh) = ch(Channel::Height);
     let (on, bn) = ch(Channel::Normal);
     let (oe, be) = ch(Channel::Emissive);
+    let (oo, bo) = ch(Channel::Opacity);
+    let (ot, bt) = ch(Channel::Transmission);
     let mut p = LayerParams {
         flags: [0, 0, 0, 0],
         blend: [bc, br, bm, bh],
-        blend2: [bn, be, 0, 0],
+        blend2: [bn, be, bo, bt],
         opacity: [oc, or, om, oh],
-        opacity2: [on, oe, 0.0, 0.0],
+        opacity2: [on, oe, oo, ot],
         fill_color: [0.0; 4],
         fill_rmh: [0.0; 4],
         fill_normal: [0.0, 0.0, 1.0, 0.0],
@@ -128,8 +135,8 @@ fn layer_params(l: &Layer, variant_seed: u32) -> LayerParams {
     if let LayerKind::Fill { values } = &l.kind {
         p.flags[0] = 1;
         let c = values.base_color.map(srgb_to_linear);
-        p.fill_color = [c[0], c[1], c[2], 1.0];
-        p.fill_rmh = [values.roughness, values.metallic, values.height, 0.0];
+        p.fill_color = [c[0], c[1], c[2], values.opacity.clamp(0.0, 1.0)];
+        p.fill_rmh = [values.roughness, values.metallic, values.height, values.transmission.clamp(0.0, 1.0)];
         let n = normal_from_tilt(Vec2::from(values.normal));
         p.fill_normal = [n.x, n.y, n.z, 0.0];
         let e = values.emissive.map(srgb_to_linear);
@@ -172,7 +179,7 @@ fn folder_params(l: &Layer, variant_seed: u32) -> LayerParams {
     let mut p = layer_params(l, variant_seed);
     let ids: Vec<u32> = Channel::ALL.iter().map(|c| folder_blend(*c, l.channels.get(*c).blend).gpu_id()).collect();
     p.blend = [ids[0], ids[1], ids[2], ids[3]];
-    p.blend2 = [ids[4], ids[5], 0, 0];
+    p.blend2 = [ids[4], ids[5], ids[6], ids[7]];
     p
 }
 
@@ -278,6 +285,9 @@ impl Pipes {
                 gpu::ntex(6),
                 gpu::uniform_entry(7, true),
                 gpu::sampler_entry(8, wgpu::SamplerBindingType::Filtering),
+                // opacity, transmission
+                gpu::ntex(9),
+                gpu::ntex(10),
             ],
         );
         let full_layout = gpu::layout(device, "composite", &[&shared_bgl, &acc_bgl, &layer_bgl]);
@@ -630,7 +640,7 @@ impl TexSet {
                 }
                 let lt = l.paint_res().and_then(|r| self.layers.get(&r)).unwrap_or(&self.dummy_layer);
                 let mask = l.mask.as_ref().and_then(|m| self.masks.get(&m.res)).unwrap_or(&self.dummy_mask);
-                let mut res: Vec<wgpu::BindingResource> = lt.ch.iter().map(|t| wgpu::BindingResource::TextureView(&t.view)).collect();
+                let mut res: Vec<wgpu::BindingResource> = lt.ch[..MAIN_LAYER_CHANNELS].iter().map(|t| wgpu::BindingResource::TextureView(&t.view)).collect();
                 // image fills: the tiling images take the channel slots
                 if let (LayerKind::Fill { .. }, Some(f)) = (&l.kind, &l.image) {
                     for (c, path) in f.images.iter() {
@@ -645,7 +655,9 @@ impl TexSet {
                     offset: 0,
                     size: wgpu::BufferSize::new(std::mem::size_of::<LayerParams>() as u64),
                 }));
+                // image-fill sampler (binding 8), then opacity, transmission (bindings 9, 10)
                 res.push(wgpu::BindingResource::Sampler(&self.tiles.sampler));
+                res.extend(lt.ch[MAIN_LAYER_CHANNELS..].iter().map(|t| wgpu::BindingResource::TextureView(&t.view)));
                 gpu::bind_group(device, "layer", &self.p.layer_bgl, &res)
             })
             .collect();

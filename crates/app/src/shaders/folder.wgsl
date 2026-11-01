@@ -32,12 +32,16 @@ fn folder_mask(t: vec2<i32>) -> f32 {
 @fragment
 fn fs_folder(f: FullOut) -> Acc {
     let t = vec2<i32>(f.pos.xy);
-    let bc = textureLoad(base_color, t, 0).rgb;
-    let br = textureLoad(base_rmh, t, 0).xyz;
+    let bc4 = textureLoad(base_color, t, 0);   // a = opacity
+    let br4 = textureLoad(base_rmh, t, 0);     // w = transmission
+    let bc = bc4.rgb;
+    let br = br4.xyz;
     let bn = textureLoad(base_normal, t, 0).xyz;
     let be = textureLoad(base_emissive, t, 0).rgb;
-    let cc = textureLoad(acc_color, t, 0).rgb;
-    let cr = textureLoad(acc_rmh, t, 0).xyz;
+    let cc4 = textureLoad(acc_color, t, 0);
+    let cr4 = textureLoad(acc_rmh, t, 0);
+    let cc = cc4.rgb;
+    let cr = cr4.xyz;
     let cn = textureLoad(acc_normal, t, 0).xyz;
     let ce = textureLoad(acc_emissive, t, 0).rgb;
 
@@ -45,14 +49,16 @@ fn fs_folder(f: FullOut) -> Acc {
     let a = lp.opacity * mask;
     let an = clamp(lp.opacity2.x * mask, 0.0, 1.0);
     let ae = lp.opacity2.y * mask;
+    let ao = lp.opacity2.z * mask;
+    let at = lp.opacity2.w * mask;
 
     var o: Acc;
-    o.color = vec4<f32>(max(blend_rgb(lp.blend.x, bc, cc, a.x), vec3<f32>(0.0)), 1.0);
+    o.color = vec4<f32>(max(blend_rgb(lp.blend.x, bc, cc, a.x), vec3<f32>(0.0)), clamp(blend_scalar(lp.blend2.z, bc4.a, cc4.a, ao), 0.0, 1.0));
     o.rmh = vec4<f32>(
         clamp(blend_scalar(lp.blend.y, br.x, cr.x, a.y), 0.0, 1.0),
         clamp(blend_scalar(lp.blend.z, br.y, cr.y, a.z), 0.0, 1.0),
         clamp(blend_scalar(lp.blend.w, br.z, cr.z, a.w), -8.0, 8.0),
-        1.0);
+        clamp(blend_scalar(lp.blend2.w, br4.w, cr4.w, at), 0.0, 1.0));
     o.normal = vec4<f32>(normalize(mix(bn, cn, an) + vec3<f32>(0.0, 0.0, 1e-5)), 1.0);
     o.emissive = vec4<f32>(max(blend_rgb(lp.blend2.y, be, ce, ae), vec3<f32>(0.0)), 1.0);
     return o;

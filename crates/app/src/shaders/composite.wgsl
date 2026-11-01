@@ -6,6 +6,8 @@
 //   acc_rmh        roughness, metallic, height
 //   acc_normal.xyz tangent-space detail normal (painted / filled normals)
 //   acc_emissive   linear HDR emission
+//   acc_color.a    opacity (1 = solid)
+//   acc_rmh.w      transmission (0 = opaque, 1 = glass)
 
 // ---- group 0: mesh-derived data shared by every layer ----
 @group(0) @binding(0) var bakes: texture_2d<f32>;      // r = AO, g = curvature (0.5 neutral)
@@ -35,14 +37,16 @@ struct Shared {
 @group(2) @binding(4) var l_normal: texture_2d<f32>;   // rgb encoded normal, a coverage
 @group(2) @binding(5) var l_emissive: texture_2d<f32>;  // linear HDR rgb, a coverage (channel order)
 @group(2) @binding(6) var l_mask: texture_2d<f32>;
+@group(2) @binding(9) var l_opacity: texture_2d<f32>;       // r value, g coverage
+@group(2) @binding(10) var l_transmission: texture_2d<f32>;  // r value, g coverage
 struct LayerParams {
     flags: vec4<u32>,       // kind (0 paint, 1 fill), has mask, generator id, invert
     blend: vec4<u32>,       // color, rough, metal, height
-    blend2: vec4<u32>,      // normal
+    blend2: vec4<u32>,      // normal, emissive, opacity, transmission
     opacity: vec4<f32>,     // color, rough, metal, height (layer x channel x enabled)
-    opacity2: vec4<f32>,    // normal
-    fill_color: vec4<f32>,  // linear
-    fill_rmh: vec4<f32>,
+    opacity2: vec4<f32>,    // normal, emissive, opacity, transmission
+    fill_color: vec4<f32>,  // linear rgb, a = opacity value
+    fill_rmh: vec4<f32>,    // roughness, metallic, height, transmission
     fill_normal: vec4<f32>,
     gen: vec4<f32>,         // amount, softness, noise scale, noise amount
     gen2: vec4<f32>,        // seed, AO influence, curvature weight
@@ -320,7 +324,11 @@ fn fs_layer(f: FullOut) -> Acc {
     var m = vec2<f32>(lp.fill_rmh.y, 1.0);
     var h = vec2<f32>(lp.fill_rmh.z, 1.0);
     var n = vec4<f32>(lp.fill_normal.xyz, 1.0);
+    var op = vec2<f32>(lp.fill_color.a, 1.0);
+    var tr = vec2<f32>(lp.fill_rmh.w, 1.0);
     if (lp.flags.x == 0u) {
+        op = textureLoad(l_opacity, t, 0).rg;
+        tr = textureLoad(l_transmission, t, 0).rg;
         c = textureLoad(l_color, t, 0);
         r = textureLoad(l_rough, t, 0).rg;
         m = textureLoad(l_metal, t, 0).rg;
@@ -358,15 +366,17 @@ fn fs_layer(f: FullOut) -> Acc {
     let a = cov * lp.opacity * mask;
     let an = n.a * lp.opacity2.x * mask;
     let ae = select(e.a, 1.0, lp.blend2.y == 8u) * lp.opacity2.y * mask;
+    let ao = select(op.y, 1.0, lp.blend2.z == 8u) * lp.opacity2.z * mask;
+    let at = select(tr.y, 1.0, lp.blend2.w == 8u) * lp.opacity2.w * mask;
 
     var o: Acc;
-    o.color = vec4<f32>(max(blend_rgb(lp.blend.x, dc.rgb, c.rgb, a.x), vec3<f32>(0.0)), 1.0);
+    o.color = vec4<f32>(max(blend_rgb(lp.blend.x, dc.rgb, c.rgb, a.x), vec3<f32>(0.0)), clamp(blend_scalar(lp.blend2.z, dc.a, op.x, ao), 0.0, 1.0));
     o.rmh = vec4<f32>(
         clamp(blend_scalar(lp.blend.y, dr.x, r.x, a.y), 0.0, 1.0),
         clamp(blend_scalar(lp.blend.z, dr.y, m.x, a.z), 0.0, 1.0),
         // height is HDR (stacked dents can pass -1); clamped only on export
         clamp(blend_scalar(lp.blend.w, dr.z, h.x, a.w), -8.0, 8.0),
-        1.0);
+        clamp(blend_scalar(lp.blend2.w, dr.w, tr.x, at), 0.0, 1.0));
     o.normal = vec4<f32>(blend_normal(lp.blend2.x, dn, n.xyz, an), 1.0);
     o.emissive = vec4<f32>(max(blend_rgb(lp.blend2.y, de, e.rgb, ae), vec3<f32>(0.0)), 1.0);
     return o;
@@ -377,7 +387,7 @@ fn fs_layer(f: FullOut) -> Acc {
 fn fs_clear(f: FullOut) -> Acc {
     var o: Acc;
     o.color = vec4<f32>(srgb_to_linear(vec3<f32>(0.5)), 1.0);
-    o.rmh = vec4<f32>(0.5, 0.0, 0.0, 1.0);
+    o.rmh = vec4<f32>(0.5, 0.0, 0.0, 0.0);  // w: transmission
     o.normal = vec4<f32>(0.0, 0.0, 1.0, 1.0);
     o.emissive = vec4<f32>(0.0, 0.0, 0.0, 1.0);
     return o;
@@ -391,8 +401,8 @@ fn fs_clear(f: FullOut) -> Acc {
 // through the padding map, then combined with painted normal detail (RNM).
 
 struct Material {
-    @location(0) color: vec4<f32>,   // srgb target
-    @location(1) orm: vec4<f32>,     // ao, roughness, metallic, coverage
+    @location(0) color: vec4<f32>,   // srgb target, a = opacity
+    @location(1) orm: vec4<f32>,     // ao, roughness, metallic, transmission
     @location(2) normal: vec4<f32>,  // encoded tangent-space normal
     @location(3) height: vec4<f32>,  // r = height
 };
@@ -448,8 +458,8 @@ fn fs_finalize(f: FullOut) -> Material {
     let nrm = rnm(hn, detail);
 
     var o: Material;
-    o.color = vec4<f32>(c.rgb, 1.0);
-    o.orm = vec4<f32>(ao, rmh.x, rmh.y, 1.0);
+    o.color = vec4<f32>(c.rgb, c.a);
+    o.orm = vec4<f32>(ao, rmh.x, rmh.y, rmh.w);
     o.normal = vec4<f32>(nrm * 0.5 + 0.5, 1.0);
     o.height = vec4<f32>(rmh.z, 0.0, 0.0, 1.0);
     return o;

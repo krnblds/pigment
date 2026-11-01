@@ -13,6 +13,14 @@ fn main() -> eframe::Result {
             .with_min_inner_size([800.0, 500.0])
             .with_drag_and_drop(true),
         renderer: eframe::Renderer::Wgpu,
+        // the layer compositor needs more sampled textures than wgpu's default
+        wgpu_options: eframe::egui_wgpu::WgpuConfiguration {
+            wgpu_setup: eframe::egui_wgpu::WgpuSetup::CreateNew(eframe::egui_wgpu::WgpuSetupCreateNew {
+                device_descriptor: std::sync::Arc::new(pigment_engine::render::gpu::device_descriptor),
+                ..eframe::egui_wgpu::WgpuSetupCreateNew::without_display_handle()
+            }),
+            ..Default::default()
+        },
         ..Default::default()
     };
     eframe::run_native(

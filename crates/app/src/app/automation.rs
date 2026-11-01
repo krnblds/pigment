@@ -20,7 +20,7 @@ pub fn headless_render_state() -> Option<RenderState> {
         ..Default::default()
     }))
     .ok()?;
-    let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor::default())).ok()?;
+    let (device, queue) = pollster::block_on(adapter.request_device(&crate::render::gpu::device_descriptor(&adapter))).ok()?;
     let format = wgpu::TextureFormat::Rgba8UnormSrgb;
     let renderer = eframe::egui_wgpu::Renderer::new(&device, format, Default::default());
     Some(RenderState {
@@ -164,7 +164,8 @@ impl Session {
         json!({
             "materials": material_presets().into_iter().map(|(n, v)| json!({
                 "name": n, "base_color": v.base_color, "roughness": v.roughness, "metallic": v.metallic, "height": v.height,
-                "emissive": v.emissive, "emissive_strength": v.emissive_strength
+                "emissive": v.emissive, "emissive_strength": v.emissive_strength,
+                "opacity": v.opacity, "transmission": v.transmission
             })).collect::<Vec<_>>(),
             "smart_materials": smart_material_names(),
             "generators": GeneratorKind::ALL.iter().map(|k| json!({ "id": k.id(), "label": k.label(), "uses_bakes": k.uses_bakes() })).collect::<Vec<_>>(),
@@ -329,6 +330,7 @@ impl Session {
                 l.channels.height.enabled = true;
             }
             l.channels.emissive.enabled = values.emissive_strength > 0.0;
+            (l.channels.opacity.enabled, l.channels.transmission.enabled) = values.is_see_through();
         }
         if let Some(vals) = a.get("values") {
             let l = &mut app.doc.layers[i];
@@ -359,6 +361,16 @@ impl Session {
             }
             let glows = v.emissive_strength > 0.0;
             l.channels.emissive.enabled = glows;
+            // opacity / transmission: on when given or not neutral
+            if let Some(x) = f(vals, "opacity") {
+                v.opacity = x.clamp(0.0, 1.0);
+            }
+            if let Some(x) = f(vals, "transmission") {
+                v.transmission = x.clamp(0.0, 1.0);
+            }
+            let (see, trans) = v.is_see_through();
+            l.channels.opacity.enabled |= see || vals.get("opacity").is_some();
+            l.channels.transmission.enabled |= trans || vals.get("transmission").is_some();
             if height_set {
                 l.channels.height.enabled = true;
             }
@@ -804,10 +816,17 @@ impl Session {
                 return Err(format!("unknown material `{name}`"));
             }
             b.values = material_preset(name);
-            b.channels = [true, true, true, b.values.height.abs() > 1e-3, false, b.values.emissive_strength > 0.0];
+            let (see, trans) = b.values.is_see_through();
+            b.channels = [true, true, true, b.values.height.abs() > 1e-3, false, b.values.emissive_strength > 0.0, see, trans];
+        }
+        if let Some(vals) = a.get("values") {
+            apply_material_values(&mut b.values, vals);
+            let (see, trans) = b.values.is_see_through();
+            b.channels[6] |= see || vals.get("opacity").is_some();
+            b.channels[7] |= trans || vals.get("transmission").is_some();
         }
         if let Some(chs) = a.get("channels").and_then(Value::as_array) {
-            b.channels = [false; 6];
+            b.channels = [false; 8];
             for c in chs.iter().filter_map(Value::as_str) {
                 b.channels[channel(c)?.index()] = true;
             }
@@ -930,7 +949,7 @@ impl Session {
                 b.values.base_color[k] = x.as_f64().unwrap_or(1.0) as f32;
             }
         }
-        b.channels = [true, true, true, false, false, false];
+        b.channels = [true, true, true, false, false, false, false, false];
         if let Some(e) = f(a, "emissive_strength") {
             b.values.emissive = b.values.base_color;
             b.values.emissive_strength = e;
@@ -940,8 +959,13 @@ impl Session {
             b.values.height = h;
             b.channels[3] = true;
         }
+        if let Some(vals) = a.get("values") {
+            apply_material_values(&mut b.values, vals);
+            b.channels[6] |= vals.get("opacity").is_some();
+            b.channels[7] |= vals.get("transmission").is_some();
+        }
         if let Some(chs) = a.get("channels").and_then(Value::as_array) {
-            b.channels = [false; 6];
+            b.channels = [false; 8];
             for c in chs.iter().filter_map(Value::as_str) {
                 b.channels[channel(c)?.index()] = true;
             }
@@ -1174,7 +1198,10 @@ impl Session {
             .unwrap()
             .outputs
             .iter()
-            .map(|o| dir.join(format!("{}_{}.png", self.app.export_name, o.suffix)).to_string_lossy().to_string())
+            .map(|o| dir.join(format!("{}_{}.png", self.app.export_name, o.suffix)))
+            // opacity / transmission maps of a solid material aren't written
+            .filter(|p| p.exists())
+            .map(|p| p.to_string_lossy().to_string())
             .collect();
         Ok(json!({ "status": msg, "files": files, "emissive_scale": scale }))
     }
@@ -1403,6 +1430,37 @@ fn configure_image(app: &mut PigmentApp, i: usize, m: &Value) -> Res<()> {
     Ok(())
 }
 
+/// Brush material values from a JSON object (same keys as a fill's `values`).
+fn apply_material_values(v: &mut MaterialValues, vals: &Value) {
+    let rgb = |k: &str, out: &mut [f32; 3]| {
+        if let Some(c) = vals.get(k).and_then(Value::as_array) {
+            for (i, x) in c.iter().take(3).enumerate() {
+                out[i] = x.as_f64().unwrap_or(0.0).clamp(0.0, 1.0) as f32;
+            }
+        }
+    };
+    rgb("base_color", &mut v.base_color);
+    rgb("emissive", &mut v.emissive);
+    if let Some(x) = f(vals, "roughness") {
+        v.roughness = x.clamp(0.0, 1.0);
+    }
+    if let Some(x) = f(vals, "metallic") {
+        v.metallic = x.clamp(0.0, 1.0);
+    }
+    if let Some(x) = f(vals, "height") {
+        v.height = x.clamp(-1.0, 1.0);
+    }
+    if let Some(x) = f(vals, "emissive_strength") {
+        v.emissive_strength = x.max(0.0);
+    }
+    if let Some(x) = f(vals, "opacity") {
+        v.opacity = x.clamp(0.0, 1.0);
+    }
+    if let Some(x) = f(vals, "transmission") {
+        v.transmission = x.clamp(0.0, 1.0);
+    }
+}
+
 fn apply_generator_fields(g: &mut Generator, m: &Value) {
     if let Some(x) = f(m, "amount") {
         g.amount = x;
@@ -1453,6 +1511,56 @@ mod tests {
         s.undo(false).unwrap();
         let saved = s.save_project(&json!({ "path": out.join("box.pigment") })).unwrap();
         assert!(out.join("box.pigment/project.json").exists(), "{saved}");
+        std::fs::remove_dir_all(out).ok();
+    }
+
+    #[test]
+    fn glass_and_cut_outs_flow_through_fill_brush_viewport_export_and_save() {
+        let Ok(mut s) = Session::new() else { return };
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        s.new_project(&json!({ "mesh": root.join("assets/ammo_box.glb"), "resolution": 512, "material": "Steel" })).unwrap();
+        let out = std::env::temp_dir().join(format!("pigment-glass-{}", std::process::id()));
+        // a solid material exports no opacity / transmission maps and an RGB base colour
+        let e = s.export_textures(&json!({ "dir": out, "preset": "separate", "name": "Solid" })).unwrap();
+        assert!(!e["files"].to_string().contains("Opacity"), "{e}");
+        // glass fill over everything
+        s.add_layer(&json!({ "name": "Glass", "values": { "base_color": [0.9, 0.95, 1.0], "roughness": 0.05, "opacity": 0.3, "transmission": 1.0 } })).unwrap();
+        let l = s.layers();
+        let glass = l.as_array().unwrap().iter().find(|l| l["name"] == "Glass").unwrap();
+        assert!(glass["channels"].to_string().contains("opacity") && glass["channels"].to_string().contains("transmission"), "{glass}");
+        s.export_textures(&json!({ "dir": out, "preset": "separate", "name": "Glass" })).unwrap();
+        let op = image::open(out.join("Glass_Opacity.png")).unwrap().to_luma8();
+        let tr = image::open(out.join("Glass_Transmission.png")).unwrap().to_luma8();
+        let mid = |i: &image::GrayImage| i.get_pixel(i.width() / 2, i.height() / 2).0[0];
+        assert!((mid(&op) as i32 - 77).abs() <= 3, "opacity {}", mid(&op));
+        assert!(mid(&tr) >= 250, "transmission {}", mid(&tr));
+        // unreal: alpha rides in BaseColor
+        s.export_textures(&json!({ "dir": out, "preset": "unreal", "name": "GlassUE" })).unwrap();
+        let bc = image::open(out.join("GlassUE_BaseColor.png")).unwrap();
+        assert_eq!(bc.color(), image::ColorType::Rgba8);
+        // the viewport shows the background through the glass: the material
+        // view differs from an opaque render of the same values
+        let a = s.render(&json!({ "width": 160, "height": 120 })).unwrap();
+        s.update_layer(&json!({ "layer": "Glass", "values": { "opacity": 1.0, "transmission": 0.0 } })).unwrap();
+        let b = s.render(&json!({ "width": 160, "height": 120 })).unwrap();
+        assert_ne!(a.png, b.png);
+        let ov = s.render(&json!({ "view": "opacity", "width": 160, "height": 120 })).unwrap();
+        assert!(ov.png.len() > 100);
+        // brush: punch a hole (opacity 0) on the paint layer
+        s.update_layer(&json!({ "layer": "Glass", "visible": false })).unwrap();
+        let p = s.paint_stroke(&json!({ "points": [[0.4, 0.5], [0.6, 0.5]], "size": 60, "yaw": 0, "pitch": 0, "values": { "opacity": 0.0 }, "channels": ["opacity"] })).unwrap();
+        assert_eq!(p["painted_on"], "Paint");
+        s.export_textures(&json!({ "dir": out, "preset": "separate", "name": "Holes" })).unwrap();
+        let holes = image::open(out.join("Holes_Opacity.png")).unwrap().to_luma8();
+        assert!(holes.pixels().any(|p| p.0[0] < 10), "no hole painted");
+        assert!(holes.pixels().any(|p| p.0[0] == 255));
+        // save + reopen keeps the painted opacity
+        s.save_project(&json!({ "path": out.join("holes.pigment") })).unwrap();
+        assert!(out.join("holes.pigment/layers").read_dir().unwrap().flatten().any(|d| d.path().join("opacity.png").exists()));
+        s.open_project(&json!({ "path": out.join("holes.pigment") })).unwrap();
+        s.export_textures(&json!({ "dir": out, "preset": "separate", "name": "Reopened" })).unwrap();
+        let again = image::open(out.join("Reopened_Opacity.png")).unwrap().to_luma8();
+        assert_eq!(holes.as_raw(), again.as_raw());
         std::fs::remove_dir_all(out).ok();
     }
 

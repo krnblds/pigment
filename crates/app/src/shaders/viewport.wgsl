@@ -105,13 +105,42 @@ fn ao_multibounce(ao: f32, albedo: vec3<f32>) -> vec3<f32> {
     return max(vec3<f32>(ao), ((ao * a + b) * ao + c) * ao);
 }
 
+// A shaded texel: `c` is what the HDR target gets (alpha = scene- vs
+// display-referred tag, see post.wgsl), `cover` how much of what's behind it
+// the surface hides (1 = solid; < 1 = cut-out or glass).
+struct Shaded {
+    c: vec4<f32>,
+    cover: f32,
+};
+
+fn solid(c: vec4<f32>) -> Shaded {
+    return Shaded(c, 1.0);
+}
+
+// Opaque pass: solid texels only (see-through ones go to fs_mesh_glass).
 @fragment
 fn fs_mesh(i: VsOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f32> {
+    let s = shade(i, front);
+    if (s.cover < 0.996) { discard; }
+    return s.c;
+}
+
+// Transparent pass: premultiplied HDR colour, a = how much of what's behind
+// is hidden. The pipeline keeps the target's alpha (the display tag).
+@fragment
+fn fs_mesh_glass(i: VsOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f32> {
+    let s = shade(i, front);
+    if (s.cover >= 0.996) { discard; }
+    return vec4<f32>(s.c.rgb, s.cover);
+}
+
+fn shade(i: VsOut, front: bool) -> Shaded {
     var ng = normalize(i.normal);
     if (!front) { ng = -ng; }
     let mode = i32(g.params.x);
 
-    let albedo = textureSample(m_color, m_samp, i.uv).rgb;
+    let albedo4 = textureSample(m_color, m_samp, i.uv);
+    let albedo = albedo4.rgb;
     let orm = textureSample(m_orm, m_samp, i.uv);
     let tn = textureSample(m_normal, m_samp, i.uv).xyz * 2.0 - 1.0;
 
@@ -121,21 +150,23 @@ fn fs_mesh(i: VsOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f3
     let n = normalize(t * tn.x + b * tn.y + ng * tn.z);
 
     switch mode {
-        case 1: { return ldr(albedo); }
-        case 2: { return ldr(vec3<f32>(orm.g * orm.g)); }       // roughness (shown perceptually)
-        case 3: { return ldr(vec3<f32>(orm.b * orm.b)); }       // metallic
+        case 1: { return solid(ldr(albedo)); }
+        case 2: { return solid(ldr(vec3<f32>(orm.g * orm.g))); }       // roughness (shown perceptually)
+        case 3: { return solid(ldr(vec3<f32>(orm.b * orm.b))); }       // metallic
         case 4: {
             let h = textureSample(m_height, m_samp, i.uv).r * 0.5 + 0.5;
-            return ldr(srgb_to_linear(vec3<f32>(h)));
+            return solid(ldr(srgb_to_linear(vec3<f32>(h))));
         }
-        case 5: { return ldr(srgb_to_linear(tn * 0.5 + 0.5)); }   // tangent normal
-        case 6: { return ldr(srgb_to_linear(vec3<f32>(textureSample(m_bakes, m_samp, i.uv).r))); }
-        case 7: { return ldr(srgb_to_linear(vec3<f32>(textureSample(m_bakes, m_samp, i.uv).g))); }
-        case 8: { return ldr(srgb_to_linear(textureSample(m_wnormal, m_samp, i.uv).xyz * 0.5 + 0.5)); }
-        case 10: { return hdr(textureSample(m_emissive, m_samp, i.uv).rgb); }
+        case 5: { return solid(ldr(srgb_to_linear(tn * 0.5 + 0.5))); }   // tangent normal
+        case 6: { return solid(ldr(srgb_to_linear(vec3<f32>(textureSample(m_bakes, m_samp, i.uv).r)))); }
+        case 7: { return solid(ldr(srgb_to_linear(vec3<f32>(textureSample(m_bakes, m_samp, i.uv).g)))); }
+        case 8: { return solid(ldr(srgb_to_linear(textureSample(m_wnormal, m_samp, i.uv).xyz * 0.5 + 0.5))); }
+        case 10: { return solid(hdr(textureSample(m_emissive, m_samp, i.uv).rgb)); }
+        case 11: { return solid(ldr(srgb_to_linear(vec3<f32>(albedo4.a)))); }   // opacity
+        case 12: { return solid(ldr(srgb_to_linear(vec3<f32>(orm.a)))); }       // transmission
         case 9: {
             let l = max(dot(ng, normalize(g.eye.xyz - i.world)), 0.0);
-            return ldr(checker(i.uv) * (0.25 + 0.75 * l));
+            return solid(ldr(checker(i.uv) * (0.25 + 0.75 * l)));
         }
         default: {}
     }
@@ -174,9 +205,17 @@ fn fs_mesh(i: VsOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f3
     let so = clamp(pow(nv + ao, exp2(-16.0 * rough - 1.0)) - 1.0 + ao, 0.0, 1.0);
     let spec = fss_ess * spec_env * so * horizon * horizon;
     let diffuse = (kd + fms_ems) * irradiance * ao_multibounce(ao, albedo);
-    var color = diffuse + spec + textureSample(m_emissive, m_samp, i.uv).rgb * g.params2.w;
-    if (!front) { color *= vec3<f32>(0.5, 0.25, 0.25); }
-    return hdr(color);
+    // Opacity scales everything (cut-outs vanish, reflections too). Glass
+    // (transmission) swaps diffuse for the background showing through, so it
+    // only hides what's behind by its Fresnel reflectance.
+    let alpha = albedo4.a;
+    let trans = orm.a;
+    let fr_avg = (ks.x + ks.y + ks.z) / 3.0;
+    let cover = alpha * mix(1.0, fr_avg, trans * (1.0 - metal));
+    var color = diffuse * (1.0 - trans) + spec + textureSample(m_emissive, m_samp, i.uv).rgb * g.params2.w;
+    if (!front && cover >= 0.996) { color *= vec3<f32>(0.5, 0.25, 0.25); }
+    if (cover >= 0.996) { return solid(hdr(color)); }
+    return Shaded(vec4<f32>(hdr(color).rgb * alpha, 1.0), cover);
 }
 
 // Background: the environment itself, slightly blurred, or a plain gradient.

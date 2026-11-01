@@ -24,10 +24,23 @@ pub enum Channel {
     Normal,
     /// Light the surface gives off: neon, screens, LEDs. HDR (colour x strength).
     Emissive,
+    /// Coverage / alpha: 1 = solid, 0 = cut away (fences, grilles, holes).
+    Opacity,
+    /// Glass: 0 = opaque surface, 1 = fully transmissive (refracting) surface.
+    Transmission,
 }
 
 impl Channel {
-    pub const ALL: [Channel; 6] = [Channel::BaseColor, Channel::Roughness, Channel::Metallic, Channel::Height, Channel::Normal, Channel::Emissive];
+    pub const ALL: [Channel; 8] = [
+        Channel::BaseColor,
+        Channel::Roughness,
+        Channel::Metallic,
+        Channel::Height,
+        Channel::Normal,
+        Channel::Emissive,
+        Channel::Opacity,
+        Channel::Transmission,
+    ];
     pub fn index(self) -> usize {
         self as usize
     }
@@ -39,6 +52,8 @@ impl Channel {
             Channel::Height => "Height",
             Channel::Normal => "Normal",
             Channel::Emissive => "Emission",
+            Channel::Opacity => "Opacity",
+            Channel::Transmission => "Transmission",
         }
     }
     pub fn file_stem(self) -> &'static str {
@@ -49,6 +64,8 @@ impl Channel {
             Channel::Height => "height",
             Channel::Normal => "normal",
             Channel::Emissive => "emissive",
+            Channel::Opacity => "opacity",
+            Channel::Transmission => "transmission",
         }
     }
     /// Blend modes that make sense for this channel.
@@ -85,6 +102,11 @@ pub struct Channels<T> {
     /// Added in format 1 later: older projects load it as default (off).
     #[serde(default)]
     pub emissive: T,
+    /// Added later still: older projects load these as default (off).
+    #[serde(default)]
+    pub opacity: T,
+    #[serde(default)]
+    pub transmission: T,
 }
 
 impl<T> Channels<T> {
@@ -96,6 +118,8 @@ impl<T> Channels<T> {
             height: f(Channel::Height),
             normal: f(Channel::Normal),
             emissive: f(Channel::Emissive),
+            opacity: f(Channel::Opacity),
+            transmission: f(Channel::Transmission),
         }
     }
     pub fn get(&self, c: Channel) -> &T {
@@ -106,6 +130,8 @@ impl<T> Channels<T> {
             Channel::Height => &self.height,
             Channel::Normal => &self.normal,
             Channel::Emissive => &self.emissive,
+            Channel::Opacity => &self.opacity,
+            Channel::Transmission => &self.transmission,
         }
     }
     pub fn get_mut(&mut self, c: Channel) -> &mut T {
@@ -116,6 +142,8 @@ impl<T> Channels<T> {
             Channel::Height => &mut self.height,
             Channel::Normal => &mut self.normal,
             Channel::Emissive => &mut self.emissive,
+            Channel::Opacity => &mut self.opacity,
+            Channel::Transmission => &mut self.transmission,
         }
     }
 }
@@ -188,11 +216,35 @@ pub struct MaterialValues {
     pub emissive: [f32; 3],
     #[serde(default)]
     pub emissive_strength: f32,
+    /// Alpha: 1 = solid, 0 = a hole (cut-out).
+    #[serde(default = "one")]
+    pub opacity: f32,
+    /// 0 = opaque, 1 = clear glass (light passes through and refracts).
+    #[serde(default)]
+    pub transmission: f32,
 }
 
 impl Default for MaterialValues {
     fn default() -> Self {
-        Self { base_color: [0.8, 0.8, 0.8], roughness: 0.5, metallic: 0.0, height: 0.0, normal: [0.0, 0.0], emissive: [0.0; 3], emissive_strength: 0.0 }
+        Self {
+            base_color: [0.8, 0.8, 0.8],
+            roughness: 0.5,
+            metallic: 0.0,
+            height: 0.0,
+            normal: [0.0, 0.0],
+            emissive: [0.0; 3],
+            emissive_strength: 0.0,
+            opacity: 1.0,
+            transmission: 0.0,
+        }
+    }
+}
+
+impl MaterialValues {
+    /// (see-through, transmissive): whether a fill of these values needs its
+    /// opacity / transmission channels on.
+    pub fn is_see_through(&self) -> (bool, bool) {
+        (self.opacity < 1.0 - 1e-3, self.transmission > 1e-3)
     }
 }
 
@@ -569,6 +621,10 @@ pub fn material_presets() -> Vec<(&'static str, MaterialValues)> {
         ("Grime", m([0.13, 0.1, 0.07], 0.95, 0.0, 0.0)),
         ("Concrete", m([0.55, 0.54, 0.52], 0.9, 0.0, 0.0)),
         ("Chip (dent)", m([0.56, 0.57, 0.58], 0.3, 1.0, -0.6)),
+        ("Clear glass", MaterialValues { base_color: [0.92, 0.95, 0.96], roughness: 0.03, opacity: 0.35, transmission: 1.0, ..Default::default() }),
+        ("Tinted glass", MaterialValues { base_color: [0.35, 0.45, 0.5], roughness: 0.05, opacity: 0.6, transmission: 1.0, ..Default::default() }),
+        ("Frosted glass", MaterialValues { base_color: [0.85, 0.88, 0.9], roughness: 0.35, opacity: 0.7, transmission: 1.0, ..Default::default() }),
+        ("Cut-out", MaterialValues { opacity: 0.0, ..Default::default() }),
     ]
 }
 
@@ -644,6 +700,7 @@ impl Document {
         l.channels.height.enabled = values.height.abs() > 1e-3;
         l.channels.normal.enabled = false;
         l.channels.emissive.enabled = values.emissive_strength > 0.0;
+        (l.channels.opacity.enabled, l.channels.transmission.enabled) = values.is_see_through();
         l.kind = LayerKind::Fill { values };
         if let Some(g) = generator {
             let res = self.mint();
@@ -766,6 +823,8 @@ impl Document {
         let id = self.mint();
         let mut channels = Self::channels_default();
         channels.emissive.enabled = false; // a fill without emission must not black out glow below it
+        channels.opacity.enabled = false; // nor make glass / cut-outs below it solid
+        channels.transmission.enabled = false;
         Layer {
             id,
             name: name.into(),
@@ -909,6 +968,34 @@ mod tests {
         }
         let old: Document = serde_json::from_value(v).unwrap();
         assert!(!old.layers[0].channels.emissive.enabled);
+    }
+
+    #[test]
+    fn opacity_and_transmission_are_off_on_plain_fills_and_old_projects_load() {
+        let mut d = Document::default();
+        let f = d.new_fill_layer("f");
+        assert!(!f.channels.opacity.enabled && !f.channels.transmission.enabled);
+        let p = d.new_paint_layer("p");
+        assert!(p.channels.opacity.enabled && p.channels.transmission.enabled);
+        let g = d.fill_with("g", "Clear glass", None);
+        assert!(g.channels.opacity.enabled && g.channels.transmission.enabled);
+        let c = d.fill_with("c", "Cut-out", None);
+        assert!(c.channels.opacity.enabled && !c.channels.transmission.enabled);
+        assert!(Channel::ALL.iter().enumerate().all(|(i, c)| c.index() == i));
+        // a document saved before these channels existed
+        let mut v = serde_json::to_value(Document::new_default()).unwrap();
+        for l in v["layers"].as_array_mut().unwrap() {
+            l["channels"].as_object_mut().unwrap().remove("opacity");
+            l["channels"].as_object_mut().unwrap().remove("transmission");
+            if let Some(vals) = l["kind"].get_mut("values") {
+                vals.as_object_mut().unwrap().remove("opacity");
+                vals.as_object_mut().unwrap().remove("transmission");
+            }
+        }
+        let old: Document = serde_json::from_value(v).unwrap();
+        assert!(!old.layers[0].channels.opacity.enabled);
+        let LayerKind::Fill { values } = &old.layers[0].kind else { panic!() };
+        assert_eq!((values.opacity, values.transmission), (1.0, 0.0));
     }
 
     #[test]
