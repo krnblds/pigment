@@ -1,0 +1,1645 @@
+{
+ "format": "prop-damage",
+ "version": 1,
+ "doc": "tools/props/damage_table.py (behaviours in its header); keys are prop names; layout mesh keys PROP_<name>[__<variant>] map to <name>",
+ "props": {
+  "traffic_light_pole": {
+   "kind": "snap",
+   "mass": 160,
+   "material": "metal",
+   "category": "traffic",
+   "collider": [
+    {
+     "type": "cylinder",
+     "center": [
+      0,
+      1.95,
+      0
+     ],
+     "radius": 0.16,
+     "height": 3.9
+    },
+    {
+     "type": "box",
+     "center": [
+      0,
+      3.05,
+      0.32
+     ],
+     "size": [
+      0.6,
+      1.2,
+      0.3
+     ]
+    }
+   ],
+   "bounds": {
+    "min": [
+     -0.28,
+     0.0,
+     -0.16
+    ],
+    "max": [
+     0.48,
+     3.92,
+     0.625
+    ]
+   },
+   "size": [
+    0.76,
+    3.92,
+    0.785
+   ],
+   "threshold": 14000
+  },
+  "traffic_light_mast": {
+   "kind": "snap",
+   "mass": 420,
+   "material": "metal",
+   "category": "traffic",
+   "collider": [
+    {
+     "type": "cylinder",
+     "center": [
+      0,
+      3.15,
+      0
+     ],
+     "radius": 0.25,
+     "height": 6.3
+    }
+   ],
+   "bounds": {
+    "min": [
+     -0.28,
+     0.0,
+     -0.273
+    ],
+    "max": [
+     6.67,
+     6.36,
+     0.635
+    ]
+   },
+   "size": [
+    6.95,
+    6.36,
+    0.908
+   ],
+   "threshold": 20000,
+   "head": [
+    6.45,
+    5.7,
+    0.22
+   ]
+  },
+  "ped_signal": {
+   "kind": "snap",
+   "mass": 70,
+   "material": "metal",
+   "category": "traffic",
+   "collider": [
+    {
+     "type": "cylinder",
+     "center": [
+      0,
+      1.475,
+      0
+     ],
+     "radius": 0.13,
+     "height": 2.95
+    }
+   ],
+   "bounds": {
+    "min": [
+     -0.16,
+     0.0,
+     -0.126
+    ],
+    "max": [
+     0.16,
+     2.99,
+     0.42
+    ]
+   },
+   "size": [
+    0.32,
+    2.99,
+    0.546
+   ],
+   "threshold": 7000
+  },
+  "street_name_sign": {
+   "kind": "snap",
+   "mass": 35,
+   "material": "metal",
+   "category": "signage",
+   "collider": [
+    {
+     "type": "cylinder",
+     "center": [
+      0,
+      1.685,
+      0
+     ],
+     "radius": 0.08,
+     "height": 3.37
+    }
+   ],
+   "bounds": {
+    "min": [
+     -0.18,
+     0.0,
+     -0.07
+    ],
+    "max": [
+     1.005,
+     3.37,
+     1.005
+    ]
+   },
+   "size": [
+    1.185,
+    3.37,
+    1.075
+   ],
+   "threshold": 4500
+  },
+  "bollard": {
+   "kind": "snap",
+   "mass": 45,
+   "material": "metal",
+   "category": "street_furniture",
+   "collider": [
+    {
+     "type": "cylinder",
+     "center": [
+      0,
+      0.48,
+      0
+     ],
+     "radius": 0.11,
+     "height": 0.96
+    }
+   ],
+   "bounds": {
+    "min": [
+     -0.13,
+     0.0,
+     -0.13
+    ],
+    "max": [
+     0.13,
+     0.96,
+     0.13
+    ]
+   },
+   "size": [
+    0.26,
+    0.96,
+    0.26
+   ],
+   "threshold": 8000,
+   "head": [
+    0,
+    0.81,
+    0.12
+   ]
+  },
+  "guard_rail": {
+   "kind": "bend",
+   "mass": 120,
+   "material": "metal",
+   "category": "traffic",
+   "collider": [
+    {
+     "type": "box",
+     "center": [
+      0,
+      0.4,
+      0.15
+     ],
+     "size": [
+      4.0,
+      0.8,
+      0.36
+     ]
+    }
+   ],
+   "bounds": {
+    "min": [
+     -2.0,
+     0.0,
+     -0.095
+    ],
+    "max": [
+     2.0,
+     0.98,
+     0.347
+    ]
+   },
+   "size": [
+    4.0,
+    0.98,
+    0.442
+   ],
+   "threshold": 18000
+  },
+  "crash_barrier": {
+   "kind": "knock",
+   "mass": 110,
+   "material": "plastic",
+   "category": "traffic",
+   "collider": [
+    {
+     "type": "box",
+     "center": [
+      0,
+      0.4,
+      0
+     ],
+     "size": [
+      1.8,
+      0.8,
+      0.5
+     ]
+    }
+   ],
+   "bounds": {
+    "min": [
+     -0.92,
+     0.0,
+     -0.26
+    ],
+    "max": [
+     0.92,
+     0.825,
+     0.26
+    ]
+   },
+   "size": [
+    1.84,
+    0.825,
+    0.52
+   ]
+  },
+  "jersey_barrier": {
+   "kind": "heavy",
+   "mass": 1800,
+   "material": "concrete",
+   "category": "traffic",
+   "collider": [
+    {
+     "type": "box",
+     "center": [
+      0,
+      0.405,
+      0
+     ],
+     "size": [
+      3.0,
+      0.81,
+      0.61
+     ]
+    }
+   ],
+   "bounds": {
+    "min": [
+     -1.5,
+     0.0,
+     -0.31
+    ],
+    "max": [
+     1.5,
+     0.892,
+     0.31
+    ]
+   },
+   "size": [
+    3.0,
+    0.892,
+    0.62
+   ]
+  },
+  "traffic_cone": {
+   "kind": "knock",
+   "mass": 3.5,
+   "material": "plastic",
+   "category": "traffic",
+   "collider": [
+    {
+     "type": "cylinder",
+     "center": [
+      0,
+      0.35,
+      0
+     ],
+     "radius": 0.16,
+     "height": 0.7
+    }
+   ],
+   "bounds": {
+    "min": [
+     -0.19,
+     0.0,
+     -0.19
+    ],
+    "max": [
+     0.19,
+     0.705,
+     0.19
+    ]
+   },
+   "size": [
+    0.38,
+    0.705,
+    0.38
+   ]
+  },
+  "steam_vent": {
+   "kind": "none"
+  },
+  "bus_stop": {
+   "kind": "shelter",
+   "mass": 0,
+   "material": "glass",
+   "category": "street_furniture",
+   "collider": [
+    {
+     "type": "box",
+     "center": [
+      0,
+      1.25,
+      -0.62
+     ],
+     "size": [
+      4.0,
+      2.5,
+      0.12
+     ]
+    },
+    {
+     "type": "box",
+     "center": [
+      1.92,
+      1.2,
+      0
+     ],
+     "size": [
+      0.2,
+      2.4,
+      1.3
+     ]
+    },
+    {
+     "type": "box",
+     "center": [
+      -1.9,
+      1.25,
+      0
+     ],
+     "size": [
+      0.1,
+      2.5,
+      1.3
+     ]
+    },
+    {
+     "type": "box",
+     "center": [
+      -0.3,
+      0.25,
+      -0.38
+     ],
+     "size": [
+      2.6,
+      0.5,
+      0.4
+     ]
+    }
+   ],
+   "bounds": {
+    "min": [
+     -2.21,
+     0.0,
+     -0.9252
+    ],
+    "max": [
+     2.21,
+     2.6999,
+     1.225
+    ]
+   },
+   "size": [
+    4.42,
+    2.7,
+    2.15
+   ],
+   "glass": [
+    {
+     "center": [
+      0.0,
+      1.25,
+      -0.62
+     ],
+     "size": [
+      3.72,
+      1.9,
+      0.02
+     ]
+    },
+    {
+     "center": [
+      -1.9,
+      1.25,
+      -0.0
+     ],
+     "size": [
+      0.02,
+      1.9,
+      1.1
+     ]
+    }
+   ],
+   "glass_threshold": 2500
+  },
+  "bench": {
+   "kind": "knock",
+   "mass": 55,
+   "material": "metal",
+   "category": "street_furniture",
+   "collider": [
+    {
+     "type": "box",
+     "center": [
+      0,
+      0.25,
+      0
+     ],
+     "size": [
+      1.8,
+      0.5,
+      0.6
+     ]
+    },
+    {
+     "type": "box",
+     "center": [
+      0,
+      0.65,
+      -0.3
+     ],
+     "size": [
+      1.8,
+      0.45,
+      0.15
+     ]
+    }
+   ],
+   "bounds": {
+    "min": [
+     -0.9,
+     0.0,
+     -0.3394
+    ],
+    "max": [
+     0.9,
+     0.8681,
+     0.2795
+    ]
+   },
+   "size": [
+    1.8,
+    0.868,
+    0.619
+   ]
+  },
+  "fire_hydrant": {
+   "kind": "burst",
+   "mass": 85,
+   "material": "metal",
+   "category": "utility",
+   "collider": [
+    {
+     "type": "cylinder",
+     "center": [
+      0,
+      0.38,
+      0
+     ],
+     "radius": 0.15,
+     "height": 0.76
+    }
+   ],
+   "bounds": {
+    "min": [
+     -0.235,
+     0.0,
+     -0.15
+    ],
+    "max": [
+     0.235,
+     0.8,
+     0.245
+    ]
+   },
+   "size": [
+    0.47,
+    0.8,
+    0.395
+   ],
+   "threshold": 5500
+  },
+  "parking_meter": {
+   "kind": "snap",
+   "mass": 40,
+   "material": "metal",
+   "category": "street_furniture",
+   "collider": [
+    {
+     "type": "cylinder",
+     "center": [
+      0,
+      0.75,
+      0
+     ],
+     "radius": 0.13,
+     "height": 1.5
+    }
+   ],
+   "bounds": {
+    "min": [
+     -0.13,
+     0.0,
+     -0.096
+    ],
+    "max": [
+     0.13,
+     1.5104,
+     0.105
+    ]
+   },
+   "size": [
+    0.26,
+    1.51,
+    0.201
+   ],
+   "threshold": 4000
+  },
+  "data_kiosk": {
+   "kind": "topple",
+   "mass": 300,
+   "material": "metal",
+   "category": "street_furniture",
+   "collider": [
+    {
+     "type": "box",
+     "center": [
+      0,
+      1.15,
+      0
+     ],
+     "size": [
+      1.12,
+      2.37,
+      0.62
+     ]
+    }
+   ],
+   "bounds": {
+    "min": [
+     -0.56,
+     0.0,
+     -0.31
+    ],
+    "max": [
+     0.56,
+     2.37,
+     0.3543
+    ]
+   },
+   "size": [
+    1.12,
+    2.37,
+    0.664
+   ],
+   "threshold": 12000,
+   "glass": [
+    {
+     "center": [
+      0.0,
+      1.26,
+      0.232
+     ],
+     "size": [
+      0.68,
+      1.04,
+      0.01
+     ]
+    }
+   ],
+   "glass_threshold": 2500,
+   "head": [
+    0,
+    1.3,
+    0.75
+   ]
+  },
+  "phone_kiosk": {
+   "kind": "topple",
+   "mass": 180,
+   "material": "metal",
+   "category": "street_furniture",
+   "collider": [
+    {
+     "type": "box",
+     "center": [
+      0,
+      1.15,
+      0.15
+     ],
+     "size": [
+      0.96,
+      2.3,
+      0.8
+     ]
+    }
+   ],
+   "bounds": {
+    "min": [
+     -0.48,
+     0.0,
+     -0.11
+    ],
+    "max": [
+     0.48,
+     2.3,
+     0.505
+    ]
+   },
+   "size": [
+    0.96,
+    2.3,
+    0.615
+   ],
+   "threshold": 9000,
+   "glass": [
+    {
+     "center": [
+      0.02,
+      1.47,
+      0.115
+     ],
+     "size": [
+      0.18,
+      0.08,
+      0.01
+     ]
+    },
+    {
+     "center": [
+      0.0,
+      1.86,
+      -0.0
+     ],
+     "size": [
+      0.6,
+      0.4,
+      0.01
+     ]
+    }
+   ],
+   "glass_threshold": 2000,
+   "head": [
+    0,
+    2.0,
+    0.25
+   ]
+  },
+  "cctv_pole": {
+   "kind": "snap",
+   "mass": 130,
+   "material": "metal",
+   "category": "utility",
+   "collider": [
+    {
+     "type": "cylinder",
+     "center": [
+      0,
+      2.775,
+      0
+     ],
+     "radius": 0.16,
+     "height": 5.55
+    },
+    {
+     "type": "box",
+     "center": [
+      0,
+      2.65,
+      0.17
+     ],
+     "size": [
+      0.34,
+      0.5,
+      0.22
+     ]
+    }
+   ],
+   "bounds": {
+    "min": [
+     -0.7438,
+     0.0,
+     -0.4581
+    ],
+    "max": [
+     0.7438,
+     5.7042,
+     0.32
+    ]
+   },
+   "size": [
+    1.488,
+    5.704,
+    0.778
+   ],
+   "threshold": 11000,
+   "head": [
+    -0.675,
+    5.01,
+    0.267
+   ]
+  },
+  "drone_mast": {
+   "kind": "snap",
+   "mass": 260,
+   "material": "metal",
+   "category": "utility",
+   "collider": [
+    {
+     "type": "box",
+     "center": [
+      0,
+      0.65,
+      0
+     ],
+     "size": [
+      0.9,
+      1.3,
+      0.6
+     ]
+    },
+    {
+     "type": "cylinder",
+     "center": [
+      0,
+      3.8,
+      0
+     ],
+     "radius": 0.2,
+     "height": 7.6
+    }
+   ],
+   "bounds": {
+    "min": [
+     -0.99,
+     0.0,
+     -0.8574
+    ],
+    "max": [
+     0.99,
+     8.0,
+     0.8574
+    ]
+   },
+   "size": [
+    1.98,
+    8.0,
+    1.715
+   ],
+   "threshold": 16000,
+   "head": [
+    0,
+    7.9,
+    0
+   ]
+  },
+  "holo_pylon": {
+   "kind": "snap",
+   "mass": 90,
+   "material": "metal",
+   "category": "signage",
+   "collider": [
+    {
+     "type": "cylinder",
+     "center": [
+      0,
+      1.8,
+      0
+     ],
+     "radius": 0.75,
+     "height": 3.6
+    }
+   ],
+   "bounds": {
+    "min": [
+     -0.6615,
+     -0.0,
+     -0.7638
+    ],
+    "max": [
+     0.6615,
+     3.61,
+     0.3819
+    ]
+   },
+   "size": [
+    1.323,
+    3.61,
+    1.146
+   ],
+   "threshold": 6000,
+   "glass": [
+    {
+     "center": [
+      -0.225,
+      1.95,
+      -0.1299
+     ],
+     "size": [
+      0.4404,
+      3.0,
+      0.7508
+     ]
+    },
+    {
+     "center": [
+      0.0,
+      1.95,
+      0.2598
+     ],
+     "size": [
+      0.86,
+      3.0,
+      0.012
+     ]
+    },
+    {
+     "center": [
+      0.225,
+      1.95,
+      -0.1299
+     ],
+     "size": [
+      0.4404,
+      3.0,
+      0.7508
+     ]
+    }
+   ],
+   "glass_threshold": 2500,
+   "head": [
+    0,
+    2.0,
+    0
+   ]
+  },
+  "neon_arrow_sign": {
+   "kind": "none"
+  },
+  "vending_machine": {
+   "kind": "topple",
+   "mass": 260,
+   "material": "metal",
+   "category": "clutter",
+   "collider": [
+    {
+     "type": "box",
+     "center": [
+      0,
+      0.925,
+      0
+     ],
+     "size": [
+      1.0,
+      1.85,
+      0.75
+     ]
+    }
+   ],
+   "bounds": {
+    "min": [
+     -0.5,
+     0.0,
+     -0.375
+    ],
+    "max": [
+     0.508,
+     1.85,
+     0.41
+    ]
+   },
+   "size": [
+    1.008,
+    1.85,
+    0.785
+   ],
+   "threshold": 7000,
+   "glass": [
+    {
+     "center": [
+      -0.13,
+      1.11,
+      0.401
+     ],
+     "size": [
+      0.62,
+      1.06,
+      0.008
+     ]
+    }
+   ],
+   "glass_threshold": 2500,
+   "spill": "cans",
+   "head": [
+    0,
+    1.1,
+    0.9
+   ]
+  },
+  "trash_bag_pile": {
+   "kind": "knock",
+   "mass": 7,
+   "material": "bag",
+   "category": "clutter",
+   "collider": [
+    {
+     "type": "box",
+     "center": [
+      0,
+      0.36,
+      0.02
+     ],
+     "size": [
+      1.15,
+      0.72,
+      0.85
+     ]
+    }
+   ],
+   "bounds": {
+    "min": [
+     -0.6179,
+     -0.0,
+     -0.4092
+    ],
+    "max": [
+     0.5693,
+     0.7743,
+     0.4807
+    ]
+   },
+   "size": [
+    1.187,
+    0.774,
+    0.89
+   ],
+   "chunks": [
+    {
+     "center": [
+      -0.2261,
+      0.3011,
+      -0.0954
+     ],
+     "size": [
+      0.7333,
+      0.6021,
+      0.68
+     ]
+    },
+    {
+     "center": [
+      0.2529,
+      0.2988,
+      -0.1314
+     ],
+     "size": [
+      0.6708,
+      0.5977,
+      0.6372
+     ]
+    },
+    {
+     "center": [
+      0.0367,
+      0.2862,
+      0.2154
+     ],
+     "size": [
+      0.5918,
+      0.5725,
+      0.5498
+     ]
+    },
+    {
+     "center": [
+      0.0408,
+      0.4929,
+      -0.099
+     ],
+     "size": [
+      0.4965,
+      0.5059,
+      0.4395
+     ]
+    },
+    {
+     "center": [
+      -0.3999,
+      0.2259,
+      0.2121
+     ],
+     "size": [
+      0.3935,
+      0.4518,
+      0.3528
+     ]
+    }
+   ]
+  },
+  "trash_bin": {
+   "kind": "knock",
+   "mass": 16,
+   "material": "plastic",
+   "category": "clutter",
+   "collider": [
+    {
+     "type": "box",
+     "center": [
+      0,
+      0.53,
+      0
+     ],
+     "size": [
+      0.87,
+      1.06,
+      0.47
+     ]
+    }
+   ],
+   "bounds": {
+    "min": [
+     -0.435,
+     0.0,
+     -0.235
+    ],
+    "max": [
+     0.435,
+     1.06,
+     0.235
+    ]
+   },
+   "size": [
+    0.87,
+    1.06,
+    0.47
+   ]
+  },
+  "cardboard_boxes": {
+   "kind": "knock",
+   "mass": 4,
+   "material": "cardboard",
+   "category": "clutter",
+   "collider": [
+    {
+     "type": "box",
+     "center": [
+      0.05,
+      0.38,
+      -0.0
+     ],
+     "size": [
+      1.15,
+      0.76,
+      0.7
+     ]
+    }
+   ],
+   "bounds": {
+    "min": [
+     -0.432,
+     0.0,
+     -0.3229
+    ],
+    "max": [
+     0.6735,
+     0.763,
+     0.4396
+    ]
+   },
+   "size": [
+    1.105,
+    0.763,
+    0.763
+   ],
+   "chunks": [
+    {
+     "center": [
+      -0.12,
+      0.2115,
+      -0.048
+     ],
+     "size": [
+      0.624,
+      0.423,
+      0.464
+     ]
+    },
+    {
+     "center": [
+      -0.08,
+      0.5915,
+      -0.08
+     ],
+     "size": [
+      0.5648,
+      0.343,
+      0.4858
+     ]
+    },
+    {
+     "center": [
+      0.42,
+      0.237,
+      0.06
+     ],
+     "size": [
+      0.507,
+      0.4741,
+      0.7593
+     ]
+    }
+   ]
+  },
+  "pallet": {
+   "kind": "knock",
+   "mass": 22,
+   "material": "wood",
+   "category": "clutter",
+   "collider": [
+    {
+     "type": "box",
+     "center": [
+      0,
+      0.072,
+      0
+     ],
+     "size": [
+      1.2,
+      0.144,
+      0.8
+     ]
+    }
+   ],
+   "bounds": {
+    "min": [
+     -0.6,
+     0.0,
+     -0.4
+    ],
+    "max": [
+     0.6,
+     0.144,
+     0.4
+    ]
+   },
+   "size": [
+    1.2,
+    0.144,
+    0.8
+   ]
+  },
+  "crate_stack": {
+   "kind": "knock",
+   "mass": 14,
+   "material": "wood",
+   "category": "clutter",
+   "collider": [
+    {
+     "type": "box",
+     "center": [
+      0,
+      0.56,
+      0
+     ],
+     "size": [
+      1.0,
+      1.12,
+      0.7
+     ]
+    },
+    {
+     "type": "box",
+     "center": [
+      -0.05,
+      1.26,
+      -0.0
+     ],
+     "size": [
+      0.5,
+      0.28,
+      0.36
+     ]
+    }
+   ],
+   "bounds": {
+    "min": [
+     -0.505,
+     0.0,
+     -0.3721
+    ],
+    "max": [
+     0.505,
+     1.38,
+     0.355
+    ]
+   },
+   "size": [
+    1.01,
+    1.38,
+    0.727
+   ],
+   "chunks": [
+    {
+     "center": [
+      0.0,
+      0.315,
+      0.0
+     ],
+     "size": [
+      1.01,
+      0.63,
+      0.71
+     ]
+    },
+    {
+     "center": [
+      0.04,
+      0.875,
+      -0.02
+     ],
+     "size": [
+      0.8782,
+      0.51,
+      0.7042
+     ]
+    },
+    {
+     "center": [
+      -0.05,
+      1.25,
+      0.0
+     ],
+     "size": [
+      0.5,
+      0.26,
+      0.36
+     ]
+    }
+   ]
+  },
+  "bicycle": {
+   "kind": "knock",
+   "mass": 14,
+   "material": "metal",
+   "category": "clutter",
+   "collider": [
+    {
+     "type": "box",
+     "center": [
+      0,
+      0.5,
+      0
+     ],
+     "size": [
+      1.78,
+      1.0,
+      0.62
+     ]
+    }
+   ],
+   "bounds": {
+    "min": [
+     -0.862,
+     -0.002,
+     -0.2697
+    ],
+    "max": [
+     0.862,
+     1.1295,
+     0.4092
+    ]
+   },
+   "size": [
+    1.724,
+    1.131,
+    0.679
+   ]
+  },
+  "scooter": {
+   "kind": "knock",
+   "mass": 75,
+   "material": "metal",
+   "category": "clutter",
+   "collider": [
+    {
+     "type": "box",
+     "center": [
+      0.0,
+      0.55,
+      -0.05
+     ],
+     "size": [
+      1.0,
+      1.1,
+      0.55
+     ]
+    }
+   ],
+   "bounds": {
+    "min": [
+     -0.4901,
+     0.0002,
+     -0.1744
+    ],
+    "max": [
+     0.4984,
+     1.1036,
+     0.3814
+    ]
+   },
+   "size": [
+    0.989,
+    1.103,
+    0.556
+   ]
+  },
+  "ramen_cart": {
+   "kind": "knock",
+   "mass": 140,
+   "material": "wood",
+   "category": "food",
+   "collider": [
+    {
+     "type": "box",
+     "center": [
+      0.1,
+      0.5,
+      -0.05
+     ],
+     "size": [
+      2.0,
+      1.0,
+      1.0
+     ]
+    },
+    {
+     "type": "box",
+     "center": [
+      0,
+      2.2,
+      0.05
+     ],
+     "size": [
+      2.15,
+      0.2,
+      1.35
+     ]
+    }
+   ],
+   "bounds": {
+    "min": [
+     -1.19,
+     0.0,
+     -0.6224
+    ],
+    "max": [
+     1.5061,
+     2.7,
+     1.1184
+    ]
+   },
+   "size": [
+    2.696,
+    2.7,
+    1.741
+   ]
+  },
+  "skewer_stall": {
+   "kind": "knock",
+   "mass": 110,
+   "material": "wood",
+   "category": "food",
+   "collider": [
+    {
+     "type": "box",
+     "center": [
+      0,
+      0.45,
+      0
+     ],
+     "size": [
+      1.8,
+      0.9,
+      0.8
+     ]
+    },
+    {
+     "type": "box",
+     "center": [
+      0,
+      0.4,
+      1.0
+     ],
+     "size": [
+      0.5,
+      0.8,
+      0.35
+     ]
+    }
+   ],
+   "bounds": {
+    "min": [
+     -1.22,
+     -0.0026,
+     -0.77
+    ],
+    "max": [
+     1.22,
+     2.35,
+     1.0148
+    ]
+   },
+   "size": [
+    2.44,
+    2.353,
+    1.785
+   ]
+  },
+  "cable_bundle": {
+   "kind": "none"
+  },
+  "ac_unit": {
+   "kind": "none"
+  },
+  "satellite_dish": {
+   "kind": "none"
+  },
+  "water_tank": {
+   "kind": "none"
+  },
+  "puddle_decal": {
+   "kind": "none"
+  },
+  "planter": {
+   "kind": "knock",
+   "mass": 260,
+   "material": "concrete",
+   "category": "nature",
+   "collider": [
+    {
+     "type": "box",
+     "center": [
+      0,
+      0.275,
+      0
+     ],
+     "size": [
+      1.6,
+      0.55,
+      0.6
+     ]
+    }
+   ],
+   "bounds": {
+    "min": [
+     -0.8536,
+     0.0,
+     -0.3
+    ],
+    "max": [
+     0.8,
+     1.0796,
+     0.306
+    ]
+   },
+   "size": [
+    1.654,
+    1.08,
+    0.606
+   ]
+  },
+  "street_tree": {
+   "kind": "none"
+  },
+  "palm_tree": {
+   "kind": "none"
+  },
+  "street_lamp": {
+   "kind": "snap",
+   "mass": 150,
+   "threshold": 10000,
+   "material": "metal",
+   "category": "kit",
+   "collider": [
+    {
+     "type": "cylinder",
+     "center": [
+      0,
+      3.0,
+      0
+     ],
+     "radius": 0.12,
+     "height": 6.0
+    },
+    {
+     "type": "box",
+     "center": [
+      0,
+      5.95,
+      1.1
+     ],
+     "size": [
+      0.2,
+      0.18,
+      2.3
+     ]
+    }
+   ],
+   "bounds": {
+    "min": [
+     -0.21,
+     0.0,
+     -0.21
+    ],
+    "max": [
+     0.21,
+     6.18,
+     2.33
+    ]
+   },
+   "head": [
+    0.0,
+    5.8,
+    2.1
+   ],
+   "loader_collision": true,
+   "note": "street_lamp.glb from the town kit; its light is the world's Light_lamp at (0, 5.8, 2.1)"
+  },
+  "power_pole": {
+   "kind": "snap",
+   "mass": 420,
+   "threshold": 24000,
+   "material": "wood",
+   "category": "kit",
+   "collider": [
+    {
+     "type": "cylinder",
+     "center": [
+      0,
+      4.5,
+      0
+     ],
+     "radius": 0.16,
+     "height": 9.0
+    },
+    {
+     "type": "box",
+     "center": [
+      0,
+      8.6,
+      0.0
+     ],
+     "size": [
+      2.6,
+      0.2,
+      0.2
+     ]
+    }
+   ],
+   "bounds": {
+    "min": [
+     -1.3,
+     0.0,
+     -0.26
+    ],
+    "max": [
+     1.3,
+     9.1,
+     1.18
+    ]
+   },
+   "loader_collision": true
+  }
+ }
+}
