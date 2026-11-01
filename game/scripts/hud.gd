@@ -55,7 +55,7 @@ func _ready() -> void:
 	_gear_label.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
 	_gear_label.position = Vector2(-84, -150)
 	# tachometer (scripts/vehicle/tacho.gd): rpm, gear, gearbox mode, assist lamps
-	if car and "rpm" in car:
+	if car and "rpm" in car and not OS.get_cmdline_user_args().has("--no-tach"):
 		var tach := preload("res://scripts/vehicle/tacho.gd").new()
 		tach.car = car
 		tach.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)

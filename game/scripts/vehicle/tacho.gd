@@ -23,11 +23,17 @@ func _ready() -> void:
 		max_rpm = ceilf((float(car.P.engine.get("limiter_rpm", 7000.0)) + 600.0) / 1000.0) * 1000.0
 
 
+var _redraw_t := 0.0
+
+
 func _process(delta: float) -> void:
 	if car == null or not ("rpm" in car):
 		return
 	_rpm = lerpf(_rpm, float(car.rpm), 1.0 - exp(-delta * 18.0))
-	queue_redraw()
+	_redraw_t -= delta
+	if _redraw_t <= 0.0:              # 40 Hz is plenty for a gauge
+		_redraw_t = 0.025
+		queue_redraw()
 
 
 func _ang(r: float) -> float:

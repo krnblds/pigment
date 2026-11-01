@@ -14,6 +14,7 @@ var _next := 0
 var _count := 0
 var _last := []                 ## per wheel: last mark point (or null) and its intensity
 var _smoke: Array[GPUParticles3D] = []
+var _smoke_t: Array[float] = []
 var _eng_on: AudioStreamPlayer
 var _eng_off: AudioStreamPlayer
 var _intake: AudioStreamPlayer
@@ -30,6 +31,8 @@ func _ready() -> void:
 	for i in car.wheels.size():
 		_last.append([null, 0.0])
 		_smoke.append(_build_smoke())
+		_smoke_t.append(0.0)
+		_smoke[i].visible = false
 	_audio = DisplayServer.get_name() != "headless"
 	if _audio:
 		_build_audio()
@@ -300,10 +303,28 @@ func physics_update(delta: float) -> void:
 			sm.amount_ratio = clampf(sk, 0.15, 1.0)
 			if not sm.emitting:
 				sm.emitting = true
-		elif sm.emitting:
-			sm.emitting = false
-	if _audio:
-		_update_audio(delta, total_slide)
+				sm.visible = true
+			_smoke_t[i] = sm.lifetime + 0.2
+		else:
+			if sm.emitting:
+				sm.emitting = false
+			# once the last puff is gone the system stops drawing / simulating
+			_smoke_t[i] -= delta
+			if sm.visible and _smoke_t[i] <= 0.0:
+				sm.visible = false
+	_slide = total_slide
+
+
+var _slide := 0.0
+var _audio_t := 0.0
+
+
+## Audio parameters at ~30 Hz from _process (setting player properties every physics tick is not free).
+func _process(delta: float) -> void:
+	_audio_t -= delta
+	if _audio and _audio_t <= 0.0:
+		_audio_t = 0.033
+		_update_audio(delta, _slide)
 
 
 func _update_audio(_delta: float, slide: float) -> void:
@@ -320,3 +341,5 @@ func _update_audio(_delta: float, slide: float) -> void:
 	var sq := clampf(slide, 0.0, 1.0) * (0.45 if car.wet > 0.5 else 1.0)
 	_squeal.volume_db = linear_to_db(maxf(0.0005, sq)) - 6.0
 	_squeal.pitch_scale = 0.85 + sq * 0.3
+	_squeal.stream_paused = sq < 0.01            # silent loops don't need mixing
+	_intake.stream_paused = car.throttle_out < 0.02

@@ -318,10 +318,11 @@ func setup(glb_path: String, json_path: String, vehicle_id := "") -> void:
 	_ray.collision_mask = 1
 	_ray.hit_back_faces = false
 	_ray.exclude = [get_rid()]
-	fx = VehicleFx.new()
-	fx.name = "Fx"
-	fx.car = self
-	add_child(fx)
+	if not OS.get_cmdline_user_args().has("--no-car-fx"):
+		fx = VehicleFx.new()
+		fx.name = "Fx"
+		fx.car = self
+		add_child(fx)
 
 
 ## The convex hull from the glb, with its underside lifted to `clearance` (and chamfered up towards
