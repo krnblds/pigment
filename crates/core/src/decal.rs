@@ -311,6 +311,66 @@ impl Rng {
     }
 }
 
+/// A candidate triangle of a [`SurfaceSampler`]: corners, outward normal
+/// (oriented by the shading normals) and its index in the mesh.
+#[derive(Clone, Copy, Debug)]
+pub struct SurfaceTri {
+    pub v: [Vec3; 3],
+    pub n: Vec3,
+    pub tri: usize,
+}
+
+/// Area-weighted random points on a filtered set of mesh triangles. Shared
+/// by decal scatter and the foliage brush / scatter.
+#[derive(Clone, Debug, Default)]
+pub struct SurfaceSampler {
+    pub tris: Vec<SurfaceTri>,
+    cum: Vec<f32>,
+    pub total: f32,
+}
+
+impl SurfaceSampler {
+    /// Every triangle with area for which `keep(index, corners, normal)` holds.
+    pub fn new(mesh: &Mesh, mut keep: impl FnMut(usize, &[Vec3; 3], Vec3) -> bool) -> SurfaceSampler {
+        let mut s = SurfaceSampler::default();
+        for (t, tri) in mesh.indices.chunks_exact(3).enumerate() {
+            let v = [0, 1, 2].map(|k| Vec3::from(mesh.vertices[tri[k] as usize].position));
+            let cr = (v[1] - v[0]).cross(v[2] - v[0]);
+            let area = cr.length() * 0.5;
+            if area < 1e-8 {
+                continue;
+            }
+            let n = cr.normalize();
+            // facing comes from the shading normals (geometric winding can be either way)
+            let sn: Vec3 = tri.iter().map(|&i| Vec3::from(mesh.vertices[i as usize].normal)).sum();
+            let n = if sn.dot(n) < 0.0 { -n } else { n };
+            if !keep(t, &v, n) {
+                continue;
+            }
+            s.total += area;
+            s.tris.push(SurfaceTri { v, n, tri: t });
+            s.cum.push(s.total);
+        }
+        s
+    }
+
+    /// A uniform random point: (triangle, point, barycentric weights of v0, v1, v2).
+    pub fn sample(&self, rng: &mut Rng) -> Option<(&SurfaceTri, Vec3, Vec3)> {
+        if self.tris.is_empty() {
+            return None;
+        }
+        let r = rng.f32() * self.total;
+        let k = self.cum.partition_point(|&c| c < r).min(self.tris.len() - 1);
+        let st = &self.tris[k];
+        let (mut a, mut b) = (rng.f32(), rng.f32());
+        if a + b > 1.0 {
+            (a, b) = (1.0 - a, 1.0 - b);
+        }
+        let v = st.v;
+        Some((st, v[0] + (v[1] - v[0]) * a + (v[2] - v[0]) * b, Vec3::new(1.0 - a - b, a, b)))
+    }
+}
+
 /// Constraints for `scatter`.
 #[derive(Clone, Debug)]
 pub struct Scatter {
@@ -358,48 +418,33 @@ pub fn scatter(mesh: &Mesh, parts: &Parts, p: &Scatter) -> Vec<Scattered> {
     let max_ny = p.max_tilt.map(|t| t.clamp(0.0, 90.0).to_radians().sin());
     let band = p.height.map(|(a, b)| (p.ground + a, p.ground + b));
     // candidate triangles with their cumulative area
-    let mut cand: Vec<([Vec3; 3], Vec3)> = Vec::new();
-    let mut cum: Vec<f32> = Vec::new();
-    let mut total = 0.0;
-    for (t, tri) in mesh.indices.chunks_exact(3).enumerate() {
+    let surf = SurfaceSampler::new(mesh, |t, v, n| {
         if let Some(ps) = &p.parts {
             if !ps.contains(&parts.triangle_part.get(t).copied().unwrap_or(u32::MAX)) {
-                continue;
+                return false;
             }
         }
-        let v = [0, 1, 2].map(|k| Vec3::from(mesh.vertices[tri[k] as usize].position));
-        let cr = (v[1] - v[0]).cross(v[2] - v[0]);
-        let area = cr.length() * 0.5;
-        if area < 1e-8 {
-            continue;
-        }
-        let n = cr.normalize();
-        // facing comes from the shading normals (geometric winding can be either way)
-        let sn: Vec3 = tri.iter().map(|&i| Vec3::from(mesh.vertices[i as usize].normal)).sum();
-        let n = if sn.dot(n) < 0.0 { -n } else { n };
         if let Some(m) = max_ny {
             if n.y.abs() > m {
-                continue;
+                return false;
             }
         }
         if let Some((lo, hi)) = band {
             let (ymin, ymax) = (v[0].y.min(v[1].y).min(v[2].y), v[0].y.max(v[1].y).max(v[2].y));
             if ymax < lo || ymin > hi {
-                continue;
+                return false;
             }
         }
         if let Some((rlo, rhi)) = p.region {
             let (tmin, tmax) = (v[0].min(v[1]).min(v[2]), v[0].max(v[1]).max(v[2]));
             if tmin.cmpgt(rhi).any() || tmax.cmplt(rlo).any() {
-                continue;
+                return false;
             }
         }
-        total += area;
-        cand.push((v, n));
-        cum.push(total);
-    }
+        true
+    });
     let mut out: Vec<Scattered> = Vec::new();
-    if cand.is_empty() || p.count == 0 || p.aspects.is_empty() {
+    if surf.tris.is_empty() || p.count == 0 || p.aspects.is_empty() {
         return out;
     }
     let mut deck: Vec<usize> = Vec::new();
@@ -424,14 +469,8 @@ pub fn scatter(mesh: &Mesh, parts: &Parts, p: &Scatter) -> Vec<Scattered> {
             }
         };
         // area-weighted triangle, uniform point on it
-        let r = rng.f32() * total;
-        let k = cum.partition_point(|&c| c < r).min(cand.len() - 1);
-        let (v, n) = cand[k];
-        let (mut a, mut b) = (rng.f32(), rng.f32());
-        if a + b > 1.0 {
-            (a, b) = (1.0 - a, 1.0 - b);
-        }
-        let center = v[0] + (v[1] - v[0]) * a + (v[2] - v[0]) * b;
+        let Some((st, center, _)) = surf.sample(&mut rng) else { break };
+        let n = st.n;
         let w = rng.range(p.size.0, p.size.1.max(p.size.0));
         let rot = p.rotation + rng.range(-1.0, 1.0) * p.rotation_jitter;
         if let Some((rlo, rhi)) = p.region {
@@ -451,7 +490,7 @@ pub fn scatter(mesh: &Mesh, parts: &Parts, p: &Scatter) -> Vec<Scattered> {
         if out.iter().any(|o| o.placement.center.distance(center) < p.min_spacing) {
             continue;
         }
-        if p.fit && !fits(&cand, &pl) {
+        if p.fit && !fits(&surf.tris, &pl) {
             continue;
         }
         out.push(Scattered { image: img, placement: pl });
@@ -462,10 +501,10 @@ pub fn scatter(mesh: &Mesh, parts: &Parts, p: &Scatter) -> Vec<Scattered> {
 
 /// Every outline point of the decal lies on a candidate triangle that is
 /// (nearly) coplanar with the decal's surface.
-fn fits(cand: &[([Vec3; 3], Vec3)], pl: &Placement) -> bool {
+fn fits(cand: &[SurfaceTri], pl: &Placement) -> bool {
     let tol = pl.depth.clamp(0.01, 0.05);
     pl.outline().iter().all(|&q| {
-        cand.iter().any(|(v, n)| {
+        cand.iter().any(|SurfaceTri { v, n, .. }| {
             if n.dot(pl.normal) < 0.9 {
                 return false;
             }

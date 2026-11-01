@@ -78,6 +78,7 @@ impl Document {
             parent: None,
             variant: Default::default(),
             image: None,
+            generated: None,
         }
     }
 
@@ -288,8 +289,8 @@ impl Document {
         }
         for i in self.children_of(parent) {
             let l = &self.layers[i];
-            if !l.visible {
-                continue;
+            if !l.visible || l.is_foliage() {
+                continue; // foliage is geometry, not texture
             }
             if l.is_folder() {
                 let mark = out.len();

@@ -13,6 +13,7 @@ pub mod envmath;
 pub mod export;
 pub mod folders;
 pub mod foliage;
+pub mod foliage_set;
 pub mod image_fill;
 pub mod mesh;
 pub mod partquery;
