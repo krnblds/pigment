@@ -142,7 +142,7 @@ def build(world_dir):
     shore = smooth(6.0, 1.5, H - sea) * (H > sea - 3.0) * (1 - smooth(0.2, 0.5, U)) * (1 - smooth(0.4, 0.8, slope)) * (1 - near_city)
     m1 = np.stack([urban, forest, scree, verge], -1)
     m2 = np.stack([lot, hollow, oldtown, shore], -1)
-    spots = ground_spots(w, H, T, {"forest": forest, "shore": shore, "rough": np.maximum(scree, steep), "urban": blur(U, 20.0, cell),
+    spots = ground_spots(w, H, T, {"forest": forest, "shore": shore, "rough": np.maximum(scree, steep), "urban": blur(U, 20.0, cell), "steep": steep,
                                        "road_m": ndimage.distance_transform_edt(occ < 0.5) * cell})
     return [(np.clip(m, 0, 1) * 255 + 0.5).astype(np.uint8) for m in (m1, m2)], T, spots
 
@@ -205,7 +205,7 @@ def ground_spots(w, H, T, M):
         spots.append({"name": name, "eye": [round(float(c), 2) for c in eye], "at": [round(float(c), 2) for c in at], "fov": 55.0,
                       "lamp_m": round(float(d[b]), 1)})
     # the mountain: from the mountain road, across at the roughest slope 40..90 m away
-    rough = ndimage.uniform_filter(M["rough"], size=int(30 / cell))
+    rough = ndimage.uniform_filter(M["steep"], size=int(24 / cell))
     best = None
     for r in w["roads"]:
         if r["class"] != "mountain":
@@ -219,11 +219,11 @@ def ground_spots(w, H, T, M):
             tx, ty = pts[k + 1][0] - pts[k - 1][0], pts[k + 1][1] - pts[k - 1][1]
             ln = math.hypot(tx, ty) or 1.0
             for sgn in (1, -1):
-                for dd in (40.0, 60.0, 90.0):
+                for dd in (50.0, 80.0, 120.0):
                     ax, ay = x - ty / ln * sgn * dd, y + tx / ln * sgn * dd
                     i = int(np.clip(round((ax - ox) / cell), 0, n - 1))
                     j = int(np.clip(round((ay - oy) / cell), 0, n - 1))
-                    v = float(rough[j, i]) + 0.002 * (h(ax, ay) - z)       # rather looking up at it
+                    v = float(rough[j, i]) + 0.004 * (h(ax, ay) - z)       # rather looking up at it
                     if best is None or v > best[0]:
                         best = (v, [x, y, z + 2.4], [ax, ay, h(ax, ay) + 2.0])
     if best:

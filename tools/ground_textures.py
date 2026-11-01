@@ -291,9 +291,9 @@ def cracked_mud():
     secondary cracks, a dusty crust."""
     cells = dict(scale=2.6, randomness=0.95, warp=0.25, edge_noise=0.7, seed=111)
     return sheet("cracked_mud", 3.0, {"base_color": [0.12, 0.09, 0.065], "roughness": 0.9, "height": -1.0}, [
-        L("Plates", (0.46, 0.37, 0.27), g("cells", variant="plates", edge_width=0.018, height_variation=0.35, **cells), height=1.0, height_profile=True,
+        L("Plates", (0.42, 0.36, 0.29), g("cells", variant="plates", edge_width=0.018, height_variation=0.35, **cells), height=1.0, height_profile=True,
           height_gain=3.0, jitter={"value": 0.12, "hue": 0.01}),
-        L("Curled rims", (0.5, 0.41, 0.3), g("cells", variant="edges", edge_width=0.07, amount=1.0, softness=0.02, **cells), height=1.0,
+        L("Curled rims", (0.46, 0.4, 0.32), g("cells", variant="edges", edge_width=0.07, amount=1.0, softness=0.02, **cells), height=1.0,
           height_profile=True, height_gain=0.9, blend={"height": "add"}, opacity=0.8),
         L("Cracks", (0.1, 0.075, 0.055), g("cells", variant="edges", edge_width=0.008, amount=0.5, softness=0.25, **cells), height=-1.0, height_gain=1.0,
           roughness=0.95),

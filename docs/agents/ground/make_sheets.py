@@ -68,10 +68,10 @@ def pairs(bdir, adir, out, names, labels=("before", "after"), w=800):
     rows = []
     for n in names:
         ims = []
-        for d, lab in ((bdir, labels[0]), (adir, labels[1])):
-            p = os.path.join(d, n + ".png")
+        for d, lab, suf in ((bdir, labels[0], "_before"), (adir, labels[1], "")):
+            p = os.path.join(d, n + suf + ".png")
             if not os.path.isfile(p):
-                p = os.path.join(d, n + "_before.png")
+                p = os.path.join(d, n + ".png")
             im = Image.open(p).convert("RGB")
             im = im.resize((w, int(w * im.height / im.width)), Image.LANCZOS)
             ims.append(label(im, f"{n}: {lab}"))

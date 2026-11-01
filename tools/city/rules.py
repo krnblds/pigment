@@ -178,6 +178,23 @@ def build_graph(models: dict | None = None) -> G.Graph:
                      tools=tools_city, inputs=sorted(set(imgs.values())),
                      outputs=[f"{WORLD_DIR}/{k}" for k in sorted(imgs)], params={"map": sorted(imgs.items())},
                      pool="cpu", run=A.run_images(imgs)))
+    # -------------------------------------------------------------- ground: world masks + Godot texture arrays
+    if world:
+        g.add(G.Node(id="ground:masks", kind="ground.masks", model=M.model_id(world), title="world ground masks + camera spots",
+                     tools=["tools/world/ground_masks.py"] + tools_city,
+                     inputs=["scenes/world/world.json", "scenes/world/heightfield.f32", "scenes/world/masks_urban.npy"],
+                     outputs=["scenes/world/ground_masks.png", "scenes/world/ground_masks2.png", "scenes/world/ground_masks.json",
+                              "scenes/world/ground_spots.json"], pool="cpu",
+                     run=A.run_tool({"runner": "python", "tool": "tools/world/ground_masks.py", "args": []})))
+    gsets = ["grass_turf", "dirt_mud", "cracked_mud", "forest_floor", "scree", "rock_cliff", "beach_sand", "cobbles", "vacant_lot"]
+    if any(d["model"]["name"] == "ground" and d["model"]["kind"] == "tile_set" for d in models.values()):
+        g.add(G.Node(id="godot.ground:world", kind="godot.ground", title="ground sets + masks -> Godot texture arrays",
+                     tools=["tools/godot/pack_ground.py"] + tools_city,
+                     inputs=[f"scenes/town/textures/world/{s}" for s in gsets] + ["scenes/town/textures/roads/concrete",
+                             "scenes/world/ground_masks.png", "scenes/world/ground_masks2.png", "scenes/world/ground_masks.json",
+                             "scenes/world/ground_spots.json"],
+                     outputs=[f"{WORLD_DIR}/images/ground", f"{WORLD_DIR}/ground_spots.json"], pool="cpu",
+                     run=A.run_tool({"runner": "python", "tool": "tools/godot/pack_ground.py", "args": []})))
     # -------------------------------------------------------------- props index, syncs, import
     if any(d["model"]["kind"] == "prop" and d.get("export") for d in models.values()):
         g.add(G.Node(id="props:index", kind="props.index", title="assets/props/index.json + variant swaps",
