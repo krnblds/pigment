@@ -25,7 +25,9 @@ fn tools() -> Value {
         "visible": { "type": "boolean" },
         "channels": { "type": "object", "description": "e.g. {\"height\": false, \"roughness\": true}" },
         "blend": { "type": "object", "description": "per channel, e.g. {\"base_color\": \"multiply\", \"height\": \"add\"}" },
-        "mask": { "description": "\"white\" | \"black\" | null (remove) | {generator: edge_wear|dirt|grunge|streaks|stripes|spots|scratches|panel_lines|gradient, amount, softness, scale, breakup, seed, ao_influence, curvature_weight, invert, parts: [part ids from list_parts / pick_parts: limit the layer to those mesh pieces], effects: [{generator, op: multiply|add|subtract|max|min, amount, scale, breakup, ...}] (max 2)}" }
+        "mask": { "description": "\"white\" | \"black\" | null (remove) | {generator: edge_wear|dirt|grunge|streaks|stripes|spots|scratches|panel_lines|gradient, amount, softness, scale, breakup, seed, ao_influence, curvature_weight, invert, parts: [part ids from list_parts / pick_parts: limit the layer to those mesh pieces], effects: [{generator, op: multiply|add|subtract|max|min, amount, scale, breakup, ...}] (max 2)}" },
+        "variant": { "type": ["string", "null"], "description": "variant group tag: export_variants can enable/disable every layer or decal in a group" },
+        "part_subset": { "description": "{from, to, salt}: keep only the mask parts whose seeded roll (0..1) is in [from, to). The roll follows the variant seed, so each export_variants variant lights a different set of windows. Layers with the same salt and disjoint ranges get disjoint parts. null removes." }
     });
     let camera = json!({
         "yaw": { "type": "number", "description": "degrees around the model (default 35)" },
@@ -90,13 +92,29 @@ fn tools() -> Value {
                   "part": { "type": "integer", "description": "instead of rect + camera: put the image on this mesh part's outward face (see list_parts)" },
                   "fit": { "type": "string", "enum": ["contain", "fill"], "description": "with `part`: keep the image's aspect (contain, default) or stretch (fill)" },
                   "margin": { "type": "number", "description": "with `part`: border as a fraction (default 0.05)" },
+                  "box": { "type": "object", "description": "instead of rect/part: a world-space box {min: [x,y,z], max: [x,y,z]} or {center, size}; the image goes on the surface seen through its broad face (for areas of big walls)" },
+                  "facing": { "type": "string", "enum": ["+x", "-x", "+y", "-y", "+z", "-z"], "description": "with part/box: look at this side (default: the thinnest axis, away from the model centre)" },
                   "yaw": { "type": "number" }, "pitch": { "type": "number" }, "zoom": { "type": "number" },
                   "tint": { "type": "array", "items": { "type": "number" } }, "material": { "type": "string", "description": "preset for roughness/metallic (default plain paint)" },
                   "emissive_strength": { "type": "number" }, "height": { "type": "number" }, "opacity": { "type": "number" },
-                  "layer": {}, "mask": { "type": "boolean" }, "alpha_from_luminance": { "type": "boolean" } }), &["image"]),
+                  "layer": {}, "mask": { "type": "boolean" }, "alpha_from_luminance": { "type": "boolean" },
+                  "name": { "type": "string", "description": "decal name for export_variants (default: image file stem)" },
+                  "variant": { "type": "string", "description": "variant group tag" },
+                  "enabled": { "type": "boolean", "description": "false = record it for variants but don't paint it in the authored look" } }), &["image"]),
         t("render", "Render the model with its current material (PBR, studio lighting). Returns the image.", render_props, &[]),
         t("export_textures", "Export PNG texture maps. Presets: unreal, unity, godot, separate (glTF/Blender: BaseColor, Roughness, Metallic, AO, Normal_OpenGL, Height).",
           json!({ "dir": { "type": "string" }, "preset": { "type": "string" }, "name": { "type": "string" } }), &["dir"]),
+        t("export_variants", "Export N texture sets from this project without re-running the script: one folder per variant, <dir>/<name>__<variant>/<name>_<map>.png. Each variant starts from the authored stack, sets `seed` (random part subsets such as lit windows, and generator noise), switches off `disable` then on `enable` (layer names, decal names, variant groups, or \"*\" = everything tagged), and swaps decal images (decals on changed layers are replayed). Definitions are stored in the project (save_project to keep them); omit `variants` to reuse the stored ones.",
+          json!({ "dir": { "type": "string" }, "name": { "type": "string", "description": "file/folder name (default: mesh name)" },
+                  "preset": { "type": "string", "description": "export preset (default separate)" },
+                  "variants": { "type": "array", "items": { "type": "object", "properties": {
+                      "name": { "type": "string" }, "seed": { "type": "integer" },
+                      "enable": { "type": "array", "items": { "type": "string" } }, "disable": { "type": "array", "items": { "type": "string" } },
+                      "swaps": { "type": "object", "description": "decal / group / layer name -> image path, or {image, tint, emissive_strength, opacity, ...}" } }, "required": ["name"] } },
+                  "only": { "type": "array", "items": { "type": "string" }, "description": "export just these variants" },
+                  "folder": { "type": "string", "description": "folder pattern (default \"{name}__{variant}\")" },
+                  "preview": { "type": "object", "description": "render args (yaw, pitch, width, height, exposure, dir): also save a preview PNG per variant to <dir>/<name>__<variant>.png" },
+                  "dry_run": { "type": "boolean", "description": "validate + store, report what each variant shows, export nothing" } }), &[]),
         t("undo", "Undo the last action.", json!({}), &[]),
         t("redo", "Redo.", json!({}), &[]),
     ])
@@ -127,6 +145,7 @@ fn call(session: &mut Option<Session>, name: &str, args: &Value) -> Result<Vec<V
         "paint_stroke" => text(s.paint_stroke(args)?),
         "project_decal" => text(s.project_decal(args)?),
         "export_textures" => text(s.export_textures(args)?),
+        "export_variants" => text(s.export_variants(args)?),
         "undo" => text(s.undo(false)?),
         "redo" => text(s.undo(true)?),
         "render" => {

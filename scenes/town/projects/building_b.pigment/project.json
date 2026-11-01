@@ -1,6 +1,6 @@
 {
   "format": 1,
-  "resolution": 4096,
+  "resolution": 2048,
   "mesh": "mesh/building_b.glb",
   "layers": [
     {
@@ -491,25 +491,73 @@
         "invert": false,
         "enabled": true,
         "parts": [
+          2,
+          3,
+          7,
+          8,
           9,
+          15,
           16,
+          91,
           92,
           93,
+          94,
+          95,
+          96,
+          99,
+          100,
           101,
+          103,
+          104,
           105,
+          106,
           109,
+          110,
+          111,
+          112,
+          115,
+          116,
           117,
+          118,
+          119,
           120,
           123,
           124,
+          125,
+          127,
+          128,
           129,
           130,
+          133,
+          134,
           135,
           136,
+          139,
+          140,
+          141,
+          142,
+          143,
+          144,
+          147,
           148,
           149,
+          151,
+          152,
+          153,
+          154,
+          157,
+          158,
+          159,
           160
         ]
+      },
+      "variant": {
+        "group": "lights",
+        "part_subset": {
+          "from": 0.0,
+          "to": 0.3,
+          "salt": 1
+        }
       }
     },
     {
@@ -578,11 +626,72 @@
         "enabled": true,
         "parts": [
           2,
+          3,
+          7,
+          8,
+          9,
+          15,
+          16,
           91,
+          92,
+          93,
+          94,
+          95,
+          96,
+          99,
+          100,
+          101,
+          103,
+          104,
+          105,
+          106,
+          109,
           110,
           111,
-          115
+          112,
+          115,
+          116,
+          117,
+          118,
+          119,
+          120,
+          123,
+          124,
+          125,
+          127,
+          128,
+          129,
+          130,
+          133,
+          134,
+          135,
+          136,
+          139,
+          140,
+          141,
+          142,
+          143,
+          144,
+          147,
+          148,
+          149,
+          151,
+          152,
+          153,
+          154,
+          157,
+          158,
+          159,
+          160
         ]
+      },
+      "variant": {
+        "group": "lights",
+        "part_subset": {
+          "from": 0.3,
+          "to": 0.37,
+          "salt": 1
+        }
       }
     },
     {
@@ -650,12 +759,345 @@
         "invert": false,
         "enabled": true,
         "parts": [
-          127
+          2,
+          3,
+          7,
+          8,
+          9,
+          15,
+          16,
+          91,
+          92,
+          93,
+          94,
+          95,
+          96,
+          99,
+          100,
+          101,
+          103,
+          104,
+          105,
+          106,
+          109,
+          110,
+          111,
+          112,
+          115,
+          116,
+          117,
+          118,
+          119,
+          120,
+          123,
+          124,
+          125,
+          127,
+          128,
+          129,
+          130,
+          133,
+          134,
+          135,
+          136,
+          139,
+          140,
+          141,
+          142,
+          143,
+          144,
+          147,
+          148,
+          149,
+          151,
+          152,
+          153,
+          154,
+          157,
+          158,
+          159,
+          160
         ]
+      },
+      "variant": {
+        "group": "lights",
+        "part_subset": {
+          "from": 0.37,
+          "to": 0.4,
+          "salt": 1
+        }
       }
     },
     {
       "id": 21,
+      "name": "Meridian screens",
+      "visible": true,
+      "opacity": 1.0,
+      "kind": {
+        "type": "fill",
+        "values": {
+          "base_color": [
+            0.3,
+            0.5,
+            1.0
+          ],
+          "roughness": 0.1,
+          "metallic": 0.0,
+          "height": 0.0,
+          "normal": [
+            0.0,
+            0.0
+          ],
+          "emissive": [
+            0.3,
+            0.5,
+            1.0
+          ],
+          "emissive_strength": 1.8
+        }
+      },
+      "channels": {
+        "base_color": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "roughness": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "metallic": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "height": {
+          "enabled": false,
+          "blend": "add",
+          "opacity": 1.0
+        },
+        "normal": {
+          "enabled": false,
+          "blend": "normal_combine",
+          "opacity": 1.0
+        },
+        "emissive": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        }
+      },
+      "mask": {
+        "res": 22,
+        "invert": false,
+        "enabled": true,
+        "parts": [
+          2,
+          3,
+          7,
+          8,
+          9,
+          15,
+          16,
+          91,
+          92,
+          93,
+          94,
+          95,
+          96,
+          99,
+          100,
+          101,
+          103,
+          104,
+          105,
+          106,
+          109,
+          110,
+          111,
+          112,
+          115,
+          116,
+          117,
+          118,
+          119,
+          120,
+          123,
+          124,
+          125,
+          127,
+          128,
+          129,
+          130,
+          133,
+          134,
+          135,
+          136,
+          139,
+          140,
+          141,
+          142,
+          143,
+          144,
+          147,
+          148,
+          149,
+          151,
+          152,
+          153,
+          154,
+          157,
+          158,
+          159,
+          160
+        ]
+      },
+      "variant": {
+        "group": "lights",
+        "part_subset": {
+          "from": 0.4,
+          "to": 0.45,
+          "salt": 1
+        }
+      }
+    },
+    {
+      "id": 23,
+      "name": "Lit windows (few)",
+      "visible": false,
+      "opacity": 1.0,
+      "kind": {
+        "type": "fill",
+        "values": {
+          "base_color": [
+            1.0,
+            0.7,
+            0.4
+          ],
+          "roughness": 0.1,
+          "metallic": 0.0,
+          "height": 0.0,
+          "normal": [
+            0.0,
+            0.0
+          ],
+          "emissive": [
+            1.0,
+            0.7,
+            0.4
+          ],
+          "emissive_strength": 1.6
+        }
+      },
+      "channels": {
+        "base_color": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "roughness": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "metallic": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "height": {
+          "enabled": false,
+          "blend": "add",
+          "opacity": 1.0
+        },
+        "normal": {
+          "enabled": false,
+          "blend": "normal_combine",
+          "opacity": 1.0
+        },
+        "emissive": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        }
+      },
+      "mask": {
+        "res": 24,
+        "invert": false,
+        "enabled": true,
+        "parts": [
+          2,
+          3,
+          7,
+          8,
+          9,
+          15,
+          16,
+          91,
+          92,
+          93,
+          94,
+          95,
+          96,
+          99,
+          100,
+          101,
+          103,
+          104,
+          105,
+          106,
+          109,
+          110,
+          111,
+          112,
+          115,
+          116,
+          117,
+          118,
+          119,
+          120,
+          123,
+          124,
+          125,
+          127,
+          128,
+          129,
+          130,
+          133,
+          134,
+          135,
+          136,
+          139,
+          140,
+          141,
+          142,
+          143,
+          144,
+          147,
+          148,
+          149,
+          151,
+          152,
+          153,
+          154,
+          157,
+          158,
+          159,
+          160
+        ]
+      },
+      "variant": {
+        "group": "lights_few",
+        "part_subset": {
+          "from": 0.0,
+          "to": 0.07,
+          "salt": 2
+        }
+      }
+    },
+    {
+      "id": 25,
       "name": "Frames",
       "visible": true,
       "opacity": 1.0,
@@ -715,7 +1157,7 @@
         }
       },
       "mask": {
-        "res": 22,
+        "res": 26,
         "invert": false,
         "enabled": true,
         "parts": [
@@ -739,7 +1181,7 @@
       }
     },
     {
-      "id": 23,
+      "id": 27,
       "name": "Screens",
       "visible": true,
       "opacity": 1.0,
@@ -799,7 +1241,7 @@
         }
       },
       "mask": {
-        "res": 24,
+        "res": 28,
         "invert": false,
         "enabled": true,
         "parts": [
@@ -808,7 +1250,7 @@
       }
     },
     {
-      "id": 25,
+      "id": 29,
       "name": "Trim",
       "visible": true,
       "opacity": 1.0,
@@ -868,7 +1310,7 @@
         }
       },
       "mask": {
-        "res": 26,
+        "res": 30,
         "invert": false,
         "enabled": true,
         "parts": [
@@ -918,7 +1360,7 @@
       }
     },
     {
-      "id": 27,
+      "id": 31,
       "name": "Doors",
       "visible": true,
       "opacity": 1.0,
@@ -978,7 +1420,7 @@
         }
       },
       "mask": {
-        "res": 28,
+        "res": 32,
         "invert": false,
         "enabled": true,
         "parts": [
@@ -989,7 +1431,7 @@
       }
     },
     {
-      "id": 29,
+      "id": 33,
       "name": "Door scuffs",
       "visible": true,
       "opacity": 1.0,
@@ -1049,7 +1491,7 @@
         }
       },
       "mask": {
-        "res": 30,
+        "res": 34,
         "generator": {
           "kind": "edge_wear",
           "amount": 0.25,
@@ -1070,7 +1512,7 @@
       }
     },
     {
-      "id": 31,
+      "id": 35,
       "name": "Rooftop metal",
       "visible": true,
       "opacity": 1.0,
@@ -1130,7 +1572,7 @@
         }
       },
       "mask": {
-        "res": 32,
+        "res": 36,
         "invert": false,
         "enabled": true,
         "parts": [
@@ -1155,7 +1597,7 @@
       }
     },
     {
-      "id": 33,
+      "id": 37,
       "name": "Rooftop rust streaks",
       "visible": true,
       "opacity": 0.6,
@@ -1215,7 +1657,7 @@
         }
       },
       "mask": {
-        "res": 34,
+        "res": 38,
         "generator": {
           "kind": "streaks",
           "amount": 0.18,
@@ -1250,7 +1692,7 @@
       }
     },
     {
-      "id": 35,
+      "id": 39,
       "name": "AC units",
       "visible": true,
       "opacity": 1.0,
@@ -1310,7 +1752,7 @@
         }
       },
       "mask": {
-        "res": 36,
+        "res": 40,
         "invert": false,
         "enabled": true,
         "parts": [
@@ -1324,7 +1766,7 @@
       }
     },
     {
-      "id": 37,
+      "id": 41,
       "name": "Grilles",
       "visible": true,
       "opacity": 1.0,
@@ -1384,7 +1826,7 @@
         }
       },
       "mask": {
-        "res": 38,
+        "res": 42,
         "invert": false,
         "enabled": true,
         "parts": [
@@ -1398,7 +1840,7 @@
       }
     },
     {
-      "id": 39,
+      "id": 43,
       "name": "Cables",
       "visible": true,
       "opacity": 1.0,
@@ -1458,7 +1900,7 @@
         }
       },
       "mask": {
-        "res": 40,
+        "res": 44,
         "invert": false,
         "enabled": true,
         "parts": [
@@ -1528,7 +1970,7 @@
       }
     },
     {
-      "id": 41,
+      "id": 45,
       "name": "LED strips (cyan)",
       "visible": true,
       "opacity": 1.0,
@@ -1588,7 +2030,7 @@
         }
       },
       "mask": {
-        "res": 42,
+        "res": 46,
         "invert": false,
         "enabled": true,
         "parts": [
@@ -1598,7 +2040,7 @@
       }
     },
     {
-      "id": 43,
+      "id": 47,
       "name": "LED strips (pink)",
       "visible": true,
       "opacity": 1.0,
@@ -1658,7 +2100,7 @@
         }
       },
       "mask": {
-        "res": 44,
+        "res": 48,
         "invert": false,
         "enabled": true,
         "parts": [
@@ -1667,7 +2109,7 @@
       }
     },
     {
-      "id": 45,
+      "id": 49,
       "name": "Damp patches",
       "visible": true,
       "opacity": 0.5,
@@ -1727,7 +2169,7 @@
         }
       },
       "mask": {
-        "res": 46,
+        "res": 50,
         "generator": {
           "kind": "grunge",
           "amount": 0.45,
@@ -1749,7 +2191,7 @@
       }
     },
     {
-      "id": 47,
+      "id": 51,
       "name": "Rain streaks",
       "visible": true,
       "opacity": 0.5,
@@ -1809,7 +2251,7 @@
         }
       },
       "mask": {
-        "res": 48,
+        "res": 52,
         "generator": {
           "kind": "streaks",
           "amount": 0.3,
@@ -1831,7 +2273,7 @@
       }
     },
     {
-      "id": 49,
+      "id": 53,
       "name": "Street grime",
       "visible": true,
       "opacity": 0.8,
@@ -1891,7 +2333,7 @@
         }
       },
       "mask": {
-        "res": 50,
+        "res": 54,
         "generator": {
           "kind": "dirt",
           "amount": 0.5,
@@ -1964,13 +2406,13 @@
       }
     },
     {
-      "id": 51,
-      "name": "Signs",
+      "id": 55,
+      "name": "Story decals",
       "visible": true,
       "opacity": 1.0,
       "kind": {
         "type": "paint",
-        "res": 52
+        "res": 56
       },
       "channels": {
         "base_color": {
@@ -2003,6 +2445,1165 @@
           "blend": "normal",
           "opacity": 1.0
         }
+      },
+      "variant": {
+        "decals": [
+          {
+            "name": "bay1/sign_dumplings",
+            "group": "story",
+            "enabled": true,
+            "args": {
+              "emissive_strength": 6.0,
+              "fit": "contain",
+              "image": "assets/decals/story/sign_dumplings.png",
+              "margin": 0.08,
+              "material": "Neon pink",
+              "part": 5,
+              "tint": [
+                1.0,
+                0.35,
+                0.12
+              ]
+            }
+          },
+          {
+            "name": "bay2/sign_karaoke",
+            "group": "story",
+            "enabled": true,
+            "args": {
+              "emissive_strength": 6.0,
+              "fit": "contain",
+              "image": "assets/decals/story/sign_karaoke.png",
+              "margin": 0.08,
+              "material": "Neon pink",
+              "part": 18,
+              "tint": [
+                1.0,
+                0.3,
+                0.85
+              ]
+            }
+          },
+          {
+            "name": "bay3/sign_charge",
+            "group": "story",
+            "enabled": true,
+            "args": {
+              "box": {
+                "max": [
+                  3.5,
+                  4.4,
+                  6.05
+                ],
+                "min": [
+                  0.4,
+                  3.7,
+                  5.95
+                ]
+              },
+              "emissive_strength": 6.0,
+              "fit": "contain",
+              "image": "assets/decals/story/sign_charge.png",
+              "material": "Neon pink",
+              "tint": [
+                1.0,
+                0.85,
+                0.2
+              ]
+            }
+          },
+          {
+            "name": "bay4/sign_offgrid",
+            "group": "story",
+            "enabled": true,
+            "args": {
+              "box": {
+                "max": [
+                  7.4,
+                  4.4,
+                  6.05
+                ],
+                "min": [
+                  4.3,
+                  3.7,
+                  5.95
+                ]
+              },
+              "emissive_strength": 6.0,
+              "fit": "contain",
+              "image": "assets/decals/story/sign_offgrid.png",
+              "material": "Neon pink",
+              "tint": [
+                0.2,
+                1.0,
+                0.8
+              ]
+            }
+          },
+          {
+            "name": "roof/billboard_meridian",
+            "group": "story",
+            "enabled": true,
+            "args": {
+              "emissive_strength": 1.6,
+              "fit": "fill",
+              "image": "assets/decals/story/billboard_meridian.png",
+              "margin": 0.0,
+              "material": "White plastic",
+              "part": 183
+            }
+          },
+          {
+            "name": "tag_e/graffiti_unplug",
+            "group": "story",
+            "enabled": true,
+            "args": {
+              "box": {
+                "max": [
+                  8.05,
+                  4.1,
+                  2.4
+                ],
+                "min": [
+                  7.95,
+                  0.5,
+                  -5.6
+                ]
+              },
+              "facing": "+x",
+              "fit": "contain",
+              "image": "assets/decals/story/graffiti_unplug.png",
+              "material": "White plastic",
+              "opacity": 0.95
+            }
+          },
+          {
+            "name": "post_w1/poster_missing_aiko",
+            "group": "story",
+            "enabled": true,
+            "args": {
+              "box": {
+                "max": [
+                  -7.95,
+                  2.4,
+                  5.5
+                ],
+                "min": [
+                  -8.05,
+                  0.9,
+                  4.4
+                ]
+              },
+              "facing": "-x",
+              "fit": "contain",
+              "image": "assets/decals/story/poster_missing_aiko.png",
+              "material": "White plastic",
+              "opacity": 0.95
+            }
+          },
+          {
+            "name": "plate/plate_curfew",
+            "group": "story",
+            "enabled": true,
+            "args": {
+              "box": {
+                "max": [
+                  8.05,
+                  2.5,
+                  5.4
+                ],
+                "min": [
+                  7.95,
+                  1.5,
+                  3.2
+                ]
+              },
+              "facing": "+x",
+              "fit": "contain",
+              "image": "assets/decals/story/plate_curfew.png",
+              "material": "White plastic",
+              "opacity": 0.95
+            }
+          },
+          {
+            "name": "bay1/sign_implant_repair",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "emissive_strength": 6.0,
+              "fit": "contain",
+              "image": "assets/decals/story/sign_implant_repair.png",
+              "margin": 0.08,
+              "material": "Neon pink",
+              "part": 5,
+              "tint": [
+                0.2,
+                0.9,
+                1.0
+              ]
+            }
+          },
+          {
+            "name": "bay2/sign_organ_credit",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "emissive_strength": 6.0,
+              "fit": "contain",
+              "image": "assets/decals/story/sign_organ_credit.png",
+              "margin": 0.08,
+              "material": "Neon pink",
+              "part": 18,
+              "tint": [
+                1.0,
+                0.12,
+                0.15
+              ]
+            }
+          },
+          {
+            "name": "bay3/sign_clinic",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "box": {
+                "max": [
+                  3.5,
+                  4.4,
+                  6.05
+                ],
+                "min": [
+                  0.4,
+                  3.7,
+                  5.95
+                ]
+              },
+              "emissive_strength": 6.0,
+              "fit": "contain",
+              "image": "assets/decals/story/sign_clinic.png",
+              "material": "Neon pink",
+              "tint": [
+                0.3,
+                1.0,
+                0.4
+              ]
+            }
+          },
+          {
+            "name": "bay4/sign_jailbreak",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "box": {
+                "max": [
+                  7.4,
+                  4.4,
+                  6.05
+                ],
+                "min": [
+                  4.3,
+                  3.7,
+                  5.95
+                ]
+              },
+              "emissive_strength": 6.0,
+              "fit": "contain",
+              "image": "assets/decals/story/sign_jailbreak.png",
+              "material": "Neon pink",
+              "tint": [
+                0.55,
+                1.0,
+                0.1
+              ]
+            }
+          },
+          {
+            "name": "roof/billboard_noctis",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "emissive_strength": 1.6,
+              "fit": "fill",
+              "image": "assets/decals/story/billboard_noctis.png",
+              "margin": 0.0,
+              "material": "White plastic",
+              "part": 183
+            }
+          },
+          {
+            "name": "tag_w/graffiti_lying",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "box": {
+                "max": [
+                  -7.95,
+                  4.1,
+                  2.4
+                ],
+                "min": [
+                  -8.05,
+                  0.5,
+                  -5.6
+                ]
+              },
+              "facing": "-x",
+              "fit": "contain",
+              "image": "assets/decals/story/graffiti_lying.png",
+              "material": "White plastic",
+              "opacity": 0.95
+            }
+          },
+          {
+            "name": "post_w1/poster_unplug",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "box": {
+                "max": [
+                  -7.95,
+                  2.4,
+                  5.5
+                ],
+                "min": [
+                  -8.05,
+                  0.9,
+                  4.4
+                ]
+              },
+              "facing": "-x",
+              "fit": "contain",
+              "image": "assets/decals/story/poster_unplug.png",
+              "material": "White plastic",
+              "opacity": 0.95
+            }
+          },
+          {
+            "name": "plate/plate_loitering",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "box": {
+                "max": [
+                  8.05,
+                  2.5,
+                  5.4
+                ],
+                "min": [
+                  7.95,
+                  1.5,
+                  3.2
+                ]
+              },
+              "facing": "+x",
+              "fit": "contain",
+              "image": "assets/decals/story/plate_loitering.png",
+              "material": "White plastic",
+              "opacity": 0.95
+            }
+          },
+          {
+            "name": "bay1/sign_dreams",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "emissive_strength": 6.0,
+              "fit": "contain",
+              "image": "assets/decals/story/sign_dreams.png",
+              "margin": 0.08,
+              "material": "Neon pink",
+              "part": 5,
+              "tint": [
+                0.8,
+                0.5,
+                1.0
+              ]
+            }
+          },
+          {
+            "name": "bay2/sign_capsule_2h",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "emissive_strength": 6.0,
+              "fit": "contain",
+              "image": "assets/decals/story/sign_capsule_2h.png",
+              "margin": 0.08,
+              "material": "Neon pink",
+              "part": 18,
+              "tint": [
+                0.6,
+                0.35,
+                1.0
+              ]
+            }
+          },
+          {
+            "name": "bay3/sign_karaoke",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "box": {
+                "max": [
+                  3.5,
+                  4.4,
+                  6.05
+                ],
+                "min": [
+                  0.4,
+                  3.7,
+                  5.95
+                ]
+              },
+              "emissive_strength": 6.0,
+              "fit": "contain",
+              "image": "assets/decals/story/sign_karaoke.png",
+              "material": "Neon pink",
+              "tint": [
+                1.0,
+                0.3,
+                0.85
+              ]
+            }
+          },
+          {
+            "name": "bay4/sign_memory_pawn",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "box": {
+                "max": [
+                  7.4,
+                  4.4,
+                  6.05
+                ],
+                "min": [
+                  4.3,
+                  3.7,
+                  5.95
+                ]
+              },
+              "emissive_strength": 6.0,
+              "fit": "contain",
+              "image": "assets/decals/story/sign_memory_pawn.png",
+              "material": "Neon pink",
+              "tint": [
+                1.0,
+                0.6,
+                0.15
+              ]
+            }
+          },
+          {
+            "name": "roof/billboard_dreamlink",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "emissive_strength": 1.6,
+              "fit": "fill",
+              "image": "assets/decals/story/billboard_dreamlink.png",
+              "margin": 0.0,
+              "material": "White plastic",
+              "part": 183
+            }
+          },
+          {
+            "name": "tag_e/graffiti_who_owns",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "box": {
+                "max": [
+                  8.05,
+                  4.1,
+                  2.4
+                ],
+                "min": [
+                  7.95,
+                  0.5,
+                  -5.6
+                ]
+              },
+              "facing": "+x",
+              "fit": "contain",
+              "image": "assets/decals/story/graffiti_who_owns.png",
+              "material": "White plastic",
+              "opacity": 0.95
+            }
+          },
+          {
+            "name": "post_w1/poster_missing_mika",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "box": {
+                "max": [
+                  -7.95,
+                  2.4,
+                  5.5
+                ],
+                "min": [
+                  -8.05,
+                  0.9,
+                  4.4
+                ]
+              },
+              "facing": "-x",
+              "fit": "contain",
+              "image": "assets/decals/story/poster_missing_mika.png",
+              "material": "White plastic",
+              "opacity": 0.95
+            }
+          },
+          {
+            "name": "post_w2/poster_missing_ren",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "box": {
+                "max": [
+                  -7.95,
+                  2.4,
+                  4.2
+                ],
+                "min": [
+                  -8.05,
+                  0.9,
+                  3.1
+                ]
+              },
+              "facing": "-x",
+              "fit": "contain",
+              "image": "assets/decals/story/poster_missing_ren.png",
+              "material": "White plastic",
+              "opacity": 0.95
+            }
+          },
+          {
+            "name": "plate/plate_observed",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "box": {
+                "max": [
+                  8.05,
+                  2.5,
+                  5.4
+                ],
+                "min": [
+                  7.95,
+                  1.5,
+                  3.2
+                ]
+              },
+              "facing": "+x",
+              "fit": "contain",
+              "image": "assets/decals/story/plate_observed.png",
+              "material": "White plastic",
+              "opacity": 0.95
+            }
+          },
+          {
+            "name": "bay1/sign_score_reset",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "emissive_strength": 6.0,
+              "fit": "contain",
+              "image": "assets/decals/story/sign_score_reset.png",
+              "margin": 0.08,
+              "material": "Neon pink",
+              "part": 5,
+              "tint": [
+                1.0,
+                0.2,
+                0.6
+              ]
+            }
+          },
+          {
+            "name": "bay2/sign_jailbreak",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "emissive_strength": 6.0,
+              "fit": "contain",
+              "image": "assets/decals/story/sign_jailbreak.png",
+              "margin": 0.08,
+              "material": "Neon pink",
+              "part": 18,
+              "tint": [
+                0.55,
+                1.0,
+                0.1
+              ]
+            }
+          },
+          {
+            "name": "bay3/sign_dumplings",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "box": {
+                "max": [
+                  3.5,
+                  4.4,
+                  6.05
+                ],
+                "min": [
+                  0.4,
+                  3.7,
+                  5.95
+                ]
+              },
+              "emissive_strength": 6.0,
+              "fit": "contain",
+              "image": "assets/decals/story/sign_dumplings.png",
+              "material": "Neon pink",
+              "tint": [
+                1.0,
+                0.35,
+                0.12
+              ]
+            }
+          },
+          {
+            "name": "bay4/sign_charge",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "box": {
+                "max": [
+                  7.4,
+                  4.4,
+                  6.05
+                ],
+                "min": [
+                  4.3,
+                  3.7,
+                  5.95
+                ]
+              },
+              "emissive_strength": 6.0,
+              "fit": "contain",
+              "image": "assets/decals/story/sign_charge.png",
+              "material": "Neon pink",
+              "tint": [
+                1.0,
+                0.85,
+                0.2
+              ]
+            }
+          },
+          {
+            "name": "roof/billboard_score",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "emissive_strength": 1.6,
+              "fit": "fill",
+              "image": "assets/decals/story/billboard_score.png",
+              "margin": 0.0,
+              "material": "White plastic",
+              "part": 183
+            }
+          },
+          {
+            "name": "tag_w/graffiti_not_data",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "box": {
+                "max": [
+                  -7.95,
+                  4.1,
+                  2.4
+                ],
+                "min": [
+                  -8.05,
+                  0.5,
+                  -5.6
+                ]
+              },
+              "facing": "-x",
+              "fit": "contain",
+              "image": "assets/decals/story/graffiti_not_data.png",
+              "material": "White plastic",
+              "opacity": 0.95
+            }
+          },
+          {
+            "name": "back/graffiti_unplug",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "box": {
+                "max": [
+                  7.0,
+                  4.0,
+                  -5.95
+                ],
+                "min": [
+                  -7.0,
+                  0.5,
+                  -6.05
+                ]
+              },
+              "facing": "-z",
+              "fit": "contain",
+              "image": "assets/decals/story/graffiti_unplug.png",
+              "material": "White plastic",
+              "opacity": 0.95
+            }
+          },
+          {
+            "name": "bay1/sign_memory_pawn",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "emissive_strength": 6.0,
+              "fit": "contain",
+              "image": "assets/decals/story/sign_memory_pawn.png",
+              "margin": 0.08,
+              "material": "Neon pink",
+              "part": 5,
+              "tint": [
+                1.0,
+                0.6,
+                0.15
+              ]
+            }
+          },
+          {
+            "name": "bay2/sign_offgrid",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "emissive_strength": 6.0,
+              "fit": "contain",
+              "image": "assets/decals/story/sign_offgrid.png",
+              "margin": 0.08,
+              "material": "Neon pink",
+              "part": 18,
+              "tint": [
+                0.2,
+                1.0,
+                0.8
+              ]
+            }
+          },
+          {
+            "name": "bay3/sign_implant_repair",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "box": {
+                "max": [
+                  3.5,
+                  4.4,
+                  6.05
+                ],
+                "min": [
+                  0.4,
+                  3.7,
+                  5.95
+                ]
+              },
+              "emissive_strength": 6.0,
+              "fit": "contain",
+              "image": "assets/decals/story/sign_implant_repair.png",
+              "material": "Neon pink",
+              "tint": [
+                0.2,
+                0.9,
+                1.0
+              ]
+            }
+          },
+          {
+            "name": "bay4/sign_dreams",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "box": {
+                "max": [
+                  7.4,
+                  4.4,
+                  6.05
+                ],
+                "min": [
+                  4.3,
+                  3.7,
+                  5.95
+                ]
+              },
+              "emissive_strength": 6.0,
+              "fit": "contain",
+              "image": "assets/decals/story/sign_dreams.png",
+              "material": "Neon pink",
+              "tint": [
+                0.8,
+                0.5,
+                1.0
+              ]
+            }
+          },
+          {
+            "name": "roof/billboard_jobs",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "emissive_strength": 1.6,
+              "fit": "fill",
+              "image": "assets/decals/story/billboard_jobs.png",
+              "margin": 0.0,
+              "material": "White plastic",
+              "part": 183
+            }
+          },
+          {
+            "name": "tag_e/stencil_eye_crossed",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "box": {
+                "max": [
+                  8.05,
+                  4.1,
+                  2.4
+                ],
+                "min": [
+                  7.95,
+                  0.5,
+                  -5.6
+                ]
+              },
+              "facing": "+x",
+              "fit": "contain",
+              "image": "assets/decals/story/stencil_eye_crossed.png",
+              "material": "White plastic",
+              "opacity": 0.95
+            }
+          },
+          {
+            "name": "bay1/sign_clinic",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "emissive_strength": 6.0,
+              "fit": "contain",
+              "image": "assets/decals/story/sign_clinic.png",
+              "margin": 0.08,
+              "material": "Neon pink",
+              "part": 5,
+              "tint": [
+                0.3,
+                1.0,
+                0.4
+              ]
+            }
+          },
+          {
+            "name": "bay4/sign_organ_credit",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "box": {
+                "max": [
+                  7.4,
+                  4.4,
+                  6.05
+                ],
+                "min": [
+                  4.3,
+                  3.7,
+                  5.95
+                ]
+              },
+              "emissive_strength": 6.0,
+              "fit": "contain",
+              "image": "assets/decals/story/sign_organ_credit.png",
+              "material": "Neon pink",
+              "tint": [
+                1.0,
+                0.12,
+                0.15
+              ]
+            }
+          },
+          {
+            "name": "bay3/plate_property",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "box": {
+                "max": [
+                  3.5,
+                  4.4,
+                  6.05
+                ],
+                "min": [
+                  0.4,
+                  3.7,
+                  5.95
+                ]
+              },
+              "fit": "contain",
+              "image": "assets/decals/story/plate_property.png",
+              "material": "White plastic",
+              "opacity": 0.95
+            }
+          },
+          {
+            "name": "roof/billboard_defaced",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "emissive_strength": 1.6,
+              "fit": "fill",
+              "image": "assets/decals/story/billboard_defaced.png",
+              "margin": 0.0,
+              "material": "White plastic",
+              "part": 183
+            }
+          },
+          {
+            "name": "tag_w/graffiti_who_owns",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "box": {
+                "max": [
+                  -7.95,
+                  4.1,
+                  2.4
+                ],
+                "min": [
+                  -8.05,
+                  0.5,
+                  -5.6
+                ]
+              },
+              "facing": "-x",
+              "fit": "contain",
+              "image": "assets/decals/story/graffiti_who_owns.png",
+              "material": "White plastic",
+              "opacity": 0.95
+            }
+          },
+          {
+            "name": "back/graffiti_lying",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "box": {
+                "max": [
+                  7.0,
+                  4.0,
+                  -5.95
+                ],
+                "min": [
+                  -7.0,
+                  0.5,
+                  -6.05
+                ]
+              },
+              "facing": "-z",
+              "fit": "contain",
+              "image": "assets/decals/story/graffiti_lying.png",
+              "material": "White plastic",
+              "opacity": 0.95
+            }
+          },
+          {
+            "name": "post_w2/poster_missing_mika",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "box": {
+                "max": [
+                  -7.95,
+                  2.4,
+                  4.2
+                ],
+                "min": [
+                  -8.05,
+                  0.9,
+                  3.1
+                ]
+              },
+              "facing": "-x",
+              "fit": "contain",
+              "image": "assets/decals/story/poster_missing_mika.png",
+              "material": "White plastic",
+              "opacity": 0.95
+            }
+          },
+          {
+            "name": "plate/plate_property",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "box": {
+                "max": [
+                  8.05,
+                  2.5,
+                  5.4
+                ],
+                "min": [
+                  7.95,
+                  1.5,
+                  3.2
+                ]
+              },
+              "facing": "+x",
+              "fit": "contain",
+              "image": "assets/decals/story/plate_property.png",
+              "material": "White plastic",
+              "opacity": 0.95
+            }
+          },
+          {
+            "name": "bay1/sign_organ_credit",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "emissive_strength": 6.0,
+              "fit": "contain",
+              "image": "assets/decals/story/sign_organ_credit.png",
+              "margin": 0.08,
+              "material": "Neon pink",
+              "part": 5,
+              "tint": [
+                1.0,
+                0.12,
+                0.15
+              ]
+            }
+          },
+          {
+            "name": "bay2/sign_score_reset",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "emissive_strength": 6.0,
+              "fit": "contain",
+              "image": "assets/decals/story/sign_score_reset.png",
+              "margin": 0.08,
+              "material": "Neon pink",
+              "part": 18,
+              "tint": [
+                1.0,
+                0.2,
+                0.6
+              ]
+            }
+          },
+          {
+            "name": "bay3/sign_capsule_2h",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "box": {
+                "max": [
+                  3.5,
+                  4.4,
+                  6.05
+                ],
+                "min": [
+                  0.4,
+                  3.7,
+                  5.95
+                ]
+              },
+              "emissive_strength": 6.0,
+              "fit": "contain",
+              "image": "assets/decals/story/sign_capsule_2h.png",
+              "material": "Neon pink",
+              "tint": [
+                0.6,
+                0.35,
+                1.0
+              ]
+            }
+          },
+          {
+            "name": "bay4/sign_clinic",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "box": {
+                "max": [
+                  7.4,
+                  4.4,
+                  6.05
+                ],
+                "min": [
+                  4.3,
+                  3.7,
+                  5.95
+                ]
+              },
+              "emissive_strength": 6.0,
+              "fit": "contain",
+              "image": "assets/decals/story/sign_clinic.png",
+              "material": "Neon pink",
+              "tint": [
+                0.3,
+                1.0,
+                0.4
+              ]
+            }
+          },
+          {
+            "name": "tag_w/stencil_eye_crossed",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "box": {
+                "max": [
+                  -7.95,
+                  4.1,
+                  2.4
+                ],
+                "min": [
+                  -8.05,
+                  0.5,
+                  -5.6
+                ]
+              },
+              "facing": "-x",
+              "fit": "contain",
+              "image": "assets/decals/story/stencil_eye_crossed.png",
+              "material": "White plastic",
+              "opacity": 0.95
+            }
+          },
+          {
+            "name": "post_w1/poster_missing_ren",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "box": {
+                "max": [
+                  -7.95,
+                  2.4,
+                  5.5
+                ],
+                "min": [
+                  -8.05,
+                  0.9,
+                  4.4
+                ]
+              },
+              "facing": "-x",
+              "fit": "contain",
+              "image": "assets/decals/story/poster_missing_ren.png",
+              "material": "White plastic",
+              "opacity": 0.95
+            }
+          }
+        ]
       }
     }
   ],
@@ -2012,6 +3613,136 @@
     "curvature_strength": 0.7,
     "ao_distance": 0.12
   },
-  "export_preset": "separate",
-  "next_id": 53
+  "export_preset": "unreal",
+  "next_id": 58,
+  "variants": {
+    "seed": 0,
+    "defs": [
+      {
+        "name": "noodle_row",
+        "seed": 12,
+        "enable": [
+          "bay1/sign_dumplings",
+          "bay2/sign_karaoke",
+          "bay3/sign_charge",
+          "bay4/sign_offgrid",
+          "roof/billboard_meridian",
+          "tag_e/graffiti_unplug",
+          "post_w1/poster_missing_aiko",
+          "plate/plate_curfew"
+        ],
+        "disable": [
+          "story"
+        ]
+      },
+      {
+        "name": "body_shop",
+        "seed": 24,
+        "enable": [
+          "bay1/sign_implant_repair",
+          "bay2/sign_organ_credit",
+          "bay3/sign_clinic",
+          "bay4/sign_jailbreak",
+          "roof/billboard_noctis",
+          "tag_w/graffiti_lying",
+          "post_w1/poster_unplug",
+          "plate/plate_loitering"
+        ],
+        "disable": [
+          "story"
+        ]
+      },
+      {
+        "name": "dream_strip",
+        "seed": 36,
+        "enable": [
+          "bay1/sign_dreams",
+          "bay2/sign_capsule_2h",
+          "bay3/sign_karaoke",
+          "bay4/sign_memory_pawn",
+          "roof/billboard_dreamlink",
+          "tag_e/graffiti_who_owns",
+          "post_w1/poster_missing_mika",
+          "post_w2/poster_missing_ren",
+          "plate/plate_observed"
+        ],
+        "disable": [
+          "story"
+        ]
+      },
+      {
+        "name": "score_fixers",
+        "seed": 48,
+        "enable": [
+          "bay1/sign_score_reset",
+          "bay2/sign_jailbreak",
+          "bay3/sign_dumplings",
+          "bay4/sign_charge",
+          "roof/billboard_score",
+          "tag_w/graffiti_not_data",
+          "back/graffiti_unplug",
+          "post_w2/poster_missing_ren",
+          "plate/plate_loitering"
+        ],
+        "disable": [
+          "story"
+        ]
+      },
+      {
+        "name": "pawn_row",
+        "seed": 60,
+        "enable": [
+          "bay1/sign_memory_pawn",
+          "bay2/sign_offgrid",
+          "bay3/sign_implant_repair",
+          "bay4/sign_dreams",
+          "roof/billboard_jobs",
+          "tag_e/stencil_eye_crossed",
+          "post_w1/poster_unplug",
+          "plate/plate_curfew"
+        ],
+        "disable": [
+          "story"
+        ]
+      },
+      {
+        "name": "seized",
+        "seed": 72,
+        "enable": [
+          "bay1/sign_clinic",
+          "bay4/sign_organ_credit",
+          "bay3/plate_property",
+          "roof/billboard_defaced",
+          "tag_e/graffiti_unplug",
+          "tag_w/graffiti_who_owns",
+          "back/graffiti_lying",
+          "post_w1/poster_missing_aiko",
+          "post_w2/poster_missing_mika",
+          "plate/plate_property",
+          "lights_few"
+        ],
+        "disable": [
+          "story",
+          "lights"
+        ]
+      },
+      {
+        "name": "night_market",
+        "seed": 84,
+        "enable": [
+          "bay1/sign_organ_credit",
+          "bay2/sign_score_reset",
+          "bay3/sign_capsule_2h",
+          "bay4/sign_clinic",
+          "roof/billboard_meridian",
+          "tag_w/stencil_eye_crossed",
+          "post_w1/poster_missing_ren",
+          "plate/plate_observed"
+        ],
+        "disable": [
+          "story"
+        ]
+      }
+    ]
+  }
 }

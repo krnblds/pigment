@@ -65,6 +65,76 @@
       }
     },
     {
+      "id": 7,
+      "name": "Sign backing",
+      "visible": true,
+      "opacity": 1.0,
+      "kind": {
+        "type": "fill",
+        "values": {
+          "base_color": [
+            0.015,
+            0.015,
+            0.02
+          ],
+          "roughness": 0.3,
+          "metallic": 0.0,
+          "height": 0.0,
+          "normal": [
+            0.0,
+            0.0
+          ],
+          "emissive": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "emissive_strength": 0.0
+        }
+      },
+      "channels": {
+        "base_color": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "roughness": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "metallic": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "height": {
+          "enabled": false,
+          "blend": "add",
+          "opacity": 1.0
+        },
+        "normal": {
+          "enabled": false,
+          "blend": "normal_combine",
+          "opacity": 1.0
+        },
+        "emissive": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        }
+      },
+      "mask": {
+        "res": 8,
+        "invert": false,
+        "enabled": true,
+        "parts": [
+          9,
+          10
+        ]
+      }
+    },
+    {
       "id": 5,
       "name": "Paint",
       "visible": true,
@@ -107,7 +177,7 @@
       }
     },
     {
-      "id": 9,
+      "id": 11,
       "name": "Grime",
       "visible": true,
       "opacity": 0.7,
@@ -167,7 +237,7 @@
         }
       },
       "mask": {
-        "res": 10,
+        "res": 12,
         "generator": {
           "kind": "dirt",
           "amount": 0.5,
@@ -198,13 +268,13 @@
       }
     },
     {
-      "id": 7,
-      "name": "Sign faces",
+      "id": 9,
+      "name": "Story decals",
       "visible": true,
       "opacity": 1.0,
       "kind": {
         "type": "paint",
-        "res": 8
+        "res": 10
       },
       "channels": {
         "base_color": {
@@ -237,6 +307,390 @@
           "blend": "normal",
           "opacity": 1.0
         }
+      },
+      "variant": {
+        "decals": [
+          {
+            "name": "face_w/sign_memory_pawn",
+            "group": "story",
+            "enabled": true,
+            "args": {
+              "emissive_strength": 6.0,
+              "facing": "-x",
+              "fit": "contain",
+              "image": "assets/decals/story/sign_memory_pawn.png",
+              "margin": 0.08,
+              "material": "Neon pink",
+              "part": 9,
+              "tint": [
+                1.0,
+                0.6,
+                0.15
+              ]
+            }
+          },
+          {
+            "name": "face_e/sign_memory_pawn",
+            "group": "story",
+            "enabled": true,
+            "args": {
+              "emissive_strength": 6.0,
+              "facing": "+x",
+              "fit": "contain",
+              "image": "assets/decals/story/sign_memory_pawn.png",
+              "margin": 0.08,
+              "material": "Neon pink",
+              "part": 10,
+              "tint": [
+                1.0,
+                0.6,
+                0.15
+              ]
+            }
+          },
+          {
+            "name": "face_w/sign_implant_repair",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "emissive_strength": 6.0,
+              "facing": "-x",
+              "fit": "contain",
+              "image": "assets/decals/story/sign_implant_repair.png",
+              "margin": 0.08,
+              "material": "Neon pink",
+              "part": 9,
+              "tint": [
+                0.2,
+                0.9,
+                1.0
+              ]
+            }
+          },
+          {
+            "name": "face_e/sign_implant_repair",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "emissive_strength": 6.0,
+              "facing": "+x",
+              "fit": "contain",
+              "image": "assets/decals/story/sign_implant_repair.png",
+              "margin": 0.08,
+              "material": "Neon pink",
+              "part": 10,
+              "tint": [
+                0.2,
+                0.9,
+                1.0
+              ]
+            }
+          },
+          {
+            "name": "face_w/sign_score_reset",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "emissive_strength": 6.0,
+              "facing": "-x",
+              "fit": "contain",
+              "image": "assets/decals/story/sign_score_reset.png",
+              "margin": 0.08,
+              "material": "Neon pink",
+              "part": 9,
+              "tint": [
+                1.0,
+                0.2,
+                0.6
+              ]
+            }
+          },
+          {
+            "name": "face_e/sign_score_reset",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "emissive_strength": 6.0,
+              "facing": "+x",
+              "fit": "contain",
+              "image": "assets/decals/story/sign_score_reset.png",
+              "margin": 0.08,
+              "material": "Neon pink",
+              "part": 10,
+              "tint": [
+                1.0,
+                0.2,
+                0.6
+              ]
+            }
+          },
+          {
+            "name": "face_w/sign_capsule_2h",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "emissive_strength": 6.0,
+              "facing": "-x",
+              "fit": "contain",
+              "image": "assets/decals/story/sign_capsule_2h.png",
+              "margin": 0.08,
+              "material": "Neon pink",
+              "part": 9,
+              "tint": [
+                0.6,
+                0.35,
+                1.0
+              ]
+            }
+          },
+          {
+            "name": "face_e/sign_capsule_2h",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "emissive_strength": 6.0,
+              "facing": "+x",
+              "fit": "contain",
+              "image": "assets/decals/story/sign_capsule_2h.png",
+              "margin": 0.08,
+              "material": "Neon pink",
+              "part": 10,
+              "tint": [
+                0.6,
+                0.35,
+                1.0
+              ]
+            }
+          },
+          {
+            "name": "face_w/sign_dumplings",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "emissive_strength": 6.0,
+              "facing": "-x",
+              "fit": "contain",
+              "image": "assets/decals/story/sign_dumplings.png",
+              "margin": 0.08,
+              "material": "Neon pink",
+              "part": 9,
+              "tint": [
+                1.0,
+                0.35,
+                0.12
+              ]
+            }
+          },
+          {
+            "name": "face_e/sign_dumplings",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "emissive_strength": 6.0,
+              "facing": "+x",
+              "fit": "contain",
+              "image": "assets/decals/story/sign_dumplings.png",
+              "margin": 0.08,
+              "material": "Neon pink",
+              "part": 10,
+              "tint": [
+                1.0,
+                0.35,
+                0.12
+              ]
+            }
+          },
+          {
+            "name": "face_w/sign_clinic",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "emissive_strength": 6.0,
+              "facing": "-x",
+              "fit": "contain",
+              "image": "assets/decals/story/sign_clinic.png",
+              "margin": 0.08,
+              "material": "Neon pink",
+              "part": 9,
+              "tint": [
+                0.3,
+                1.0,
+                0.4
+              ]
+            }
+          },
+          {
+            "name": "face_e/sign_clinic",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "emissive_strength": 6.0,
+              "facing": "+x",
+              "fit": "contain",
+              "image": "assets/decals/story/sign_clinic.png",
+              "margin": 0.08,
+              "material": "Neon pink",
+              "part": 10,
+              "tint": [
+                0.3,
+                1.0,
+                0.4
+              ]
+            }
+          },
+          {
+            "name": "face_w/sign_jailbreak",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "emissive_strength": 6.0,
+              "facing": "-x",
+              "fit": "contain",
+              "image": "assets/decals/story/sign_jailbreak.png",
+              "margin": 0.08,
+              "material": "Neon pink",
+              "part": 9,
+              "tint": [
+                0.55,
+                1.0,
+                0.1
+              ]
+            }
+          },
+          {
+            "name": "face_e/sign_offgrid",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "emissive_strength": 6.0,
+              "facing": "+x",
+              "fit": "contain",
+              "image": "assets/decals/story/sign_offgrid.png",
+              "margin": 0.08,
+              "material": "Neon pink",
+              "part": 10,
+              "tint": [
+                0.2,
+                1.0,
+                0.8
+              ]
+            }
+          },
+          {
+            "name": "face_w/sign_organ_credit",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "emissive_strength": 6.0,
+              "facing": "-x",
+              "fit": "contain",
+              "image": "assets/decals/story/sign_organ_credit.png",
+              "margin": 0.08,
+              "material": "Neon pink",
+              "part": 9,
+              "tint": [
+                1.0,
+                0.12,
+                0.15
+              ]
+            }
+          },
+          {
+            "name": "face_e/sign_organ_credit",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "emissive_strength": 6.0,
+              "facing": "+x",
+              "fit": "contain",
+              "image": "assets/decals/story/sign_organ_credit.png",
+              "margin": 0.08,
+              "material": "Neon pink",
+              "part": 10,
+              "tint": [
+                1.0,
+                0.12,
+                0.15
+              ]
+            }
+          },
+          {
+            "name": "face_w/sign_karaoke",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "emissive_strength": 6.0,
+              "facing": "-x",
+              "fit": "contain",
+              "image": "assets/decals/story/sign_karaoke.png",
+              "margin": 0.08,
+              "material": "Neon pink",
+              "part": 9,
+              "tint": [
+                1.0,
+                0.3,
+                0.85
+              ]
+            }
+          },
+          {
+            "name": "face_e/sign_dreams",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "emissive_strength": 6.0,
+              "facing": "+x",
+              "fit": "contain",
+              "image": "assets/decals/story/sign_dreams.png",
+              "margin": 0.08,
+              "material": "Neon pink",
+              "part": 10,
+              "tint": [
+                0.8,
+                0.5,
+                1.0
+              ]
+            }
+          },
+          {
+            "name": "face_w/sign_meridian_kiosk",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "emissive_strength": 6.0,
+              "facing": "-x",
+              "fit": "contain",
+              "image": "assets/decals/story/sign_meridian_kiosk.png",
+              "margin": 0.08,
+              "material": "Neon pink",
+              "part": 9,
+              "tint": [
+                0.4,
+                0.9,
+                1.0
+              ]
+            }
+          },
+          {
+            "name": "face_e/sign_charge",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "emissive_strength": 6.0,
+              "facing": "+x",
+              "fit": "contain",
+              "image": "assets/decals/story/sign_charge.png",
+              "margin": 0.08,
+              "material": "Neon pink",
+              "part": 10,
+              "tint": [
+                1.0,
+                0.85,
+                0.2
+              ]
+            }
+          }
+        ]
       }
     }
   ],
@@ -246,6 +700,121 @@
     "curvature_strength": 1.0,
     "ao_distance": 0.3
   },
-  "export_preset": "separate",
-  "next_id": 11
+  "export_preset": "unreal",
+  "next_id": 14,
+  "variants": {
+    "seed": 0,
+    "defs": [
+      {
+        "name": "memory_pawn",
+        "seed": 100,
+        "enable": [
+          "face_w/sign_memory_pawn",
+          "face_e/sign_memory_pawn"
+        ],
+        "disable": [
+          "story"
+        ]
+      },
+      {
+        "name": "implant_repair",
+        "seed": 107,
+        "enable": [
+          "face_w/sign_implant_repair",
+          "face_e/sign_implant_repair"
+        ],
+        "disable": [
+          "story"
+        ]
+      },
+      {
+        "name": "score_reset",
+        "seed": 114,
+        "enable": [
+          "face_w/sign_score_reset",
+          "face_e/sign_score_reset"
+        ],
+        "disable": [
+          "story"
+        ]
+      },
+      {
+        "name": "capsule",
+        "seed": 121,
+        "enable": [
+          "face_w/sign_capsule_2h",
+          "face_e/sign_capsule_2h"
+        ],
+        "disable": [
+          "story"
+        ]
+      },
+      {
+        "name": "noodles",
+        "seed": 128,
+        "enable": [
+          "face_w/sign_dumplings",
+          "face_e/sign_dumplings"
+        ],
+        "disable": [
+          "story"
+        ]
+      },
+      {
+        "name": "clinic",
+        "seed": 135,
+        "enable": [
+          "face_w/sign_clinic",
+          "face_e/sign_clinic"
+        ],
+        "disable": [
+          "story"
+        ]
+      },
+      {
+        "name": "jailbreak",
+        "seed": 142,
+        "enable": [
+          "face_w/sign_jailbreak",
+          "face_e/sign_offgrid"
+        ],
+        "disable": [
+          "story"
+        ]
+      },
+      {
+        "name": "organ_credit",
+        "seed": 149,
+        "enable": [
+          "face_w/sign_organ_credit",
+          "face_e/sign_organ_credit"
+        ],
+        "disable": [
+          "story"
+        ]
+      },
+      {
+        "name": "karaoke",
+        "seed": 156,
+        "enable": [
+          "face_w/sign_karaoke",
+          "face_e/sign_dreams"
+        ],
+        "disable": [
+          "story"
+        ]
+      },
+      {
+        "name": "kiosk",
+        "seed": 163,
+        "enable": [
+          "face_w/sign_meridian_kiosk",
+          "face_e/sign_charge"
+        ],
+        "disable": [
+          "story"
+        ]
+      }
+    ]
+  }
 }

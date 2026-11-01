@@ -76,6 +76,7 @@ impl Document {
             channels: Channels::from_fn(|_| ChannelSettings { enabled: true, blend: BlendMode::Normal, opacity: 1.0 }),
             mask: None,
             parent: None,
+            variant: Default::default(),
         }
     }
 

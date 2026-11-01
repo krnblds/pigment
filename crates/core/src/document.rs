@@ -435,6 +435,9 @@ pub struct Layer {
     /// no folders, so they load with every layer at the top level.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub parent: Option<LayerId>,
+    /// Variant group tag, random part subset and recorded decals.
+    #[serde(default, skip_serializing_if = "crate::variants::LayerVariant::is_empty")]
+    pub variant: crate::variants::LayerVariant,
 }
 
 impl Layer {
@@ -485,6 +488,9 @@ pub struct Document {
     #[serde(default = "default_preset")]
     pub export_preset: String,
     pub next_id: u64,
+    /// Variant seed and stored variant definitions (see `variants`).
+    #[serde(default, skip_serializing_if = "crate::variants::Variants::is_empty")]
+    pub variants: crate::variants::Variants,
 }
 
 fn default_preset() -> String {
@@ -501,6 +507,7 @@ impl Default for Document {
             bake: BakeSettings::default(),
             export_preset: default_preset(),
             next_id: 1,
+            variants: Default::default(),
         }
     }
 }
@@ -747,6 +754,7 @@ impl Document {
             channels: Self::channels_default(),
             mask: None,
             parent: None,
+            variant: Default::default(),
         }
     }
 
@@ -763,6 +771,7 @@ impl Document {
             channels,
             mask: None,
             parent: None,
+            variant: Default::default(),
         }
     }
 

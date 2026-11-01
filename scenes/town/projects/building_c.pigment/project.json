@@ -389,8 +389,6 @@
         "invert": false,
         "enabled": true,
         "parts": [
-          2,
-          3,
           4,
           12,
           14,
@@ -562,40 +560,118 @@
         "invert": false,
         "enabled": true,
         "parts": [
-          2,
+          4,
+          12,
           14,
+          17,
+          18,
           19,
+          21,
           22,
+          23,
           25,
           26,
+          27,
+          29,
           30,
+          31,
+          33,
           34,
+          35,
+          37,
+          38,
+          39,
           41,
+          42,
           43,
+          45,
+          46,
           47,
+          49,
+          50,
+          51,
+          53,
+          54,
+          55,
           57,
+          58,
+          59,
+          61,
           62,
+          63,
           65,
           66,
+          67,
           69,
+          70,
+          71,
+          73,
           74,
+          75,
+          77,
+          78,
           79,
           81,
+          82,
           83,
+          85,
           86,
+          87,
           89,
+          90,
           91,
+          93,
+          94,
+          95,
           97,
+          98,
           99,
+          101,
+          102,
+          103,
           105,
+          106,
           107,
+          109,
+          110,
+          111,
+          113,
           114,
+          115,
+          117,
+          118,
+          119,
+          121,
+          122,
+          123,
           125,
+          126,
+          127,
+          129,
+          130,
           131,
+          133,
+          134,
+          135,
+          137,
+          138,
           139,
+          141,
+          142,
           143,
+          175,
+          177,
+          179,
           181
         ]
+      },
+      "variant": {
+        "group": "lights",
+        "part_subset": {
+          "from": 0.0,
+          "to": 0.3,
+          "salt": 1
+        }
       }
     },
     {
@@ -663,16 +739,118 @@
         "invert": false,
         "enabled": true,
         "parts": [
+          4,
+          12,
+          14,
+          17,
+          18,
+          19,
+          21,
+          22,
           23,
+          25,
+          26,
+          27,
+          29,
+          30,
+          31,
+          33,
+          34,
+          35,
+          37,
           38,
+          39,
+          41,
+          42,
+          43,
+          45,
+          46,
+          47,
+          49,
+          50,
+          51,
+          53,
+          54,
+          55,
+          57,
+          58,
+          59,
+          61,
+          62,
+          63,
+          65,
+          66,
+          67,
+          69,
+          70,
+          71,
+          73,
+          74,
+          75,
+          77,
+          78,
+          79,
+          81,
+          82,
+          83,
+          85,
+          86,
           87,
+          89,
+          90,
+          91,
           93,
           94,
           95,
+          97,
+          98,
+          99,
+          101,
+          102,
+          103,
+          105,
           106,
+          107,
+          109,
+          110,
           111,
-          138
+          113,
+          114,
+          115,
+          117,
+          118,
+          119,
+          121,
+          122,
+          123,
+          125,
+          126,
+          127,
+          129,
+          130,
+          131,
+          133,
+          134,
+          135,
+          137,
+          138,
+          139,
+          141,
+          142,
+          143,
+          175,
+          177,
+          179,
+          181
         ]
+      },
+      "variant": {
+        "group": "lights",
+        "part_subset": {
+          "from": 0.3,
+          "to": 0.37,
+          "salt": 1
+        }
       }
     },
     {
@@ -740,14 +918,550 @@
         "invert": false,
         "enabled": true,
         "parts": [
+          4,
+          12,
+          14,
+          17,
+          18,
+          19,
+          21,
+          22,
+          23,
+          25,
+          26,
+          27,
           29,
+          30,
+          31,
+          33,
+          34,
+          35,
+          37,
+          38,
+          39,
+          41,
+          42,
+          43,
+          45,
+          46,
+          47,
+          49,
+          50,
+          51,
+          53,
+          54,
+          55,
+          57,
+          58,
+          59,
+          61,
+          62,
+          63,
+          65,
+          66,
+          67,
+          69,
           70,
-          78
+          71,
+          73,
+          74,
+          75,
+          77,
+          78,
+          79,
+          81,
+          82,
+          83,
+          85,
+          86,
+          87,
+          89,
+          90,
+          91,
+          93,
+          94,
+          95,
+          97,
+          98,
+          99,
+          101,
+          102,
+          103,
+          105,
+          106,
+          107,
+          109,
+          110,
+          111,
+          113,
+          114,
+          115,
+          117,
+          118,
+          119,
+          121,
+          122,
+          123,
+          125,
+          126,
+          127,
+          129,
+          130,
+          131,
+          133,
+          134,
+          135,
+          137,
+          138,
+          139,
+          141,
+          142,
+          143,
+          175,
+          177,
+          179,
+          181
         ]
+      },
+      "variant": {
+        "group": "lights",
+        "part_subset": {
+          "from": 0.37,
+          "to": 0.4,
+          "salt": 1
+        }
       }
     },
     {
       "id": 21,
+      "name": "Meridian screens",
+      "visible": true,
+      "opacity": 1.0,
+      "kind": {
+        "type": "fill",
+        "values": {
+          "base_color": [
+            0.3,
+            0.5,
+            1.0
+          ],
+          "roughness": 0.1,
+          "metallic": 0.0,
+          "height": 0.0,
+          "normal": [
+            0.0,
+            0.0
+          ],
+          "emissive": [
+            0.3,
+            0.5,
+            1.0
+          ],
+          "emissive_strength": 1.8
+        }
+      },
+      "channels": {
+        "base_color": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "roughness": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "metallic": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "height": {
+          "enabled": false,
+          "blend": "add",
+          "opacity": 1.0
+        },
+        "normal": {
+          "enabled": false,
+          "blend": "normal_combine",
+          "opacity": 1.0
+        },
+        "emissive": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        }
+      },
+      "mask": {
+        "res": 22,
+        "invert": false,
+        "enabled": true,
+        "parts": [
+          4,
+          12,
+          14,
+          17,
+          18,
+          19,
+          21,
+          22,
+          23,
+          25,
+          26,
+          27,
+          29,
+          30,
+          31,
+          33,
+          34,
+          35,
+          37,
+          38,
+          39,
+          41,
+          42,
+          43,
+          45,
+          46,
+          47,
+          49,
+          50,
+          51,
+          53,
+          54,
+          55,
+          57,
+          58,
+          59,
+          61,
+          62,
+          63,
+          65,
+          66,
+          67,
+          69,
+          70,
+          71,
+          73,
+          74,
+          75,
+          77,
+          78,
+          79,
+          81,
+          82,
+          83,
+          85,
+          86,
+          87,
+          89,
+          90,
+          91,
+          93,
+          94,
+          95,
+          97,
+          98,
+          99,
+          101,
+          102,
+          103,
+          105,
+          106,
+          107,
+          109,
+          110,
+          111,
+          113,
+          114,
+          115,
+          117,
+          118,
+          119,
+          121,
+          122,
+          123,
+          125,
+          126,
+          127,
+          129,
+          130,
+          131,
+          133,
+          134,
+          135,
+          137,
+          138,
+          139,
+          141,
+          142,
+          143,
+          175,
+          177,
+          179,
+          181
+        ]
+      },
+      "variant": {
+        "group": "lights",
+        "part_subset": {
+          "from": 0.4,
+          "to": 0.45,
+          "salt": 1
+        }
+      }
+    },
+    {
+      "id": 23,
+      "name": "Lit windows (few)",
+      "visible": false,
+      "opacity": 1.0,
+      "kind": {
+        "type": "fill",
+        "values": {
+          "base_color": [
+            1.0,
+            0.7,
+            0.4
+          ],
+          "roughness": 0.1,
+          "metallic": 0.0,
+          "height": 0.0,
+          "normal": [
+            0.0,
+            0.0
+          ],
+          "emissive": [
+            1.0,
+            0.7,
+            0.4
+          ],
+          "emissive_strength": 1.6
+        }
+      },
+      "channels": {
+        "base_color": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "roughness": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "metallic": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "height": {
+          "enabled": false,
+          "blend": "add",
+          "opacity": 1.0
+        },
+        "normal": {
+          "enabled": false,
+          "blend": "normal_combine",
+          "opacity": 1.0
+        },
+        "emissive": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        }
+      },
+      "mask": {
+        "res": 24,
+        "invert": false,
+        "enabled": true,
+        "parts": [
+          4,
+          12,
+          14,
+          17,
+          18,
+          19,
+          21,
+          22,
+          23,
+          25,
+          26,
+          27,
+          29,
+          30,
+          31,
+          33,
+          34,
+          35,
+          37,
+          38,
+          39,
+          41,
+          42,
+          43,
+          45,
+          46,
+          47,
+          49,
+          50,
+          51,
+          53,
+          54,
+          55,
+          57,
+          58,
+          59,
+          61,
+          62,
+          63,
+          65,
+          66,
+          67,
+          69,
+          70,
+          71,
+          73,
+          74,
+          75,
+          77,
+          78,
+          79,
+          81,
+          82,
+          83,
+          85,
+          86,
+          87,
+          89,
+          90,
+          91,
+          93,
+          94,
+          95,
+          97,
+          98,
+          99,
+          101,
+          102,
+          103,
+          105,
+          106,
+          107,
+          109,
+          110,
+          111,
+          113,
+          114,
+          115,
+          117,
+          118,
+          119,
+          121,
+          122,
+          123,
+          125,
+          126,
+          127,
+          129,
+          130,
+          131,
+          133,
+          134,
+          135,
+          137,
+          138,
+          139,
+          141,
+          142,
+          143,
+          175,
+          177,
+          179,
+          181
+        ]
+      },
+      "variant": {
+        "group": "lights_few",
+        "part_subset": {
+          "from": 0.0,
+          "to": 0.07,
+          "salt": 2
+        }
+      }
+    },
+    {
+      "id": 25,
+      "name": "Sign faces",
+      "visible": true,
+      "opacity": 1.0,
+      "kind": {
+        "type": "fill",
+        "values": {
+          "base_color": [
+            0.015,
+            0.015,
+            0.02
+          ],
+          "roughness": 0.3,
+          "metallic": 0.0,
+          "height": 0.0,
+          "normal": [
+            0.0,
+            0.0
+          ],
+          "emissive": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "emissive_strength": 0.0
+        }
+      },
+      "channels": {
+        "base_color": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "roughness": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "metallic": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "height": {
+          "enabled": false,
+          "blend": "add",
+          "opacity": 1.0
+        },
+        "normal": {
+          "enabled": false,
+          "blend": "normal_combine",
+          "opacity": 1.0
+        },
+        "emissive": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        }
+      },
+      "mask": {
+        "res": 26,
+        "invert": false,
+        "enabled": true,
+        "parts": [
+          2,
+          3
+        ]
+      }
+    },
+    {
+      "id": 27,
       "name": "Frames",
       "visible": true,
       "opacity": 1.0,
@@ -807,7 +1521,7 @@
         }
       },
       "mask": {
-        "res": 22,
+        "res": 28,
         "invert": false,
         "enabled": true,
         "parts": [
@@ -853,7 +1567,7 @@
       }
     },
     {
-      "id": 23,
+      "id": 29,
       "name": "Screens",
       "visible": true,
       "opacity": 1.0,
@@ -913,7 +1627,7 @@
         }
       },
       "mask": {
-        "res": 24,
+        "res": 30,
         "invert": false,
         "enabled": true,
         "parts": [
@@ -923,7 +1637,7 @@
       }
     },
     {
-      "id": 25,
+      "id": 31,
       "name": "Trim",
       "visible": true,
       "opacity": 1.0,
@@ -983,7 +1697,7 @@
         }
       },
       "mask": {
-        "res": 26,
+        "res": 32,
         "invert": false,
         "enabled": true,
         "parts": [
@@ -1006,7 +1720,7 @@
       }
     },
     {
-      "id": 27,
+      "id": 33,
       "name": "Doors",
       "visible": true,
       "opacity": 1.0,
@@ -1066,7 +1780,7 @@
         }
       },
       "mask": {
-        "res": 28,
+        "res": 34,
         "invert": false,
         "enabled": true,
         "parts": [
@@ -1077,7 +1791,7 @@
       }
     },
     {
-      "id": 29,
+      "id": 35,
       "name": "Door scuffs",
       "visible": true,
       "opacity": 1.0,
@@ -1137,7 +1851,7 @@
         }
       },
       "mask": {
-        "res": 30,
+        "res": 36,
         "generator": {
           "kind": "edge_wear",
           "amount": 0.25,
@@ -1158,7 +1872,7 @@
       }
     },
     {
-      "id": 31,
+      "id": 37,
       "name": "Rooftop metal",
       "visible": true,
       "opacity": 1.0,
@@ -1218,7 +1932,7 @@
         }
       },
       "mask": {
-        "res": 32,
+        "res": 38,
         "invert": false,
         "enabled": true,
         "parts": [
@@ -1234,7 +1948,7 @@
       }
     },
     {
-      "id": 33,
+      "id": 39,
       "name": "Rooftop rust streaks",
       "visible": true,
       "opacity": 0.6,
@@ -1294,7 +2008,7 @@
         }
       },
       "mask": {
-        "res": 34,
+        "res": 40,
         "generator": {
           "kind": "streaks",
           "amount": 0.18,
@@ -1320,7 +2034,7 @@
       }
     },
     {
-      "id": 35,
+      "id": 41,
       "name": "AC units",
       "visible": true,
       "opacity": 1.0,
@@ -1380,7 +2094,7 @@
         }
       },
       "mask": {
-        "res": 36,
+        "res": 42,
         "invert": false,
         "enabled": true,
         "parts": [
@@ -1393,7 +2107,7 @@
       }
     },
     {
-      "id": 37,
+      "id": 43,
       "name": "Grilles",
       "visible": true,
       "opacity": 1.0,
@@ -1453,7 +2167,7 @@
         }
       },
       "mask": {
-        "res": 38,
+        "res": 44,
         "invert": false,
         "enabled": true,
         "parts": [
@@ -1466,7 +2180,7 @@
       }
     },
     {
-      "id": 39,
+      "id": 45,
       "name": "LED strips (cyan)",
       "visible": true,
       "opacity": 1.0,
@@ -1526,7 +2240,7 @@
         }
       },
       "mask": {
-        "res": 40,
+        "res": 46,
         "invert": false,
         "enabled": true,
         "parts": [
@@ -1539,7 +2253,7 @@
       }
     },
     {
-      "id": 41,
+      "id": 47,
       "name": "LED strips (pink)",
       "visible": true,
       "opacity": 1.0,
@@ -1599,7 +2313,7 @@
         }
       },
       "mask": {
-        "res": 42,
+        "res": 48,
         "invert": false,
         "enabled": true,
         "parts": [
@@ -1611,7 +2325,7 @@
       }
     },
     {
-      "id": 43,
+      "id": 49,
       "name": "Damp patches",
       "visible": true,
       "opacity": 0.5,
@@ -1671,7 +2385,7 @@
         }
       },
       "mask": {
-        "res": 44,
+        "res": 50,
         "generator": {
           "kind": "grunge",
           "amount": 0.45,
@@ -1701,7 +2415,7 @@
       }
     },
     {
-      "id": 45,
+      "id": 51,
       "name": "Rain streaks",
       "visible": true,
       "opacity": 0.5,
@@ -1761,7 +2475,7 @@
         }
       },
       "mask": {
-        "res": 46,
+        "res": 52,
         "generator": {
           "kind": "streaks",
           "amount": 0.3,
@@ -1791,7 +2505,7 @@
       }
     },
     {
-      "id": 47,
+      "id": 53,
       "name": "Street grime",
       "visible": true,
       "opacity": 0.8,
@@ -1851,7 +2565,7 @@
         }
       },
       "mask": {
-        "res": 48,
+        "res": 54,
         "generator": {
           "kind": "dirt",
           "amount": 0.5,
@@ -1924,13 +2638,13 @@
       }
     },
     {
-      "id": 49,
-      "name": "Signs",
+      "id": 55,
+      "name": "Story decals",
       "visible": true,
       "opacity": 1.0,
       "kind": {
         "type": "paint",
-        "res": 50
+        "res": 56
       },
       "channels": {
         "base_color": {
@@ -1963,6 +2677,545 @@
           "blend": "normal",
           "opacity": 1.0
         }
+      },
+      "variant": {
+        "decals": [
+          {
+            "name": "lobby/logo_hoshikawa_dynamics",
+            "group": "story",
+            "enabled": true,
+            "args": {
+              "emissive_strength": 2.0,
+              "fit": "contain",
+              "image": "assets/decals/logo_hoshikawa_dynamics.png",
+              "margin": 0.15,
+              "part": 0,
+              "tint": [
+                0.85,
+                0.92,
+                1.0
+              ]
+            }
+          },
+          {
+            "name": "band/sign_hoshikawa_security",
+            "group": "story",
+            "enabled": true,
+            "args": {
+              "box": {
+                "max": [
+                  3.4,
+                  4.95,
+                  7.05
+                ],
+                "min": [
+                  -3.4,
+                  4.3,
+                  6.95
+                ]
+              },
+              "emissive_strength": 6.0,
+              "fit": "contain",
+              "image": "assets/decals/story/sign_hoshikawa_security.png",
+              "material": "Neon pink",
+              "tint": [
+                0.75,
+                0.9,
+                1.0
+              ]
+            }
+          },
+          {
+            "name": "crown_n/billboard_meridian",
+            "group": "story",
+            "enabled": true,
+            "args": {
+              "box": {
+                "max": [
+                  4.7,
+                  35.4,
+                  5.05
+                ],
+                "min": [
+                  -4.7,
+                  31.0,
+                  4.95
+                ]
+              },
+              "emissive_strength": 1.6,
+              "fit": "fill",
+              "image": "assets/decals/story/billboard_meridian.png",
+              "margin": 0.02,
+              "material": "White plastic"
+            }
+          },
+          {
+            "name": "crown_e/billboard_score",
+            "group": "story",
+            "enabled": true,
+            "args": {
+              "box": {
+                "max": [
+                  5.05,
+                  35.4,
+                  4.7
+                ],
+                "min": [
+                  4.95,
+                  31.0,
+                  -4.7
+                ]
+              },
+              "emissive_strength": 1.6,
+              "facing": "+x",
+              "fit": "fill",
+              "image": "assets/decals/story/billboard_score.png",
+              "margin": 0.02,
+              "material": "White plastic"
+            }
+          },
+          {
+            "name": "crown_w/billboard_jobs",
+            "group": "story",
+            "enabled": true,
+            "args": {
+              "box": {
+                "max": [
+                  -4.95,
+                  35.4,
+                  4.7
+                ],
+                "min": [
+                  -5.05,
+                  31.0,
+                  -4.7
+                ]
+              },
+              "emissive_strength": 1.6,
+              "facing": "-x",
+              "fit": "fill",
+              "image": "assets/decals/story/billboard_jobs.png",
+              "margin": 0.02,
+              "material": "White plastic"
+            }
+          },
+          {
+            "name": "crown_s/billboard_meridian",
+            "group": "story",
+            "enabled": true,
+            "args": {
+              "box": {
+                "max": [
+                  4.7,
+                  35.4,
+                  -4.95
+                ],
+                "min": [
+                  -4.7,
+                  31.0,
+                  -5.05
+                ]
+              },
+              "emissive_strength": 1.6,
+              "facing": "-z",
+              "fit": "fill",
+              "image": "assets/decals/story/billboard_meridian.png",
+              "margin": 0.02,
+              "material": "White plastic"
+            }
+          },
+          {
+            "name": "plate/plate_property",
+            "group": "story",
+            "enabled": true,
+            "args": {
+              "box": {
+                "max": [
+                  5.6,
+                  2.6,
+                  7.05
+                ],
+                "min": [
+                  3.6,
+                  1.6,
+                  6.95
+                ]
+              },
+              "fit": "contain",
+              "image": "assets/decals/story/plate_property.png",
+              "material": "White plastic",
+              "opacity": 0.95
+            }
+          },
+          {
+            "name": "tag_w/stencil_eye_crossed",
+            "group": "story",
+            "enabled": true,
+            "args": {
+              "box": {
+                "max": [
+                  -6.95,
+                  4.2,
+                  3.0
+                ],
+                "min": [
+                  -7.05,
+                  0.5,
+                  -6.0
+                ]
+              },
+              "facing": "-x",
+              "fit": "contain",
+              "image": "assets/decals/story/stencil_eye_crossed.png",
+              "material": "White plastic",
+              "opacity": 0.95
+            }
+          },
+          {
+            "name": "band/sign_meridian_kiosk",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "box": {
+                "max": [
+                  3.4,
+                  4.95,
+                  7.05
+                ],
+                "min": [
+                  -3.4,
+                  4.3,
+                  6.95
+                ]
+              },
+              "emissive_strength": 6.0,
+              "fit": "contain",
+              "image": "assets/decals/story/sign_meridian_kiosk.png",
+              "material": "Neon pink",
+              "tint": [
+                0.4,
+                0.9,
+                1.0
+              ]
+            }
+          },
+          {
+            "name": "crown_n/billboard_score",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "box": {
+                "max": [
+                  4.7,
+                  35.4,
+                  5.05
+                ],
+                "min": [
+                  -4.7,
+                  31.0,
+                  4.95
+                ]
+              },
+              "emissive_strength": 1.6,
+              "fit": "fill",
+              "image": "assets/decals/story/billboard_score.png",
+              "margin": 0.02,
+              "material": "White plastic"
+            }
+          },
+          {
+            "name": "crown_e/billboard_meridian",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "box": {
+                "max": [
+                  5.05,
+                  35.4,
+                  4.7
+                ],
+                "min": [
+                  4.95,
+                  31.0,
+                  -4.7
+                ]
+              },
+              "emissive_strength": 1.6,
+              "facing": "+x",
+              "fit": "fill",
+              "image": "assets/decals/story/billboard_meridian.png",
+              "margin": 0.02,
+              "material": "White plastic"
+            }
+          },
+          {
+            "name": "crown_w/billboard_meridian",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "box": {
+                "max": [
+                  -4.95,
+                  35.4,
+                  4.7
+                ],
+                "min": [
+                  -5.05,
+                  31.0,
+                  -4.7
+                ]
+              },
+              "emissive_strength": 1.6,
+              "facing": "-x",
+              "fit": "fill",
+              "image": "assets/decals/story/billboard_meridian.png",
+              "margin": 0.02,
+              "material": "White plastic"
+            }
+          },
+          {
+            "name": "crown_s/billboard_jobs",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "box": {
+                "max": [
+                  4.7,
+                  35.4,
+                  -4.95
+                ],
+                "min": [
+                  -4.7,
+                  31.0,
+                  -5.05
+                ]
+              },
+              "emissive_strength": 1.6,
+              "facing": "-z",
+              "fit": "fill",
+              "image": "assets/decals/story/billboard_jobs.png",
+              "margin": 0.02,
+              "material": "White plastic"
+            }
+          },
+          {
+            "name": "plate/plate_observed",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "box": {
+                "max": [
+                  5.6,
+                  2.6,
+                  7.05
+                ],
+                "min": [
+                  3.6,
+                  1.6,
+                  6.95
+                ]
+              },
+              "fit": "contain",
+              "image": "assets/decals/story/plate_observed.png",
+              "material": "White plastic",
+              "opacity": 0.95
+            }
+          },
+          {
+            "name": "tag_e/graffiti_lying",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "box": {
+                "max": [
+                  7.05,
+                  4.2,
+                  3.0
+                ],
+                "min": [
+                  6.95,
+                  0.5,
+                  -6.0
+                ]
+              },
+              "facing": "+x",
+              "fit": "contain",
+              "image": "assets/decals/story/graffiti_lying.png",
+              "material": "White plastic",
+              "opacity": 0.95
+            }
+          },
+          {
+            "name": "crown_n/billboard_dreamlink",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "box": {
+                "max": [
+                  4.7,
+                  35.4,
+                  5.05
+                ],
+                "min": [
+                  -4.7,
+                  31.0,
+                  4.95
+                ]
+              },
+              "emissive_strength": 1.6,
+              "fit": "fill",
+              "image": "assets/decals/story/billboard_dreamlink.png",
+              "margin": 0.02,
+              "material": "White plastic"
+            }
+          },
+          {
+            "name": "crown_e/billboard_noctis",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "box": {
+                "max": [
+                  5.05,
+                  35.4,
+                  4.7
+                ],
+                "min": [
+                  4.95,
+                  31.0,
+                  -4.7
+                ]
+              },
+              "emissive_strength": 1.6,
+              "facing": "+x",
+              "fit": "fill",
+              "image": "assets/decals/story/billboard_noctis.png",
+              "margin": 0.02,
+              "material": "White plastic"
+            }
+          },
+          {
+            "name": "crown_w/billboard_defaced",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "box": {
+                "max": [
+                  -4.95,
+                  35.4,
+                  4.7
+                ],
+                "min": [
+                  -5.05,
+                  31.0,
+                  -4.7
+                ]
+              },
+              "emissive_strength": 1.6,
+              "facing": "-x",
+              "fit": "fill",
+              "image": "assets/decals/story/billboard_defaced.png",
+              "margin": 0.02,
+              "material": "White plastic"
+            }
+          },
+          {
+            "name": "crown_s/billboard_dreamlink",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "box": {
+                "max": [
+                  4.7,
+                  35.4,
+                  -4.95
+                ],
+                "min": [
+                  -4.7,
+                  31.0,
+                  -5.05
+                ]
+              },
+              "emissive_strength": 1.6,
+              "facing": "-z",
+              "fit": "fill",
+              "image": "assets/decals/story/billboard_dreamlink.png",
+              "margin": 0.02,
+              "material": "White plastic"
+            }
+          },
+          {
+            "name": "plate/plate_curfew",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "box": {
+                "max": [
+                  5.6,
+                  2.6,
+                  7.05
+                ],
+                "min": [
+                  3.6,
+                  1.6,
+                  6.95
+                ]
+              },
+              "fit": "contain",
+              "image": "assets/decals/story/plate_curfew.png",
+              "material": "White plastic",
+              "opacity": 0.95
+            }
+          },
+          {
+            "name": "tag_e/graffiti_unplug",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "box": {
+                "max": [
+                  7.05,
+                  4.2,
+                  3.0
+                ],
+                "min": [
+                  6.95,
+                  0.5,
+                  -6.0
+                ]
+              },
+              "facing": "+x",
+              "fit": "contain",
+              "image": "assets/decals/story/graffiti_unplug.png",
+              "material": "White plastic",
+              "opacity": 0.95
+            }
+          },
+          {
+            "name": "tag_w/graffiti_not_data",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "box": {
+                "max": [
+                  -6.95,
+                  4.2,
+                  3.0
+                ],
+                "min": [
+                  -7.05,
+                  0.5,
+                  -6.0
+                ]
+              },
+              "facing": "-x",
+              "fit": "contain",
+              "image": "assets/decals/story/graffiti_not_data.png",
+              "material": "White plastic",
+              "opacity": 0.95
+            }
+          }
+        ]
       }
     }
   ],
@@ -1972,6 +3225,63 @@
     "curvature_strength": 0.7,
     "ao_distance": 0.12
   },
-  "export_preset": "separate",
-  "next_id": 51
+  "export_preset": "unreal",
+  "next_id": 58,
+  "variants": {
+    "seed": 0,
+    "defs": [
+      {
+        "name": "hoshikawa_hq",
+        "seed": 13,
+        "enable": [
+          "lobby/logo_hoshikawa_dynamics",
+          "band/sign_hoshikawa_security",
+          "crown_n/billboard_meridian",
+          "crown_e/billboard_score",
+          "crown_w/billboard_jobs",
+          "crown_s/billboard_meridian",
+          "plate/plate_property",
+          "tag_w/stencil_eye_crossed"
+        ],
+        "disable": [
+          "story"
+        ]
+      },
+      {
+        "name": "meridian",
+        "seed": 26,
+        "enable": [
+          "lobby/logo_hoshikawa_dynamics",
+          "band/sign_meridian_kiosk",
+          "crown_n/billboard_score",
+          "crown_e/billboard_meridian",
+          "crown_w/billboard_meridian",
+          "crown_s/billboard_jobs",
+          "plate/plate_observed",
+          "tag_e/graffiti_lying"
+        ],
+        "disable": [
+          "story"
+        ]
+      },
+      {
+        "name": "dreamlink",
+        "seed": 39,
+        "enable": [
+          "lobby/logo_hoshikawa_dynamics",
+          "band/sign_hoshikawa_security",
+          "crown_n/billboard_dreamlink",
+          "crown_e/billboard_noctis",
+          "crown_w/billboard_defaced",
+          "crown_s/billboard_dreamlink",
+          "plate/plate_curfew",
+          "tag_e/graffiti_unplug",
+          "tag_w/graffiti_not_data"
+        ],
+        "disable": [
+          "story"
+        ]
+      }
+    ]
+  }
 }

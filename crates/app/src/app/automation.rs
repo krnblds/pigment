@@ -6,6 +6,7 @@
 
 use super::*;
 use crate::render::viewport::ViewMode;
+use pigment_core::variants::{resolve, validate_defs, DecalRecord, PartSubset, VariantDef};
 use serde_json::{json, Value};
 
 type Res<T> = Result<T, String>;
@@ -202,6 +203,13 @@ impl Session {
                             "effects": m.effects.iter().map(|e| json!({ "generator": e.generator.kind.id(), "op": format!("{:?}", e.op).to_lowercase(), "amount": e.generator.amount, "scale": e.generator.noise_scale })).collect::<Vec<_>>(),
                             "parts": m.parts,
                             "invert": m.invert,
+                        });
+                    }
+                    if !l.variant.is_empty() {
+                        o["variant"] = json!({
+                            "group": l.variant.group,
+                            "part_subset": l.variant.part_subset,
+                            "decals": l.variant.decals.iter().map(|d| json!({ "name": d.name, "group": d.group, "enabled": d.enabled, "image": d.args.get("image") })).collect::<Vec<_>>(),
                         });
                     }
                     o
@@ -418,6 +426,30 @@ impl Session {
                 if let Some(g) = mask.generator.as_mut() {
                     apply_generator_fields(g, m);
                 }
+            }
+        }
+        match a.get("variant") {
+            None => {}
+            Some(Value::Null) => app.doc.layers[i].variant.group.clear(),
+            Some(Value::String(g)) => app.doc.layers[i].variant.group = g.clone(),
+            Some(_) => return Err("`variant` is a group name or null".into()),
+        }
+        match a.get("part_subset") {
+            None => {}
+            Some(Value::Null) => app.doc.layers[i].variant.part_subset = None,
+            Some(v) => {
+                let from = f(v, "from").unwrap_or(0.0);
+                let to = f(v, "to").ok_or("`part_subset` needs `to` (0..1)")?;
+                if !(0.0..=1.0).contains(&from) || !(from..=1.0).contains(&to) {
+                    return Err("`part_subset` needs 0 <= from <= to <= 1".into());
+                }
+                let salt = v.get("salt").and_then(Value::as_u64).unwrap_or(0) as u32;
+                if app.doc.layers[i].mask.is_none() {
+                    let res = app.doc.mint();
+                    app.ts.new_mask(&rs.device, &rs.queue, res, true);
+                    app.doc.layers[i].mask = Some(Mask::new(res));
+                }
+                app.doc.layers[i].variant.part_subset = Some(PartSubset { from, to, salt });
             }
         }
         Ok(())
@@ -651,14 +683,34 @@ impl Session {
     /// thinnest axis, on the side away from the model's centre) and return the
     /// viewport rect (0..1) covering it, shrunk to the image's aspect for
     /// `fit = "contain"` or stretched for `"fill"`.
-    fn aim_at_part(&mut self, part: u32, image: &Path, fit: &str, margin: f32) -> Res<Vec<f32>> {
+    fn aim_at_part(&mut self, part: u32, image: &Path, fit: &str, margin: f32, facing: Option<&str>) -> Res<Vec<f32>> {
         let info = *self.app.parts.info.get(part as usize).ok_or_else(|| format!("no part {part}"))?;
-        let (lo, hi) = (glam::Vec3::from(info.min), glam::Vec3::from(info.max));
+        self.aim_at_box(glam::Vec3::from(info.min), glam::Vec3::from(info.max), image, fit, margin, facing)
+    }
+
+    /// `aim_at_part` for any world-space box (e.g. an area of a big wall that
+    /// is one part with the rest of the building). `facing` ("+x", "-z", ...)
+    /// overrides the side the camera looks from.
+    fn aim_at_box(&mut self, lo: glam::Vec3, hi: glam::Vec3, image: &Path, fit: &str, margin: f32, facing: Option<&str>) -> Res<Vec<f32>> {
         let c = (lo + hi) * 0.5;
         let size = hi - lo;
-        let axis = if size.x <= size.y && size.x <= size.z { 0 } else if size.y <= size.z { 1 } else { 2 };
         let (mc, _) = self.app.mesh.bounding_sphere();
-        let outward = if c[axis] >= mc[axis] { 1.0 } else { -1.0 };
+        let (axis, outward) = match facing {
+            Some(f) => {
+                let f = f.to_ascii_lowercase();
+                let axis = match f.trim_start_matches(['+', '-']) {
+                    "x" => 0,
+                    "y" => 1,
+                    "z" => 2,
+                    _ => return Err(format!("facing `{f}`: use +x, -x, +y, -y, +z or -z")),
+                };
+                (axis, if f.starts_with('-') { -1.0 } else { 1.0 })
+            }
+            None => {
+                let axis = if size.x <= size.y && size.x <= size.z { 0 } else if size.y <= size.z { 1 } else { 2 };
+                (axis, if c[axis] >= mc[axis] { 1.0 } else { -1.0 })
+            }
+        };
         let cam = &mut self.app.camera;
         cam.target = c;
         // OrbitCamera: eye = target + (sin yaw cos p, sin p, cos yaw cos p) * d
@@ -783,11 +835,31 @@ impl Session {
     /// Project an image (decal) onto the model from a camera view, over a
     /// viewport rectangle `rect` = [x0, y0, x1, y1] in 0..1.
     pub fn project_decal(&mut self, a: &Value) -> Res<Value> {
+        self.decal_impl(a, false)
+    }
+
+    /// `replay`: re-project a recorded decal during variant export (no
+    /// record, no undo step, no history commit).
+    fn decal_impl(&mut self, a: &Value, replay: bool) -> Res<Value> {
         let image = PathBuf::from(req(a, "image")?);
-        let rect: Vec<f32> = match a.get("part").and_then(Value::as_u64) {
+        let (fit, margin, facing) = (s(a, "fit").unwrap_or("contain"), f(a, "margin").unwrap_or(0.05), s(a, "facing"));
+        let rect: Vec<f32> = match (a.get("part").and_then(Value::as_u64), a.get("box")) {
             // aim at a mesh part's outward face and fit the image to it
-            Some(part) => self.aim_at_part(part as u32, &image, s(a, "fit").unwrap_or("contain"), f(a, "margin").unwrap_or(0.05))?,
-            None => {
+            (Some(part), _) => self.aim_at_part(part as u32, &image, fit, margin, facing)?,
+            // or at a world-space box: {min, max} or {center, size}
+            (None, Some(b)) => {
+                let v3 = |k: &str| -> Option<glam::Vec3> {
+                    let a = b.get(k)?.as_array()?;
+                    (a.len() == 3).then(|| glam::Vec3::new(a[0].as_f64().unwrap_or(0.0) as f32, a[1].as_f64().unwrap_or(0.0) as f32, a[2].as_f64().unwrap_or(0.0) as f32))
+                };
+                let (lo, hi) = match (v3("min"), v3("max"), v3("center"), v3("size")) {
+                    (Some(lo), Some(hi), _, _) => (lo.min(hi), lo.max(hi)),
+                    (_, _, Some(c), Some(sz)) => (c - sz.abs() * 0.5, c + sz.abs() * 0.5),
+                    _ => return Err("`box` needs {min: [x,y,z], max: [x,y,z]} or {center, size}".into()),
+                };
+                self.aim_at_box(lo, hi, &image, fit, margin, facing)?
+            }
+            (None, None) => {
                 let r: Vec<f32> = a.get("rect").and_then(Value::as_array).ok_or("missing `rect` ([x0, y0, x1, y1] in 0..1) or `part`")?.iter().filter_map(|v| v.as_f64().map(|x| x as f32)).collect();
                 if r.len() != 4 {
                     return Err("`rect` needs 4 numbers".into());
@@ -808,8 +880,38 @@ impl Session {
             },
         };
         let id = self.app.doc.layers[i].id;
-        self.app.select(Some(id), a.get("mask").and_then(Value::as_bool).unwrap_or(false));
-        self.settle();
+        let on_mask = a.get("mask").and_then(Value::as_bool).unwrap_or(false);
+        let enabled = a.get("enabled").and_then(Value::as_bool).unwrap_or(true);
+        if !replay {
+            // record it on the layer, so variants can switch it or swap its image
+            if !on_mask && self.app.doc.layers[i].is_paint() {
+                let mut args = a.clone();
+                if let Some(o) = args.as_object_mut() {
+                    for k in ["layer", "name", "variant", "enabled"] {
+                        o.remove(k);
+                    }
+                }
+                let name = s(a, "name").map(String::from).unwrap_or_else(|| image.file_stem().map(|x| x.to_string_lossy().to_string()).unwrap_or_default());
+                let group = s(a, "variant").unwrap_or("").to_string();
+                self.app.doc.layers[i].variant.decals.push(DecalRecord { name, group, enabled, args });
+            } else if !enabled || a.get("variant").is_some() {
+                return Err("only decals on a paint layer (not its mask) can be tagged or disabled for variants".into());
+            }
+            if !enabled {
+                if !image.exists() {
+                    self.app.doc.layers[i].variant.decals.pop();
+                    return Err(format!("no image {}", image.display()));
+                }
+                self.settle();
+                return Ok(json!({ "decal": image, "on": self.app.doc.layers[i].name, "painted": false }));
+            }
+        }
+        self.app.select(Some(id), on_mask);
+        if replay {
+            self.app.ensure_composited(&self.rs);
+        } else {
+            self.settle();
+        }
         let b = &mut self.app.brush;
         b.values = match s(a, "material") {
             Some(m) => material_preset(m),
@@ -843,13 +945,26 @@ impl Session {
         let px = Vec2::new(self.size[0] as f32, self.size[1] as f32);
         let r = [rect[0] * px.x, rect[1] * px.y, rect[2] * px.x, rect[3] * px.y];
         let lum = a.get("alpha_from_luminance").and_then(Value::as_bool).unwrap_or(false);
-        self.app.project_decal(&self.rs, &image, r, px, lum)?;
-        self.settle();
+        if let Err(e) = self.app.project_decal_ex(&self.rs, &image, r, px, lum, !replay) {
+            if !replay && !on_mask && self.app.doc.layers[i].is_paint() {
+                self.app.doc.layers[i].variant.decals.pop();
+            }
+            return Err(e);
+        }
+        if !replay {
+            self.settle();
+        }
         Ok(json!({ "decal": image, "on": self.app.doc.layers[i].name }))
     }
 
     pub fn render(&mut self, a: &Value) -> Res<Image> {
         self.settle();
+        self.render_now(a)
+    }
+
+    /// `render` without committing pending document changes.
+    fn render_now(&mut self, a: &Value) -> Res<Image> {
+        self.app.ensure_composited(&self.rs);
         self.set_camera(a);
         if let Some(v) = s(a, "view") {
             self.app.view.mode = view_mode(v)?;
@@ -900,6 +1015,132 @@ impl Session {
             .map(|o| dir.join(format!("{}_{}.png", self.app.export_name, o.suffix)).to_string_lossy().to_string())
             .collect();
         Ok(json!({ "status": msg, "files": files, "emissive_scale": scale }))
+    }
+
+    // ------------------------------------------------------------------ variants
+
+    /// Export one texture set per variant: `<dir>/<name>__<variant>/<name>_<map>.png`.
+    /// `variants` (optional) replaces the definitions stored in the project.
+    pub fn export_variants(&mut self, a: &Value) -> Res<Value> {
+        self.settle();
+        if let Some(v) = a.get("variants") {
+            let defs: Vec<VariantDef> = serde_json::from_value(v.clone()).map_err(|e| format!("bad `variants`: {e}"))?;
+            validate_defs(&defs)?;
+            for d in &defs {
+                resolve(&self.app.doc, d)?; // check every selector before storing anything
+            }
+            self.app.doc.variants.defs = defs;
+            self.settle();
+        }
+        let mut defs = self.app.doc.variants.defs.clone();
+        if defs.is_empty() {
+            return Err("no variants: pass `variants` (they are stored in the project for next time)".into());
+        }
+        if let Some(only) = a.get("only").and_then(Value::as_array) {
+            let only: Vec<&str> = only.iter().filter_map(Value::as_str).collect();
+            defs.retain(|d| only.iter().any(|o| o.eq_ignore_ascii_case(&d.name)));
+        }
+        if a.get("dry_run").and_then(Value::as_bool).unwrap_or(false) {
+            let mut out = Vec::new();
+            for d in &defs {
+                let r = resolve(&self.app.doc, d)?;
+                out.push(json!({
+                    "name": d.name,
+                    "seed": d.seed,
+                    "hidden_layers": r.doc.layers.iter().filter(|l| !l.visible).map(|l| l.name.clone()).collect::<Vec<_>>(),
+                    "decals": r.doc.layers.iter().flat_map(|l| l.variant.decals.iter().filter(|x| x.enabled).map(|x| json!([x.name, x.args.get("image")]))).collect::<Vec<_>>(),
+                    "replayed_layers": r.replay.len(),
+                }));
+            }
+            return Ok(json!({ "dry_run": true, "variants": out }));
+        }
+        let dir = PathBuf::from(req(a, "dir")?);
+        let preset = s(a, "preset").unwrap_or("separate").to_string();
+        if export::preset(&preset).is_none() {
+            return Err(format!("unknown preset `{preset}`: unreal, unity, godot, separate"));
+        }
+        let name = s(a, "name").map(String::from).unwrap_or_else(|| self.app.mesh.name.clone());
+        let pattern = s(a, "folder").unwrap_or("{name}__{variant}").to_string();
+        let preview = a.get("preview").cloned();
+
+        let doc0 = self.app.doc.clone();
+        let saved = (self.app.export_dir.clone(), self.app.export_name.clone());
+        let mut out = Vec::new();
+        let mut next_id = doc0.next_id;
+        let mut result = Ok(());
+        for v in &defs {
+            let folder = dir.join(pattern.replace("{name}", &name).replace("{variant}", &v.name));
+            let r = self.export_one(&doc0, v, &preset, &folder, &name, preview.as_ref());
+            next_id = next_id.max(self.app.doc.next_id);
+            // back to the authored state; free the scratch layers
+            self.app.doc = doc0.clone();
+            let live = self.app.live_resources();
+            self.app.ts.retain(&live);
+            self.app.ts.unsaved.retain(|r| live.contains(r));
+            match r {
+                Ok(x) => out.push(x),
+                Err(e) => {
+                    result = Err(e);
+                    break;
+                }
+            }
+        }
+        // scratch ids are never reused
+        self.app.doc.next_id = next_id;
+        self.app.committed.next_id = self.app.committed.next_id.max(next_id);
+        (self.app.export_dir, self.app.export_name) = saved;
+        self.app.composited = None;
+        self.app.ensure_composited(&self.rs);
+        result?;
+        Ok(json!({ "dir": dir, "variants": out }))
+    }
+
+    fn export_one(&mut self, doc0: &Document, v: &VariantDef, preset: &str, folder: &Path, name: &str, preview: Option<&Value>) -> Res<Value> {
+        let r = resolve(doc0, v)?;
+        self.app.doc = r.doc;
+        self.app.doc.export_preset = preset.to_string();
+        // decals changed on these layers: start them blank and replay
+        for id in &r.replay {
+            let res = self.app.doc.mint();
+            if let Some(l) = self.app.doc.layer_mut(*id) {
+                l.kind = LayerKind::Paint { res };
+            }
+        }
+        self.app.ensure_composited(&self.rs);
+        let mut painted = 0;
+        for id in &r.replay {
+            let i = self.app.doc.index_of(*id).ok_or("layer vanished")?;
+            let recs: Vec<Value> = self.app.doc.layers[i].variant.decals.iter().filter(|d| d.enabled).map(|d| d.args.clone()).collect();
+            for mut args in recs {
+                args["layer"] = json!(i);
+                self.decal_impl(&args, true).map_err(|e| format!("variant `{}`: {e}", v.name))?;
+                painted += 1;
+            }
+        }
+        self.app.ensure_composited(&self.rs);
+        self.app.export_dir = Some(folder.to_path_buf());
+        self.app.export_name = name.to_string();
+        self.app.status = None;
+        self.app.export(&self.rs);
+        self.status().map_err(|e| format!("variant `{}`: {e}", v.name))?;
+        let mut o = json!({ "name": v.name, "folder": folder, "seed": v.seed, "decals_replayed": painted, "emissive_scale": self.app.last_emissive_scale });
+        // sidecar for consumers (Blender): the emission map is normalised per
+        // variant, so its strength travels with it
+        let shown: Vec<Value> = self.app.doc.layers.iter().filter(|l| l.visible).flat_map(|l| l.variant.decals.iter().filter(|d| d.enabled)).map(|d| json!({ "name": d.name, "group": d.group, "image": d.args.get("image") })).collect();
+        let hidden: Vec<&str> = self.app.doc.layers.iter().filter(|l| !l.visible).map(|l| l.name.as_str()).collect();
+        let side = json!({ "asset": name, "variant": v.name, "seed": v.seed, "preset": preset, "emissive_scale": self.app.last_emissive_scale, "decals": shown, "hidden_layers": hidden });
+        std::fs::write(folder.join("variant.json"), serde_json::to_string_pretty(&side).unwrap_or_default()).map_err(|e| e.to_string())?;
+        if let Some(p) = preview {
+            let mut pa = p.clone();
+            let path = match s(p, "dir") {
+                Some(d) => Path::new(d).join(format!("{name}__{}.png", v.name)),
+                None => folder.join("preview.png"),
+            };
+            pa["path"] = json!(path);
+            let img = self.render_now(&pa)?;
+            o["preview"] = json!(img.path);
+        }
+        Ok(o)
     }
 }
 
@@ -1090,5 +1331,91 @@ mod tests {
         s.undo(false).unwrap();
         assert_eq!(s.app.doc.layers.len(), n);
         std::fs::remove_dir_all(out).ok();
+    }
+    /// Variants: seeded part subsets, decal enable/disable and image swaps
+    /// export as separate texture sets and leave the authored project intact.
+    #[test]
+    fn export_variants_makes_distinct_sets_and_restores_the_project() {
+        let Ok(mut s) = Session::new() else { return };
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        s.new_project(&json!({ "mesh": root.join("assets/ammo_box.glb"), "resolution": 512, "material": "Matte black" })).unwrap();
+        let n = s.list_parts().as_array().unwrap().len() as u64;
+        let all: Vec<u64> = (0..n).collect();
+        s.add_layer(&json!({ "name": "Glow", "material": "Neon green", "mask": { "parts": all }, "part_subset": { "from": 0.0, "to": 0.5, "salt": 3 } })).unwrap();
+        s.add_layer(&json!({ "kind": "paint", "name": "Signs" })).unwrap();
+        let decal = |img: &str| root.join("assets/decals").join(img);
+        s.project_decal(&json!({ "layer": "Signs", "image": decal("neon_open.png"), "rect": [0.25, 0.3, 0.75, 0.6], "tint": [1.0, 0.2, 0.7], "emissive_strength": 5.0, "variant": "shop" })).unwrap();
+        s.project_decal(&json!({ "layer": "Signs", "image": decal("neon_bar.png"), "rect": [0.25, 0.3, 0.75, 0.6], "tint": [0.2, 0.9, 1.0], "emissive_strength": 5.0, "variant": "shop", "enabled": false })).unwrap();
+        let layers = s.layers().to_string();
+        assert!(layers.contains("\"neon_bar\"") && layers.contains("\"part_subset\""), "{layers}");
+        let signs_res = s.app.doc.layers.iter().find(|l| l.name == "Signs").unwrap().paint_res().unwrap();
+        let signs_px = io::read_layer(&s.rs.device, &s.rs.queue, &s.app.ts, signs_res).unwrap();
+        let doc_before = s.app.doc.clone();
+
+        // a typo is an error and stores nothing
+        let bad = s.export_variants(&json!({ "dir": "x", "variants": [{ "name": "a", "enable": ["neon_baar"] }] }));
+        assert!(bad.unwrap_err().contains("neon_baar"));
+        assert!(s.app.doc.variants.defs.is_empty());
+
+        let out = std::env::temp_dir().join(format!("pigment-variants-{}", std::process::id()));
+        std::fs::remove_dir_all(&out).ok();
+        let r = s
+            .export_variants(&json!({ "dir": out, "name": "Box", "variants": [
+                { "name": "open", "seed": 1 },
+                { "name": "bar", "seed": 2, "disable": ["neon_open"], "enable": ["neon_bar"] },
+                { "name": "swapped", "seed": 1, "swaps": { "neon_open": { "image": decal("neon_ramen.png"), "tint": [1.0, 0.5, 0.1] } } },
+                { "name": "dark", "seed": 1, "disable": ["*", "Glow"] }
+            ], "preview": { "width": 160, "height": 120, "dir": out.join("previews") } }))
+            .unwrap();
+        assert_eq!(r["variants"].as_array().unwrap().len(), 4, "{r}");
+        let emis = |v: &str| image::open(out.join(format!("Box__{v}/Box_Emissive.png"))).unwrap().to_rgb8();
+        for v in ["open", "bar", "swapped", "dark"] {
+            assert!(out.join(format!("Box__{v}/Box_BaseColor.png")).exists(), "{v}");
+            assert!(out.join(format!("previews/Box__{v}.png")).exists(), "{v}");
+        }
+        let lit = |img: &image::RgbImage| img.pixels().filter(|p| p.0.iter().any(|&c| c > 40)).count();
+        let (open, bar, swapped, dark) = (emis("open"), emis("bar"), emis("swapped"), emis("dark"));
+        assert!(lit(&open) > 1000, "open glows");
+        assert_eq!(lit(&dark), 0, "everything off is dark");
+        assert_ne!(open, bar, "seed + decal switch change the emission");
+        assert_ne!(open, swapped, "image swap changes the emission");
+        // the replay reproduces the authored decal exactly: same seed, same decal
+        let again = s.export_variants(&json!({ "dir": out, "name": "Box", "only": ["open"] })).unwrap();
+        assert_eq!(again["variants"][0]["decals_replayed"], 0, "untouched layer isn't replayed");
+        assert_eq!(emis("open"), open);
+
+        // the authored project is untouched, and the definitions are stored
+        let mut doc_after = s.app.doc.clone();
+        assert_eq!(doc_after.variants.defs.len(), 4);
+        doc_after.variants.defs.clear();
+        doc_after.next_id = doc_before.next_id;
+        assert_eq!(doc_after, doc_before);
+        assert_eq!(io::read_layer(&s.rs.device, &s.rs.queue, &s.app.ts, signs_res).unwrap(), signs_px);
+        let dry = s.export_variants(&json!({ "dry_run": true })).unwrap();
+        assert_eq!(dry["variants"][1]["decals"][0][0], "neon_bar", "{dry}");
+        s.save_project(&json!({ "path": out.join("box.pigment") })).unwrap();
+        let manifest = std::fs::read_to_string(out.join("box.pigment/project.json")).unwrap();
+        assert!(manifest.contains("\"swapped\"") && manifest.contains("\"decals\""));
+        std::fs::remove_dir_all(out).ok();
+    }
+
+    /// Decals aimed at a world-space box (an area of a wall that is part of a bigger piece).
+    #[test]
+    fn decal_on_a_world_box() {
+        let Ok(mut s) = Session::new() else { return };
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        s.new_project(&json!({ "mesh": root.join("assets/ammo_box.glb"), "resolution": 512, "material": "Matte black" })).unwrap();
+        s.add_layer(&json!({ "kind": "paint", "name": "Signs" })).unwrap();
+        let (c, r) = s.app.mesh.bounding_sphere();
+        let img = root.join("assets/decals/neon_open.png");
+        let glow = |s: &mut Session| -> usize {
+            let im = s.render(&json!({ "view": "emission", "width": 256, "height": 256 })).unwrap();
+            image::load_from_memory(&im.png).unwrap().to_luma8().pixels().filter(|p| p.0[0] > 60).count()
+        };
+        let e = s.project_decal(&json!({ "image": img, "box": { "center": [c.x, c.y, c.z], "size": [r, r, r] }, "facing": "up" }));
+        assert!(e.unwrap_err().contains("facing"));
+        s.project_decal(&json!({ "image": img, "box": { "center": [c.x, c.y, c.z], "size": [r, r, r] }, "facing": "+y", "emissive_strength": 5.0 })).unwrap();
+        assert!(glow(&mut s) > 300, "decal from above landed on the top");
+        assert!(s.project_decal(&json!({ "image": img, "box": { "min": [0, 0] } })).is_err());
     }
 }

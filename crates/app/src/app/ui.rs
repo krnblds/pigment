@@ -899,6 +899,7 @@ impl PigmentApp {
 
     fn layer_tab(&mut self, ui: &mut egui::Ui, i: usize) {
         let mut save_smart = false;
+        let seed = &mut self.doc.variants.seed;
         let l = &mut self.doc.layers[i];
         let is_folder = l.is_folder();
         card(ui, CARD, |ui| {
@@ -906,6 +907,17 @@ impl PigmentApp {
                 ui.label("Opacity");
                 ui.add(egui::Slider::new(&mut l.opacity, 0.0..=1.0).custom_formatter(|v, _| format!("{:.0}%", v * 100.0)));
             });
+            // texture variants (export_variants over MCP): group tag, recorded decals, live seed preview
+            ui.horizontal(|ui| {
+                ui.label("Variant group").on_hover_text("Variants can switch every layer and decal of a group on or off");
+                ui.add(egui::TextEdit::singleline(&mut l.variant.group).desired_width(110.0).hint_text("none"));
+                ui.label("Seed").on_hover_text("Preview a variant seed: random part subsets (lit windows) and generator noise follow it. 0 = authored look");
+                ui.add(egui::DragValue::new(seed).range(0..=99999));
+            });
+            if !l.variant.decals.is_empty() {
+                let list: Vec<String> = l.variant.decals.iter().map(|d| format!("{}{}{}", if d.enabled { "" } else { "(off) " }, d.name, if d.group.is_empty() { String::new() } else { format!(" [{}]", d.group) })).collect();
+                ui.label(RichText::new(format!("Decals: {}", list.join(", "))).size(11.5).color(MUTED));
+            }
         });
         match &mut l.kind {
             LayerKind::Fill { values } => {
