@@ -141,6 +141,8 @@ def pack(folder_src, name, dst, has_opacity):
 
 def main():
     layout_path = os.path.join(OUT, "town_layout.json")
+    if not os.path.exists(layout_path):      # the open world (tools/world/world_export.py)
+        layout_path = os.path.join(OUT, "world_layout.json")
     layout = json.load(open(layout_path, encoding="utf-8"))
     done = set()
     tex_root = os.path.join(OUT, "textures")
@@ -150,7 +152,11 @@ def main():
         done.add(m["folder"])
         src = m["src"]
         if not os.path.isdir(src):
-            src = os.path.join(ROOT, "scenes", "town", "textures", m["folder"])
+            for sub in ("town", "props", "world"):
+                cand = os.path.join(ROOT, "scenes", sub, "textures", m["folder"])
+                if os.path.isdir(cand):
+                    src = cand
+                    break
         ok = pack(src, m["name"], os.path.join(tex_root, m["folder"]), m.get("opacity"))
         print(("packed " if ok else "FAILED ") + m["folder"])
     img_dir = os.path.join(OUT, "images")

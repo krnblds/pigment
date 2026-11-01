@@ -55,7 +55,7 @@ func _process(delta: float) -> void:
 		want = fwd.lerp(vel.normalized(), 0.35).normalized()
 	if not _primed:
 		_dir = want
-	_dir = _dir.slerp(want, 1.0 - exp(-delta * 4.0)).normalized()
+	_dir = _dir.lerp(want, 1.0 - exp(-delta * 4.0)).normalized()   # lerp: slerp errors on near-parallel vectors
 	var car := tx.origin
 	if mode == 2:
 		var hood: Vector3 = tx * Vector3(0, float(m.height), 1.2)

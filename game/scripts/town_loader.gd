@@ -6,6 +6,7 @@ extends Node3D
 ## Materials are built from the packed Pigment textures; collision is simplified per category.
 
 const DIR := "res://assets/town/"
+var dir := DIR                 ## res://assets/<map>/ (town or world)
 const CHUNK := 64.0
 
 ## visibility range end (m) per category, 0 = always
@@ -28,9 +29,10 @@ var _col_root: Node3D
 var _wet := 1.0
 
 
-func load_town(wet := 1.0) -> bool:
+func load_town(wet := 1.0, map := "town") -> bool:
 	_wet = wet
-	var path := DIR + "town_layout.json"
+	dir = "res://assets/%s/" % map
+	var path := dir + "%s_layout.json" % map
 	if not FileAccess.file_exists(path):
 		push_warning("town layout missing: %s (run tools/godot/export_town.py)" % path)
 		return false
@@ -62,7 +64,7 @@ func _source_mesh(key: String) -> Mesh:
 		return _mesh_cache[key]
 	var info: Dictionary = layout.meshes[key]
 	var mesh: Mesh = null
-	var ps = load(DIR + info.file)
+	var ps = load(dir + info.file)
 	if ps is PackedScene:
 		var inst: Node = ps.instantiate()
 		var mi := _find_mesh_instance(inst)
@@ -125,7 +127,7 @@ func material(nm: String) -> Material:
 			m = _pigment_material(d)
 		"image":
 			m = StandardMaterial3D.new()
-			m.albedo_texture = _tex(DIR + d.image)
+			m.albedo_texture = _tex(dir + d.image)
 			m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_DEPTH_PRE_PASS
 			m.roughness = d.get("roughness", 0.6)
 			m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
@@ -141,7 +143,7 @@ func material(nm: String) -> Material:
 
 
 func _pigment_material(d: Dictionary) -> BaseMaterial3D:
-	var base: String = DIR + "textures/" + d.folder + "/"
+	var base: String = dir + "textures/" + d.folder + "/"
 	var m := ORMMaterial3D.new()
 	m.albedo_texture = _tex(base + "albedo.png")
 	m.orm_texture = _tex(base + "orm.png")

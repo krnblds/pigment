@@ -39,6 +39,7 @@ var _ap_turn := 0
 var _ap_via = null        ## junction centre to pass through when changing runs
 var _ap_stuck := 0.0
 var ap_speed := 15.0
+var map_name := "town"
 var traffic: Node3D                     ## living traffic (scripts/traffic/), --no-traffic to skip
 
 
@@ -51,7 +52,9 @@ func _ready() -> void:
 	town = TownLoader.new()
 	town.name = "Town"
 	add_child(town)
-	if args.has("no-town") or not town.load_town(1.0):
+	# --map=town | world (default: the open world when it has been exported)
+	map_name = String(args.get("map", "world" if FileAccess.file_exists("res://assets/world/world_layout.json") else "town"))
+	if args.has("no-town") or not town.load_town(1.0, map_name):
 		_fallback_ground()
 	car = Car.new()
 	car.name = "Car"
@@ -63,7 +66,7 @@ func _ready() -> void:
 	cam.physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
 	cam.target = car
 	cam.near = 0.1
-	cam.far = 900.0
+	cam.far = 900.0 if map_name == "town" else 3500.0
 	add_child(cam)
 	cam.current = true
 	hud = Hud.new()
@@ -85,6 +88,8 @@ func _ready() -> void:
 			topts["count"] = int(args.traffic)
 		if args.has("world"):
 			topts["world"] = String(args.world)
+		elif map_name == "world" and FileAccess.file_exists("res://assets/world/world.json"):
+			topts["world"] = "res://assets/world/world.json"
 		if not traffic.setup(self, topts):
 			traffic.queue_free()
 			traffic = null
