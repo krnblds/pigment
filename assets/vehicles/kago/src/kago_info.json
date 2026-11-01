@@ -1,0 +1,155 @@
+{
+ "name": "MERIDIAN Kago robotaxi pod",
+ "id": "kago",
+ "class": "robotaxi",
+ "units": "metres",
+ "coords": "glTF: +Y up, the car faces +Z, +X is the car's left side",
+ "origin": "ground level under the centre of the body",
+ "nodes": {
+  "body": "Body",
+  "wheels": [
+   "Wheel_FL",
+   "Wheel_FR",
+   "Wheel_RL",
+   "Wheel_RR"
+  ],
+  "calipers": [
+   "Caliper_FL",
+   "Caliper_FR",
+   "Caliper_RL",
+   "Caliper_RR"
+  ],
+  "collider": "Collider",
+  "lights": [
+   "Headlight_L",
+   "Headlight_R",
+   "Taillight_L",
+   "Taillight_R"
+  ]
+ },
+ "wheel_radius": 0.33,
+ "wheel_width": 0.215,
+ "track": 1.56,
+ "wheelbase": 2.54,
+ "wheel_positions": {
+  "Wheel_FL": [
+   0.78,
+   0.33,
+   1.27
+  ],
+  "Wheel_FR": [
+   -0.78,
+   0.33,
+   1.27
+  ],
+  "Wheel_RL": [
+   0.78,
+   0.33,
+   -1.27
+  ],
+  "Wheel_RR": [
+   -0.78,
+   0.33,
+   -1.27
+  ]
+ },
+ "lights": {
+  "Headlight_L": {
+   "position": [
+    0.46,
+    0.746,
+    1.8613
+   ],
+   "direction": [
+    0,
+    0,
+    1
+   ],
+   "color": [
+    1.0,
+    0.93,
+    0.8
+   ]
+  },
+  "Headlight_R": {
+   "position": [
+    -0.46,
+    0.746,
+    1.8613
+   ],
+   "direction": [
+    0,
+    0,
+    1
+   ],
+   "color": [
+    1.0,
+    0.93,
+    0.8
+   ]
+  },
+  "Taillight_L": {
+   "position": [
+    0.46,
+    0.746,
+    -1.8613
+   ],
+   "direction": [
+    0,
+    0,
+    -1
+   ],
+   "color": [
+    1.0,
+    0.05,
+    0.03
+   ]
+  },
+  "Taillight_R": {
+   "position": [
+    -0.46,
+    0.746,
+    -1.8613
+   ],
+   "direction": [
+    0,
+    0,
+    -1
+   ],
+   "color": [
+    1.0,
+    0.05,
+    0.03
+   ]
+  }
+ },
+ "mass_kg": 1450,
+ "center_of_mass": [
+  0.0,
+  0.48,
+  -0.0
+ ],
+ "suspension_suggestion": {
+  "rest_length": 0.14,
+  "travel": 0.12,
+  "stiffness": 40.0,
+  "max_force": 10000.0,
+  "damping_compression": 1.0,
+  "damping_relaxation": 1.5,
+  "friction_slip": 2.6
+ },
+ "dimensions": {
+  "length": 3.848,
+  "width": 1.813,
+  "height": 1.936
+ },
+ "triangles": {
+  "lod0": 58649,
+  "lod0_body": 37169,
+  "lod0_wheel": 5094,
+  "lod0_caliper": 276,
+  "lod1": 10783,
+  "lod2": 2531,
+  "collider": 774
+ }
+}

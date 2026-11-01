@@ -1,0 +1,160 @@
+{
+ "name": "Ishimaru Kaiun 2t box truck",
+ "id": "kaiun",
+ "class": "truck",
+ "units": "metres",
+ "coords": "glTF: +Y up, the car faces +Z, +X is the car's left side",
+ "origin": "ground level under the centre of the body",
+ "nodes": {
+  "body": "Body",
+  "wheels": [
+   "Wheel_FL",
+   "Wheel_FR",
+   "Wheel_RL",
+   "Wheel_RR"
+  ],
+  "calipers": [
+   "Caliper_FL",
+   "Caliper_FR",
+   "Caliper_RL",
+   "Caliper_RR"
+  ],
+  "collider": "Collider",
+  "lights": [
+   "Headlight_L",
+   "Headlight_R",
+   "Taillight_L",
+   "Taillight_R"
+  ]
+ },
+ "wheel_radius": 0.368,
+ "wheel_width": 0.195,
+ "track": 1.5,
+ "wheelbase": 3.05,
+ "wheel_positions": {
+  "Wheel_FL": [
+   0.75,
+   0.368,
+   2.1
+  ],
+  "Wheel_FR": [
+   -0.75,
+   0.368,
+   2.1
+  ],
+  "Wheel_RL": [
+   0.75,
+   0.368,
+   -0.95
+  ],
+  "Wheel_RR": [
+   -0.75,
+   0.368,
+   -0.95
+  ]
+ },
+ "lights": {
+  "Headlight_L": {
+   "position": [
+    0.66,
+    0.735,
+    2.8625
+   ],
+   "direction": [
+    0,
+    0,
+    1
+   ],
+   "color": [
+    1.0,
+    0.93,
+    0.8
+   ]
+  },
+  "Headlight_R": {
+   "position": [
+    -0.66,
+    0.735,
+    2.8625
+   ],
+   "direction": [
+    0,
+    0,
+    1
+   ],
+   "color": [
+    1.0,
+    0.93,
+    0.8
+   ]
+  },
+  "Taillight_L": {
+   "position": [
+    0.8,
+    0.59,
+    -2.83
+   ],
+   "direction": [
+    0,
+    0,
+    -1
+   ],
+   "color": [
+    1.0,
+    0.05,
+    0.03
+   ]
+  },
+  "Taillight_R": {
+   "position": [
+    -0.8,
+    0.59,
+    -2.83
+   ],
+   "direction": [
+    0,
+    0,
+    -1
+   ],
+   "color": [
+    1.0,
+    0.05,
+    0.03
+   ]
+  }
+ },
+ "mass_kg": 3900,
+ "center_of_mass": [
+  0.0,
+  0.95,
+  0.6
+ ],
+ "suspension_suggestion": {
+  "rest_length": 0.18,
+  "travel": 0.14,
+  "stiffness": 70.0,
+  "max_force": 30000.0,
+  "damping_compression": 1.4,
+  "damping_relaxation": 2.0,
+  "friction_slip": 2.2
+ },
+ "dimensions": {
+  "length": 5.6,
+  "width": 2.352,
+  "height": 2.92,
+  "width_box": 1.95,
+  "width_cab": 1.76,
+  "height_box": 2.95
+ },
+ "triangles": {
+  "lod0": 72972,
+  "lod0_body": 40200,
+  "lod0_wheel": 5278,
+  "lod0_caliper": 276,
+  "lod1": 12520,
+  "lod2": 1965,
+  "collider": 132,
+  "lod0_wheel_rear": 10556
+ },
+ "rear_dual_wheels": true
+}
