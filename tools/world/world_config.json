@@ -60,9 +60,14 @@
      "avenue_every": [1, 1], "avenue_phase": [0, 0], "extent": [[950, 950], [1560, 1500]], "coast_margin": 60,
      "warp": 0.0, "drop": 0.0}
   ],
+  "variant_weights": {"building_a": {"love_hotel": 0.1, "hostess_bar": 0.1}, "building_b": {"cabaret_row": 0.1, "hostess_row": 0.1}, "overhead_sign": {"welcome": 0.0, "velvet_moon": 0.15, "peep_show": 0.15, "snack": 0.2}},
+  "crown_ads": ["billboard_meridian", "billboard_dreamlink", "billboard_noctis", "billboard_jobs", "billboard_score", "billboard_defaced", "billboard_ad_volt_rush", "billboard_ad_ramen_kira", "billboard_ad_star_gacha", "billboard_ad_sale_overload", "billboard_ad_rent_your_face", "billboard_ad_matcha_dating", "billboard_ad_breathe_plus", "billboard_ad_sakura_credit"],
   "districts": [
     {"name": "downtown", "island": "shinkai", "center": [-120, -150], "radius": 420, "style": "downtown",
-     "towers": {"density": 0.55, "height": [70, 230]}, "kit": {"building_c": 3, "building_a": 1, "building_b": 1}, "back_rows": 0.9},
+     "towers": {"density": 0.55, "height": [70, 230]}, "kit": {"building_c": 3, "building_a": 1, "building_b": 1}, "back_rows": 0.9,
+     "crown_ads": ["billboard_ad_meridian_platinum", "billboard_ad_meridian_future", "billboard_ad_hoshikawa_limbs", "billboard_ad_hoshikawa_home", "billboard_ad_hoshikawa_secure", "billboard_ad_kagerou_watch", "billboard_ad_kanzaki_hayate", "billboard_ad_dreamlink_premium", "billboard_ad_noctis_firstkiss", "billboard_ad_attention_market", "billboard_ad_organsure", "billboard_ad_sakura_credit", "billboard_ad_capsule_estate", "billboard_ad_breathe_plus", "billboard_ad_volt_rush", "billboard_ad_platinum_defaced"],
+     "variant_weights": {"building_c": {"platinum": 3, "showroom": 3}, "building_a": {"implants": 2, "capsules": 2, "love_hotel": 0, "hostess_bar": 0}, "building_b": {"pawn_row": 2, "night_market": 2, "cabaret_row": 0, "hostess_row": 0}, "bus_stop": {"platinum": 3, "hayate": 3, "breathe": 2, "volt": 2}, "holo_pylon": {"sale": 4, "volt": 2}, "data_kiosk": {"platinum": 3, "loan": 2, "attention": 2}}},
+    {"name": "yoimachi", "island": "shinkai", "center": [-720, -120], "radius": 190, "style": "dense", "towers": {"density": 0.0}, "kit": {"building_a": 3, "building_b": 3}, "back_rows": 0.85, "note": "宵町 Yoimachi: the red-light / entertainment district (love hotels, hostess bars, cabaret row), 200 m west of the spawn", "variant_weights": {"building_a": {"love_hotel": 7, "hostess_bar": 7, "evicted": 0.5, "implants": 0.3, "capsules": 1, "dream_den": 1}, "building_b": {"cabaret_row": 7, "hostess_row": 7, "dream_strip": 1, "seized": 0.3, "body_shop": 0.3}, "overhead_sign": {"welcome": 2, "velvet_moon": 5, "peep_show": 5, "snack": 5, "karaoke": 2, "capsule": 1}, "bus_stop": {"dolls": 4, "velvet_moon": 4, "intimate": 3, "matcha": 2}, "holo_pylon": {"hotel": 5, "dolls": 5, "sale": 1}, "data_kiosk": {"match": 4, "loan": 2, "attention": 1}}},
     {"name": "midtown", "island": "shinkai", "center": [-120, -150], "radius": 900, "style": "dense",
      "towers": {"density": 0.08, "height": [45, 90]}, "kit": {"building_a": 3, "building_b": 3, "building_c": 1}, "back_rows": 0.85},
     {"name": "old_town", "island": "shinkai", "center": [-120, -150], "radius": 9999, "style": "dense",
@@ -71,7 +76,7 @@
     {"name": "hillside", "island": "kagero_hills", "style": "hillside",
      "kit": {"building_a": 3, "building_b": 2, "building_c": 0.5}, "back_rows": 0.5, "spread": 4.0},
     {"name": "corporate", "island": "tenjin_corporate", "style": "corporate",
-     "towers": {"density": 0.7, "height": [90, 180]}, "kit": {"building_c": 1}, "back_rows": 0.3,
+     "towers": {"density": 0.7, "height": [90, 180]}, "kit": {"building_c": 1}, "back_rows": 0.3, "crown_ads": ["billboard_ad_meridian_platinum", "billboard_ad_meridian_future", "billboard_ad_hoshikawa_limbs", "billboard_ad_hoshikawa_home", "billboard_ad_hoshikawa_secure", "billboard_ad_kagerou_watch", "billboard_ad_kanzaki_hayate", "billboard_ad_dreamlink_premium", "billboard_ad_noctis_firstkiss", "billboard_ad_attention_market", "billboard_ad_organsure", "billboard_ad_sakura_credit", "billboard_ad_capsule_estate", "billboard_ad_breathe_plus", "billboard_ad_volt_rush", "billboard_ad_platinum_defaced"],
      "landmarks": [{"name": "hoshikawa_hq", "height": 310, "footprint": [46, 46], "variant": "hoshikawa", "near": [1205, 1260]},
                    {"name": "meridian_spire", "height": 265, "footprint": [38, 38], "variant": "meridian", "near": [1335, 1175]}]}
   ],

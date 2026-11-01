@@ -45,6 +45,7 @@ PROJECTS = "scenes/props/projects"
 TEXTURES = "scenes/props/textures"
 DEC = "assets/decals/props/"
 STORY = "assets/decals/story/"
+ADS = "assets/decals/ads/"         # tools/make_ad_decals.py
 TMP = Path(os.environ.get("TEMP", "/tmp")) / "pig_props"
 NO_HEIGHT = {"height": False}
 ROUGH_ONLY = {"base_color": False, "metallic": False, "height": False}
@@ -614,6 +615,20 @@ def r_bus_stop(t):
     t.variant("meridian", 5, disable=["ads", "posters"], enable=["ad_out_meridian", "ad_in_meridian", "paint pearl"])
     t.variant("security", 7, disable=["ads"], enable=["ad_out_security", "ad_in_security", "paint teal"])
     t.variant("defaced", 9, disable=["ads"], enable=["ad_out_defaced", "ad_in_noctis"])
+    # the ad-saturated city: lightbox ads (assets/decals/ads); the inside face often sells something else
+    lightboxes = {"dolls": ("lightbox_dolls", "lightbox_velvet_moon"), "velvet_moon": ("lightbox_velvet_moon", "lightbox_intimate"),
+                  "intimate": ("lightbox_intimate", "lightbox_dolls"), "matcha": ("lightbox_matcha", "lightbox_matcha"),
+                  "platinum": ("lightbox_platinum", "lightbox_platinum"), "hayate": ("lightbox_hayate", "lightbox_platinum"),
+                  "breathe": ("lightbox_breathe_plus", "lightbox_breathe_plus"), "volt": ("lightbox_volt_rush", "lightbox_ramen_kira"),
+                  "ramen": ("lightbox_ramen_kira", "lightbox_volt_rush")}
+    done = set()
+    for k, (out_img, in_img) in enumerate(lightboxes.values()):
+        for piece, face, img in (("ad_out", "+x", out_img), ("ad_in", "-x", in_img)):
+            if (piece, img) not in done:
+                done.add((piece, img))
+                t.on_part(ADS + img + ".png", piece, face, name=f"{piece}_{img}", variant="ads", enabled=False, emissive_strength=2.5, margin=0.0, fit="fill")
+    for k, (vname, (out_img, in_img)) in enumerate(lightboxes.items()):
+        t.variant(vname, 11 + 2 * k, disable=["ads"], enable=[f"ad_out_{out_img}", f"ad_in_{in_img}"])
 
 
 @recipe
@@ -671,6 +686,13 @@ def r_data_kiosk(t):
     t.variant("flagged", 3, disable=["screens"], enable=["screen_flagged", "alarm"])
     t.variant("dreamlink", 5, disable=["screens", "backs"], enable=["screen_dreamlink", "back_dreamlink"])
     t.variant("hacked", 7, disable=["screens"], enable=["screen_hacked", "tags"])
+    # the ad-saturated city: offers on the screen, a lightbox ad on the back (assets/decals/ads)
+    offers = {"platinum": ("kiosk_platinum_offer", "lightbox_platinum"), "loan": ("kiosk_loan_approved", "lightbox_volt_rush"),
+              "match": ("kiosk_match_found", "lightbox_matcha"), "attention": ("kiosk_attention_unlock", "lightbox_hayate")}
+    for k, (vname, (scr, back)) in enumerate(offers.items()):
+        t.on_part(ADS + scr + ".png", "screen", "+z", name=f"screen_{vname}", variant="screens", enabled=False, emissive_strength=3.2, margin=0.0, fit="fill")
+        t.on_part(ADS + back + ".png", "ad_back", "-z", name=f"back_{vname}", variant="backs", enabled=False, emissive_strength=2.0, margin=0.0, fit="fill")
+        t.variant(vname, 9 + 2 * k, disable=["screens", "backs"], enable=[f"screen_{vname}", f"back_{vname}"])
 
 
 @recipe
@@ -734,6 +756,17 @@ def r_holo_pylon(t):
     t.top_grime(0.25)
     t.variant("meridian", 3, disable=["holo"], enable=["b_0", "b_1", "b_2"])
     t.variant("hacked", 5, disable=["holo"], enable=["c_0", "c_1", "c_2"])
+    # the ad-saturated city: three frames of one loop around the pylon (assets/decals/ads holo_*)
+    loops = {"hotel": ["holo_hotel_1", "holo_hotel_2", "holo_hotel_3"], "dolls": ["holo_dolls_1", "holo_dolls_2", "holo_dolls_3"],
+             "sale": ["holo_sale_1", "holo_sale_2", "holo_sale_3"], "volt": ["holo_volt", "holo_gacha", "holo_sale_1"]}
+    for si, (sname, frames) in enumerate(loops.items()):
+        for i, a in enumerate(frames):
+            yaw = 120 * i
+            n = [-math.sin(math.radians(yaw)), 0, math.cos(math.radians(yaw))]
+            face = max((("+x", n[0]), ("-x", -n[0]), ("+z", n[2]), ("-z", -n[2])), key=lambda kv: kv[1])[0]
+            t.on_part(ADS + a + ".png", f"holo_{i}", face, name=f"{sname}_{i}", variant="holo", enabled=False, emissive_strength=5.0, margin=0.0, fit="fill",
+                      values={"opacity": 0.85}, channels=["base_color", "roughness", "metallic", "opacity"])
+        t.variant(sname, 7 + 2 * si, disable=["holo"], enable=[f"{sname}_{i}" for i in range(3)])
 
 
 @recipe

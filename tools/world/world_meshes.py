@@ -434,6 +434,7 @@ class Kit:
         self.cache = {}
         self.towers = {t["mesh"]: t for t in world.get("towers", [])}
         self.story = os.path.join(root, "assets", "decals", "story")
+        self.ads = os.path.join(root, "assets", "decals", "ads")          # tools/make_ad_decals.py
 
     def get(self, key):
         if key in self.cache:
@@ -513,9 +514,12 @@ class Kit:
         for _ in range(rng.randint(2, 5)):
             bx, by = rng.uniform(-w / 2 + 3, w / 2 - 3), rng.uniform(-d / 2 + 3, d / 2 - 3)
             b.box((bx, by, top + 1.2), (rng.uniform(2, 5), rng.uniform(2, 5), 2.4), 1)
-        img = {"hoshikawa": "billboard_score", "meridian": "billboard_meridian"}.get(crown) or rng.choice(
+        img = {"hoshikawa": "billboard_score", "meridian": "billboard_meridian"}.get(crown) or spec.get("ad") or rng.choice(
             ["billboard_meridian", "billboard_dreamlink", "billboard_noctis", "billboard_jobs", "billboard_score", "billboard_defaced"])
-        return b.finish(key, [M["facade_default"], M["roof"], M["band"], M["decal_fn"](os.path.join(self.story, img + ".png"))])
+        src = os.path.join(self.ads, img + ".png")
+        if not os.path.isfile(src):
+            src = os.path.join(self.story, img + ".png")
+        return b.finish(key, [M["facade_default"], M["roof"], M["band"], M["decal_fn"](src)])
 
     def warehouse(self, key):
         L, W, H = [float(v) for v in key.split("_")[1].split("x")]

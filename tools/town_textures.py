@@ -39,6 +39,7 @@ MCP = Path(os.environ.get("PIGMENT_MCP", ROOT / "target" / "release" / "pigment-
 OUT = ROOT / "scenes" / "town"
 DECALS = "assets/decals/"
 STORY = "assets/decals/story/"
+ADS = "assets/decals/ads/"             # tools/make_ad_decals.py (the ad-saturated city)
 TMP = Path(os.environ.get("PIG_TMP", Path.home() / "AppData" / "Local" / "Temp" / "pig"))
 PREVIEWS = TMP / "town_variants"
 # texture size per asset (variants multiply the textures Blender has to hold)
@@ -243,13 +244,23 @@ NEON = {
     "sign_hoshikawa_security": [0.75, 0.9, 1.0], "sign_meridian_kiosk": [0.4, 0.9, 1.0],
     "blade_kioku": [1.0, 0.6, 0.15], "blade_gitai": [0.2, 0.9, 1.0], "blade_capsule": [0.6, 0.35, 1.0],
     "blade_soba": [1.0, 0.4, 0.1], "blade_yume": [1.0, 0.3, 0.75], "blade_pachinko": [0.4, 1.0, 0.3],
+    # red-light district neon (assets/decals/ads)
+    "sign_velvet_moon": [1.0, 0.25, 0.65], "sign_club_sapphire": [0.35, 0.55, 1.0], "sign_cabaret_luna": [1.0, 0.75, 0.35],
+    "sign_dolls_kisaragi": [0.85, 0.75, 1.0], "sign_peep_show": [1.0, 0.15, 0.35], "sign_host_zero": [1.0, 0.82, 0.4],
+    "sign_snack_yocho": [1.0, 0.45, 0.7], "sign_welcome_yoimachi": [1.0, 0.35, 0.6],
+    "blade_hotel": [1.0, 0.25, 0.65], "blade_kyukei": [1.0, 0.5, 0.8], "blade_snack": [1.0, 0.45, 0.7],
+    "blade_cabaret": [1.0, 0.75, 0.35], "blade_club": [0.35, 0.55, 1.0],
 }
 
 AXES = {"+x": (1, 0, 0), "-x": (-1, 0, 0), "+y": (0, 1, 0), "-y": (0, -1, 0), "+z": (0, 0, 1), "-z": (0, 0, -1)}
 
 
 def image_path(image):
-    return (DECALS if image.startswith("logo") else STORY) + image + ".png"
+    if image.startswith("logo"):
+        return DECALS + image + ".png"
+    if (ROOT / ADS / (image + ".png")).exists():
+        return ADS + image + ".png"
+    return STORY + image + ".png"
 
 
 def image_aspect(image):
@@ -300,15 +311,21 @@ def on_wall(kind, at, facing, width, **kw):
     return dict(kind=kind, position=list(at), normal=list(AXES[facing]), width=width, **kw)
 
 
-def scatter_slot(parts_ids, region, seed, count=4):
-    """Posters: scattered on blank street-level wall (`fit`: never over an opening or an edge)."""
-    return {"kind": "poster", "scatter": {"parts": parts_ids, "region": region, "count": count, "seed": seed}}
+def scatter_slot(parts_ids, region, seed, count=4, **kw):
+    """Posters: scattered on blank street-level wall (`fit`: never over an opening or an edge).
+    kw: `size` [min, max] m and `spacing` (min distance between centres): a dense, overlapping
+    ad wall is more, smaller posters closer than their width."""
+    return {"kind": "poster", "scatter": dict(parts=parts_ids, region=region, count=count, seed=seed, **kw)}
 
 
 def look(kind, image):
     """Paper tears and fades, paint is grungy, enamel barely ages, neon glows."""
     if kind in ("shop", "blade", "corp") and image in NEON:            # white glyphs: tint + glow
         return dict(tint=NEON[image], emissive_strength=6.0, material="Neon pink")
+    if kind == "blade" and image.startswith("banner"):                 # full-colour lit banner on a blade face
+        return dict(emissive_strength=1.8, material="White plastic")
+    if kind == "window":                                               # cut vinyl lettering on shop glass
+        return dict(material="White plastic", opacity=0.95, fade=0.1, wear_scale=6.0, values={"opacity": 1.0, "transmission": 0.0})
     if kind == "billboard":                                            # backlit corporate ads
         return dict(emissive_strength=1.6, material="White plastic")
     if kind == "logo":
@@ -329,7 +346,8 @@ def placement(slot, image):
         s = slot["scatter"]
         imgs = image if isinstance(image, list) else [image]
         a = {"images": [image_path(i) for i in imgs], "count": s["count"], "seed": s["seed"], "parts": s["parts"],
-             "region": s["region"], "height": [0.8, 2.2], "size": [0.5, 0.62], "rotation_jitter": 4, "min_spacing": 0.38, "fit": True}
+             "region": s["region"], "height": [0.8, 2.2], "size": s.get("size", [0.5, 0.62]), "rotation_jitter": 4,
+             "min_spacing": s.get("spacing", 0.38), "fit": True}
         a.update(look("poster", imgs[0]))
         return "scatter_decals", a
     a = {"image": image_path(image), "position": slot["position"], "normal": slot["normal"]}
@@ -345,7 +363,7 @@ def placement(slot, image):
     return "project_decal", a
 
 
-KIND_ORDER = {"billboard": 0, "logo": 0, "corp": 0, "shop": 0, "blade": 0, "ghost": 1, "poster": 2, "plate": 3, "graffiti": 4}
+KIND_ORDER = {"billboard": 0, "logo": 0, "corp": 0, "shop": 0, "blade": 0, "window": 0, "ghost": 1, "poster": 2, "plate": 3, "graffiti": 4}
 
 
 def story(slots, variants):
@@ -436,6 +454,11 @@ def a_slots(parts):
         "tag_w": on_wall("graffiti", (-4.0, 1.6, -2.4), "-x", 2.6, rotation=-3),
         "posters_w": scatter_slot(shell, {"min": [-4.3, 0.0, -2.6], "max": [-3.7, 3.0, 0.6]}, seed=5),
         "posters_e": scatter_slot(shell, {"min": [3.7, 0.0, 1.2], "max": [4.3, 3.0, 4.6]}, seed=9, count=3),
+        # ads (tools/make_ad_decals.py): the shop window's vinyl, a dense overlapping ad wall on the
+        # blank back wall (clear of the pipes at x 0.9 / -3.55) and a second cluster on the west wall
+        "window": on_part("window", parts, (-2.0, 1.4, 4.43), (3.06, 1.86, 0.012), "+z", margin=0.1),
+        "ads_back": scatter_slot(shell, {"min": [-3.0, 0.0, -5.3], "max": [0.3, 3.0, -4.7]}, seed=31, count=7, size=[0.5, 0.6], spacing=0.32),
+        "ads_w": scatter_slot(shell, {"min": [-4.3, 0.0, 1.0], "max": [-3.7, 3.0, 4.4]}, seed=33, count=6, size=[0.5, 0.6], spacing=0.32),
     }
 
 
@@ -443,15 +466,27 @@ def blade(img):
     return {"blade_e": img, "blade_w": img}
 
 
+# ad clusters (assets/decals/ads): paper layered on paper, the resistance pasting its answers over the glamour
+ADS_STREET = ["poster_ad_volt_rush", "flyer_money_today", "poster_ad_sale_now", "sticker_score_qr", "poster_ad_hoshicoin", "flyer_kidney_cash", "poster_ad_torn_sale_hostess"]
+ADS_CORP = ["poster_ad_platinum_citizen", "poster_ad_meridian_lotto", "poster_ad_unplug_over_platinum", "poster_ad_hoshikawa_limbs", "poster_ad_aqua_pure", "sticker_rate_street"]
+ADS_FOOD = ["poster_ad_ramen_retro", "poster_ad_pachinko_galaxy", "flyer_grand_open", "poster_ad_noctis_sleep", "flyer_rent_face", "poster_ad_volt_rush"]
+ADS_LOVE = ["poster_ad_velvet_moon_rates", "sticker_hotel_heart", "sticker_call_velvet", "poster_ad_torn_layers", "poster_ad_rouge9_lips",
+            "sticker_call_angel", "poster_ad_dreamlink_intimate"]
+ADS_CLUB = ["poster_ad_club_sapphire", "poster_ad_host_zero", "flyer_missing_kei", "poster_ad_missing_over_hostess", "sticker_call_moon",
+            "poster_ad_who_owns_dolls", "flyer_snack_bar"]
+ADS_SHOW = ["poster_ad_rose_theatre", "poster_ad_cabaret_hanabi", "poster_ad_peep_show", "poster_ad_noir_satin_legs", "sticker_call_stiletto",
+            "poster_ad_not_for_sale", "flyer_dream_bootleg"]
+
 A_VARIANTS = [
     {"name": "memory_pawn", "seed": 11, "on": {**blade("blade_kioku"), "shop": "sign_memory_pawn", "roof": "billboard_noctis",
-                                               "tag_e": "graffiti_who_owns", "plate": "plate_observed", "posters_w": ["poster_missing_aiko", "poster_missing_ren"]}},
-    {"name": "implants", "seed": 23, "on": {**blade("blade_gitai"), "shop": "sign_implant_repair", "roof": "billboard_score",
-                                            "tag_w": "graffiti_not_data", "plate": "plate_loitering", "posters_w": ["poster_unplug"]}},
-    {"name": "capsules", "seed": 37, "on": {**blade("blade_capsule"), "shop": "sign_capsule_2h", "roof": "billboard_dreamlink", "back": "billboard_jobs",
-                                            "tag_e": "graffiti_unplug", "plate": "plate_curfew", "posters_w": ["poster_missing_mika"]}},
-    {"name": "soba", "seed": 41, "on": {**blade("blade_soba"), "shop": "sign_dumplings", "roof": "billboard_meridian", "ghost": "billboard_noctis",
-                                        "tag_w": "graffiti_lying", "plate": "plate_observed", "posters_e": ["poster_missing_ren", "poster_unplug"]}},
+                                               "tag_e": "graffiti_who_owns", "plate": "plate_observed", "posters_w": ["poster_missing_aiko", "poster_missing_ren"],
+                                               "ads_back": ADS_STREET}},
+    {"name": "implants", "seed": 23, "on": {**blade("blade_gitai"), "shop": "sign_implant_repair", "roof": "billboard_ad_hoshikawa_limbs", "back": "billboard_ad_sakura_credit",
+                                            "tag_w": "graffiti_not_data", "plate": "plate_loitering", "posters_w": ["poster_unplug"], "ads_back": ADS_CORP}},
+    {"name": "capsules", "seed": 37, "on": {**blade("blade_capsule"), "shop": "sign_capsule_2h", "roof": "billboard_dreamlink", "back": "billboard_ad_capsule_estate",
+                                            "tag_e": "graffiti_unplug", "plate": "plate_curfew", "posters_w": ["poster_missing_mika"], "ads_back": ADS_FOOD}},
+    {"name": "soba", "seed": 41, "on": {**blade("blade_soba"), "shop": "sign_dumplings", "roof": "billboard_ad_ramen_kira", "ghost": "billboard_noctis",
+                                        "tag_w": "graffiti_lying", "plate": "plate_observed", "posters_e": ["poster_missing_ren", "poster_unplug"], "ads_w": ADS_FOOD}},
     {"name": "dream_den", "seed": 53, "on": {**blade("blade_yume"), "shop": "sign_dreams", "roof": "billboard_jobs", "back": "billboard_dreamlink",
                                              "tag_e": "stencil_eye_crossed", "plate": "plate_curfew", "posters_w": ["poster_unplug", "poster_missing_aiko"]}},
     # evicted: the shop is gone (dark fascia), a seizure plate, an old ghost ad, everything torn
@@ -459,7 +494,14 @@ A_VARIANTS = [
                                                            "tag_e": "graffiti_unplug", "tag_w": "stencil_eye_crossed",
                                                            "posters_w": ["poster_missing_mika", "poster_unplug", "poster_missing_ren"]}},
     {"name": "fixers", "seed": 79, "on": {**blade("blade_pachinko"), "shop": "sign_score_reset", "roof": "billboard_meridian", "back": "billboard_score",
-                                          "tag_w": "graffiti_who_owns", "plate": "plate_loitering", "posters_e": ["poster_missing_ren"]}},
+                                          "tag_w": "graffiti_who_owns", "plate": "plate_loitering", "posters_e": ["poster_missing_ren"], "ads_back": ADS_STREET}},
+    # the red-light district (Yoimachi): a love hotel and a hostess bar, wallpapered with their own ads
+    {"name": "love_hotel", "seed": 91, "on": {"blade_e": "banner_velvet_moon", "blade_w": "blade_kyukei", "shop": "sign_velvet_moon",
+                                              "roof": "billboard_ad_velvet_moon", "back": "billboard_ad_dreamlink_intimate", "window": "window_hotel_rates",
+                                              "tag_e": "graffiti_who_owns", "plate": "plate_observed", "ads_back": ADS_LOVE, "ads_w": ADS_SHOW}},
+    {"name": "hostess_bar", "seed": 97, "on": {"blade_e": "banner_club_sapphire", "blade_w": "blade_club", "shop": "sign_club_sapphire",
+                                               "roof": "billboard_ad_dolls_kisaragi", "back": "billboard_ad_noir_satin", "window": "window_members_only",
+                                               "tag_w": "graffiti_lying", "plate": "plate_curfew", "ads_back": ADS_CLUB, "ads_w": ADS_LOVE}},
 ]
 
 
@@ -492,12 +534,18 @@ def b_slots(parts):
         "back": on_wall("graffiti", (-1.5, 1.7, -6.0), "-z", 3.4, rotation=1),
         "posters_w": scatter_slot(shell, {"min": [-8.3, 0.0, -1.2], "max": [-7.7, 3.0, 2.2]}, seed=7),
         "posters_e": scatter_slot(shell, {"min": [7.7, 0.0, 1.6], "max": [8.3, 3.0, 5.0]}, seed=13, count=3),
+        # ads: vinyl on the two glazed bays, dense ad walls on the blank back wall (clear of the graffiti) and the east wall
+        "window1": on_part("window", parts, (-6.5, 1.8, 4.03), (1.76, 1.66, 0.012), "+z", margin=0.06),
+        "window2": on_part("window", parts, (-1.3, 1.8, 4.03), (1.76, 1.66, 0.012), "+z", margin=0.06),
+        "ads_back": scatter_slot(shell, {"min": [0.8, 0.0, -6.3], "max": [7.0, 3.0, -5.7]}, seed=41, count=9, size=[0.5, 0.6], spacing=0.32),
+        "ads_e": scatter_slot(shell, {"min": [7.7, 0.0, -5.0], "max": [8.3, 3.0, 0.8]}, seed=43, count=8, size=[0.5, 0.6], spacing=0.32),
     }
 
 
 B_VARIANTS = [
     {"name": "noodle_row", "seed": 12, "on": {"bay1": "sign_dumplings", "bay2": "sign_karaoke", "bay3": "sign_charge", "bay4": "sign_offgrid",
-                                              "roof": "billboard_meridian", "tag_e": "graffiti_unplug", "posters_w": ["poster_missing_aiko"], "plate": "plate_curfew"}},
+                                              "roof": "billboard_ad_volt_rush", "tag_e": "graffiti_unplug", "posters_w": ["poster_missing_aiko"], "plate": "plate_curfew",
+                                              "ads_back": ADS_FOOD}},
     {"name": "body_shop", "seed": 24, "on": {"bay1": "sign_implant_repair", "bay2": "sign_organ_credit", "bay3": "sign_clinic", "bay4": "sign_jailbreak",
                                              "roof": "billboard_noctis", "tag_w": "graffiti_lying", "posters_e": ["poster_unplug"], "plate": "plate_loitering"}},
     {"name": "dream_strip", "seed": 36, "on": {"bay1": "sign_dreams", "bay2": "sign_capsule_2h", "bay3": "sign_karaoke", "bay4": "sign_memory_pawn",
@@ -505,13 +553,23 @@ B_VARIANTS = [
     {"name": "score_fixers", "seed": 48, "on": {"bay1": "sign_score_reset", "bay2": "sign_jailbreak", "bay3": "sign_dumplings", "bay4": "sign_charge",
                                                 "roof": "billboard_score", "tag_w": "graffiti_not_data", "back": "graffiti_unplug", "posters_e": ["poster_missing_ren"], "plate": "plate_loitering"}},
     {"name": "pawn_row", "seed": 60, "on": {"bay1": "sign_memory_pawn", "bay2": "sign_offgrid", "bay3": "sign_implant_repair", "bay4": "sign_dreams",
-                                            "roof": "billboard_jobs", "tag_e": "stencil_eye_crossed", "posters_w": ["poster_unplug"], "plate": "plate_curfew"}},
+                                            "roof": "billboard_ad_sakura_credit", "tag_e": "stencil_eye_crossed", "posters_w": ["poster_unplug"], "plate": "plate_curfew",
+                                            "ads_back": ADS_STREET, "ads_e": ADS_CORP}},
     # seized: two shops still trading, the shuttered bay dark, a seizure plate by the stairs
     {"name": "seized", "seed": 72, "lights": "few", "on": {"bay1": "sign_clinic", "bay4": "sign_organ_credit",
                                                           "roof": "billboard_defaced", "tag_e": "graffiti_unplug", "tag_w": "graffiti_who_owns", "back": "graffiti_lying",
                                                           "posters_w": ["poster_missing_aiko", "poster_missing_mika"], "plate": "plate_property"}},
     {"name": "night_market", "seed": 84, "on": {"bay1": "sign_organ_credit", "bay2": "sign_score_reset", "bay3": "sign_capsule_2h", "bay4": "sign_clinic",
-                                                "roof": "billboard_meridian", "tag_w": "stencil_eye_crossed", "posters_e": ["poster_missing_ren", "poster_missing_aiko"], "plate": "plate_observed"}},
+                                                "roof": "billboard_ad_star_gacha", "tag_w": "stencil_eye_crossed", "posters_e": ["poster_missing_ren", "poster_missing_aiko"], "plate": "plate_observed",
+                                                "ads_back": ADS_STREET}},
+    # the red-light district (Yoimachi)
+    {"name": "cabaret_row", "seed": 96, "on": {"bay1": "sign_cabaret_luna", "bay2": "sign_peep_show", "bay3": "sign_host_zero", "bay4": "sign_snack_yocho",
+                                               "roof": "billboard_ad_cabaret_luna", "window1": "window_now_hiring", "window2": "window_hearts",
+                                               "tag_w": "graffiti_who_owns", "plate": "plate_loitering", "posters_w": ADS_CLUB[:4],
+                                               "ads_back": ADS_SHOW, "ads_e": ADS_LOVE}},
+    {"name": "hostess_row", "seed": 108, "on": {"bay1": "sign_club_sapphire", "bay2": "sign_dolls_kisaragi", "bay3": "sign_velvet_moon", "bay4": "sign_karaoke",
+                                                "roof": "billboard_ad_noir_satin", "window1": "window_members_only", "window2": "window_hotel_rates",
+                                                "tag_e": "graffiti_unplug", "plate": "plate_observed", "ads_back": ADS_CLUB, "ads_e": ADS_SHOW}},
 ]
 
 
@@ -561,6 +619,13 @@ C_VARIANTS = [
                                              "crown_e": "billboard_noctis", "crown_w": "billboard_defaced", "crown_s": "billboard_dreamlink",
                                              "plate": "plate_curfew", "tag_e": "graffiti_unplug", "tag_w": "graffiti_not_data",
                                              "posters_w": ["poster_unplug", "poster_missing_aiko"]}},
+    # downtown's corporate ad crowns
+    {"name": "platinum", "seed": 52, "on": {"lobby": "logo_hoshikawa_dynamics", "band": "sign_meridian_kiosk", "crown_n": "billboard_ad_meridian_platinum",
+                                            "crown_e": "billboard_ad_meridian_future", "crown_s": "billboard_ad_hoshikawa_secure", "crown_w": "billboard_ad_platinum_defaced",
+                                            "plate": "plate_observed", "tag_e": "graffiti_who_owns", "posters_w": ADS_CORP[:4]}},
+    {"name": "showroom", "seed": 65, "on": {"lobby": "logo_hoshikawa_dynamics", "band": "sign_hoshikawa_security", "crown_n": "billboard_ad_kanzaki_hayate",
+                                            "crown_e": "billboard_ad_kagerou_watch", "crown_s": "billboard_ad_hoshikawa_home", "crown_w": "billboard_ad_attention_market",
+                                            "plate": "plate_property", "tag_w": "graffiti_not_data", "posters_w": ADS_STREET[:4]}},
 ]
 
 
@@ -643,6 +708,11 @@ SIGN_VARIANTS = [
     ("organ_credit", "sign_organ_credit", "sign_organ_credit"),
     ("karaoke", "sign_karaoke", "sign_dreams"),
     ("charging", "sign_charge", "sign_offgrid"),         # a charging stall next to an off-grid repair shop
+    # the red-light district hanging signs (assets/decals/ads)
+    ("welcome", "sign_welcome_yoimachi", "sign_welcome_yoimachi"),   # the district welcome sign over the street
+    ("velvet_moon", "sign_velvet_moon", "sign_velvet_moon"),
+    ("peep_show", "sign_peep_show", "sign_dolls_kisaragi"),
+    ("snack", "sign_snack_yocho", "sign_host_zero"),
 ]
 
 

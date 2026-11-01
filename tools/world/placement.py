@@ -200,6 +200,17 @@ def edge_island(cfg, net, e):
     return next(x["island"] for x in cfg["grids"] if x["name"] == g)
 
 
+def variant_weights(cfg, dist, asset):
+    """Weights for an asset's texture variants in a district: the world default
+    (cfg["variant_weights"]) overridden by the district's own ("variant_weights");
+    variants not listed weigh 1. A district can thus be a red-light district
+    (love hotels, cabarets) or ad-heavy (corporate crowns) without new meshes."""
+    w = dict((cfg.get("variant_weights") or {}).get(asset, {}))
+    if dist:
+        w.update((dist.get("variant_weights") or {}).get(asset, {}))
+    return w
+
+
 def pick(rng, weights):
     ks = list(weights)
     return rng.choices(ks, [weights[k] for k in ks])[0]
@@ -211,14 +222,21 @@ def place_all(cfg, hf, net, masks, bridges, walls, log):
     P = Placer(cfg, hf, net, rng)
     var = variants_on_disk(root)
     last_var = {}
+    # variant picks draw from their own stream: adding a variant never moves a building
+    vrng = random.Random(cfg["seed"] * 31 + 7)
 
-    def variant(asset):
+    def variant(asset, dist=None):
         vs = var.get(asset) or []
         if not vs:
             return None
-        v = rng.choice(vs)
-        if v == last_var.get(asset) and len(vs) > 1:
-            v = rng.choice([x for x in vs if x != v])
+        w = variant_weights(cfg, dist, asset)
+        ws = [max(0.0, float(w.get(x, 1.0))) for x in vs]
+        if sum(ws) <= 0:
+            ws = [1.0] * len(vs)
+        v = vrng.choices(vs, ws)[0]
+        if v == last_var.get(asset) and sum(1 for x in ws if x > 0) > 1:
+            rest = [(x, k) for x, k in zip(vs, ws) if x != v and k > 0]
+            v = vrng.choices([x for x, _ in rest], [k for _, k in rest])[0]
         last_var[asset] = v
         return v
     towers = []
@@ -239,6 +257,13 @@ def place_all(cfg, hf, net, masks, bridges, walls, log):
             lo, hi = district.get("towers", {}).get("height", [60, 120])
             for k in range(10):
                 lib.append(make_tower(rng.choice([24, 28, 32, 36, 40]), rng.choice([24, 28, 32, 36]), lo + (hi - lo) * (k + rng.random()) / 10))
+                spec = lib[-1]
+                if spec["crown"] == "billboard":
+                    # the crown billboard's ad, from the district's list (downtown: corporate ads)
+                    ads = district.get("crown_ads") or cfg.get("crown_ads") or []
+                    if ads:
+                        spec["ad"] = vrng.choice(ads)
+                        spec["mesh"] += "_" + spec["ad"].replace("billboard_ad_", "").replace("billboard_", "")
             library[district["name"]] = lib
         return rng.choice(lib)
 
@@ -347,14 +372,14 @@ def place_all(cfg, hf, net, masks, bridges, walls, log):
                     continue
                 base, lo, corners = site
                 P.claim(corners)
-                inst = P.add(kind, (cn.x, cn.y, base), rz, dist["name"], variant=variant(kind), footing=round(base - lo + 0.8, 2), kind="building")
+                inst = P.add(kind, (cn.x, cn.y, base), rz, dist["name"], variant=variant(kind, dist), footing=round(base - lo + 0.8, 2), kind="building")
                 bump(dist["name"], "buildings")
                 if rng.random() < (0.7 if dist["style"] != "corporate" else 0.2):
                     lx = rng.uniform(xmin + 1.2, xmax - 1.2)
                     ly = ymin + 1.2
                     cs, sn = math.cos(rz), math.sin(rz)
                     P.add("overhead_sign", (cn.x + lx * cs - ly * sn, cn.y + lx * sn + ly * cs, base + rng.uniform(4.0, 7.5)), rz, dist["name"],
-                          variant=variant("overhead_sign"), kind="sign")
+                          variant=variant("overhead_sign", dist), kind="sign")
                 gap = rng.uniform(0.3, 1.2) if dist["style"] in ("dense", "downtown") else rng.uniform(2.0, 9.0)
                 if rng.random() < 0.22:
                     gap = rng.uniform(2.6, 4.0)              # alley
@@ -402,7 +427,7 @@ def place_all(cfg, hf, net, masks, bridges, walls, log):
                 st = P.site(p, rz, KIT[kind]["ext"], spread=dist.get("spread", 3.0) * 2, clear=0.6)
                 if st:
                     P.claim(st[2])
-                    P.add(kind, (p.x, p.y, st[0]), rz, dist["name"], variant=variant(kind), footing=round(st[0] - st[1] + 0.8, 2), kind="building")
+                    P.add(kind, (p.x, p.y, st[0]), rz, dist["name"], variant=variant(kind, dist), footing=round(st[0] - st[1] + 0.8, 2), kind="building")
                     bump(dist["name"], "buildings")
 
     # ---- the port: cranes on the quays, container yards, warehouses, light masts
@@ -648,7 +673,7 @@ def place_trees(cfg, P, hf, masks, rng, log):
 # ---------------------------------------------------------------- street props kit (assets/props, tools/props/scatter.py)
 
 PROP_DISTRICT = {"downtown": "downtown", "midtown": "commercial", "old_town": "market", "hillside": "residential",
-                 "port": "industrial", "corporate": "luxury"}
+                 "port": "industrial", "corporate": "luxury", "yoimachi": "market"}
 SIGNAL_PROPS = ("traffic_light_pole", "traffic_light_mast", "ped_signal")
 
 
@@ -760,7 +785,17 @@ def scatter_street_props(cfg, P, net, towers, rng, log, density_scale=0.8):
             x0, x1, z0, z1 = min(xs) - 10, max(xs) + 10, min(zs) - 10, max(zs) + 10
             c["blocked"] = [b for b in blocked if x0 <= b["pos"][0] <= x1 and z0 <= b["pos"][2] <= z1]
         out = sc.scatter_props(c, names, density_scale=density_scale)
+        dcfg = next((d for d in cfg["districts"] if d["name"] == dname), None)
+        prng = random.Random(cfg["seed"] * 17 + len(dname))
         for pl in out:
+            # district ad mix: re-pick the prop's variant with the district's weights (bus-stop ads, holo loops, kiosk screens)
+            pw = variant_weights(cfg, dcfg, pl["prop"]) if dcfg else {}
+            pv = ((index["props"].get(pl["prop"]) or {}).get("variants") or [])
+            if pw and pv:
+                names_v = [v["name"] for v in pv]
+                ws = [max(0.0, float(pw.get(n_, 1.0))) for n_ in names_v]
+                if sum(ws) > 0:
+                    pl["variant"] = prng.choices(names_v, ws)[0]
             gx, gy, gz = pl["pos"]
             P.add(pl["prop"], (gx, -gz, gy), pl["yaw"], dname, variant=pl.get("variant") if pl.get("variant") != "default" else None,
                   scale=pl.get("scale", (1, 1, 1)), kind="prop", slot=pl.get("slot"), file="assets/props/" + pl["file"])
