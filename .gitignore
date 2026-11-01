@@ -31,3 +31,7 @@ scenes/world/verify.json
 
 # city build cache: stamps, content-addressed objects, logs (tools/city)
 .citycache/
+
+# ground masks (regenerate: python tools/world/ground_masks.py)
+scenes/world/ground_masks*
+scenes/world/ground_spots.json
