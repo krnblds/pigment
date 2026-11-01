@@ -411,7 +411,12 @@ func _shots(dir: String) -> void:
 	var back: Vector3 = kerb.pos_at(maxf(0.0, kerb.length - 62.0))
 	var side: Vector3 = Vector3.UP.cross(ap.dir).normalized() * -T.graph.kerb_sign()
 	cam.global_position = back + side * 4.5 + Vector3.UP * 3.2
-	cam.look_at(end + Vector3.UP * 1.5, Vector3.UP)
+	# frame the queue and the red signal head at its front
+	var look_to: Vector3 = end + Vector3.UP * 1.5
+	for h in T.signals.ctl[J.id].heads:
+		if h.approach == ai:
+			look_to = (end + Vector3.UP * 1.2).lerp(h.root.global_position + Vector3.UP * 3.0, 0.5)
+	cam.look_at(look_to, Vector3.UP)
 	cam.fov = 50.0
 	await _wait(7.0)
 	await _shot(dir, "02_red_light_jam")
