@@ -588,6 +588,14 @@ impl PigmentApp {
                         self.insert_layer(l);
                         ui.close();
                     }
+                    if ui.button("Folder").on_hover_text("Group layers: the folder's opacity and mask apply to everything inside").clicked() {
+                        self.add_folder();
+                        ui.close();
+                    }
+                    if ui.button("Smart material from file...").on_hover_text("Apply a saved .pigsmart folder").clicked() {
+                        self.load_smart_dialog();
+                        ui.close();
+                    }
                     ui.separator();
                     ui.label(RichText::new("Smart materials (several layers)").size(11.0).color(MUTED));
                     for name in smart_material_names() {
@@ -622,6 +630,13 @@ impl PigmentApp {
         let n = self.doc.layers.len();
         let mut select: Option<(LayerId, bool)> = None;
         for i in (0..n).rev() {
+            let lid = self.doc.layers[i].id;
+            if self.doc.is_hidden_in_panel(lid) {
+                continue; // inside a collapsed folder
+            }
+            let depth = self.doc.depth(lid);
+            let kids = self.doc.children_of(Some(lid)).len();
+            let shown = self.doc.effectively_visible(lid);
             let selected = self.selected == Some(self.doc.layers[i].id);
             let paint_mask = self.paint_mask;
             let l = &mut self.doc.layers[i];
@@ -634,6 +649,27 @@ impl PigmentApp {
                 .show(ui, |ui| {
                     ui.set_width(ui.available_width());
                     ui.horizontal(|ui| {
+                        // folder nesting
+                        if depth > 0 {
+                            let (r, _) = ui.allocate_exact_size(egui::vec2(14.0 * depth as f32 - 4.0, 30.0), egui::Sense::hover());
+                            for k in 0..depth {
+                                let x = r.left() + 5.0 + 14.0 * k as f32;
+                                ui.painter().line_segment([egui::pos2(x, r.top() - 4.0), egui::pos2(x, r.bottom() + 4.0)], Stroke::new(1.0, Color32::from_gray(70)));
+                            }
+                        }
+                        if let LayerKind::Folder { collapsed } = &mut l.kind {
+                            let (r, resp) = ui.allocate_exact_size(egui::vec2(12.0, 16.0), egui::Sense::click());
+                            let c = r.center();
+                            let pts = if *collapsed {
+                                vec![egui::pos2(c.x - 3.0, c.y - 5.0), egui::pos2(c.x + 4.0, c.y), egui::pos2(c.x - 3.0, c.y + 5.0)]
+                            } else {
+                                vec![egui::pos2(c.x - 5.0, c.y - 3.0), egui::pos2(c.x + 5.0, c.y - 3.0), egui::pos2(c.x, c.y + 4.0)]
+                            };
+                            ui.painter().add(egui::Shape::convex_polygon(pts, Color32::from_gray(190), Stroke::NONE));
+                            if resp.on_hover_text(if *collapsed { "Expand folder" } else { "Collapse folder" }).clicked() {
+                                *collapsed = !*collapsed;
+                            }
+                        }
                         // visibility
                         let (r, resp) = ui.allocate_exact_size(egui::vec2(16.0, 16.0), egui::Sense::click());
                         if l.visible {
@@ -656,6 +692,14 @@ impl PigmentApp {
                                     p.line_segment([egui::pos2(r.left() + 6.0, y + 4.0), egui::pos2(r.right() - 6.0, y - 2.0)], Stroke::new(2.0, Color32::from_gray(150 + k * 30)));
                                 }
                             }
+                            LayerKind::Folder { .. } => {
+                                let p = ui.painter();
+                                let body = egui::Rect::from_min_max(egui::pos2(r.left() + 2.0, r.top() + 9.0), egui::pos2(r.right() - 2.0, r.bottom() - 4.0));
+                                let tab = egui::Rect::from_min_max(egui::pos2(r.left() + 2.0, r.top() + 5.0), egui::pos2(r.left() + 13.0, r.top() + 11.0));
+                                p.rect_filled(tab, CornerRadius::same(2), ACCENT_DIM);
+                                p.rect_filled(body, CornerRadius::same(3), ACCENT_DIM);
+                                p.rect_stroke(body, CornerRadius::same(3), Stroke::new(1.0, ACCENT), egui::StrokeKind::Inside);
+                            }
                         }
                         if resp.clicked() {
                             select = Some((id, false));
@@ -669,10 +713,11 @@ impl PigmentApp {
                                 None => "Fill · painted mask".to_string(),
                             },
                             (LayerKind::Fill { .. }, None) => "Fill · everywhere".to_string(),
+                            (LayerKind::Folder { .. }, m) => format!("Folder · {kids} item{}{}", if kids == 1 { "" } else { "s" }, if m.is_some() { " · masked" } else { "" }),
                         };
                         let resp = ui
                             .vertical(|ui| {
-                                let name = RichText::new(&l.name).strong().color(if l.visible { Color32::WHITE } else { MUTED });
+                                let name = RichText::new(&l.name).strong().color(if shown { Color32::WHITE } else { MUTED });
                                 ui.add(egui::Label::new(name).selectable(false));
                                 ui.add(egui::Label::new(RichText::new(sub).size(11.0).color(MUTED)).selectable(false));
                             })
@@ -713,26 +758,41 @@ impl PigmentApp {
             self.select(Some(id), mask);
         }
 
-        ui.horizontal(|ui| {
+        ui.horizontal_wrapped(|ui| {
             let sel = self.selected.and_then(|id| self.doc.index_of(id));
-            if ui.add_enabled(sel.is_some_and(|i| i + 1 < self.doc.layers.len()), egui::Button::new("Up")).clicked() {
-                let i = sel.unwrap();
-                self.doc.layers.swap(i, i + 1);
+            // up / down move among siblings, so folders stay intact
+            if ui.add_enabled(self.can_nudge(1), egui::Button::new("Up")).clicked() {
+                self.nudge_selected(1);
             }
-            if ui.add_enabled(sel.is_some_and(|i| i > 0), egui::Button::new("Down")).clicked() {
-                let i = sel.unwrap();
-                self.doc.layers.swap(i, i - 1);
+            if ui.add_enabled(self.can_nudge(-1), egui::Button::new("Down")).clicked() {
+                self.nudge_selected(-1);
             }
             if ui.add_enabled(sel.is_some(), egui::Button::new("Duplicate")).clicked() {
                 self.duplicate_selected(rs);
             }
-            if ui.add_enabled(sel.is_some(), egui::Button::new("Delete")).clicked() {
-                if let Some(i) = sel {
-                    self.doc.layers.remove(i);
-                    let next = self.doc.layers.get(i.min(self.doc.layers.len().saturating_sub(1))).map(|l| l.id);
-                    self.select(next, false);
-                }
+            if ui.add_enabled(sel.is_some(), egui::Button::new("Delete")).on_hover_text("A folder is deleted with its contents").clicked() {
+                self.delete_selected();
             }
+        });
+        ui.horizontal_wrapped(|ui| {
+            let sel = self.selected.and_then(|id| self.doc.layer(id)).map(|l| l.parent.is_some());
+            if ui.add_enabled(sel.is_some(), egui::Button::new("Group")).on_hover_text("Put the selection in a new folder").clicked() {
+                self.group_selected();
+            }
+            if ui.add_enabled(sel == Some(true), egui::Button::new("Out of folder")).clicked() {
+                self.move_selected_out();
+            }
+            let targets = self.folder_targets();
+            ui.add_enabled_ui(sel.is_some() && !targets.is_empty(), |ui| {
+                ui.menu_button("Into folder", |ui| {
+                    for (fid, path) in targets {
+                        if ui.button(path).clicked() {
+                            self.move_selected_into(fid);
+                            ui.close();
+                        }
+                    }
+                });
+            });
         });
 
         ui.add_space(8.0);
@@ -759,15 +819,23 @@ impl PigmentApp {
         self.insert_layer(l);
     }
 
-    pub(super) fn insert_layer(&mut self, l: Layer) {
+    pub(super) fn insert_layer(&mut self, mut l: Layer) {
         let at = self.selected.and_then(|id| self.doc.index_of(id)).map(|i| i + 1).unwrap_or(self.doc.layers.len());
         let id = l.id;
+        // lands next to the selection, in the same folder
+        l.parent = self.selected.and_then(|s| self.doc.layer(s)).and_then(|s| s.parent);
         self.doc.layers.insert(at, l);
+        self.doc.normalize_folders();
         self.select(Some(id), false);
     }
 
     pub(super) fn duplicate_selected(&mut self, rs: &RenderState) {
         let Some(i) = self.selected.and_then(|id| self.doc.index_of(id)) else { return };
+        if self.doc.layers[i].is_folder() {
+            let id = self.doc.layers[i].id;
+            self.duplicate_tree(rs, id);
+            return;
+        }
         let mut l = self.doc.layers[i].clone();
         l.id = self.doc.mint();
         l.name = format!("{} copy", l.name);
@@ -830,7 +898,9 @@ impl PigmentApp {
     }
 
     fn layer_tab(&mut self, ui: &mut egui::Ui, i: usize) {
+        let mut save_smart = false;
         let l = &mut self.doc.layers[i];
+        let is_folder = l.is_folder();
         card(ui, CARD, |ui| {
             ui.horizontal(|ui| {
                 ui.label("Opacity");
@@ -858,6 +928,15 @@ impl PigmentApp {
                     ui.label(RichText::new("Holds whatever you paint. Choose the brush material on the left.").color(MUTED));
                 });
             }
+            LayerKind::Folder { .. } => {
+                card(ui, CARD, |ui| {
+                    ui.label(RichText::new("Folder").strong());
+                    ui.label(RichText::new("Its contents are composited as a group, then blended onto the layers below with the folder's opacity, channels and mask (the mask multiplies every layer inside).").color(MUTED));
+                    if ui.button("Save as smart material...").on_hover_text("Write this folder to a .pigsmart file you can apply to other models").clicked() {
+                        save_smart = true;
+                    }
+                });
+            }
         }
         section(ui, "Channels");
         card(ui, CARD, |ui| {
@@ -867,7 +946,8 @@ impl PigmentApp {
                     let s = l.channels.get_mut(c);
                     ui.checkbox(&mut s.enabled, c.label());
                     egui::ComboBox::from_id_salt(("blend", c.index())).width(120.0).selected_text(s.blend.label()).show_ui(ui, |ui| {
-                        for m in c.blend_modes() {
+                        let modes = if is_folder { pigment_core::folders::folder_blend_modes(c) } else { c.blend_modes() };
+                        for m in modes {
                             ui.selectable_value(&mut s.blend, *m, m.label());
                         }
                     });
@@ -876,6 +956,9 @@ impl PigmentApp {
                 }
             });
         });
+        if save_smart {
+            self.save_smart_dialog();
+        }
     }
 
     fn mask_tab(&mut self, ui: &mut egui::Ui, rs: &RenderState, i: usize) {

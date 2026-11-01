@@ -8,6 +8,7 @@ use super::MeshGpu;
 use eframe::egui_wgpu::wgpu;
 use glam::{Vec2, Vec3};
 use pigment_core::blend::{normal_from_tilt, srgb_to_linear};
+use pigment_core::folders::{folder_blend, Step};
 use pigment_core::{Channel, Document, Layer, LayerKind, ResId};
 use std::collections::{HashMap, HashSet};
 use wgpu::util::DeviceExt;
@@ -148,6 +149,16 @@ fn layer_params(l: &Layer) -> LayerParams {
     p
 }
 
+/// Params for a folder pass: the folder's mask and opacity, with blend modes
+/// limited to the ones a pass-through sub-stack supports.
+fn folder_params(l: &Layer) -> LayerParams {
+    let mut p = layer_params(l);
+    let ids: Vec<u32> = Channel::ALL.iter().map(|c| folder_blend(*c, l.channels.get(*c).blend).gpu_id()).collect();
+    p.blend = [ids[0], ids[1], ids[2], ids[3]];
+    p.blend2 = [ids[4], ids[5], 0, 0];
+    p
+}
+
 struct AccSet {
     t: [Tex; 4],
     bg: wgpu::BindGroup,
@@ -159,7 +170,9 @@ pub struct TexSet {
     pub masks: HashMap<ResId, Tex>,
     /// Resources changed since the last save.
     pub unsaved: HashSet<ResId>,
-    acc: [AccSet; 3], // ping, pong, final
+    /// Accumulation sets: [0] is the final result, the rest a pool for
+    /// ping-pong and for the stacks below open folders (grows on demand).
+    acc: Vec<AccSet>,
     pub material: [Tex; 4],
     /// Final emission (linear HDR), mipmapped like the material.
     pub emissive: Tex,
@@ -189,6 +202,7 @@ struct Pipes {
     jfa_bgl: wgpu::BindGroupLayout,
     clear: wgpu::RenderPipeline,
     layer: wgpu::RenderPipeline,
+    folder: wgpu::RenderPipeline,
     finalize: wgpu::RenderPipeline,
     finalize_emissive: wgpu::RenderPipeline,
     uv: wgpu::RenderPipeline,
@@ -209,6 +223,9 @@ impl Pipes {
             &[gpu::ntex(0), gpu::ntex(1), gpu::ntex(2), gpu::ntex(3), gpu::ntex(4), gpu::ntex(5), gpu::ntex(6), gpu::uniform_entry(7, true)],
         );
         let full_layout = gpu::layout(device, "composite", &[&shared_bgl, &acc_bgl, &layer_bgl]);
+        let folder_src = [common, include_str!("../shaders/composite.wgsl"), include_str!("../shaders/folder.wgsl")].concat();
+        let folder_mod = gpu::shader(device, "folder.wgsl", &folder_src);
+        let folder_layout = gpu::layout(device, "folder", &[&shared_bgl, &acc_bgl, &layer_bgl, &acc_bgl]);
         let fin_layout = gpu::layout(device, "finalize", &[&shared_bgl, &acc_bgl]);
         let empty_layout = gpu::layout(device, "empty", &[]);
         let acc_targets = [gpu::target(ACC, None), gpu::target(ACC, None), gpu::target(ACC, None), gpu::target(ACC, None)];
@@ -224,6 +241,7 @@ impl Pipes {
         Self {
             clear: gpu::fullscreen(device, "acc clear", &comp, "fs_clear", &empty_layout, &acc_targets),
             layer: gpu::fullscreen(device, "composite layer", &comp, "fs_layer", &full_layout, &acc_targets),
+            folder: gpu::fullscreen(device, "composite folder", &folder_mod, "fs_folder", &folder_layout, &acc_targets),
             finalize: gpu::fullscreen(device, "finalize", &comp, "fs_finalize", &fin_layout, &mat_targets),
             finalize_emissive: gpu::fullscreen(device, "finalize emissive", &comp, "fs_finalize_emissive", &fin_layout, &[gpu::target(EMISSIVE, None)]),
             uv: gpu::pipeline(
@@ -304,7 +322,7 @@ impl TexSet {
                 wgpu::BindingResource::TextureView(&parts.view),
             ],
         );
-        let acc = [acc_set(device, &p, res, "acc ping"), acc_set(device, &p, res, "acc pong"), acc_set(device, &p, res, "acc final")];
+        let acc = vec![acc_set(device, &p, res, "acc final"), acc_set(device, &p, res, "acc ping"), acc_set(device, &p, res, "acc pong")];
         let dummy_layer = LayerTex::new(device, 1);
         let dummy_mask = Tex::target(device, "dummy mask", 1, MASK_FORMAT);
         let layer_buf_slots = 64;
@@ -489,9 +507,19 @@ impl TexSet {
         let shared = [self.center_radius, [res as f32, res as f32 / 256.0, 0.0, 0.0], self.bounds[0], self.bounds[1]];
         queue.write_buffer(&self.shared_buf, 0, bytemuck::cast_slice(&shared));
 
-        let visible: Vec<&Layer> = doc.layers.iter().filter(|l| l.visible).collect();
-        if visible.len() as u64 > self.layer_buf_slots {
-            self.layer_buf_slots = (visible.len() as u64).next_power_of_two();
+        // Folders are sub-stacks: the plan brackets each visible folder's
+        // contents with Begin / End. Every Layer and End step is one pass.
+        let plan = doc.composite_plan();
+        let passes: Vec<(&Layer, bool)> = plan
+            .iter()
+            .filter_map(|st| match *st {
+                Step::Layer(i) => Some((&doc.layers[i], false)),
+                Step::End(i) => Some((&doc.layers[i], true)),
+                Step::Begin(_) => None,
+            })
+            .collect();
+        if passes.len() as u64 > self.layer_buf_slots {
+            self.layer_buf_slots = (passes.len() as u64).next_power_of_two();
             self.layer_buf = device.create_buffer(&wgpu::BufferDescriptor {
                 label: Some("layer params"),
                 size: LAYER_UNIFORM_STRIDE * self.layer_buf_slots,
@@ -499,9 +527,9 @@ impl TexSet {
                 mapped_at_creation: false,
             });
         }
-        let mut params = vec![0u8; (LAYER_UNIFORM_STRIDE as usize) * visible.len().max(1)];
-        for (i, l) in visible.iter().enumerate() {
-            let mut p = layer_params(l);
+        let mut params = vec![0u8; (LAYER_UNIFORM_STRIDE as usize) * passes.len().max(1)];
+        for (i, (l, folder)) in passes.iter().enumerate() {
+            let mut p = if *folder { folder_params(l) } else { layer_params(l) };
             // a mask flagged in the doc but without pixels yet acts as "no mask"
             if l.mask.as_ref().is_some_and(|m| !self.masks.contains_key(&m.res)) {
                 p.flags[1] = 0;
@@ -511,9 +539,9 @@ impl TexSet {
         }
         queue.write_buffer(&self.layer_buf, 0, &params);
 
-        let layer_bgs: Vec<wgpu::BindGroup> = visible
+        let layer_bgs: Vec<wgpu::BindGroup> = passes
             .iter()
-            .map(|l| {
+            .map(|(l, _)| {
                 let lt = l.paint_res().and_then(|r| self.layers.get(&r)).unwrap_or(&self.dummy_layer);
                 let mask = l.mask.as_ref().and_then(|m| self.masks.get(&m.res)).unwrap_or(&self.dummy_mask);
                 let mut res: Vec<wgpu::BindingResource> = lt.ch.iter().map(|t| wgpu::BindingResource::TextureView(&t.view)).collect();
@@ -527,32 +555,62 @@ impl TexSet {
             })
             .collect();
 
+        // Accumulation slots. Slot 0 only ever receives the last pass, so it
+        // keeps the full result outside a partial (painting) rect.
+        let mut free: Vec<usize> = (1..self.acc.len()).rev().collect();
+        let p = &self.p;
+        let alloc = |acc: &mut Vec<AccSet>, free: &mut Vec<usize>| -> usize {
+            free.pop().unwrap_or_else(|| {
+                acc.push(acc_set(device, p, res, "acc pool"));
+                acc.len() - 1
+            })
+        };
         let scissor = |pass: &mut wgpu::RenderPass, r: Option<[u32; 4]>| {
             if let Some([x, y, w, h]) = r {
                 pass.set_scissor_rect(x, y, w, h);
             }
         };
         let mut enc = device.create_command_encoder(&Default::default());
-        // defaults into ping (or straight into final if there are no layers)
-        let first = if visible.is_empty() { 2 } else { 0 };
+        // defaults into a pool slot (or straight into final if there are no layers)
+        let mut cur = if passes.is_empty() { 0 } else { alloc(&mut self.acc, &mut free) };
         {
-            let mut pass = gpu::pass(&mut enc, "acc clear", &acc_views(&self.acc[first]), None);
+            let mut pass = gpu::pass(&mut enc, "acc clear", &acc_views(&self.acc[cur]), None);
             scissor(&mut pass, rect);
-            pass.set_pipeline(&self.p.clear);
+            pass.set_pipeline(&p.clear);
             pass.draw(0..3, 0..1);
         }
-        let mut src = 0usize;
-        for (i, bg) in layer_bgs.iter().enumerate() {
-            let dst = if i + 1 == visible.len() { 2 } else { 1 - src };
-            let mut pass = gpu::pass(&mut enc, "composite", &acc_views(&self.acc[dst]), None);
-            scissor(&mut pass, rect);
-            pass.set_pipeline(&self.p.layer);
-            pass.set_bind_group(0, &self.shared_bg, &[]);
-            pass.set_bind_group(1, &self.acc[src].bg, &[]);
-            pass.set_bind_group(2, bg, &[(i as u64 * LAYER_UNIFORM_STRIDE) as u32]);
-            pass.draw(0..3, 0..1);
-            src = dst;
+        // stacks below the open folders (B); each stays alive until its End
+        let mut below: Vec<usize> = Vec::new();
+        let mut k = 0usize; // pass index
+        for st in &plan {
+            if let Step::Begin(_) = st {
+                below.push(cur);
+                continue;
+            }
+            let is_end = matches!(st, Step::End(_));
+            let base = if is_end { below.pop() } else { None };
+            let dst = if k + 1 == passes.len() { 0 } else { alloc(&mut self.acc, &mut free) };
+            {
+                let mut pass = gpu::pass(&mut enc, if is_end { "composite folder" } else { "composite" }, &acc_views(&self.acc[dst]), None);
+                scissor(&mut pass, rect);
+                pass.set_pipeline(if is_end { &p.folder } else { &p.layer });
+                pass.set_bind_group(0, &self.shared_bg, &[]);
+                pass.set_bind_group(1, &self.acc[cur].bg, &[]);
+                pass.set_bind_group(2, &layer_bgs[k], &[(k as u64 * LAYER_UNIFORM_STRIDE) as u32]);
+                if let Some(b) = base {
+                    pass.set_bind_group(3, &self.acc[b].bg, &[]);
+                }
+                pass.draw(0..3, 0..1);
+            }
+            for done in [Some(cur), base].into_iter().flatten() {
+                if done != 0 && !below.contains(&done) && !free.contains(&done) {
+                    free.push(done);
+                }
+            }
+            cur = dst;
+            k += 1;
         }
+        debug_assert_eq!(cur, 0);
         // finalize, with a margin for the height-to-normal neighbourhood
         let frect = rect.map(|[x, y, w, h]| {
             let x0 = x.saturating_sub(2);
@@ -565,7 +623,7 @@ impl TexSet {
             scissor(&mut pass, frect);
             pass.set_pipeline(&self.p.finalize);
             pass.set_bind_group(0, &self.shared_bg, &[]);
-            pass.set_bind_group(1, &self.acc[2].bg, &[]);
+            pass.set_bind_group(1, &self.acc[0].bg, &[]);
             pass.draw(0..3, 0..1);
         }
         {
@@ -575,7 +633,7 @@ impl TexSet {
             scissor(&mut pass, frect);
             pass.set_pipeline(&self.p.finalize_emissive);
             pass.set_bind_group(0, &self.shared_bg, &[]);
-            pass.set_bind_group(1, &self.acc[2].bg, &[]);
+            pass.set_bind_group(1, &self.acc[0].bg, &[]);
             pass.draw(0..3, 0..1);
         }
         for t in self.material.iter().chain(std::iter::once(&self.emissive)) {
