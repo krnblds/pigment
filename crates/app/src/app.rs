@@ -25,6 +25,7 @@ use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 pub mod automation;
+mod decals;
 mod tour;
 mod ui;
 
@@ -41,6 +42,8 @@ const UNDO_BUDGET_BYTES: u64 = 1536 << 20;
 enum Edit {
     Doc { before: Box<Document>, after: Box<Document> },
     Stroke(Snapshot),
+    /// Several strokes undone as one step (a decal scatter), in the order painted.
+    Strokes(Vec<Snapshot>),
 }
 
 struct Brush {
@@ -516,6 +519,7 @@ impl PigmentApp {
                 Edit::Stroke(s) => {
                     live.insert(s.target.res());
                 }
+                Edit::Strokes(v) => live.extend(v.iter().map(|s| s.target.res())),
             }
         }
         live
@@ -525,6 +529,7 @@ impl PigmentApp {
         let mut dropped: Vec<Entry<Edit>> = self.history.push(label, e);
         dropped.extend(self.history.trim_to_budget(UNDO_BUDGET_BYTES, |e| match e {
             Edit::Stroke(s) => s.bytes(),
+            Edit::Strokes(v) => v.iter().map(|s| s.bytes()).sum(),
             Edit::Doc { .. } => 0,
         }));
         self.modified = true;
@@ -564,6 +569,15 @@ impl PigmentApp {
             Edit::Stroke(snap) => {
                 self.painter.swap(&rs.device, &rs.queue, &self.ts, snap);
                 self.ts.unsaved.insert(snap.target.res());
+                self.composited = None;
+            }
+            Edit::Strokes(snaps) => {
+                // undo newest first; redo oldest first
+                let order: Vec<usize> = if redo { (0..snaps.len()).collect() } else { (0..snaps.len()).rev().collect() };
+                for k in order {
+                    self.painter.swap(&rs.device, &rs.queue, &self.ts, &mut snaps[k]);
+                    self.ts.unsaved.insert(snaps[k].target.res());
+                }
                 self.composited = None;
             }
         }
