@@ -88,8 +88,8 @@ impl EnvImage {
         let height = width / 2;
         // direction, angular half-size (u, v), intensity, tint
         let lights = [
-            (Vec3::new(-0.8, 0.2, -0.45).normalize(), Vec2::new(0.1, 0.6), 8.0, Vec3::new(0.15, 0.75, 1.0)),
-            (Vec3::new(0.82, 0.25, -0.4).normalize(), Vec2::new(0.1, 0.6), 8.0, Vec3::new(1.0, 0.12, 0.62)),
+            (Vec3::new(-0.8, 0.2, -0.45).normalize(), Vec2::new(0.045, 0.4), 22.0, Vec3::new(0.15, 0.75, 1.0)),
+            (Vec3::new(0.82, 0.25, -0.4).normalize(), Vec2::new(0.045, 0.4), 22.0, Vec3::new(1.0, 0.12, 0.62)),
             (Vec3::new(0.4, 0.7, 0.6).normalize(), Vec2::new(0.16, 0.16), 24.0, Vec3::new(1.0, 0.62, 0.3)),
         ];
         let mut data = Vec::with_capacity((width * height) as usize);

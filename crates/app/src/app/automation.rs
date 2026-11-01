@@ -834,7 +834,7 @@ impl Session {
         let env = pigment_core::envmath::EnvImage::preset(name, width).ok_or_else(|| format!("unknown lighting `{name}` (studio, night, overcast)"))?;
         env.write_hdr(&path).map_err(|e| e.to_string())?;
         Ok(json!({ "lighting": pigment_core::envmath::preset_id(name), "path": path, "width": width, "height": width / 2,
-                   "note": "equirectangular, +Y up; in Blender use it as an Environment Texture (Pigment's -Z = Blender +Y at u = 0.5)" }))
+                   "note": "equirectangular, +Y up. Blender: Environment Texture behind a Mapping node rotated -90 degrees about Z (tools/blender_lookdev.py does this)" }))
     }
 
     pub fn render(&mut self, a: &Value) -> Res<Image> {
