@@ -59,6 +59,56 @@ fn tools() -> Value {
     render_props["path"] = json!({ "type": "string", "description": "where to save the PNG (default: temp)" });
     render_props["exposure"] = json!({ "type": "number" });
     render_props["background"] = json!({ "type": "boolean" });
+    render_props["target"] = json!({ "type": "array", "items": { "type": "number" }, "description": "orbit this world point [x,y,z] instead of the model centre (close-ups)" });
+    render_props["distance"] = json!({ "type": "number", "description": "camera distance from the target in metres" });
+    // decal wear / layering, shared by project_decal (anchored) and scatter_decals
+    let wear_props = json!({
+        "wear": { "type": "number", "description": "tear 0..1: noise eats the decal from its edges (more at the bottom), leaving a rim of bare paper; 0.3-0.6 = torn poster" },
+        "fade": { "type": "number", "description": "0..1 patchy sun-bleaching and wear-through" },
+        "wear_style": { "type": "string", "enum": ["noise", "grunge"], "description": "soft noise (default) or ridged, streaky grunge" },
+        "wear_scale": { "type": "number", "description": "noise frequency across the decal (default 5; higher = smaller rips)" },
+        "wear_seed": { "type": "number" },
+        "paper_rim": { "type": "number", "description": "width of the bare-paper rim along tears (default 0.035, 0 = none)" },
+        "overlap_order": { "type": "integer", "description": "without `layer`: paint onto paint layer `Decals <n>`, created and stacked so higher n is on top (e.g. posters 0, graffiti 1)" },
+        "depth": { "type": "number", "description": "half-thickness of the projection box in metres (default 1/4 of the smaller side, 0.02..0.25)" }
+    });
+    let mut decal_props = json!({ "image": { "type": "string" }, "rect": { "type": "array", "items": { "type": "number" }, "description": "[x0, y0, x1, y1] viewport area in 0..1 (y down)" },
+                  "part": { "type": "integer", "description": "instead of rect + camera: put the image on this mesh part's outward face (see list_parts); with `anchor`, the part to place on" },
+                  "fit": { "type": "string", "enum": ["contain", "fill"], "description": "with `part` (no anchor): keep the image's aspect (contain, default) or stretch (fill)" },
+                  "margin": { "type": "number", "description": "with `part` (no anchor): border as a fraction (default 0.05)" },
+                  "anchor": { "type": "array", "items": { "type": "number" }, "description": "precise placement: [u, v] in 0..1 across `face` of `part` (or of the whole mesh), (0,0) = top-left seen from outside. The decal is snapped onto the surface there" },
+                  "face": { "type": "string", "enum": ["front", "back", "left", "right", "top", "bottom", "auto"], "description": "with `anchor`: side of the part's box. front = +Z, right = +X, top = +Y; auto = its thinnest side facing away from the model centre" },
+                  "position": { "type": "array", "items": { "type": "number" }, "description": "precise placement: world point [x,y,z] (with `normal`), snapped onto the surface" },
+                  "normal": { "type": "array", "items": { "type": "number" }, "description": "with `position`: outward surface direction" },
+                  "size": { "description": "with anchor/position: width in metres (height from the image aspect) or [width, height]; default 0.5" },
+                  "rotation": { "type": "number", "description": "with anchor/position: degrees, counter-clockwise seen from outside" },
+                  "yaw": { "type": "number" }, "pitch": { "type": "number" }, "zoom": { "type": "number" },
+                  "tint": { "type": "array", "items": { "type": "number" } }, "material": { "type": "string", "description": "preset for roughness/metallic (default plain paint)" },
+                  "emissive_strength": { "type": "number" }, "height": { "type": "number" }, "opacity": { "type": "number" },
+                  "layer": {}, "mask": { "type": "boolean" }, "alpha_from_luminance": { "type": "boolean" } });
+    let mut scatter_props = json!({
+        "images": { "type": "array", "items": { "type": "string" }, "description": "PNGs to scatter; dealt in shuffled rounds so each appears before any repeats" },
+        "count": { "type": "integer", "description": "how many (default 6; fewer if the surface can't fit them)" },
+        "seed": { "type": "integer" },
+        "parts": { "type": "array", "items": { "type": "integer" }, "description": "only on these parts (default: whole mesh)" },
+        "mask": { "description": "layer (name or index) whose part mask limits where decals go" },
+        "region": { "type": "object", "description": "{min: [x,y,z], max: [x,y,z]}: world box the decal centres must be in" },
+        "height": { "type": "array", "items": { "type": "number" }, "description": "[min, max] metres above `ground`: the whole decal must fit in it (street level: [0.5, 3])" },
+        "ground": { "type": "number", "description": "world Y of the ground (default: the mesh's lowest point)" },
+        "size": { "description": "decal width in metres: number or [min, max] (default [0.4, 0.6]); height follows the image" },
+        "rotation": { "type": "number", "description": "base rotation, degrees" },
+        "rotation_jitter": { "type": "number", "description": "+- degrees (default 6)" },
+        "min_spacing": { "type": "number", "description": "minimum distance between decal centres, metres (default 0.9 x max size)" },
+        "facing": { "type": "string", "enum": ["horizontal", "any"], "description": "horizontal (default) = only walls, surfaces whose normal is within `max_tilt` of horizontal" },
+        "max_tilt": { "type": "number", "description": "degrees (default 20)" },
+        "fit": { "type": "boolean", "description": "reject spots where the decal would hang off the surface: over a window, an edge (default true)" },
+        "wear_jitter": { "type": "number", "description": "per-decal +- variation of wear and fade (default 0.15)" },
+        "tint": { "type": "array", "items": { "type": "number" } }, "material": { "type": "string" }, "opacity": { "type": "number" },
+        "layer": {}, "alpha_from_luminance": { "type": "boolean" } });
+    for (k, v) in wear_props.as_object().unwrap() {
+        decal_props[k] = v.clone();
+        scatter_props[k] = v.clone();
+    }
     let t = |name: &str, desc: &str, props: Value, req: &[&str]| json!({ "name": name, "description": desc, "inputSchema": { "type": "object", "properties": props, "required": req } });
     json!([
         t("new_project", "Start a project from a mesh (.glb/.gltf/.obj with UVs). Bakes AO + curvature. Optionally starts from a smart material or a base material; a paint layer goes on top.",
@@ -76,15 +126,10 @@ fn tools() -> Value {
           json!({ "points": { "type": "array" }, "yaw": { "type": "number" }, "pitch": { "type": "number" }, "zoom": { "type": "number" }, "width": { "type": "integer" }, "height": { "type": "integer" } }), &["points"]),
         t("bake", "Re-bake AO and curvature.", json!({ "ao_samples": { "type": "integer" }, "ao_distance": { "type": "number" }, "curvature_radius": { "type": "number" }, "curvature_strength": { "type": "number" } }), &[]),
         t("paint_stroke", "Paint a brush stroke projected from a camera view onto the model.", paint_props, &["points"]),
-        t("project_decal", "Project an image (PNG with alpha: sign, logo, label, graffiti) onto the model from a camera view, like a sticker. Colour comes from the image times `tint`; optional emission (glowing neon signs) and height. Lands on the top paint layer unless `layer` is given.",
-          json!({ "image": { "type": "string" }, "rect": { "type": "array", "items": { "type": "number" }, "description": "[x0, y0, x1, y1] viewport area in 0..1 (y down)" },
-                  "part": { "type": "integer", "description": "instead of rect + camera: put the image on this mesh part's outward face (see list_parts)" },
-                  "fit": { "type": "string", "enum": ["contain", "fill"], "description": "with `part`: keep the image's aspect (contain, default) or stretch (fill)" },
-                  "margin": { "type": "number", "description": "with `part`: border as a fraction (default 0.05)" },
-                  "yaw": { "type": "number" }, "pitch": { "type": "number" }, "zoom": { "type": "number" },
-                  "tint": { "type": "array", "items": { "type": "number" } }, "material": { "type": "string", "description": "preset for roughness/metallic (default plain paint)" },
-                  "emissive_strength": { "type": "number" }, "height": { "type": "number" }, "opacity": { "type": "number" },
-                  "layer": {}, "mask": { "type": "boolean" }, "alpha_from_luminance": { "type": "boolean" } }), &["image"]),
+        t("project_decal", "Project an image (PNG with alpha: sign, logo, label, poster, graffiti) onto the model like a sticker. Three ways to place it: `rect` over a camera view; `part` alone (fit to the part's outward face); or precisely with `anchor` [u,v] on a part's `face` (or `position` + `normal`) plus `size` in metres and `rotation`, so several posters can go at chosen spots on one wall. Anchored decals can be torn / faded (`wear`, `fade`) and stacked with `overlap_order`. Colour comes from the image times `tint`; optional emission and height. Lands on the top paint layer unless `layer` / `overlap_order` is given. One undo step.",
+          decal_props, &["image"]),
+        t("scatter_decals", "Scatter images randomly over a mesh (or `parts` / a layer `mask` / a `region`) with a seed: e.g. torn posters at street level. Constraints: `height` band above the ground, `size` range, `rotation_jitter`, `min_spacing`, walls only (`facing`), and `fit` (never hanging off a wall). Per-decal tear / fade wear. Returns where each landed. One undo step.",
+          scatter_props, &["images"]),
         t("render", "Render the model with its current material (PBR, studio lighting). Returns the image.", render_props, &[]),
         t("export_textures", "Export PNG texture maps. Presets: unreal, unity, godot, separate (glTF/Blender: BaseColor, Roughness, Metallic, AO, Normal_OpenGL, Height).",
           json!({ "dir": { "type": "string" }, "preset": { "type": "string" }, "name": { "type": "string" } }), &["dir"]),
@@ -115,6 +160,7 @@ fn call(session: &mut Option<Session>, name: &str, args: &Value) -> Result<Vec<V
         "bake" => text(s.bake(args)?),
         "paint_stroke" => text(s.paint_stroke(args)?),
         "project_decal" => text(s.project_decal(args)?),
+        "scatter_decals" => text(s.scatter_decals(args)?),
         "export_textures" => text(s.export_textures(args)?),
         "undo" => text(s.undo(false)?),
         "redo" => text(s.undo(true)?),
