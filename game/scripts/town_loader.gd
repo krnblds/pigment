@@ -47,6 +47,8 @@ var lamp_lights: Array = []               ## street lamps that currently exist (
 var stats := {"multimesh": 0, "mesh_instances": 0, "shapes": 0, "lights": 0}
 var collision_focus: Node3D               ## the car (collision streams around it); camera if null
 var streaming := true
+var skip_instances := {}                  ## mesh key -> [Vector3 origin]: instances left out (garage lots, set before load_town)
+var skip_lights: Array = []               ## [Vector3]: layout lights left out (same)
 
 var _mesh_cache := {}
 var _dressed := {}             ## mesh key -> remap json of its in-place dressing
@@ -652,12 +654,19 @@ func _group_instances() -> Array:
 	for inst in layout.instances:
 		if not layout.meshes.has(inst.mesh):
 			continue
+		if skip_instances.has(inst.mesh) and _skipped(inst):
+			continue
 		var remap: Dictionary = inst.get("remap", {})
 		var gk: String = inst.mesh + "|" + JSON.stringify(remap)
 		if not groups.has(gk):
 			groups[gk] = {"mesh": inst.mesh, "remap": remap, "xf": []}
 		groups[gk].xf.append(xf_from(inst.xf))
 	return groups.values()
+
+
+func _skipped(inst: Dictionary) -> bool:
+	var o := Vector3(inst.xf[9], inst.xf[10], inst.xf[11])
+	return skip_instances[inst.mesh].any(func(q): return q.distance_to(o) < 0.05)
 
 
 func _policy(info: Dictionary, n: int) -> String:
@@ -1570,6 +1579,8 @@ func _index_lights() -> void:
 	if _headless:
 		return
 	for d in layout.lights:
+		if not skip_lights.is_empty() and skip_lights.any(func(q): return q.distance_to(Vector3(d.pos[0], d.pos[1], d.pos[2])) < 0.05):
+			continue
 		d["kind"] = LIGHT_KINDS.get(String(d.get("kind", "")), d.get("kind", ""))
 		var i := _lights.size()
 		var p := Vector3(d.pos[0], d.pos[1], d.pos[2])
