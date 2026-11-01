@@ -45,7 +45,7 @@
   "mount_height": "[min, max] metres above ground (facade props)",
   "along": "corner/crossing: metres along the curb from the apex (sign picks a side)"
  },
- "total_bytes": 22652553,
+ "total_bytes": 38749500,
  "props": {
   "traffic_light_pole": {
    "title": "Traffic signal pole (3-light head + pedestrian head)",
@@ -4852,6 +4852,526 @@
     "facing": "random",
     "yaw_jitter": 180,
     "decal": true
+   }
+  },
+  "container": {
+   "title": "ISO 40' dry container",
+   "category": "port",
+   "desc": "12.19 x 2.44 x 2.59 m steel box: trapezoidal corrugated sides, roof and front wall, corner castings, rails, cross members, ribbed doors with four lock rods, cams, handles and hinges, CSC plate. Long axis X, doors at +X (glTF). Stacks at 2.6 m. Variants are the yard colours (rust, blue, white, green, orange, grey, teal), each with its own line's livery.",
+   "files": {
+    "lod0": "container.glb",
+    "lod1": "container_lod1.glb"
+   },
+   "lod": {
+    "lod0_tris": 3224,
+    "lod1_tris": 967,
+    "lod1_from_m": 110.4,
+    "visible_to_m": 552.0
+   },
+   "size_m": [
+    12.266,
+    2.591,
+    2.444
+   ],
+   "footprint": {
+    "w": 12.266,
+    "d": 2.444,
+    "radius": 6.254,
+    "center": [
+     0.037,
+     0.0
+    ]
+   },
+   "bounds": {
+    "min": [
+     -6.096,
+     0.0,
+     -1.222
+    ],
+    "max": [
+     6.17,
+     2.591,
+     1.222
+    ]
+   },
+   "mount": "ground",
+   "nodes": {
+    "main": "container",
+    "all": [
+     "Collider",
+     "container"
+    ],
+    "driven": []
+   },
+   "collider": {
+    "type": "box",
+    "shapes": [
+     {
+      "type": "box",
+      "center": [
+       0,
+       1.2955,
+       0
+      ],
+      "size": [
+       12.192,
+       2.591,
+       2.438
+      ]
+     }
+    ],
+    "node": "Collider"
+   },
+   "lights": [],
+   "sockets": [],
+   "material": {
+    "alpha": [
+     "OPAQUE"
+    ],
+    "texture": 1024,
+    "texels_per_m": 119.8,
+    "emissive": false
+   },
+   "variants": [
+    {
+     "name": "rust",
+     "default": true
+    },
+    {
+     "name": "blue",
+     "albedo": "variants/container__blue_albedo.jpg",
+     "emission": "variants/container__blue_emission.jpg",
+     "emissive_scale": 1.0
+    },
+    {
+     "name": "white",
+     "albedo": "variants/container__white_albedo.jpg",
+     "emission": "variants/container__white_emission.jpg",
+     "emissive_scale": 1.0
+    },
+    {
+     "name": "green",
+     "albedo": "variants/container__green_albedo.jpg",
+     "emission": "variants/container__green_emission.jpg",
+     "emissive_scale": 1.0
+    },
+    {
+     "name": "orange",
+     "albedo": "variants/container__orange_albedo.jpg",
+     "emission": "variants/container__orange_emission.jpg",
+     "emissive_scale": 1.0
+    },
+    {
+     "name": "grey",
+     "albedo": "variants/container__grey_albedo.jpg",
+     "emission": "variants/container__grey_emission.jpg",
+     "emissive_scale": 1.0
+    },
+    {
+     "name": "teal",
+     "albedo": "variants/container__teal_albedo.jpg",
+     "emission": "variants/container__teal_emission.jpg",
+     "emissive_scale": 1.0
+    }
+   ],
+   "scatter": {
+    "slots": [],
+    "density": {
+     "default": 0.0
+    },
+    "spacing": 13.0,
+    "clearance": 0.0,
+    "facing": "along",
+    "yaw_jitter": 0
+   }
+  },
+  "crane_sts": {
+   "title": "Ship-to-shore gantry crane",
+   "category": "port",
+   "desc": "Quay crane: travel bogies on two rails 18 m apart (y = -+9 m, glTF z), four tapered legs, portal and tie beams, twin box girders with walkways and handrails, a boom reaching 64 m over the water (-z in glTF = +y Blender), A-frame with fore / back stays, machinery house with banners, trolley, glazed operator cab, ropes, headblock and spreader, stairs, cable reel.",
+   "files": {
+    "lod0": "crane_sts.glb",
+    "lod1": "crane_sts_lod1.glb"
+   },
+   "lod": {
+    "lod0_tris": 4852,
+    "lod1_tris": 1698,
+    "lod1_from_m": 828.0,
+    "visible_to_m": 4140.0
+   },
+   "size_m": [
+    33.6,
+    69.3,
+    92.0
+   ],
+   "footprint": {
+    "w": 33.6,
+    "d": 92.0,
+    "radius": 48.972,
+    "center": [
+     -0.3,
+     -18.0
+    ]
+   },
+   "bounds": {
+    "min": [
+     -17.1,
+     0.0,
+     -64.0
+    ],
+    "max": [
+     16.5,
+     69.3,
+     28.0
+    ]
+   },
+   "mount": "ground",
+   "nodes": {
+    "main": "crane_sts",
+    "all": [
+     "Collider",
+     "Light_Beacon",
+     "Light_Boom",
+     "crane_sts"
+    ],
+    "driven": []
+   },
+   "collider": {
+    "type": "compound",
+    "shapes": [
+     {
+      "type": "box",
+      "center": [
+       0,
+       2.0,
+       9.0
+      ],
+      "size": [
+       31.2,
+       4.0,
+       1.8
+      ]
+     },
+     {
+      "type": "box",
+      "center": [
+       0,
+       2.0,
+       -9.0
+      ],
+      "size": [
+       31.2,
+       4.0,
+       1.8
+      ]
+     },
+     {
+      "type": "box",
+      "center": [
+       -14.0,
+       23.25,
+       9.0
+      ],
+      "size": [
+       1.6,
+       39.5,
+       1.6
+      ]
+     },
+     {
+      "type": "box",
+      "center": [
+       -14.0,
+       23.25,
+       -9.0
+      ],
+      "size": [
+       1.6,
+       39.5,
+       1.6
+      ]
+     },
+     {
+      "type": "box",
+      "center": [
+       14.0,
+       23.25,
+       9.0
+      ],
+      "size": [
+       1.6,
+       39.5,
+       1.6
+      ]
+     },
+     {
+      "type": "box",
+      "center": [
+       14.0,
+       23.25,
+       -9.0
+      ],
+      "size": [
+       1.6,
+       39.5,
+       1.6
+      ]
+     },
+     {
+      "type": "box",
+      "center": [
+       0,
+       44.5,
+       -18.0
+      ],
+      "size": [
+       6.0,
+       3.0,
+       92.0
+      ]
+     },
+     {
+      "type": "box",
+      "center": [
+       0,
+       49.0,
+       19.5
+      ],
+      "size": [
+       11.0,
+       6.0,
+       12.0
+      ]
+     }
+    ],
+    "node": "Collider"
+   },
+   "lights": [
+    {
+     "name": "Light_Beacon",
+     "pos": [
+      0,
+      69.3,
+      -4.6
+     ],
+     "type": "omni",
+     "color": [
+      1.0,
+      0.05,
+      0.02
+     ],
+     "energy": 30,
+     "range": 40,
+     "dir": null,
+     "shadow": false
+    },
+    {
+     "name": "Light_Boom",
+     "pos": [
+      0,
+      42.0,
+      -26.0
+     ],
+     "type": "spot",
+     "color": [
+      1.0,
+      0.85,
+      0.65
+     ],
+     "energy": 900,
+     "range": 55,
+     "dir": [
+      0,
+      -1,
+      0
+     ],
+     "shadow": false
+    }
+   ],
+   "sockets": [],
+   "material": {
+    "alpha": [
+     "BLEND"
+    ],
+    "texture": 2048,
+    "texels_per_m": 10.8,
+    "emissive": true
+   },
+   "variants": [
+    {
+     "name": "red",
+     "default": true
+    },
+    {
+     "name": "blue",
+     "albedo": "variants/crane_sts__blue_albedo.png",
+     "emission": "variants/crane_sts__blue_emission.jpg",
+     "emissive_scale": 8.0
+    },
+    {
+     "name": "white",
+     "albedo": "variants/crane_sts__white_albedo.png",
+     "emission": "variants/crane_sts__white_emission.jpg",
+     "emissive_scale": 8.0
+    }
+   ],
+   "scatter": {
+    "slots": [],
+    "density": {
+     "default": 0.0
+    },
+    "spacing": 40.0,
+    "clearance": 0.0,
+    "facing": "along",
+    "yaw_jitter": 0
+   }
+  },
+  "light_mast": {
+   "title": "Yard high-mast light (30 m)",
+   "category": "port",
+   "desc": "Three-section galvanised high mast on a concrete plinth: base plate, anchor bolts, gussets, hazard sleeve, access door, mast plate, cabinet and conduit; lowering ring with eight floods, cap, lightning rod and aviation light.",
+   "files": {
+    "lod0": "light_mast.glb",
+    "lod1": "light_mast_lod1.glb"
+   },
+   "lod": {
+    "lod0_tris": 2968,
+    "lod1_tris": 1038,
+    "lod1_from_m": 285.3,
+    "visible_to_m": 1426.5
+   },
+   "size_m": [
+    4.012,
+    31.7,
+    4.012
+   ],
+   "footprint": {
+    "w": 4.012,
+    "d": 4.012,
+    "radius": 2.837,
+    "center": [
+     0.0,
+     0.0
+    ]
+   },
+   "bounds": {
+    "min": [
+     -2.006,
+     0.0,
+     -2.006
+    ],
+    "max": [
+     2.006,
+     31.7,
+     2.006
+    ]
+   },
+   "mount": "ground",
+   "nodes": {
+    "main": "light_mast",
+    "all": [
+     "Collider",
+     "Light_Beacon",
+     "Light_Flood",
+     "light_mast"
+    ],
+    "driven": []
+   },
+   "collider": {
+    "type": "compound",
+    "shapes": [
+     {
+      "type": "box",
+      "center": [
+       0,
+       0.16,
+       0
+      ],
+      "size": [
+       1.9,
+       0.32,
+       1.9
+      ]
+     },
+     {
+      "type": "cylinder",
+      "center": [
+       0,
+       15.12,
+       0
+      ],
+      "radius": 0.43,
+      "height": 29.6
+     }
+    ],
+    "node": "Collider"
+   },
+   "lights": [
+    {
+     "name": "Light_Flood",
+     "pos": [
+      0,
+      29.1,
+      0
+     ],
+     "type": "spot",
+     "color": [
+      1.0,
+      0.8,
+      0.55
+     ],
+     "energy": 2600,
+     "range": 60,
+     "dir": [
+      0,
+      -1,
+      0
+     ],
+     "shadow": false
+    },
+    {
+     "name": "Light_Beacon",
+     "pos": [
+      -0.12,
+      30.5,
+      0
+     ],
+     "type": "omni",
+     "color": [
+      1.0,
+      0.05,
+      0.02
+     ],
+     "energy": 6,
+     "range": 12,
+     "dir": null,
+     "shadow": false
+    }
+   ],
+   "sockets": [],
+   "material": {
+    "alpha": [
+     "OPAQUE"
+    ],
+    "texture": 1024,
+    "texels_per_m": 68.1,
+    "emissive": true
+   },
+   "variants": [
+    {
+     "name": "default",
+     "default": true
+    }
+   ],
+   "scatter": {
+    "slots": [],
+    "density": {
+     "default": 0.0
+    },
+    "spacing": 40.0,
+    "clearance": 0.0,
+    "facing": "random",
+    "yaw_jitter": 0
    }
   },
   "planter": {

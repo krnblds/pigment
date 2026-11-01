@@ -5,7 +5,9 @@
 MANIFEST is a list of items (see audit_manifest.py):
     {"id": "props/bench", "group": "props", "label": "bench", "kind": "glb", "path": "...glb",
      "pigment": [folder, name]?,         # town kit: Pigment maps applied with blender_pigment
-     "cam": {...}?}                      # reuse a framing (before/after at the same camera)
+     "cam": {...}?,                      # reuse a framing (before/after at the same camera)
+     "focus": [[x, y, z], [x, y, z]]?,   # frame this Blender-space box instead of the whole asset (close-ups)
+     "view": [x, y, z]?}                 # camera direction from the target (default 3/4 front-left)
     {"id": "world/container", "kind": "worldkit", "key": "container", "world_json": "...", ...}
 
 Every item is rendered alone in the same studio: mid-grey cyclorama floor, a soft key sun from
@@ -239,7 +241,8 @@ def main():
         size = hi - lo
         floor.scale = (max(size.x, size.y, size.z) * 6,) * 3
         floor.location = ((lo.x + hi.x) / 2, (lo.y + hi.y) / 2, lo.z - 0.002)
-        camd = frame(cam, lo, hi, it.get("cam"))
+        flo, fhi = (Vector(it["focus"][0]), Vector(it["focus"][1])) if it.get("focus") else (lo, hi)
+        camd = frame(cam, flo, fhi, it.get("cam"), view=it.get("view", (-1.0, -1.45, 0.75)))
         fn = it["id"].replace("/", "__") + ".png"
         bpy.context.scene.render.filepath = os.path.join(outdir, fn)
         bpy.ops.render.render(write_still=True)

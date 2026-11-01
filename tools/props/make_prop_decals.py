@@ -405,6 +405,24 @@ def street(jp, en, sub, bg=(20, 110, 70, 255)):
     return card(1050, 240, bg, [(jp + "  " + en, WHITE, 1.0), (sub, (210, 230, 220, 255), 0.45)], border=WHITE, radius=18, pad=0.07, noise=6)
 
 
+CONTAINER_LINES = [    # yard colour (world variant) -> owner code, livery
+    ("rust", "HSKU", ("星川物流", "HOSHIKAWA LOGISTICS", "", (240, 242, 240, 255)), "204517 3"),
+    ("blue", "TSRU", ("鶴急便", "TSURU EXPRESS", "SAME DAY · ANY SCORE", (240, 242, 240, 255)), "118842 0"),
+    ("white", "NOCU", ("NOCTIS", "BIOLOGICS", "COLD CHAIN · KEEP 4°C", (30, 24, 70, 255)), "770031 6"),
+    ("green", "SHGU", ("資源", "SHIGEN RECYCLE", "NOTHING IS WASTED", (240, 242, 240, 255)), "502276 8"),
+    ("orange", "KGNU", ("海原", "KAIGEN LINES", "OSAKA · MINATO · SHANGHAI", (240, 242, 240, 255)), "334190 1"),
+    ("grey", "MRDU", ("MERIDIAN", "SECURE CARGO", "CONTENTS WATCHED", (110, 230, 255, 255)), "000412 7"),
+    ("teal", "DRLU", ("DREAMLINK", "DATA FREIGHT", "YOUR DREAMS, DELIVERED", (240, 242, 240, 255)), "655108 2"),
+]
+
+
+def container_logo(big, name, sub, col):
+    rows = [(big, col, 1.0, BLACK), (name, col, 0.62, BLACK)]
+    if sub:
+        rows.append((sub, col, 0.3))
+    return card(2000, 760, None, rows, pad=0.03, noise=34, seed=len(name))
+
+
 def decals():
     D = {}
     # street names (blades ~4.4:1, mast blade 4.25:1)
@@ -486,6 +504,27 @@ def decals():
     D["ac_brand"] = lambda: card(640, 200, None, [("HOSHIKAWA CLIMATE", (60, 60, 64, 255), 1.0, BLACK)], noise=0, long_side=512)
     D["junction_tag"] = lambda: card(560, 320, (250, 200, 20, 255), [("LINE 7-G", INK, 1.0), ("DO NOT CUT", RED, 0.7)], border=INK, long_side=512)
     D["dish_logo"] = lambda: card(1000, 360, None, [("DREAMLINK", (40, 60, 120, 255), 1.0, BLACK), ("UPLINK · 夢", (40, 60, 120, 255), 0.5)], noise=0)
+    # port kit (container lines, crane, high mast) -- tools/props/models_port.py
+    for key, line, owner, num in CONTAINER_LINES:
+        D[f"container_code_{key}"] = (lambda l, n: lambda: card(900, 300, None, [(f"{l} {n}", WHITE, 1.0, ARIAL_B), ("45G1", WHITE, 0.62, ARIAL_B)],
+                                                              pad=0.03, noise=26, seed=len(l) + int(n[:2])))(line, num)
+        D[f"container_logo_{key}"] = (lambda o: lambda: container_logo(*o))(owner)
+    D["container_csc"] = lambda: card(620, 400, (150, 152, 150, 255), [("CSC SAFETY APPROVAL", INK, 0.7), ("JP-HPA 4471 / 2071", INK, 0.45, MONO),
+                                                                      ("MAX GROSS 30,480 KG", INK, 0.45, MONO), ("ALLOW. STACK 192,000 KG", INK, 0.45, MONO),
+                                                                      ("RACKING 15,240 KG", INK, 0.45, MONO)], border=INK, radius=12, noise=26, seed=31)
+    D["container_customs"] = lambda: card(500, 200, (235, 235, 230, 255), [("MERIDIAN SCANNED", MER_BG, 0.9), ("CONTENTS LOGGED · SEAL 0077412", INK, 0.5, MONO)],
+                                          border=MER_BG, radius=8, noise=18, seed=32, long_side=512)
+    D["container_weights"] = lambda: card(700, 420, None, [("MAX.GROSS 30,480 KG", WHITE, 0.6, ARIAL_B), ("          67,200 LB", WHITE, 0.6, ARIAL_B),
+                                                           ("TARE      3,750 KG", WHITE, 0.6, ARIAL_B), ("NET      26,730 KG", WHITE, 0.6, ARIAL_B),
+                                                           ("CU.CAP.   67.7 CU.M", WHITE, 0.6, ARIAL_B)], pad=0.04, noise=26, seed=33)
+    D["crane_banner"] = lambda: card(2400, 740, (16, 40, 96, 255), [("星川港湾 HOSHIKAWA PORT", WHITE, 1.0, BLACK), ("MINATO TERMINAL · EVERY BOX SCORED BY MERIDIAN", CYAN, 0.42)],
+                                     border=WHITE, radius=10, noise=12, seed=34)
+    D["crane_number"] = lambda: card(1000, 520, (245, 245, 240, 255), [("STS-07", INK, 1.0, BLACK), ("SWL 65 t UNDER SPREADER", RED, 0.38)], border=INK, radius=8, noise=14, seed=35)
+    D["crane_warning"] = lambda: card(1400, 360, (250, 200, 20, 255), [("危険 DANGER · GANTRY MOVING", INK, 1.0), ("KEEP 5 M CLEAR OF THE RAILS", INK, 0.55)], border=INK, radius=6, noise=16, seed=36)
+    D["mast_plate"] = lambda: card(420, 560, (235, 235, 230, 255), [("MINATO PORT", INK, 0.6), ("YARD MAST", INK, 0.5), ("12", INK, 1.6, BLACK), ("30 m · 8 x 2 kW", INK, 0.45, MONO),
+                                                                    ("HOSHIKAWA UTILITIES", INK, 0.42), ("DO NOT CLIMB", RED, 0.5)], border=INK, radius=10, noise=16, seed=37, long_side=512)
+    D["mast_cabinet"] = lambda: card(600, 360, (250, 200, 20, 255), [("高電圧 DANGER", INK, 1.0), ("HIGH VOLTAGE 6.6 kV", INK, 0.6), ("LINE 7-G · DO NOT OPEN", RED, 0.45)],
+                                     border=INK, radius=8, noise=16, seed=38, long_side=512)
     # puddles
     for k in range(3):
         D[f"puddle_{'abc'[k]}"] = (lambda kk: lambda: puddle(kk + 11, *((1200, 900), (1400, 900), (1600, 650))[kk]))(k)

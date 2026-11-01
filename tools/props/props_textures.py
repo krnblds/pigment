@@ -207,6 +207,17 @@ PAINTS = {
     "violet": V([0.3, 0.1, 0.5], 0.4),
     "cream": V([0.86, 0.8, 0.65], 0.5),
     "hazard_yellow": V([0.93, 0.72, 0.05], 0.45),
+    # port kit: container line colours (= the world's yard variants) and crane paints
+    "c_rust": V([0.36, 0.085, 0.045], 0.55),
+    "c_blue": V([0.04, 0.12, 0.33], 0.5),
+    "c_white": V([0.74, 0.74, 0.71], 0.5),
+    "c_green": V([0.07, 0.24, 0.12], 0.55),
+    "c_orange": V([0.72, 0.25, 0.04], 0.5),
+    "c_grey": V([0.3, 0.31, 0.32], 0.5),
+    "c_teal": V([0.04, 0.27, 0.29], 0.5),
+    "crane_red": V([0.6, 0.09, 0.05], 0.45),
+    "crane_blue": V([0.06, 0.2, 0.5], 0.45),
+    "crane_white": V([0.8, 0.8, 0.77], 0.45),
 }
 
 
@@ -1002,6 +1013,117 @@ def r_palm_tree(t):
     t.fill("Frond tips", t.g("frond"), values=V([0.45, 0.4, 0.15], 0.7),
            gen={"generator": "grunge", "amount": 0.3, "scale": 3.0, "softness": 0.3}, opacity=0.6, channels=NO_HEIGHT)
     t.decals_layer()
+
+
+# ------------------------------------------------------------------ port kit (tools/props/models_port.py)
+
+CONTAINER_COLOURS = ["rust", "blue", "white", "green", "orange", "grey", "teal"]
+
+
+def port_rust(t, parts, amount=0.5):
+    """Painted steel that has lived at sea: salt-faded paint, rust blooms at edges and pits,
+    rust runs below them."""
+    t.fill("Salt fade", parts, values=V([0.55, 0.52, 0.48], 0.75),
+           gen={"generator": "grunge", "amount": 0.3 + 0.2 * amount, "scale": 1.6, "softness": 0.45}, opacity=0.22, channels=NO_HEIGHT)
+    t.fill("Rust bloom", parts, material="Rust",
+           gen={"generator": "edge_wear", "amount": 0.25 + 0.35 * amount, "softness": 0.25, "breakup": 0.85, "scale": 7.0,
+                "effects": [{"generator": "spots", "op": "multiply", "amount": 0.55 + 0.3 * amount, "scale": 6.0, "softness": 0.25}]},
+           opacity=0.9, channels=NO_HEIGHT)
+    t.fill("Rust pits", parts, material="Rust", gen={"generator": "spots", "amount": 0.12 + 0.2 * amount, "scale": 22.0, "softness": 0.15},
+           opacity=0.8, channels=NO_HEIGHT)
+    t.fill("Rust runs", parts, values=V([0.3, 0.12, 0.05], 0.7),
+           gen={"generator": "leaks", "amount": 0.35 + 0.3 * amount, "scale": 4.0, "breakup": 0.7, "drip_length": 0.9, "ao_influence": 0.4,
+                "softness": 0.2}, opacity=0.55, channels=NO_HEIGHT)
+
+
+def crest(s0, length, pitch, s, flat=0.36):
+    """Nearest crest centre of a models_port.corr_profile sheet to s: anchored decals snap to
+    the face under their centre, so they must sit on a crest (a slope would tilt them 45 deg)."""
+    n = max(1, int(round(length / pitch)))
+    p = length / n
+    k = min(n - 1, max(0, round((s - s0) / p - flat / 2)))
+    return round(s0 + p * (k + flat / 2), 4)
+
+
+@recipe
+def r_container(t):
+    t.base(paint=PAINTS["c_rust"], paint2="graphite", extra={"iron": V([0.03, 0.03, 0.03], 0.7, 0.2)})
+    for c in CONTAINER_COLOURS[1:]:
+        t.fill(f"paint {c}", t.g("paint"), values=PAINTS["c_" + c], variant="colours", visible=False)
+    t.default_variant = "rust"
+    t.weather(wear=0.75, leaks=True, rust=0.7, wet=0.4)
+    port_rust(t, t.g("paint", "paint2"), 0.7)
+    t.decals_layer()
+    L, hz = 12.192, 1.207 + 0.01
+    sx = lambda x: crest(-L / 2 + 0.15, L - 0.35, 0.278, x)                # side walls (glTF x)
+    dy = lambda y: crest(0.27, 2.591 - 0.24 - 0.17 - 0.18, 0.4, y)          # door ribs (height)
+    fz = lambda z: -crest(-(1.219 - 0.15), 2.438 - 0.3, 0.33, -z)           # front wall (glTF z)
+    for c in CONTAINER_COLOURS:
+        on = c == "rust"
+        for sgn, side in ((1, "a"), (-1, "b")):
+            t.at(DEC + f"container_logo_{c}.png", [sx(-0.6 * sgn), 1.42, sgn * hz], [0, 0, sgn], [6.2, 2.36], name=f"logo_{c}_{side}", variant="lines",
+                 enabled=on, wear=0.35, fade=0.15, depth=0.12)
+            t.at(DEC + f"container_code_{c}.png", [sx(4.75 * sgn), 2.2, sgn * hz], [0, 0, sgn], [1.55, 0.52], name=f"code_{c}_{side}", variant="lines",
+                 enabled=on, wear=0.3, depth=0.12)
+        t.at(DEC + f"container_code_{c}.png", [L / 2 + 0.01, dy(2.05), 0.55], [1, 0, 0], [0.84, 0.28], name=f"code_{c}_door", variant="lines", enabled=on, wear=0.3)
+        t.at(DEC + f"container_code_{c}.png", [-L / 2 - 0.01, 2.2, fz(0.0)], [-1, 0, 0], [1.2, 0.4], name=f"code_{c}_front", variant="lines", enabled=on, wear=0.3)
+    t.at(DEC + "container_weights.png", [L / 2 + 0.01, dy(1.1), -0.6], [1, 0, 0], [0.62, 0.37], wear=0.3)
+    t.on_part("container_csc", "csc_plate", "+x", margin=0.03)
+    t.on_part("container_customs", "customs_plate", "+x", margin=0.03)
+    t.at(STORY + "graffiti_unplug.png", [sx(-3.6), 0.85, hz], [0, 0, 1], 1.5, fade=0.2, depth=0.12, wear_style="grunge", name="tag_unplug", variant="tags", enabled=False)
+    t.at(STORY + "graffiti_not_data.png", [sx(2.0), 0.9, -hz], [0, 0, -1], 1.7, fade=0.2, depth=0.12, wear_style="grunge", name="tag_not_data", variant="tags", enabled=False)
+    t.at(STORY + "poster_missing_mika.png", [L / 2 + 0.012, dy(1.5), 0.62], [1, 0, 0], 0.34, wear=0.5, fade=0.3, name="tag_poster", variant="tags", enabled=False)
+    t.at(STORY + "stencil_eye_crossed.png", [-L / 2 - 0.012, 1.0, fz(-0.45)], [-1, 0, 0], 0.55, tint=[0.95, 0.95, 0.95], fade=0.3, name="tag_eye", variant="tags",
+         enabled=False)
+    t.top_grime(0.45)
+    tags = {"blue": ["tag_unplug"], "green": ["tag_not_data", "tag_poster"], "grey": ["tag_not_data", "tag_eye"], "orange": ["tag_poster"]}
+    for i, c in enumerate(CONTAINER_COLOURS[1:]):
+        t.variant(c, 3 + 2 * i, disable=["lines"],
+                  enable=[f"paint {c}"] + [f"{k}_{c}_{x}" for k in ("logo", "code") for x in ("a", "b")] + [f"code_{c}_door", f"code_{c}_front"] + tags.get(c, []))
+
+
+@recipe
+def r_crane_sts(t):
+    t.base(paint=PAINTS["crane_red"], paint2="white", extra={"cable": V([0.04, 0.04, 0.045], 0.45, 0.8)})
+    for c in ("blue", "white"):
+        t.fill(f"paint {c}", t.g("paint"), values=PAINTS["crane_" + c], variant="colours", visible=False)
+    t.default_variant = "red"
+    t.weather(wear=0.55, leaks=True, rust=0.55, wet=0.4)
+    port_rust(t, t.g("paint", "paint2", "hazard"), 0.45)
+    t.fill("Grease", t.g("dark_metal", "steel"), values=V([0.02, 0.018, 0.015], 0.25, 0.2),
+           gen={"generator": "dirt", "amount": 0.55, "softness": 0.3, "breakup": 0.6}, opacity=0.7, channels=NO_HEIGHT)
+    t.decals_layer()
+    t.on_part("crane_banner", "house_banner_1", "+x", margin=0.02)
+    t.on_part("crane_banner", "house_banner_-1", "-x", margin=0.02)
+    t.on_part("crane_number", "house_number", "+z", margin=0.03)
+    for sgn in (-1, 1):
+        for x in (-6.0, 6.0):
+            t.at(DEC + "crane_warning.png", [x, 2.75, sgn * 9.86], [0, 0, sgn], [3.6, 0.93], wear=0.35, fade=0.15)
+    t.at(STORY + "graffiti_unplug.png", [14.0, 7.6, 9.76], [0, 0, 1], 1.8, fade=0.2, wear_style="grunge")
+    t.at(STORY + "poster_missing_ren.png", [-14.0, 6.6, 9.76], [0, 0, 1], 0.6, wear=0.45, fade=0.3)
+    cab = t.rec("cab")
+    c = cab["center"]
+    t.at(DEC + "meridian_sticker.png", [c[0] + 0.7, c[1] + 0.6, c[2] - cab["size"][2] / 2 - 0.01], [0, 0, -1], 0.45, wear=0.2)
+    t.top_grime(0.4)
+    t.variant("blue", 3, enable=["paint blue"])
+    t.variant("white", 5, enable=["paint white"])
+
+
+@recipe
+def r_light_mast(t):
+    t.base(paint="signal_grey", extra={"bulb": glow([1.0, 0.85, 0.6], 8.0, base=[1.0, 0.92, 0.75], r=0.1)})
+    t.weather(wear=0.5, leaks=True, rust=0.5, wet=0.5)
+    t.fill("Salt bloom", t.g("galv"), values=V([0.6, 0.6, 0.58], 0.8),
+           gen={"generator": "spots", "amount": 0.35, "scale": 8.0, "softness": 0.35}, opacity=0.5, channels=NO_HEIGHT)
+    t.fill("Concrete stains", t.g("concrete"), values=V([0.18, 0.12, 0.08], 0.85),
+           gen={"generator": "leaks", "amount": 0.5, "scale": 3.0, "breakup": 0.6, "drip_length": 0.6, "softness": 0.2}, opacity=0.6, channels=NO_HEIGHT)
+    t.decals_layer()
+    t.on_part("mast_plate", "mast_plate", "+z", margin=0.03)
+    t.on_part("mast_cabinet", "cabinet_label", "+z", margin=0.03)
+    t.at(STORY + "poster_unplug.png", [0.375, 2.6, 0.0], [1, 0, 0], 0.42, wear=0.45, fade=0.3)
+    t.at(STORY + "plate_observed.png", [-0.37, 3.4, 0.0], [-1, 0, 0], 0.4, wear=0.2)
+    t.at(DEC + "meridian_sticker.png", [0.874, 0.95, -0.62], [1, 0, 0], 0.16, wear=0.25)
+    t.top_grime(0.35)
 
 
 # ------------------------------------------------------------------ main

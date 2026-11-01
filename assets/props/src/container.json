@@ -1,0 +1,1723 @@
+{
+ "name": "container",
+ "bounds_gl": {
+  "min": [
+   -6.096,
+   0.0,
+   -1.222
+  ],
+  "max": [
+   6.17,
+   2.591,
+   1.222
+  ]
+ },
+ "size_m": [
+  12.266,
+  2.591,
+  2.444
+ ],
+ "tris": 3224,
+ "texels_per_m": 119.8,
+ "nodes": [],
+ "pieces": [
+  {
+   "piece": "bottom_rail_-1",
+   "group": "paint",
+   "node": null,
+   "center": [
+    0.0,
+    0.095,
+    1.184
+   ],
+   "size": [
+    11.836,
+    0.16,
+    0.07
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "casting_fr0",
+   "group": "paint2",
+   "node": null,
+   "center": [
+    -6.007,
+    0.059,
+    1.138
+   ],
+   "size": [
+    0.178,
+    0.118,
+    0.162
+   ],
+   "tris": 44
+  },
+  {
+   "piece": "casting_fr1",
+   "group": "paint2",
+   "node": null,
+   "center": [
+    -6.007,
+    2.532,
+    1.138
+   ],
+   "size": [
+    0.178,
+    0.118,
+    0.162
+   ],
+   "tris": 44
+  },
+  {
+   "piece": "casting_fl0",
+   "group": "paint2",
+   "node": null,
+   "center": [
+    -6.007,
+    0.059,
+    -1.138
+   ],
+   "size": [
+    0.178,
+    0.118,
+    0.162
+   ],
+   "tris": 44
+  },
+  {
+   "piece": "casting_fl1",
+   "group": "paint2",
+   "node": null,
+   "center": [
+    -6.007,
+    2.532,
+    -1.138
+   ],
+   "size": [
+    0.178,
+    0.118,
+    0.162
+   ],
+   "tris": 44
+  },
+  {
+   "piece": "casting_dr0",
+   "group": "paint2",
+   "node": null,
+   "center": [
+    6.007,
+    0.059,
+    1.138
+   ],
+   "size": [
+    0.178,
+    0.118,
+    0.162
+   ],
+   "tris": 44
+  },
+  {
+   "piece": "casting_dr1",
+   "group": "paint2",
+   "node": null,
+   "center": [
+    6.007,
+    2.532,
+    1.138
+   ],
+   "size": [
+    0.178,
+    0.118,
+    0.162
+   ],
+   "tris": 44
+  },
+  {
+   "piece": "casting_dl0",
+   "group": "paint2",
+   "node": null,
+   "center": [
+    6.007,
+    0.059,
+    -1.138
+   ],
+   "size": [
+    0.178,
+    0.118,
+    0.162
+   ],
+   "tris": 44
+  },
+  {
+   "piece": "casting_dl1",
+   "group": "paint2",
+   "node": null,
+   "center": [
+    6.007,
+    2.532,
+    -1.138
+   ],
+   "size": [
+    0.178,
+    0.118,
+    0.162
+   ],
+   "tris": 44
+  },
+  {
+   "piece": "post_front_-1",
+   "group": "paint",
+   "node": null,
+   "center": [
+    -6.021,
+    1.2955,
+    1.144
+   ],
+   "size": [
+    0.15,
+    2.355,
+    0.15
+   ],
+   "tris": 44
+  },
+  {
+   "piece": "post_door_-1",
+   "group": "paint",
+   "node": null,
+   "center": [
+    5.996,
+    1.2955,
+    1.144
+   ],
+   "size": [
+    0.2,
+    2.355,
+    0.15
+   ],
+   "tris": 44
+  },
+  {
+   "piece": "post_front_1",
+   "group": "paint",
+   "node": null,
+   "center": [
+    -6.021,
+    1.2955,
+    -1.144
+   ],
+   "size": [
+    0.15,
+    2.355,
+    0.15
+   ],
+   "tris": 44
+  },
+  {
+   "piece": "post_door_1",
+   "group": "paint",
+   "node": null,
+   "center": [
+    5.996,
+    1.2955,
+    -1.144
+   ],
+   "size": [
+    0.2,
+    2.355,
+    0.15
+   ],
+   "tris": 44
+  },
+  {
+   "piece": "top_rail_-1",
+   "group": "paint",
+   "node": null,
+   "center": [
+    0.0,
+    2.533,
+    1.179
+   ],
+   "size": [
+    11.836,
+    0.11,
+    0.08
+   ],
+   "tris": 44
+  },
+  {
+   "piece": "bottom_lip_-1",
+   "group": "paint",
+   "node": null,
+   "center": [
+    0.0,
+    0.03,
+    1.207
+   ],
+   "size": [
+    11.836,
+    0.03,
+    0.03
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "bottom_rail_1",
+   "group": "paint",
+   "node": null,
+   "center": [
+    0.0,
+    0.095,
+    -1.184
+   ],
+   "size": [
+    11.836,
+    0.16,
+    0.07
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "top_rail_1",
+   "group": "paint",
+   "node": null,
+   "center": [
+    0.0,
+    2.533,
+    -1.179
+   ],
+   "size": [
+    11.836,
+    0.11,
+    0.08
+   ],
+   "tris": 44
+  },
+  {
+   "piece": "bottom_lip_1",
+   "group": "paint",
+   "node": null,
+   "center": [
+    0.0,
+    0.03,
+    -1.207
+   ],
+   "size": [
+    11.836,
+    0.03,
+    0.03
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "front_sill",
+   "group": "paint",
+   "node": null,
+   "center": [
+    -6.036,
+    0.095,
+    -0.0
+   ],
+   "size": [
+    0.12,
+    0.16,
+    2.114
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "front_header",
+   "group": "paint",
+   "node": null,
+   "center": [
+    -6.036,
+    2.531,
+    -0.0
+   ],
+   "size": [
+    0.12,
+    0.12,
+    2.114
+   ],
+   "tris": 44
+  },
+  {
+   "piece": "front_wall",
+   "group": "paint",
+   "node": null,
+   "center": [
+    -6.0555,
+    1.3255,
+    -0.0
+   ],
+   "size": [
+    0.051,
+    2.301,
+    2.138
+   ],
+   "tris": 54
+  },
+  {
+   "piece": "side_wall_l",
+   "group": "paint",
+   "node": null,
+   "center": [
+    -0.025,
+    1.3255,
+    1.186
+   ],
+   "size": [
+    11.842,
+    2.301,
+    0.042
+   ],
+   "tris": 350
+  },
+  {
+   "piece": "side_wall_r",
+   "group": "paint",
+   "node": null,
+   "center": [
+    -0.025,
+    1.3255,
+    -1.186
+   ],
+   "size": [
+    11.842,
+    2.301,
+    0.042
+   ],
+   "tris": 350
+  },
+  {
+   "piece": "roof",
+   "group": "paint",
+   "node": null,
+   "center": [
+    -0.035,
+    2.56,
+    -0.0
+   ],
+   "size": [
+    11.862,
+    0.026,
+    2.318
+   ],
+   "tris": 214
+  },
+  {
+   "piece": "floor",
+   "group": "iron",
+   "node": null,
+   "center": [
+    0.0,
+    0.165,
+    -0.0
+   ],
+   "size": [
+    11.832,
+    0.03,
+    2.298
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "cross_member_0",
+   "group": "iron",
+   "node": null,
+   "center": [
+    -5.396,
+    0.1,
+    -0.0
+   ],
+   "size": [
+    0.075,
+    0.12,
+    2.298
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "cross_member_1",
+   "group": "iron",
+   "node": null,
+   "center": [
+    -4.4967,
+    0.1,
+    -0.0
+   ],
+   "size": [
+    0.075,
+    0.12,
+    2.298
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "cross_member_2",
+   "group": "iron",
+   "node": null,
+   "center": [
+    -3.5973,
+    0.1,
+    -0.0
+   ],
+   "size": [
+    0.075,
+    0.12,
+    2.298
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "cross_member_3",
+   "group": "iron",
+   "node": null,
+   "center": [
+    -2.698,
+    0.1,
+    -0.0
+   ],
+   "size": [
+    0.075,
+    0.12,
+    2.298
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "cross_member_4",
+   "group": "iron",
+   "node": null,
+   "center": [
+    -1.7987,
+    0.1,
+    -0.0
+   ],
+   "size": [
+    0.075,
+    0.12,
+    2.298
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "cross_member_5",
+   "group": "iron",
+   "node": null,
+   "center": [
+    -0.8993,
+    0.1,
+    -0.0
+   ],
+   "size": [
+    0.075,
+    0.12,
+    2.298
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "cross_member_6",
+   "group": "iron",
+   "node": null,
+   "center": [
+    0.0,
+    0.1,
+    -0.0
+   ],
+   "size": [
+    0.075,
+    0.12,
+    2.298
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "cross_member_7",
+   "group": "iron",
+   "node": null,
+   "center": [
+    0.8993,
+    0.1,
+    -0.0
+   ],
+   "size": [
+    0.075,
+    0.12,
+    2.298
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "cross_member_8",
+   "group": "iron",
+   "node": null,
+   "center": [
+    1.7987,
+    0.1,
+    -0.0
+   ],
+   "size": [
+    0.075,
+    0.12,
+    2.298
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "cross_member_9",
+   "group": "iron",
+   "node": null,
+   "center": [
+    2.698,
+    0.1,
+    -0.0
+   ],
+   "size": [
+    0.075,
+    0.12,
+    2.298
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "cross_member_10",
+   "group": "iron",
+   "node": null,
+   "center": [
+    3.5973,
+    0.1,
+    -0.0
+   ],
+   "size": [
+    0.075,
+    0.12,
+    2.298
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "cross_member_11",
+   "group": "iron",
+   "node": null,
+   "center": [
+    4.4967,
+    0.1,
+    -0.0
+   ],
+   "size": [
+    0.075,
+    0.12,
+    2.298
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "cross_member_12",
+   "group": "iron",
+   "node": null,
+   "center": [
+    5.396,
+    0.1,
+    -0.0
+   ],
+   "size": [
+    0.075,
+    0.12,
+    2.298
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "door_sill",
+   "group": "paint",
+   "node": null,
+   "center": [
+    5.996,
+    0.095,
+    -0.0
+   ],
+   "size": [
+    0.2,
+    0.15,
+    2.114
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "door_header",
+   "group": "paint",
+   "node": null,
+   "center": [
+    5.996,
+    2.471,
+    -0.0
+   ],
+   "size": [
+    0.2,
+    0.24,
+    2.114
+   ],
+   "tris": 44
+  },
+  {
+   "piece": "leaf_r_top",
+   "group": "paint",
+   "node": null,
+   "center": [
+    6.0695,
+    2.311,
+    -0.5375
+   ],
+   "size": [
+    0.045,
+    0.08,
+    1.059
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "leaf_r_bottom",
+   "group": "paint",
+   "node": null,
+   "center": [
+    6.0695,
+    0.22,
+    -0.5375
+   ],
+   "size": [
+    0.045,
+    0.1,
+    1.059
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "leaf_r_inner",
+   "group": "paint",
+   "node": null,
+   "center": [
+    6.0695,
+    1.2705,
+    -0.043
+   ],
+   "size": [
+    0.045,
+    2.001,
+    0.07
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "leaf_r_outer",
+   "group": "paint",
+   "node": null,
+   "center": [
+    6.0695,
+    1.2705,
+    -1.032
+   ],
+   "size": [
+    0.045,
+    2.001,
+    0.07
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "door_r",
+   "group": "paint",
+   "node": null,
+   "center": [
+    6.062,
+    1.2705,
+    -0.5375
+   ],
+   "size": [
+    0.036,
+    2.001,
+    0.919
+   ],
+   "tris": 46
+  },
+  {
+   "piece": "rod_guide_r0_2.05",
+   "group": "galv",
+   "node": null,
+   "center": [
+    6.104,
+    2.05,
+    -0.2939
+   ],
+   "size": [
+    0.05,
+    0.035,
+    0.06
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "rod_guide_r0_1.45",
+   "group": "galv",
+   "node": null,
+   "center": [
+    6.104,
+    1.45,
+    -0.2939
+   ],
+   "size": [
+    0.05,
+    0.035,
+    0.06
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "lock_rod_r0",
+   "group": "galv",
+   "node": null,
+   "center": [
+    6.124,
+    1.2755,
+    -0.2939
+   ],
+   "size": [
+    0.027,
+    2.271,
+    0.027
+   ],
+   "tris": 28
+  },
+  {
+   "piece": "rod_guide_r0_0.55",
+   "group": "galv",
+   "node": null,
+   "center": [
+    6.104,
+    0.55,
+    -0.2939
+   ],
+   "size": [
+    0.05,
+    0.035,
+    0.06
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "cam_keeper_r0lo",
+   "group": "galv",
+   "node": null,
+   "center": [
+    6.122,
+    0.12,
+    -0.2939
+   ],
+   "size": [
+    0.06,
+    0.06,
+    0.08
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "cam_keeper_r0hi",
+   "group": "galv",
+   "node": null,
+   "center": [
+    6.122,
+    2.401,
+    -0.2939
+   ],
+   "size": [
+    0.06,
+    0.06,
+    0.08
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "handle_hub_r0",
+   "group": "galv",
+   "node": null,
+   "center": [
+    6.124,
+    1.12,
+    -0.2939
+   ],
+   "size": [
+    0.05,
+    0.09,
+    0.05
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "handle_r0",
+   "group": "galv",
+   "node": null,
+   "center": [
+    6.1418,
+    1.11,
+    -0.4525
+   ],
+   "size": [
+    0.0564,
+    0.0391,
+    0.3245
+   ],
+   "tris": 32
+  },
+  {
+   "piece": "rod_guide_r1_2.05",
+   "group": "galv",
+   "node": null,
+   "center": [
+    6.104,
+    2.05,
+    -0.7811
+   ],
+   "size": [
+    0.05,
+    0.035,
+    0.06
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "rod_guide_r1_1.45",
+   "group": "galv",
+   "node": null,
+   "center": [
+    6.104,
+    1.45,
+    -0.7811
+   ],
+   "size": [
+    0.05,
+    0.035,
+    0.06
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "lock_rod_r1",
+   "group": "galv",
+   "node": null,
+   "center": [
+    6.124,
+    1.2755,
+    -0.7811
+   ],
+   "size": [
+    0.027,
+    2.271,
+    0.027
+   ],
+   "tris": 28
+  },
+  {
+   "piece": "rod_guide_r1_0.55",
+   "group": "galv",
+   "node": null,
+   "center": [
+    6.104,
+    0.55,
+    -0.7811
+   ],
+   "size": [
+    0.05,
+    0.035,
+    0.06
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "retainer_r0",
+   "group": "galv",
+   "node": null,
+   "center": [
+    6.112,
+    1.1,
+    -0.6339
+   ],
+   "size": [
+    0.04,
+    0.08,
+    0.05
+   ],
+   "tris": 44
+  },
+  {
+   "piece": "cam_keeper_r1lo",
+   "group": "galv",
+   "node": null,
+   "center": [
+    6.122,
+    0.12,
+    -0.7811
+   ],
+   "size": [
+    0.06,
+    0.06,
+    0.08
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "cam_keeper_r1hi",
+   "group": "galv",
+   "node": null,
+   "center": [
+    6.122,
+    2.401,
+    -0.7811
+   ],
+   "size": [
+    0.06,
+    0.06,
+    0.08
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "handle_hub_r1",
+   "group": "galv",
+   "node": null,
+   "center": [
+    6.124,
+    1.18,
+    -0.7811
+   ],
+   "size": [
+    0.05,
+    0.09,
+    0.05
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "handle_r1",
+   "group": "galv",
+   "node": null,
+   "center": [
+    6.1418,
+    1.17,
+    -0.6225
+   ],
+   "size": [
+    0.0564,
+    0.0391,
+    0.3245
+   ],
+   "tris": 32
+  },
+  {
+   "piece": "hinge_pin_r_1.6",
+   "group": "galv",
+   "node": null,
+   "center": [
+    6.112,
+    1.6,
+    -1.102
+   ],
+   "size": [
+    0.0418,
+    0.11,
+    0.044
+   ],
+   "tris": 36
+  },
+  {
+   "piece": "hinge_pin_r_0.42",
+   "group": "galv",
+   "node": null,
+   "center": [
+    6.112,
+    0.42,
+    -1.102
+   ],
+   "size": [
+    0.0418,
+    0.11,
+    0.044
+   ],
+   "tris": 36
+  },
+  {
+   "piece": "hinge_pin_r_1.0",
+   "group": "galv",
+   "node": null,
+   "center": [
+    6.112,
+    1.0,
+    -1.102
+   ],
+   "size": [
+    0.0418,
+    0.11,
+    0.044
+   ],
+   "tris": 36
+  },
+  {
+   "piece": "leaf_l_bottom",
+   "group": "paint",
+   "node": null,
+   "center": [
+    6.0695,
+    0.22,
+    0.5375
+   ],
+   "size": [
+    0.045,
+    0.1,
+    1.059
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "retainer_r1",
+   "group": "galv",
+   "node": null,
+   "center": [
+    6.112,
+    1.16,
+    -0.4411
+   ],
+   "size": [
+    0.04,
+    0.08,
+    0.05
+   ],
+   "tris": 44
+  },
+  {
+   "piece": "hinge_blade_r_1.0",
+   "group": "paint",
+   "node": null,
+   "center": [
+    6.1,
+    1.0,
+    -1.017
+   ],
+   "size": [
+    0.016,
+    0.07,
+    0.16
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "hinge_blade_r_0.42",
+   "group": "paint",
+   "node": null,
+   "center": [
+    6.1,
+    0.42,
+    -1.017
+   ],
+   "size": [
+    0.016,
+    0.07,
+    0.16
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "hinge_pin_r_2.15",
+   "group": "galv",
+   "node": null,
+   "center": [
+    6.112,
+    2.15,
+    -1.102
+   ],
+   "size": [
+    0.0418,
+    0.11,
+    0.044
+   ],
+   "tris": 36
+  },
+  {
+   "piece": "hinge_blade_r_1.6",
+   "group": "paint",
+   "node": null,
+   "center": [
+    6.1,
+    1.6,
+    -1.017
+   ],
+   "size": [
+    0.016,
+    0.07,
+    0.16
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "leaf_l_top",
+   "group": "paint",
+   "node": null,
+   "center": [
+    6.0695,
+    2.311,
+    0.5375
+   ],
+   "size": [
+    0.045,
+    0.08,
+    1.059
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "hinge_blade_r_2.15",
+   "group": "paint",
+   "node": null,
+   "center": [
+    6.1,
+    2.15,
+    -1.017
+   ],
+   "size": [
+    0.016,
+    0.07,
+    0.16
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "leaf_l_inner",
+   "group": "paint",
+   "node": null,
+   "center": [
+    6.0695,
+    1.2705,
+    0.043
+   ],
+   "size": [
+    0.045,
+    2.001,
+    0.07
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "leaf_l_outer",
+   "group": "paint",
+   "node": null,
+   "center": [
+    6.0695,
+    1.2705,
+    1.032
+   ],
+   "size": [
+    0.045,
+    2.001,
+    0.07
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "door_l",
+   "group": "paint",
+   "node": null,
+   "center": [
+    6.062,
+    1.2705,
+    0.5375
+   ],
+   "size": [
+    0.036,
+    2.001,
+    0.919
+   ],
+   "tris": 46
+  },
+  {
+   "piece": "rod_guide_l0_2.05",
+   "group": "galv",
+   "node": null,
+   "center": [
+    6.104,
+    2.05,
+    0.2939
+   ],
+   "size": [
+    0.05,
+    0.035,
+    0.06
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "rod_guide_l0_1.45",
+   "group": "galv",
+   "node": null,
+   "center": [
+    6.104,
+    1.45,
+    0.2939
+   ],
+   "size": [
+    0.05,
+    0.035,
+    0.06
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "lock_rod_l0",
+   "group": "galv",
+   "node": null,
+   "center": [
+    6.124,
+    1.2755,
+    0.2939
+   ],
+   "size": [
+    0.027,
+    2.271,
+    0.027
+   ],
+   "tris": 28
+  },
+  {
+   "piece": "rod_guide_l0_0.55",
+   "group": "galv",
+   "node": null,
+   "center": [
+    6.104,
+    0.55,
+    0.2939
+   ],
+   "size": [
+    0.05,
+    0.035,
+    0.06
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "cam_keeper_l0lo",
+   "group": "galv",
+   "node": null,
+   "center": [
+    6.122,
+    0.12,
+    0.2939
+   ],
+   "size": [
+    0.06,
+    0.06,
+    0.08
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "cam_keeper_l0hi",
+   "group": "galv",
+   "node": null,
+   "center": [
+    6.122,
+    2.401,
+    0.2939
+   ],
+   "size": [
+    0.06,
+    0.06,
+    0.08
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "handle_hub_l0",
+   "group": "galv",
+   "node": null,
+   "center": [
+    6.124,
+    1.12,
+    0.2939
+   ],
+   "size": [
+    0.05,
+    0.09,
+    0.05
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "handle_l0",
+   "group": "galv",
+   "node": null,
+   "center": [
+    6.1418,
+    1.11,
+    0.4525
+   ],
+   "size": [
+    0.0564,
+    0.0391,
+    0.3245
+   ],
+   "tris": 32
+  },
+  {
+   "piece": "lock_rod_l1",
+   "group": "galv",
+   "node": null,
+   "center": [
+    6.124,
+    1.2755,
+    0.7811
+   ],
+   "size": [
+    0.027,
+    2.271,
+    0.027
+   ],
+   "tris": 28
+  },
+  {
+   "piece": "rod_guide_l1_2.05",
+   "group": "galv",
+   "node": null,
+   "center": [
+    6.104,
+    2.05,
+    0.7811
+   ],
+   "size": [
+    0.05,
+    0.035,
+    0.06
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "rod_guide_l1_1.45",
+   "group": "galv",
+   "node": null,
+   "center": [
+    6.104,
+    1.45,
+    0.7811
+   ],
+   "size": [
+    0.05,
+    0.035,
+    0.06
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "rod_guide_l1_0.55",
+   "group": "galv",
+   "node": null,
+   "center": [
+    6.104,
+    0.55,
+    0.7811
+   ],
+   "size": [
+    0.05,
+    0.035,
+    0.06
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "retainer_l0",
+   "group": "galv",
+   "node": null,
+   "center": [
+    6.112,
+    1.1,
+    0.6339
+   ],
+   "size": [
+    0.04,
+    0.08,
+    0.05
+   ],
+   "tris": 44
+  },
+  {
+   "piece": "cam_keeper_l1lo",
+   "group": "galv",
+   "node": null,
+   "center": [
+    6.122,
+    0.12,
+    0.7811
+   ],
+   "size": [
+    0.06,
+    0.06,
+    0.08
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "cam_keeper_l1hi",
+   "group": "galv",
+   "node": null,
+   "center": [
+    6.122,
+    2.401,
+    0.7811
+   ],
+   "size": [
+    0.06,
+    0.06,
+    0.08
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "handle_hub_l1",
+   "group": "galv",
+   "node": null,
+   "center": [
+    6.124,
+    1.18,
+    0.7811
+   ],
+   "size": [
+    0.05,
+    0.09,
+    0.05
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "handle_l1",
+   "group": "galv",
+   "node": null,
+   "center": [
+    6.1418,
+    1.17,
+    0.6225
+   ],
+   "size": [
+    0.0564,
+    0.0391,
+    0.3245
+   ],
+   "tris": 32
+  },
+  {
+   "piece": "hinge_pin_l_1.0",
+   "group": "galv",
+   "node": null,
+   "center": [
+    6.112,
+    1.0,
+    1.102
+   ],
+   "size": [
+    0.0418,
+    0.11,
+    0.044
+   ],
+   "tris": 36
+  },
+  {
+   "piece": "hinge_pin_l_0.42",
+   "group": "galv",
+   "node": null,
+   "center": [
+    6.112,
+    0.42,
+    1.102
+   ],
+   "size": [
+    0.0418,
+    0.11,
+    0.044
+   ],
+   "tris": 36
+  },
+  {
+   "piece": "hinge_pin_l_1.6",
+   "group": "galv",
+   "node": null,
+   "center": [
+    6.112,
+    1.6,
+    1.102
+   ],
+   "size": [
+    0.0418,
+    0.11,
+    0.044
+   ],
+   "tris": 36
+  },
+  {
+   "piece": "csc_plate",
+   "group": "sign",
+   "node": null,
+   "center": [
+    6.093,
+    1.62,
+    0.55
+   ],
+   "size": [
+    0.006,
+    0.17,
+    0.26
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "retainer_l1",
+   "group": "galv",
+   "node": null,
+   "center": [
+    6.112,
+    1.16,
+    0.4411
+   ],
+   "size": [
+    0.04,
+    0.08,
+    0.05
+   ],
+   "tris": 44
+  },
+  {
+   "piece": "hinge_blade_l_1.0",
+   "group": "paint",
+   "node": null,
+   "center": [
+    6.1,
+    1.0,
+    1.017
+   ],
+   "size": [
+    0.016,
+    0.07,
+    0.16
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "hinge_blade_l_0.42",
+   "group": "paint",
+   "node": null,
+   "center": [
+    6.1,
+    0.42,
+    1.017
+   ],
+   "size": [
+    0.016,
+    0.07,
+    0.16
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "hinge_pin_l_2.15",
+   "group": "galv",
+   "node": null,
+   "center": [
+    6.112,
+    2.15,
+    1.102
+   ],
+   "size": [
+    0.0418,
+    0.11,
+    0.044
+   ],
+   "tris": 36
+  },
+  {
+   "piece": "hinge_blade_l_1.6",
+   "group": "paint",
+   "node": null,
+   "center": [
+    6.1,
+    1.6,
+    1.017
+   ],
+   "size": [
+    0.016,
+    0.07,
+    0.16
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "door_gasket",
+   "group": "rubber",
+   "node": null,
+   "center": [
+    6.072,
+    1.2605,
+    -0.0
+   ],
+   "size": [
+    0.03,
+    2.181,
+    0.016
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "hinge_blade_l_2.15",
+   "group": "paint",
+   "node": null,
+   "center": [
+    6.1,
+    2.15,
+    1.017
+   ],
+   "size": [
+    0.016,
+    0.07,
+    0.16
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "customs_plate",
+   "group": "sign2",
+   "node": null,
+   "center": [
+    6.093,
+    1.43,
+    0.55
+   ],
+   "size": [
+    0.006,
+    0.08,
+    0.2
+   ],
+   "tris": 12
+  }
+ ],
+ "lights": [],
+ "sockets": [],
+ "collider": [
+  {
+   "type": "box",
+   "center": [
+    0,
+    1.2955,
+    0
+   ],
+   "size": [
+    12.192,
+    2.591,
+    2.438
+   ]
+  }
+ ],
+ "meta": {}
+}

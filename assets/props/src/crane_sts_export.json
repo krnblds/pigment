@@ -1,0 +1,10 @@
+{
+ "lod0": "crane_sts.glb",
+ "lod0_bytes": 5055424,
+ "lod0_tris": 4852,
+ "texture": 2048,
+ "lod1": "crane_sts_lod1.glb",
+ "lod1_bytes": 1673868,
+ "lod1_tris": 1698,
+ "lod1_texture": 1024
+}

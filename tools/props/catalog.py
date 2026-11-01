@@ -274,6 +274,27 @@ PROPS = {
         res=1024, embed=1024, lod1=None,
         scatter=dict(slots=["road", "plaza"], density=dens(0.25, slum=0.6, industrial=0.5, market=0.4, luxury=0.1), spacing=6.0, clearance=0.0,
                      facing="random", yaw_jitter=180, decal=True)),
+    # ------------------------------------------------------------------ port (world kit: placed by tools/world/placement.py, never scattered)
+    "container": dict(
+        category="port", title="ISO 40' dry container",
+        desc="12.19 x 2.44 x 2.59 m steel box: trapezoidal corrugated sides, roof and front wall, corner castings, rails, cross members, "
+             "ribbed doors with four lock rods, cams, handles and hinges, CSC plate. Long axis X, doors at +X (glTF). Stacks at 2.6 m. "
+             "Variants are the yard colours (rust, blue, white, green, orange, grey, teal), each with its own line's livery.",
+        res=2048, embed=1024, lod1=0.3,
+        scatter=dict(slots=[], density=dens(0.0), spacing=13.0, clearance=0.0, facing="along", yaw_jitter=0)),
+    "crane_sts": dict(
+        category="port", title="Ship-to-shore gantry crane",
+        desc="Quay crane: travel bogies on two rails 18 m apart (y = -+9 m, glTF z), four tapered legs, portal and tie beams, twin box girders "
+             "with walkways and handrails, a boom reaching 64 m over the water (-z in glTF = +y Blender), A-frame with fore / back stays, "
+             "machinery house with banners, trolley, glazed operator cab, ropes, headblock and spreader, stairs, cable reel.",
+        res=2048, embed=2048, lod1=0.35,
+        scatter=dict(slots=[], density=dens(0.0), spacing=40.0, clearance=0.0, facing="along", yaw_jitter=0)),
+    "light_mast": dict(
+        category="port", title="Yard high-mast light (30 m)",
+        desc="Three-section galvanised high mast on a concrete plinth: base plate, anchor bolts, gussets, hazard sleeve, access door, "
+             "mast plate, cabinet and conduit; lowering ring with eight floods, cap, lightning rod and aviation light.",
+        res=1024, embed=1024, lod1=0.35,
+        scatter=dict(slots=[], density=dens(0.0), spacing=40.0, clearance=0.0, facing="random", yaw_jitter=0)),
     # ------------------------------------------------------------------ nature-lite
     "planter": dict(
         category="nature", title="Concrete planter with shrubs",

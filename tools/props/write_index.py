@@ -71,6 +71,10 @@ def main():
     vinfo = json.load(open(os.path.join(TEX, "variants.json"))) if os.path.exists(os.path.join(TEX, "variants.json")) else {}
     props = {}
     total = 0
+    # props whose Pigment variant folders are not on this machine (textures are git-ignored) keep
+    # the variants of the committed index, so exporting a few props never drops the others' swaps
+    ip = os.path.join(OUT, "index.json")
+    old_index = json.load(open(ip, encoding="utf8")).get("props", {}) if os.path.exists(ip) else {}
     for name, info in catalog.PROPS.items():
         sp = os.path.join(SRC, f"{name}.json")
         ep = os.path.join(SRC, f"{name}_export.json")
@@ -91,6 +95,10 @@ def main():
             if m:
                 variants.append(dict(name=v, **m))
                 total += sum(os.path.getsize(os.path.join(OUT, m[k])) for k in ("albedo", "emission") if k in m)
+        if name not in vinfo and old_index.get(name, {}).get("variants"):
+            variants = old_index[name]["variants"]
+            total += sum(os.path.getsize(os.path.join(OUT, v[k])) for v in variants for k in ("albedo", "emission")
+                         if k in v and os.path.exists(os.path.join(OUT, v[k])))
         mount = info.get("mount") or ("span" if info.get("span") else "ground")
         lod = {"lod0_tris": ex["lod0_tris"]}
         if "lod1" in ex:
