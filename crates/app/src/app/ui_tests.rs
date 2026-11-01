@@ -653,3 +653,52 @@ fn filter_stacks_and_anchor_in_panels() {
     *h.app.ui.prefs.layout_mut() = layout(PanelId::Properties);
     h.run(4);
 }
+
+/// Brush engine in the viewport: pen pressure from touch force, Shift-click
+/// line from the last stroke's end, the path tool (click points, Enter), and
+/// the Brush panel with clone / stencil / symmetry sections.
+#[test]
+fn brush_engine_pen_line_and_path() {
+    let Some(mut h) = harness() else { return };
+    settle(&mut h);
+    let paint = h.app.doc.layers.iter().rposition(|l| l.is_paint()).unwrap();
+    let id = h.app.doc.layers[paint].id;
+    h.app.select(Some(id), false);
+    h.app.set_tool(Tool::Paint);
+    h.run(3);
+    let vp = anchor(&h, "viewport");
+    let a = vp.center() + egui::vec2(-40.0, 0.0);
+    let b = vp.center() + egui::vec2(40.0, 20.0);
+    // pen pressure
+    h.hover(a);
+    h.push_event(egui::Event::Touch { device_id: egui::TouchDeviceId(1), id: egui::TouchId(1), phase: egui::TouchPhase::Move, pos: a, force: Some(0.3) });
+    h.step();
+    assert!((h.app.brush.pressure - 0.3).abs() < 1e-4, "pen force read: {}", h.app.brush.pressure);
+    h.push_event(egui::Event::Touch { device_id: egui::TouchDeviceId(1), id: egui::TouchId(1), phase: egui::TouchPhase::End, pos: a, force: Some(0.0) });
+    h.step();
+    assert_eq!(h.app.brush.pressure, 1.0, "lifting the pen resets pressure");
+    // a click paints, Shift-click paints a line from there
+    let n0 = h.app.counters.strokes;
+    h.click(a);
+    assert_eq!(h.app.counters.strokes, n0 + 1);
+    assert!(h.app.brush.last_end.is_some());
+    h.click_with(b, egui::Modifiers::SHIFT);
+    assert_eq!(h.app.counters.strokes, n0 + 2, "Shift-click paints a straight line");
+    // path tool: clicks add points, Enter paints once
+    h.app.brush.path_mode = true;
+    for p in [a, b, vp.center() + egui::vec2(0.0, -50.0)] {
+        h.click(p);
+    }
+    assert_eq!(h.app.brush.path.len(), 3);
+    assert_eq!(h.app.counters.strokes, n0 + 2, "clicks only add path points");
+    h.key(egui::Key::Enter, Default::default());
+    assert_eq!(h.app.counters.strokes, n0 + 3, "Enter paints the path");
+    assert!(h.app.brush.path.is_empty());
+    h.app.brush.path_mode = false;
+    // the Brush panel with the engine sections open
+    h.app.brush.tool = super::BrushTool::Clone;
+    h.app.brush.symmetry.x = true;
+    *h.app.ui.prefs.layout_mut() = DockLayout { root: super::dock::Node::Split { vertical: false, ratio: 0.5, a: Box::new(super::dock::Node::Leaf { tabs: vec![PanelId::Viewport], active: 0 }), b: Box::new(super::dock::Node::Leaf { tabs: vec![PanelId::Brush], active: 0 }) }, floating: vec![] };
+    h.run(4);
+    assert!(h.app.brush.tips.len() >= 10, "the tip library loads ({} tips)", h.app.brush.tips.len());
+}

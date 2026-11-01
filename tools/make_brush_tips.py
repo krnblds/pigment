@@ -47,7 +47,7 @@ def main():
     OUT.mkdir(parents=True, exist_ok=True)
     tips = {}
     tips["round"] = ("Round, soft edge", np.clip((1 - r) / 0.35, 0, 1) ** 1.5)
-    tips["square"] = ("Square, hard edge", ((np.abs(u) < 0.8) & (np.abs(v) < 0.8)).astype(np.float32))
+    tips["square"] = ("Square, hard edge", ((np.abs(u) < 0.96) & (np.abs(v) < 0.96)).astype(np.float32))
     n = vnoise(6, 1)
     tips["chalk"] = ("Chalk: grainy disc", disc_fade(0.3) * np.clip((n - 0.35) * 3, 0, 1))
     rng = np.random.default_rng(2)

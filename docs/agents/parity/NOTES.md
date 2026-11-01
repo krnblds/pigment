@@ -74,3 +74,51 @@ All built from `design::` components (lint test passes).
 - Seam-aware means "stays on its island", not "continues on the neighbouring island across the seam".
 - A spatial filter at the top of a big stack widens every pass while painting (cost grows with the radius).
 - Each anchor costs one Rgba16F texture (128 MB at 4096); each filtered mask one R16F texture.
+
+## 2. Brush engine
+
+![before / after](brush_before_after.png)
+
+*building_a, 4096, one `Brushwork` paint layer over the town stack: spray paint through a stencil (the crossed-eye mark), part of it cloned onto the pillar, a mirrored tag (symmetry X through the building's centre: the left copy is the mirror of the right one), crack tips with random angles and painted height, splatter on the shutter box, scratches whose angle follows the stroke, a pressure-ramped grime streak, leaves along the pavement.*
+Reproduce: `python docs/agents/parity/brush_demo.py 4096` (writes and runs `scenes/town/scripts/parity_brush_demo.jsonl`).
+
+### What it does
+
+- **Dynamics** (`crates/core/src/brush.rs`, `DabGenerator`): pointer samples (position, pressure) become dabs with size, angle, opacity and flow. Spacing is a fraction of the *current* (pressure-scaled) diameter, and pressure is interpolated between samples. Pressure curves (`min`, `gamma`) drive size (on by default), flow and opacity. Jitter covers size, angle, position and flow, with a seeded RNG so strokes replay identically. The angle can follow the stroke. Lazy mouse: the brush trails the pointer by N px.
+- **Flow.** At flow 1 a stroke never exceeds its opacity (max-blended stroke mask, as before). Below 1, dabs add up (an additive stamp pipeline) and the apply pass caps the mask at the stroke opacity.
+- **Tips (alphas).** `tools/make_brush_tips.py` writes 11 procedural 256² grey stamps to `assets/brushes/` with an `index.json`: round, square, chalk, spray, splatter, cracks, scratches, grunge_1, grunge_2, leaves, dots. They load into a texture array and are sampled rotated by the dab angle. The default stays the analytic round falloff with hardness.
+- **Pen input.** `egui::Event::Touch { force }` (winit maps pen and touch pressure on Windows) sets the pressure; lifting the pen resets it to 1, so a mouse paints at full pressure.
+- **Line and path tools.** Shift-click paints a straight line from the end of the last stroke. Path tool: clicks add points (drawn as an overlay), Enter paints the polyline, Esc clears. Over MCP, `points` is the polyline.
+- **Stencil.** A screen-space image (luminance × alpha) multiplies the brush coverage at each texel's screen position. It has opacity and invert. Hold **S** over the viewport: drag moves, Shift+drag rotates, wheel scales. The overlay shows the image.
+- **Symmetry** (object space). Mirror planes X / Y / Z through the mesh centre (or a given centre) and radial copies around an axis, up to 16 transforms. A texel at *p* is painted when *T p* is under the brush and visible, so a stroke on the visible side also paints the hidden mirrored side. Tiles touched by mirrored dabs come from screen bins of the transformed mesh, so undo snapshots stay tight.
+- **Clone** (Alt-click sets the source). The first stroke fixes the offset (aligned clone), and the apply pass copies the pre-stroke texels at `t + offset` in every enabled channel, coverage-weighted.
+- **Smudge.** The stroke's direction in UV (raycast under the dabs) gives a drag vector, and each texel takes the average of the pre-stroke texels behind it along that vector, so colour is dragged along.
+
+### GPU
+
+- `stamp.wgsl`: `Stamp.params` = hardness, angle, tip layer (0 = round), flow. Group 0 adds the tip array, a sampler, the `Fx` uniform (16 symmetry matrices, flow mode, stencil placement) and the stencil image. A texel takes the max over symmetry transforms of the coverage of `T p` (screen projection, depth visibility and facing are all checked at the transformed point), times the stencil.
+- `apply.wgsl`: `Brush.stroke` (opacity cap for flow strokes) and `Brush.tool` (clone / smudge, offset in texels, smudge taps).
+- Painting stays smooth: `ui_frame_timing` at 4096 gives painting 3.96 / 4.55 ms (p95 9.9 / 10.8 ms) against 3.5 / 4.1 ms before.
+
+### MCP: `paint_stroke` new optional args
+
+`tip`, `pressure` (number or one per point), `pressure_size` / `pressure_flow` / `pressure_opacity` (bool or `{min, gamma}`), `spacing`, `flow`, `angle`, `follow_angle`, `jitter {size, angle, position, flow}`, `lazy`, `seed`, `symmetry {x, y, z, radial, axis, center}`, `stencil {image, center, rotation, scale, opacity, invert}`, `tool: paint | clone | smudge`, `clone_source: [x, y]` (viewport point), `smudge`. Every call starts from the defaults, so scripts replay exactly; a clone source persists until a non-clone stroke. `list_library` lists `brush_tips`. Old calls behave as before.
+
+### UI
+
+The Brush panel gains Tool (Paint / Clone / Smudge, segmented), Tip (library picker, angle, follow), Stroke (flow, lazy mouse, a Jitter section, a Pen pressure section with three curves, the Path tool button), Symmetry (X / Y / Z, radial count and axis) and Stencil (load / remove, opacity, scale, rotation, invert). The viewport handles Shift-click, the path, Alt-click and S-drag, and draws the stencil and path overlays (`app/brush_tools.rs`).
+
+### Tests
+
+- core `brush::tests` (6): spacing follows pressure, pressure ramps, seeded and bounded jitter, angle follows the stroke, lazy mouse trails, the symmetry group (mirrors, radial, cap 16), polyline resampling, pressure curves, UV under a ray.
+- Session `automation::brush_tools::tests` (a flat quad): light pressure gives a thin stroke, a ramp lands in between; the square tip covers more than a round dab and the cracks tip much less; an unknown tip gives an error; low flow is fainter; position jitter covers more rows; symmetry X puts paint on both halves; a stencil lets paint through its white half only (checked on screen); clone copies a dot (and needs a source); smudge drags blue into the band beside a line.
+- UI `brush_engine_pen_line_and_path`: touch force sets the pressure and lifting resets it; click paints, Shift-click paints a line; path clicks only add points and Enter paints once; the Brush panel renders with clone + symmetry; the tip library loads.
+- The existing stroke, undo, seam and tile-wrap tests still pass.
+
+### Known limits
+
+- No pen **tilt**: egui / winit don't pass tilt through on this path. `InputPoint.tilt` exists for when they do.
+- **Clone works in UV space.** Source and destination must be on the same UV island, or on islands laid out the same way; cloning between unrelated islands copies whatever lies at that UV offset. Industry-standard painters clone in screen space, which would need a screen-UV pass.
+- Smudge pulls from the *pre-stroke* pixels, so one stroke smears what was there before it, not what it already smeared.
+- Symmetry needs a symmetric mesh: the mirrored point must lie on the surface. Visibility is tested at the mirrored point, so hidden mirrored areas only get paint where the mirror is visible.
+- **Particle brushes** (falling, dripping, spray-and-stick physics) are not implemented. They were optional, and I spent the time on features 3-6. Spray tips plus position jitter cover spray-and-stick looks.

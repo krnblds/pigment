@@ -120,6 +120,36 @@ fn tools() -> Value {
     ] {
         paint_props[k] = v;
     }
+    // brush engine (pigment_core::brush): every call starts from the defaults
+    let curve = |d: &str| json!({ "type": ["boolean", "object"], "additionalProperties": false, "description": d,
+        "properties": { "enabled": { "type": "boolean" }, "min": { "type": "number", "description": "value at zero pressure, 0..1 (default 0.1)" }, "gamma": { "type": "number", "description": "response curve: > 1 needs more pressure (default 1)" } } });
+    for (k, v) in [
+        ("tip", json!({ "type": ["string", "null"], "description": "brush tip (alpha) from the library (list_library brush_tips: round, square, chalk, spray, splatter, cracks, scratches, grunge_1, grunge_2, leaves, dots); default: round falloff with `hardness`" })),
+        ("pressure", json!({ "type": ["number", "array"], "items": { "type": "number" }, "description": "pen pressure 0..1: one number for the whole stroke or one per point (interpolated between points). Drives size (pressure_size, on by default), flow and opacity curves" })),
+        ("pressure_size", curve("pressure -> size (default on, min 0.1)")),
+        ("pressure_flow", curve("pressure -> flow (default off)")),
+        ("pressure_opacity", curve("pressure -> opacity (default off)")),
+        ("spacing", json!({ "type": "number", "description": "distance between dabs as a fraction of the diameter (default 0.1)" })),
+        ("flow", json!({ "type": "number", "description": "per-dab strength 0..1 (default 1 = a stroke never exceeds `opacity`; lower = dabs build up towards it)" })),
+        ("angle", json!({ "type": "number", "description": "tip angle, degrees" })),
+        ("follow_angle", json!({ "type": "boolean", "description": "the tip turns with the stroke direction (+ angle)" })),
+        ("jitter", json!({ "type": "object", "additionalProperties": false, "description": "random variation per dab",
+            "properties": { "size": { "type": "number", "description": "0..1 fraction" }, "angle": { "type": "number", "description": "degrees either way" }, "position": { "type": "number", "description": "scatter, in diameters" }, "flow": { "type": "number", "description": "0..1 fraction" } } })),
+        ("lazy", json!({ "type": "number", "description": "lazy mouse: the brush trails the points by this many pixels (smooths the path)" })),
+        ("seed", json!({ "type": "integer", "minimum": 0, "description": "jitter seed" })),
+        ("symmetry", json!({ "type": ["object", "null"], "additionalProperties": false, "description": "object-space symmetry: mirror planes through `center` (default: the mesh centre) and/or radial copies around an axis",
+            "properties": { "x": { "type": "boolean" }, "y": { "type": "boolean" }, "z": { "type": "boolean" }, "radial": { "type": "integer", "minimum": 0, "description": "copies around the axis" },
+                            "axis": { "type": ["string", "integer"], "description": "radial axis x | y | z (default y)" }, "center": { "type": "array", "items": { "type": "number" }, "description": "[x, y, z]" } } })),
+        ("stencil", json!({ "type": ["object", "null"], "additionalProperties": false, "required": ["image"], "description": "paint through an image laid over the view (luminance x alpha = how much paint gets through)",
+            "properties": { "image": { "type": "string" }, "center": { "type": "array", "items": { "type": "number" }, "description": "[x, y] in 0..1 of the view (default centre)" },
+                            "rotation": { "type": "number", "description": "degrees" }, "scale": { "type": "number", "description": "image height as a fraction of the view height (default 1)" },
+                            "opacity": { "type": "number", "description": "0 = no effect, 1 = full (default)" }, "invert": { "type": "boolean" } } })),
+        ("tool", json!({ "type": "string", "enum": ["paint", "clone", "smudge"], "description": "paint (default); clone copies the layer from `clone_source` keeping the offset to the stroke start; smudge drags the existing pixels along the stroke" })),
+        ("clone_source", json!({ "type": "array", "items": { "type": "number" }, "description": "clone: [x, y] viewport point (0..1, this call's camera) to copy from" })),
+        ("smudge", json!({ "type": "number", "description": "smudge drag length in brush diameters (default 0.5)" })),
+    ] {
+        paint_props[k] = v;
+    }
     let mut render_props = camera.clone();
     render_props["view"] = json!({ "type": "string", "description": "material (default), base color, roughness, metallic, height, normal, ambient occlusion, curvature, world normal, uv checker, emission, opacity, transmission, coat, coat roughness, flake" });
     render_props["path"] = json!({ "type": "string", "description": "where to save the PNG (default: temp)" });
@@ -243,7 +273,7 @@ fn tools() -> Value {
               p
           }, &[]),
         t("bake", "Re-bake AO and curvature.", json!({ "ao_samples": { "type": "integer" }, "ao_distance": { "type": "number" }, "curvature_radius": { "type": "number" }, "curvature_strength": { "type": "number" } }), &[]),
-        t("paint_stroke", "Paint a brush stroke projected from a camera view onto the model.", paint_props, &["points"]),
+        t("paint_stroke", "Paint a brush stroke projected from a camera view onto the model. Brush engine: tip (alphas), per-point pen pressure with size / flow / opacity curves, spacing, flow, angle (or follow_angle), jitter, lazy mouse, object-space symmetry (mirror x/y/z, radial), a screen-space stencil, and tools clone (clone_source) and smudge. `points` is a polyline (line / path tool).", paint_props, &["points"]),
         t("project_decal", "Project an image (PNG with alpha: sign, logo, label, poster, graffiti) onto the model like a sticker. Ways to place it: `rect` over a camera view; `part` alone (fit to the part's outward face); a world-space `box` (+ `facing`); or precisely with `anchor` [u,v] on a part's `face` (or `position` + `normal`) plus `size` in metres and `rotation`. Anchored decals can be torn / faded (`wear`, `fade`) and stacked with `overlap_order`. Colour comes from the image times `tint`; optional emission, height, opacity / transmission (`values` + `channels`). Every decal on a paint layer is recorded for export_variants (`name`, `variant`, `enabled`). Lands on the top paint layer unless `layer` / `overlap_order` is given. One undo step.",
           {
               let mut p = json!({ "image": { "type": "string" }, "rect": { "type": "array", "items": { "type": "number" }, "description": "[x0, y0, x1, y1] viewport area in 0..1 (y down)" },
