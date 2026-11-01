@@ -8,7 +8,7 @@ builds again, which restores the old outputs from the content-addressed cache):
     decal     assets/decals/story/billboard_noctis.png gets a "HOT SWAP" band: the tower-crown
               billboards (image material) swap directly; the Pigment variants that show it are
               re-exported on the fast path (watch --fast)
-    recipe    city/models/building/building_b.toml gets a [pigment] patch (shell paint -> red):
+    recipe    city/models/building/building_b.toml gets a [pigment] patch (LED strips cyan / pink -> green / amber):
               building_b's Pigment script re-runs, its 7 variant sets are packed and swapped
     prop      city/models/prop/bollard.toml mesh param height 0.96 -> 1.6: mesh, Pigment,
               export, world glb, swap
@@ -224,11 +224,12 @@ def scenario_recipe(G, out):
     before = out / "recipe_before.png"
     G.shot(before)
     p, old = _edit_manifest("building/building_b.toml", lambda d: d["pigment"].__setitem__("patch", [
-        {"match": {"tool": "add_layer", "name": "Teal paint"}, "set": {"values": {"base_color": [0.62, 0.07, 0.05]}}}]))
+        {"match": {"tool": "add_layer", "name": "LED strips (cyan)"}, "set": {"material": "Neon green"}},
+        {"match": {"tool": "add_layer", "name": "LED strips (pink)"}, "set": {"material": "Neon amber"}}]))
     r = build_and_swap(["godot.tex:building_b__*"], label="building_b recipe patch")
     G.shot(out / "recipe_after.png")
     side_by_side(before, out / "recipe_after.png", out / "recipe_before_after.png", "before",
-                 f"after: building_b shell paint patched in its smart model -> swapped in {r['total_s']:.0f} s",
+                 f"after: building_b LED strips re-coloured by a patch in its smart model -> swapped in {r['total_s']:.0f} s",
                  "pigment.patch in city/models/building/building_b.toml; Pigment re-run, 7 variant sets packed + swapped")
     p.write_text(old, encoding="utf-8")
     rv = build_and_swap(["godot.tex:building_b__*"], label="revert recipe (cache restore)")
