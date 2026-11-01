@@ -12,7 +12,8 @@ Options (after "--"):
                         regenerate with `--res 8k`, also copied to game/sky/, where
                         city_sky.gd prefers the largest one that is imported)
     --samples N         Cycles AA samples per pixel (default 16; the sky is analytic)
-    --no-preview        skip the tone-mapped PNG previews (docs/agents/sky/<preset>_{equirect,view}.png)
+    --no-preview        skip the tone-mapped equirect previews (docs/agents/sky/<preset>_equirect.png)
+    --views             also render a wide street-level look at the sky (<preset>_view.png)
     --no-godot          don't copy the HDRs to game/sky/ or rewrite the Godot sky resources
     --check             also re-render the baked HDR through apply_sky() and report
                         the mean error against the procedural sky (orientation check)
@@ -558,7 +559,7 @@ def hdr_path(preset, res="2k", folder=None):
     return os.path.join(folder or SKY_DIR, f"{preset}_{res}.hdr")
 
 
-def bake(preset, res="2k", samples=16, preview=True, folder=None):
+def bake(preset, res="2k", samples=16, preview=True, folder=None, views=False):
     P = PRESETS[preset]
     w = sky_world("SkyProc_" + preset, preset)
     sc = _pano_scene("SkyBake", w, RES[res], samples)
@@ -569,7 +570,8 @@ def bake(preset, res="2k", samples=16, preview=True, folder=None):
     print(f"sky: {preset} {res} -> {out} ({os.path.getsize(out) / 1e6:.1f} MB, {time.time() - t:.1f}s)")
     if preview:
         save_preview(sc, os.path.join(DOC_DIR, f"{preset}_equirect.png"), math.log2(P["exposure"]))
-        view(preset, sc)
+        if views:
+            view(preset, sc)
     return out
 
 
@@ -902,7 +904,7 @@ def main(args):
     res = opt("--res", "2k")
     samples = int(opt("--samples", 16))
     for p in presets:
-        bake(p, res, samples, preview=not opt("--no-preview") and res == "2k")
+        bake(p, res, samples, preview=not opt("--no-preview") and res == "2k", views=bool(opt("--views")))
     if not opt("--no-godot"):
         write_godot(presets, res)
     if opt("--check"):

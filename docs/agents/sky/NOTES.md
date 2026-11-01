@@ -16,8 +16,9 @@ searchlights hang over the same streets everywhere.
 | `dusk` | purple-orange sunset under the clouds: the sun 2.5 deg below the horizon lights the cloud base pink/orange on its side, violet overhead | 2.7 MB |
 | `predawn` | cold blue hour, thin broken cloud, pale gold seam in the east, fading stars, weaker city glow | 2.7 MB |
 
-Previews: `<preset>_equirect.png` (the whole panorama, tone-mapped AgX) and
-`<preset>_view.png` (a 12 mm street-level camera looking at the interesting part of the sky).
+Previews: `<preset>_equirect.png` (the whole panorama, tone-mapped AgX). `--views` also
+renders `<preset>_view.png`, a 12 mm street-level camera looking at the interesting part of
+the sky (not committed, to keep the docs small).
 
 ## How it is made (`tools/sky/make_sky.py`, headless Blender)
 
@@ -198,7 +199,9 @@ no windows.
   ```
 
 - `pigment_skies.png`: Pigment, building_a under the old `night` preset, then the four skies.
-- The equirect and view previews of each preset.
+- The equirect preview of each preset.
+- The predawn aerial shot is missing: that render stalled behind other agents' GPU jobs.
+  The predawn street and drone shots are in `town_presets.png`.
 
 ## Tests
 
