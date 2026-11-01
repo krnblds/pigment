@@ -5,3 +5,9 @@ assets/town/
 # textures Godot extracts from car.glb on import
 assets/car/*.png
 assets/car/*.png.import
+# textures Godot extracts from the traffic / fleet glbs on import
+assets/traffic/**/*.png
+assets/traffic/**/*.png.import
+# fleet + props copied in by tools/godot/sync_vehicles.py (source of truth: assets/vehicles, assets/props)
+assets/vehicles/
+assets/props/
