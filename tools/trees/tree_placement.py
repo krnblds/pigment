@@ -114,7 +114,7 @@ def avenue_trees(cfg, P, net, kit, H, log, rot90, edge_island, district_of, on_d
                     continue
                 pos, t = e.path.at(s)
                 nout = rot90(t) * sgn
-                p = pos.to_2d() + nout * (hh + 1.1)
+                p = pos.to_2d() + nout * (hh + 2.0)          # tree pit 2 m in from the curb line (inside the 3 m sidewalk)
                 if _near_grid(fg, p, 3.2):
                     s += 2.0
                     continue

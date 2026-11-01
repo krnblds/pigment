@@ -749,6 +749,16 @@ def generate(cfg, town, out_dir, log=print):
     return world, net, hf
 
 
+def _near_road(grid, pts, half, zz, x, y, z, cell, dz, extra):
+    gx, gy = int(x // cell), int(y // cell)
+    for ix in (gx - 1, gx, gx + 1):
+        for iy in (gy - 1, gy, gy + 1):
+            for k in grid.get((ix, iy), ()):
+                if abs(z - zz[k]) < dz and (pts[k, 0] - x) ** 2 + (pts[k, 1] - y) ** 2 < (half[k] + extra) ** 2:
+                    return True
+    return False
+
+
 def clear_carriageways(world, log, margin=0.5, dz=3.0):
     """Last safety pass: drop anything standing on a carriageway (between the curbs,
     within dz metres of the deck height) or inside a junction's paved box. Signals,
@@ -772,17 +782,20 @@ def clear_carriageways(world, log, margin=0.5, dz=3.0):
     for k, q in enumerate(pts):
         grid.setdefault((int(q[0] // cell), int(q[1] // cell)), []).append(k)
     kept, dropped = [], {}
+    pruned = 0
     for inst in world["instances"]:
         if inst.get("kind") in keep_kinds:
             kept.append(inst)
             continue
         x, y, z = inst["pos"]
+        # trees spread their crowns: keep their trunks 1.2 m further back from the carriageway
+        extra = 1.0 if inst.get("kind") == "tree" else 0.0
         hit = False
         gx, gy = int(x // cell), int(y // cell)
         for ix in (gx - 1, gx, gx + 1):
             for iy in (gy - 1, gy, gy + 1):
                 for k in grid.get((ix, iy), ()):
-                    if abs(z - zz[k]) < dz and (pts[k, 0] - x) ** 2 + (pts[k, 1] - y) ** 2 < half[k] ** 2:
+                    if abs(z - zz[k]) < dz and (pts[k, 0] - x) ** 2 + (pts[k, 1] - y) ** 2 < (half[k] + extra) ** 2:
                         hit = True
                         break
                 if hit:
@@ -795,7 +808,13 @@ def clear_carriageways(world, log, margin=0.5, dz=3.0):
         if hit:
             dropped[inst.get("asset")] = dropped.get(inst.get("asset"), 0) + 1
         else:
+            if inst.get("kind") == "tree" and _near_road(grid, pts, half, zz, x, y, z, cell, dz, 4.0):
+                # street trees are pruned narrow on the road side: a slimmer crown keeps lanes clear
+                sc = inst.get("scale", [1, 1, 1])
+                inst["scale"] = [round(sc[0] * 0.7, 4), round(sc[1] * 0.7, 4), sc[2]]
+                pruned += 1
             kept.append(inst)
+    log(f"clear_carriageways: pruned {pruned} roadside tree crowns")
     log(f"clear_carriageways: dropped {sum(dropped.values())} " + ", ".join(f"{k} {v}" for k, v in sorted(dropped.items())))
     return kept
 

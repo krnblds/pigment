@@ -155,7 +155,7 @@ def scan(world, built, out_dir, log):
             if hits[key] <= 8:
                 examples.append({"road": rid, "class": cls, "deck": deck, "hit": found[1], "pos": [round(c.x, 1), round(c.y, 1), round(zs, 2)]})
         # buried: something that isn't road above the lane surface
-        cov = cast(near, base + up * 6.0, -up, 5.9)
+        cov = cast(near, base + up * 4.5, -up, 4.4)   # 4.5 m road clearance
         if cov:
             key = cov[1].split(".")[0]
             buried[key] = buried.get(key, 0) + 1
