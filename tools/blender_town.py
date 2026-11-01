@@ -1104,7 +1104,7 @@ def build(root=None, export_junctions=False, quick=False):
             continue
         for i0 in range(4, len(recs) - 20, 7):
             q, t, nn, hi, lo, low = recs[i0]
-            if not (1.4 < hi - lo < 8.0) or rng.random() > 0.35:
+            if not (1.4 < hi - lo < 8.0) or max(abs(q.x), abs(q.y)) > HALF - 30 or rng.random() > 0.35:
                 continue
             if any((q - s).length < 35 for s in last):
                 continue

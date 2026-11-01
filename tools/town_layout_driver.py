@@ -146,7 +146,8 @@ def shots(info):
     p, t = runs[8].at(30)
     out["crossroads"] = ((p.x - t.y * 2.0, p.y + t.x * 2.0, p.z + 6.0), (j1[0], j1[1], j1[2] + 1.0), 22)
     if info["stairs"]:
-        st = max(info["stairs"], key=lambda s: s["steps"])
+        big = [s for s in info["stairs"] if s["steps"] >= 10] or info["stairs"]
+        st = min(big, key=lambda s: Vector(s["from"]).to_2d().length)
         a, b = Vector(st["from"]), Vector(st["to"])
         mid = (a + b) / 2
         d = (b - a).to_2d().normalized()
@@ -184,7 +185,66 @@ def debug_shots(info, cam):
         x, y, z = j["pos"]
         out["top_" + name] = ((x, y, z + 100), (x, y, z), 70.0)
         out["obl_" + name] = ((x - 35, y - 45, z + 30), (x, y, z), 28)
+    for name, v in shots(info).items():
+        out["day_" + name] = v
     return out
+
+
+def verify(samples=20000, seed=3):
+    """Terrain never above road/sidewalk tops; street furniture and buildings
+    rest on something.  Prints counts; returns a dict."""
+    import random
+    from mathutils.bvhtree import BVHTree
+    rng = random.Random(seed)
+    coll = bpy.data.collections["CyberpunkTown"]
+    dg = bpy.context.evaluated_depsgraph_get()
+    terrain = coll.objects["TownTerrain"]
+    tb = BVHTree.FromObject(terrain, dg)
+    roads = [o for o in coll.objects if o.name.startswith(("RoadRun", "Junction_"))]
+    tops = []
+    for o in roads:
+        mw = o.matrix_world
+        for p in o.data.polygons:
+            if p.normal.z > 0.9 and p.area > 0.01:
+                tops.append((o, p.index))
+    poke = 0
+    worst = 0.0
+    for _ in range(samples):
+        o, i = rng.choice(tops)
+        p = o.data.polygons[i]
+        vs = [o.matrix_world @ o.data.vertices[v].co for v in p.vertices]
+        w = [rng.random() for _ in vs]
+        c = sum((v * k for v, k in zip(vs, w)), Vector()) / sum(w)
+        hit = tb.ray_cast(Vector((c.x, c.y, c.z + 20)), Vector((0, 0, -1)), 40)
+        if hit[0] is not None and hit[0].z > c.z + 0.002:
+            poke += 1
+            worst = max(worst, hit[0].z - c.z)
+    # supports: everything that should stand on the ground
+    ground = [terrain] + roads + [o for o in coll.objects if o.name.startswith(("Stairs", "RetainingWall", "Footing"))]
+    gb = []
+    for o in ground:
+        try:
+            gb.append(BVHTree.FromObject(o, dg))
+        except Exception:
+            pass
+    floating = []
+    for o in coll.objects:
+        if not o.name.startswith(("StreetLamp", "PowerPole", "building_")) or o.parent is not None:
+            continue
+        loc = o.matrix_world.translation
+        best = 1e9
+        for b in gb:
+            h = b.ray_cast(Vector((loc.x, loc.y, loc.z + 0.3)), Vector((0, 0, -1)), 50)
+            if h[0] is not None:
+                best = min(best, loc.z - h[0].z)
+        if o.name.startswith("building_"):
+            # footing child reaches below the lowest ground under the building
+            continue
+        if best > 0.05:
+            floating.append((o.name, round(best, 3)))
+    res = {"samples": samples, "terrain_above_road": poke, "worst_mm": round(worst * 1000, 1), "floating": floating[:20], "n_floating": len(floating)}
+    print("VERIFY", res)
+    return res
 
 
 def main():
@@ -197,6 +257,8 @@ def main():
     print(f"built in {time.time() - t0:.0f} s")
     if opt("--export-junctions"):
         return
+    if opt("--verify"):
+        verify()
     res = tuple(int(v) for v in str(opt("--res", "1600x900")).split("x"))
     setup_render(int(opt("--samples", 128)), res)
     if opt("--debug"):
