@@ -392,7 +392,7 @@ def c_pine(name, seed, w, h):
             for u in np.linspace(0, 1, 6):
                 aa = a + bend * u
                 pts.append((p[0] + math.sin(aa) * L * u, p[1] + math.cos(aa) * L * u * asp))
-            col = jit(rng, (0.11, 0.24, 0.1), 0.01, 0.1, 0.18)
+            col = jit(rng, (0.15, 0.31, 0.12), 0.01, 0.1, 0.18)
             cv.line(pts, 0.0055, 0.002, col, twig=False)
             cv.db.line([cv.P(*q) for q in pts], fill=255, width=max(1, int(0.003 * cv.W)))
     # the white "candle" (new shoot) of kuromatsu

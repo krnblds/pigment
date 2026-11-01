@@ -289,6 +289,10 @@ def _place_cards(sk, P, rng):
     names, wts = _cells(P)
     mode = Lf["mode"]
     leafy = [b for b in sk.branches if b.leafy]
+    if Lf.get("inner", 0) and mode in ("spray", "tuft"):
+        # also along the outer part of the branches that carry the twigs (fills the crown)
+        par = {id(b.parent): b.parent for b in leafy if b.parent is not None and b.parent.level >= 0}
+        leafy = leafy + list(par.values())
     cand = []                                  # (pos, dir, flex, phase, branch t)
     if mode == "strip":
         for b in leafy:
@@ -297,9 +301,9 @@ def _place_cards(sk, P, rng):
                          flex=b.flex0, phase=b.phase) for b, _ in cand]
         _crown(sk)
         return
-    dense = max(0.05, Lf["spacing"] * 0.5)
+    dense = max(0.04, Lf["spacing"] * 0.22)
     for b in leafy:
-        s0 = Lf["start"] * b.length
+        s0 = (Lf["start"] if b.leafy else Lf.get("inner", 0.5)) * b.length
         s = s0 + rng.uniform(0, dense)
         while s <= b.length:
             t = s / max(b.length, 1e-6)
@@ -539,13 +543,9 @@ def _card(md, sk, c, rect, lod, scale=1.0):
     base = c["pos"] if scale == 1.0 else c["anchor"] - u * h * (0.08 if c["mode"] != "tuft" else 0.42)
     down = -UP * c["droop"] * h
     u0, v0, u1, v1 = rect
-    if lod == 0:
-        rows = [0.0, 1.0]
-        cols = [-0.5, 0.0, 0.5]
-    else:
-        rows = [0.0, 1.0]
-        cols = [-0.5, 0.5]
-    fold = 0.14 * w if lod == 0 else 0.0
+    rows = [0.0, 1.0]
+    cols = [-0.5, 0.5]
+    fold = 0.0
     P, UV, B = [], [], []
     for rw in rows:
         spine = base + u * h * rw + down * rw * rw
@@ -641,7 +641,7 @@ def build_lod(sk, lod, cells=None, look=None):
         if sides == 0:
             continue
         if lod == 1:
-            if br.level >= 1 or br.rad[0] < 0.045 or sk.species == "palm":
+            if br.level >= 1 or br.rad[0] < 0.045 or sk.species == "palm" or lv.get("lod1_tubes") is False:
                 continue
             sides = max(3, sides - 2)
         if lod == 0 and br.rad[0] < 0.006:
