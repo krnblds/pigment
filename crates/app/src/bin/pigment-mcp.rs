@@ -59,7 +59,20 @@ fn tools() -> Value {
     render_props["path"] = json!({ "type": "string", "description": "where to save the PNG (default: temp)" });
     render_props["exposure"] = json!({ "type": "number" });
     render_props["background"] = json!({ "type": "boolean" });
-    let t = |name: &str, desc: &str, props: Value, req: &[&str]| json!({ "name": name, "description": desc, "inputSchema": { "type": "object", "properties": props, "required": req } });
+    // lighting / post (persist across renders until changed)
+    render_props["lighting"] = json!({ "type": "string", "enum": ["studio", "night", "overcast"], "description": "built-in lighting: studio (neutral softboxes), night (dark blue city night, cyan + magenta neon rim lights, sodium lamp), overcast (soft daylight)" });
+    render_props["hdri"] = json!({ "type": "string", "description": "light with an equirectangular .hdr / .exr instead (overrides lighting)" });
+    render_props["env_rotation"] = json!({ "type": "number", "description": "rotate the lighting around the vertical axis, degrees" });
+    render_props["bloom"] = json!({ "description": "glow from emissive / HDR highlights: true | false | {threshold (default 1), intensity (0.5), radius (0..1, 0.65)}", "anyOf": [{ "type": "boolean" }, { "type": "object" }] });
+    let mut sheet_props = render_props.clone();
+    render_props["views"] = json!({ "description": "contact sheet of named views in one PNG: [\"front\",\"back\",\"left\",\"right\",\"top\",\"bottom\"] or \"all\" (width/height are then per tile, default 384)", "anyOf": [{ "type": "array", "items": { "type": "string" } }, { "type": "string" }] });
+    render_props["columns"] = json!({ "type": "integer", "description": "with views: tiles per row" });
+    sheet_props["frames"] = json!({ "type": "integer", "description": "number of views around the model (default 8)" });
+    sheet_props["start_yaw"] = json!({ "type": "number", "description": "yaw of the first frame, degrees (default 0 = front)" });
+    sheet_props["columns"] = json!({ "type": "integer", "description": "tiles per row (default 4)" });
+    sheet_props["width"] = json!({ "type": "integer", "description": "tile width (default 384)" });
+    sheet_props["height"] = json!({ "type": "integer", "description": "tile height (default 384)" });
+    let t =|name: &str, desc: &str, props: Value, req: &[&str]| json!({ "name": name, "description": desc, "inputSchema": { "type": "object", "properties": props, "required": req } });
     json!([
         t("new_project", "Start a project from a mesh (.glb/.gltf/.obj with UVs). Bakes AO + curvature. Optionally starts from a smart material or a base material; a paint layer goes on top.",
           json!({ "mesh": { "type": "string" }, "resolution": { "type": "integer", "enum": [512, 1024, 2048, 4096] }, "smart_material": { "type": "string" }, "material": { "type": "string" } }), &["mesh"]),
@@ -85,7 +98,10 @@ fn tools() -> Value {
                   "tint": { "type": "array", "items": { "type": "number" } }, "material": { "type": "string", "description": "preset for roughness/metallic (default plain paint)" },
                   "emissive_strength": { "type": "number" }, "height": { "type": "number" }, "opacity": { "type": "number" },
                   "layer": {}, "mask": { "type": "boolean" }, "alpha_from_luminance": { "type": "boolean" } }), &["image"]),
-        t("render", "Render the model with its current material (PBR, studio lighting). Returns the image.", render_props, &[]),
+        t("render", "Render the model with its current material (PBR image-based lighting, bloom, ACES). Choose lighting (studio / night / overcast or an hdri), exposure and bloom. With `views` it returns one contact sheet of front/back/left/right/top views. Returns the image.", render_props, &[]),
+        t("render_turntable", "Render `frames` views evenly around the model (at `pitch`) as one labelled contact-sheet PNG: see the whole asset in one call. Takes the same lighting / bloom / view args as render.", sheet_props, &[]),
+        t("export_lighting", "Write a built-in lighting preset as an equirectangular .hdr (e.g. to light a Blender world exactly like Pigment's viewport).",
+          json!({ "lighting": { "type": "string", "enum": ["studio", "night", "overcast"] }, "path": { "type": "string" }, "width": { "type": "integer", "description": "default 2048" } }), &["path"]),
         t("export_textures", "Export PNG texture maps. Presets: unreal, unity, godot, separate (glTF/Blender: BaseColor, Roughness, Metallic, AO, Normal_OpenGL, Height).",
           json!({ "dir": { "type": "string" }, "preset": { "type": "string" }, "name": { "type": "string" } }), &["dir"]),
         t("undo", "Undo the last action.", json!({}), &[]),
@@ -125,6 +141,14 @@ fn call(session: &mut Option<Session>, name: &str, args: &Value) -> Result<Vec<V
                 json!({ "type": "text", "text": format!("saved {}", img.path.display()) }),
             ])
         }
+        "render_turntable" => {
+            let img = s.render_turntable(args)?;
+            Ok(vec![
+                json!({ "type": "image", "data": base64::engine::general_purpose::STANDARD.encode(&img.png), "mimeType": "image/png" }),
+                json!({ "type": "text", "text": format!("saved {}", img.path.display()) }),
+            ])
+        }
+        "export_lighting" => text(s.export_lighting(args)?),
         other => Err(format!("unknown tool `{other}`")),
     }
 }

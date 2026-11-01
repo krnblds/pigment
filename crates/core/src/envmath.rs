@@ -88,17 +88,17 @@ impl EnvImage {
         let height = width / 2;
         // direction, angular half-size (u, v), intensity, tint
         let lights = [
-            (Vec3::new(-0.75, 0.22, -0.62).normalize(), Vec2::new(0.06, 0.45), 9.0, Vec3::new(0.15, 0.75, 1.0)),
-            (Vec3::new(0.78, 0.28, -0.56).normalize(), Vec2::new(0.06, 0.45), 9.0, Vec3::new(1.0, 0.12, 0.62)),
-            (Vec3::new(0.45, 0.75, 0.48).normalize(), Vec2::new(0.07, 0.07), 6.0, Vec3::new(1.0, 0.62, 0.3)),
+            (Vec3::new(-0.8, 0.2, -0.45).normalize(), Vec2::new(0.1, 0.6), 8.0, Vec3::new(0.15, 0.75, 1.0)),
+            (Vec3::new(0.82, 0.25, -0.4).normalize(), Vec2::new(0.1, 0.6), 8.0, Vec3::new(1.0, 0.12, 0.62)),
+            (Vec3::new(0.4, 0.7, 0.6).normalize(), Vec2::new(0.16, 0.16), 24.0, Vec3::new(1.0, 0.62, 0.3)),
         ];
         let mut data = Vec::with_capacity((width * height) as usize);
         for y in 0..height {
             for x in 0..width {
                 let uv = Vec2::new((x as f32 + 0.5) / width as f32, (y as f32 + 0.5) / height as f32);
                 let d = dir_from_uv(uv);
-                let zenith = Vec3::new(0.004, 0.007, 0.022);
-                let glow = Vec3::new(0.06, 0.03, 0.065);
+                let zenith = Vec3::new(0.012, 0.022, 0.07);
+                let glow = Vec3::new(0.09, 0.045, 0.1);
                 let mut c = if d.y >= 0.0 {
                     let mut sky = zenith.lerp(glow, (1.0 - d.y).powf(6.0));
                     // skyline: blocky building silhouettes with lit windows
@@ -120,7 +120,7 @@ impl EnvImage {
                     sky
                 } else {
                     // wet asphalt: dark, picks up a little of the horizon glow
-                    Vec3::new(0.004, 0.004, 0.007).lerp(glow * 0.35, (1.0 + d.y).powf(10.0))
+                    Vec3::new(0.01, 0.012, 0.022).lerp(glow * 0.35, (1.0 + d.y).powf(10.0))
                 };
                 for (dir, half, intensity, tint) in lights {
                     c += tint * intensity * soft_rect(d, dir, half);
@@ -330,8 +330,10 @@ mod tests {
         let night = EnvImage::preset("night", 256).unwrap();
         let overcast = EnvImage::preset("overcast", 256).unwrap();
         let (mn, mo) = (mean(&night), mean(&overcast));
-        // night is dark on average; overcast is bright and near-neutral
-        assert!(mn.length() < 0.25 * mo.length(), "{mn} vs {mo}");
+        // night is darker on average (mostly sky; a few bright lamps); overcast is near-neutral
+        assert!(mn.length() < 0.5 * mo.length(), "{mn} vs {mo}");
+        let dark = night.data.iter().filter(|c| Vec3::from(**c).max_element() < 0.12).count();
+        assert!(dark > night.data.len() * 3 / 4, "night sky should be mostly dark ({dark})");
         assert!((mo.x - mo.z).abs() < 0.15 * mo.z, "{mo}");
         // night has strongly coloured rim lights: some texels are bright cyan, some magenta
         assert!(night.data.iter().any(|c| c[2] > 5.0 && c[0] < 2.0));
