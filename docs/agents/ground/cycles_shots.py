@@ -79,6 +79,11 @@ os.makedirs(outdir, exist_ok=True)
 for s in spots:
     if s["name"] not in want:
         continue
+    # side light: the sun comes in from the left of the view, so the ground's relief reads
+    d = Vector(s["at"]) - Vector(s["eye"])
+    yaw = math.atan2(d.y, d.x)
+    if moon:
+        moon.rotation_euler = (math.radians(58), 0, yaw + math.radians(100))
     cam.location = Vector(s["eye"])
     cam.rotation_euler = (Vector(s["at"]) - Vector(s["eye"])).to_track_quat("-Z", "Y").to_euler()
     cam.data.sensor_fit = "VERTICAL"

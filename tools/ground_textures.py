@@ -94,12 +94,12 @@ def rock_cliff():
     projected on a cliff), block joints, water stains running down, lichen on
     the faces, debris and moss on the ledges."""
     rock = dict(scale=0.55, strata=0.75, cracks=1.1, bands=1.4, streaks=0.7, warp=0.9, crack_scale=0.8, seed=3)
-    return sheet("rock_cliff", 4.0, {"base_color": [0.29, 0.275, 0.255], "roughness": 0.82, "height": 0.0}, [
-        L("Rock mass", (0.34, 0.32, 0.295), g("rock", **rock), height=1.0, height_profile=True, height_gain=6.0,
+    return sheet("rock_cliff", 4.0, {"base_color": [0.2, 0.19, 0.18], "roughness": 0.82, "height": 0.0}, [
+        L("Rock mass", (0.26, 0.245, 0.225), g("rock", **rock), height=1.0, height_profile=True, height_gain=6.0,
           jitter={"value": 0.12, "hue": 0.015, "saturation": 0.15, "roughness": 0.06}),
-        L("Fracture faces", (0.4, 0.38, 0.35), g("cells", variant="plates", scale=2.6, stretch=1.4, randomness=0.9, edge_width=0.05, edge_noise=0.8, warp=0.4, height_variation=0.8, seed=5),
+        L("Fracture faces", (0.31, 0.295, 0.27), g("cells", variant="plates", scale=2.6, stretch=1.4, randomness=0.9, edge_width=0.05, edge_noise=0.8, warp=0.4, height_variation=0.8, seed=5),
           height=1.0, height_profile=True, height_gain=1.6, opacity=0.8, blend={"height": "add"}, jitter={"value": 0.15}),
-        L("Grain", (0.33, 0.31, 0.29), g("rock", scale=5.0, strata=0.1, cracks=0.3, warp=0.5, streaks=0.0, crack_scale=4.0, seed=7),
+        L("Grain", (0.24, 0.23, 0.215), g("rock", scale=5.0, strata=0.1, cracks=0.3, warp=0.5, streaks=0.0, crack_scale=4.0, seed=7),
           height=0.6, height_profile=True, height_gain=1.0, opacity=0.6, blend={"height": "add"}),
         L("Crystals", (0.52, 0.5, 0.47), g("scatter", variant="chip", scale=160.0, density=0.5, size=0.45, irregularity=0.8, seed=9),
           height=0.25, height_profile=True, opacity=0.55, blend={"height": "add"}, jitter={"value": 0.4}),
@@ -113,11 +113,11 @@ def rock_cliff():
         L("Ledge moss", (0.11, 0.15, 0.05), g("rock", variant="ledges", amount=0.6, softness=0.25, **rock,
                                                effects=[{"generator": "spots", "op": "multiply", "amount": 0.4, "scale": 2.5, "softness": 0.2, "breakup": 0.6, "seed": 14}]),
           channels=NO_H, roughness=0.95, opacity=0.7),
-        L("Lichen grey", (0.55, 0.55, 0.5), g("spots", amount=0.12, scale=11.0, softness=0.05, breakup=0.8, seed=15),
+        L("Lichen grey", (0.46, 0.46, 0.42), g("spots", amount=0.12, scale=11.0, softness=0.05, breakup=0.8, seed=15),
           height_blend={"mode": "below", "offset": 2.0, "contrast": 0.8}, channels=NO_H, roughness=0.9, opacity=0.55),
         L("Lichen yellow", (0.5, 0.46, 0.2), g("spots", amount=0.05, scale=16.0, softness=0.04, breakup=0.8, seed=17),
           height_blend={"mode": "below", "offset": 2.5, "contrast": 0.8}, channels=NO_H, roughness=0.9, opacity=0.5),
-        L("Weathering", (0.4, 0.38, 0.35), g("grunge", amount=0.4, scale=0.5, softness=0.35, seed=19), opacity=0.35, channels=NO_H),
+        L("Weathering", (0.3, 0.285, 0.265), g("grunge", amount=0.4, scale=0.5, softness=0.35, seed=19), opacity=0.35, channels=NO_H),
         L("Warm tone", (0.38, 0.3, 0.22), g("grunge", amount=0.35, scale=0.35, softness=0.35, seed=20), opacity=0.45, channels=NO_H),
         L("Cool tone", (0.24, 0.25, 0.26), g("grunge", amount=0.3, scale=0.6, softness=0.3, seed=22), opacity=0.4, channels=NO_H),
     ])
