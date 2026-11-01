@@ -602,8 +602,19 @@ def material_for(spec, options=None, uv_map=""):
 
 
 def assign(obj, mat):
-    """Replace all of obj's material slots with mat."""
+    """Replace all of obj's material slots with mat.
+
+    Linked duplicates (mesh data shared by several objects) get object-level
+    slots instead, so each instance can carry its own variant material.
+    """
     me = obj.data
+    if me.users > 1:
+        if len(me.materials) == 0:
+            me.materials.append(None)
+        for slot in obj.material_slots:
+            slot.link = "OBJECT"
+            slot.material = mat
+        return
     me.materials.clear()
     me.materials.append(mat)
     if len(me.polygons):

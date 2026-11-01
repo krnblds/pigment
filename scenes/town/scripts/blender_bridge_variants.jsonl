@@ -1,0 +1,17 @@
+// Blender bridge demo: export town buildings plus colour variants for the
+// Pigment Bridge add-on. Folders named <asset>__<variant> are picked at random
+// per object by the add-on ("Random variant per object").
+// Run from the repo root:  pigment-mcp --script scenes/town/scripts/blender_bridge_variants.jsonl
+{"tool": "open_project", "args": {"path": "scenes/town/projects/building_a.pigment"}}
+{"tool": "send_to_blender", "args": {"dir": "scenes/town/textures/blender/building_a__warm", "name": "building_a"}}
+{"tool": "update_layer", "args": {"layer": "Base", "values": {"base_color": [0.42, 0.47, 0.52]}}}
+{"tool": "update_layer", "args": {"layer": "Lit windows (warm)", "values": {"base_color": [0.35, 0.85, 1.0], "emissive": [0.35, 0.85, 1.0], "emissive_strength": 3.0}}}
+{"tool": "send_to_blender", "args": {"dir": "scenes/town/textures/blender/building_a__cyan", "name": "building_a", "mesh": false}}
+{"tool": "update_layer", "args": {"layer": "Base", "values": {"base_color": [0.55, 0.36, 0.30]}}}
+{"tool": "update_layer", "args": {"layer": "Lit windows (warm)", "values": {"base_color": [1.0, 0.3, 0.7], "emissive": [1.0, 0.3, 0.7], "emissive_strength": 4.0}}}
+{"tool": "send_to_blender", "args": {"dir": "scenes/town/textures/blender/building_a__neon", "name": "building_a", "mesh": false}}
+{"tool": "open_project", "args": {"path": "scenes/town/projects/building_c.pigment"}}
+{"tool": "send_to_blender", "args": {"dir": "scenes/town/textures/blender/building_c__steel", "name": "building_c"}}
+{"tool": "send_to_blender", "args": {"dir": "scenes/town/textures/blender/building_c_unreal", "name": "building_c", "preset": "unreal", "mesh": false}}
+{"tool": "update_layer", "args": {"layer": "Gunmetal cladding", "values": {"base_color": [0.32, 0.12, 0.10]}}}
+{"tool": "send_to_blender", "args": {"dir": "scenes/town/textures/blender/building_c__rust", "name": "building_c", "mesh": false}}
