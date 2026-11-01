@@ -48,6 +48,7 @@ import glob
 import json
 import math
 import os
+import sys
 import random
 
 import bmesh
@@ -508,6 +509,19 @@ def _pigment_api(root):
     return ns["apply_pigment_material"]
 
 
+def _add_interiors(root, mat, asset, folder):
+    """Interior-mapped windows on the kit glass (tools/interiors/blender_interiors.py), when the
+    interior atlas has been built (tools/interiors/interiors.py) and $TOWN_INTERIORS isn't 0."""
+    data = os.path.join(root, "scenes", "town", "textures", "interiors")
+    if os.environ.get("TOWN_INTERIORS", "1") == "0" or not os.path.isfile(os.path.join(data, "interiors.json"))             or not os.path.isfile(os.path.join(data, "windows", asset + "_panes.json")):
+        return
+    d = os.path.join(root, "tools", "interiors")
+    if d not in sys.path:
+        sys.path.insert(0, d)
+    import blender_interiors
+    blender_interiors.add_interiors(mat, asset, folder, data=data)
+
+
 def variant_materials(root, asset, kit_obj):
     """Materials for scenes/town/textures/<asset>__<variant>/<asset>_*.png."""
     tex = os.path.join(root, "scenes", "town", "textures")
@@ -533,6 +547,7 @@ def variant_materials(root, asset, kit_obj):
             m.name = want
             if base is not None:
                 base.name = f"Pigment_{asset}"
+            _add_interiors(root, m, asset, f)
             mats.append(m)
     finally:
         bpy.data.objects.remove(tmp)

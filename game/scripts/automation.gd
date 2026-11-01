@@ -58,6 +58,8 @@ func _ready() -> void:
 		_bench_matrix.call_deferred()
 	elif a.has("bench"):
 		_bench_only.call_deferred(float(a.bench))
+	elif a.has("interior-shots"):
+		_interior_shots.call_deferred(String(a["interior-shots"]))
 
 
 func _physics_process(delta: float) -> void:
@@ -668,3 +670,160 @@ func _bench_matrix() -> void:
 	res["+no_visuals"] = await _measure_for(3.0)
 	print("MATRIX ", JSON.stringify(res, "  "))
 	_quit()
+
+
+# ------------------------------------------------------------------ interior-mapped windows
+## --interior-shots=<dir> [--no-interiors]: night views into the windows (docs/agents/interiors):
+## a street-level view of a kit building's upper windows from two angles (parallax), a shop front,
+## a tower close-up and the far skyline (bridge spot), each with fps. Writes shots.json.
+func _interior_shots(dir: String) -> void:
+	DirAccess.make_dir_recursive_absolute(dir)
+	_video_setup()
+	main.hud.visible = false
+	main.rain.visible = false
+	main.car.visible = false
+	await _wait(5.0)
+	await _settle()
+	var cam = main.cam
+	cam.manual = true
+	var town = main.town
+	var w = null
+	if FileAccess.file_exists("res://assets/world/world.json"):
+		w = JSON.parse_string(FileAccess.get_file_as_string("res://assets/world/world.json"))
+	var origin: Vector3 = main.car.global_position
+	if w != null:
+		for s in _spots(w):
+			if s.name == "avenue":
+				origin = s.eye
+	var out := {"interiors": town.interiors_enabled}
+	var views := []
+	for want in [["building_a", 2.5, 7.0, 15.0, 6.0, "street"], ["building_b", 0.5, 3.5, 8.0, 3.5, "shopfront"], ["building_c", 5.0, 14.0, 20.0, 9.0, "corporate"]]:
+		var v := await _window_view(town, origin, want[0], want[1], want[2], want[3], want[4])
+		if v.is_empty():
+			print("interior shots: no clear view of ", want[0])
+			continue
+		v["name"] = want[5]
+		views.append(v)
+	for v in views:
+		for k in [-1, 1]:
+			var nm: String = v.name + ("_left" if k < 0 else "_right")
+			cam.fov = 50.0
+			cam.global_position = v.eye + v.side * float(k) * v.slide
+			cam.look_at(v.at, Vector3.UP)
+			main.stream_now(cam.global_position)
+			await _wait(2.5)
+			out[nm] = await _measure_for(2.0)
+			await _shot(dir, nm)
+	# a tower facade close-up
+	var tv := await _tower_view(town, origin)
+	if not tv.is_empty():
+		cam.fov = 55.0
+		cam.global_position = tv.eye
+		cam.look_at(tv.at, Vector3.UP)
+		main.stream_now(tv.eye)
+		await _wait(3.0)
+		out["tower"] = await _measure_for(2.0)
+		await _shot(dir, "tower")
+	if w != null:
+		for s in _spots(w):
+			if s.name in ["bridge", "lookout"]:
+				cam.fov = float(s.get("fov", 62.0))
+				cam.global_position = s.eye
+				cam.look_at(s.at, Vector3.UP)
+				main.stream_now(s.eye)
+				await _wait(4.0)
+				out["skyline_" + s.name] = await _measure_for(3.0)
+				await _shot(dir, "skyline_" + s.name)
+	var f := FileAccess.open(dir.path_join("shots.json"), FileAccess.WRITE)
+	f.store_string(JSON.stringify(out, "  "))
+	f.close()
+	print("INTERIOR_SHOTS ", JSON.stringify(out))
+	_quit()
+
+
+## A kit building near `origin` with an unobstructed street-level view of its panes between y0 and
+## y1 (object space): {eye, at, side, slide}.
+func _window_view(town, origin: Vector3, asset: String, y0: float, y1: float, dist: float, slide: float) -> Dictionary:
+	var jp := "res://assets/interiors/%s_panes.json" % asset
+	if not FileAccess.file_exists(jp):
+		return {}
+	var panes: Array = JSON.parse_string(FileAccess.get_file_as_string(jp)).panes
+	var cands := []
+	for inst in town.layout.instances:
+		if String(inst.mesh).split("__")[0] != asset:
+			continue
+		var xf: Transform3D = town.xf_from(inst.xf)
+		var d := xf.origin.distance_to(origin)
+		if d < 600.0:
+			cands.append([d, xf])
+	cands.sort_custom(func(a, b): return a[0] < b[0])
+	var space = get_viewport().get_world_3d().direct_space_state
+	for c in cands.slice(0, 40):
+		var xf: Transform3D = c[1]
+		# the facade with the most panes in the height band
+		var faces := {}
+		for p in panes:
+			if p.center[1] < y0 or p.center[1] > y1:
+				continue
+			var key := Vector3(p.normal[0], p.normal[1], p.normal[2]).snapped(Vector3.ONE * 0.5)
+			faces[key] = faces.get(key, []) + [p]
+		for key in faces:
+			var list: Array = faces[key]
+			if list.size() < 2:
+				continue
+			var mid := Vector3.ZERO
+			for p in list:
+				mid += Vector3(p.center[0], p.center[1], p.center[2])
+			mid /= float(list.size())
+			var at: Vector3 = xf * mid
+			var n: Vector3 = (xf.basis * key).normalized()
+			var eye: Vector3 = at + n * dist
+			eye.y = xf.origin.y + 1.7
+			var side := Vector3.UP.cross(n).normalized()
+			main.stream_now(eye)
+			town.ensure_collision(eye, 40.0)
+			await get_tree().physics_frame
+			var ok := true
+			for e in [eye, eye + side * slide, eye - side * slide]:
+				var q := PhysicsRayQueryParameters3D.create(e, at - n * 0.3)
+				var hit: Dictionary = space.intersect_ray(q)
+				if hit and hit.position.distance_to(at) > 1.5:
+					ok = false
+				var down := PhysicsRayQueryParameters3D.create(e + Vector3.UP * 3.0, e - Vector3.UP * 4.0)
+				var g: Dictionary = space.intersect_ray(down)
+				if g.is_empty() or g.position.y > e.y - 0.5:
+					ok = false
+			if ok:
+				return {"eye": eye, "at": at, "side": side, "slide": slide}
+	return {}
+
+
+func _tower_view(town, origin: Vector3) -> Dictionary:
+	var cands := []
+	for inst in town.layout.instances:
+		var m := String(inst.mesh)
+		if not m.begins_with("tower_") or not town.layout.meshes.get(m, {}).has("aabb"):
+			continue
+		var xf: Transform3D = town.xf_from(inst.xf)
+		cands.append([xf.origin.distance_to(origin), xf, town.layout.meshes[m].aabb])
+	cands.sort_custom(func(a, b): return a[0] < b[0])
+	var space = get_viewport().get_world_3d().direct_space_state
+	for c in cands.slice(0, 30):
+		var xf: Transform3D = c[1]
+		var lo := Vector3(c[2][0][0], c[2][0][1], c[2][0][2])
+		var hi := Vector3(c[2][1][0], c[2][1][1], c[2][1][2])
+		for ax in [Vector3.RIGHT, Vector3.LEFT, Vector3.FORWARD, Vector3.BACK]:
+			var fc: Vector3 = (lo + hi) * 0.5 + ax * (hi - lo) * 0.5
+			fc.y = lo.y + 14.0
+			var face: Vector3 = xf * fc
+			var n: Vector3 = (xf.basis * ax).normalized()
+			var side := Vector3.UP.cross(n).normalized()
+			var eye: Vector3 = face + n * 30.0 + side * 12.0 - Vector3.UP * 6.0
+			main.stream_now(eye)
+			town.ensure_collision(eye, 40.0)
+			await get_tree().physics_frame
+			var hit: Dictionary = space.intersect_ray(PhysicsRayQueryParameters3D.create(eye, face + n * 0.5))
+			var g: Dictionary = space.intersect_ray(PhysicsRayQueryParameters3D.create(eye, eye - Vector3.UP * 30.0))
+			if hit.is_empty() and not g.is_empty():
+				return {"eye": eye, "at": face + Vector3.UP * 6.0}
+	return {}

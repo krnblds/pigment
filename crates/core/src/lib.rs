@@ -15,6 +15,7 @@ pub mod folders;
 pub mod foliage;
 pub mod foliage_set;
 pub mod image_fill;
+pub mod interior;
 pub mod mesh;
 pub mod partquery;
 pub mod project;

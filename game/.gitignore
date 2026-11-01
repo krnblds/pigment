@@ -20,3 +20,5 @@ assets/world/
 assets/.live/
 # tree kit, copied in by tools/trees/sync_godot.py (source of truth: assets/trees)
 assets/trees/
+# interior atlas + kit window maps (tools/interiors/interiors.py sync)
+assets/interiors/

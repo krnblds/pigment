@@ -179,6 +179,13 @@ func _texture(town: Node, folder: String) -> Dictionary:
 		if d.get("type", "") != "pigment" or d.get("folder", "") != folder:
 			continue
 		var m = town._mat_cache[mname]
+		if m is ShaderMaterial:      # interior-mapped building (town_loader._interior_material)
+			for k in ["albedo", "orm", "normal", "emission"]:
+				if tex[k]:
+					m.set_shader_parameter(k + "_tex", tex[k])
+			m.set_shader_parameter("use_emission", tex.emission != null)
+			n += 1
+			continue
 		if not (m is ORMMaterial3D):
 			continue
 		if tex.albedo:
@@ -209,6 +216,10 @@ func _image(town: Node, image: String) -> Dictionary:
 		var d: Dictionary = town.layout.materials.get(mname, {})
 		if d.get("type", "") == "image" and d.get("image", "") == image:
 			var m = town._mat_cache[mname]
+			if m is ShaderMaterial:  # interior-mapped tower facade
+				m.set_shader_parameter("albedo_tex", t)
+				n += 1
+				continue
 			m.albedo_texture = t
 			if m.emission_enabled:
 				m.emission_texture = t
@@ -226,6 +237,11 @@ func _material(town: Node, folder: String) -> Dictionary:
 		town.layout.materials[mname] = d
 		if town._mat_cache.has(mname):
 			var m = town._mat_cache[mname]
+			if m is ShaderMaterial:  # interior-mapped building
+				m.set_shader_parameter("emission_energy", float(d.get("emissive_scale", 1.0)) * 1.3)
+				m.set_shader_parameter("alpha_scissor", 0.15 if d.get("opacity", false) else 0.0)
+				n += 1
+				continue
 			m.emission_energy_multiplier = float(d.get("emissive_scale", 1.0)) * 1.3
 			if d.get("opacity", false):
 				m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR

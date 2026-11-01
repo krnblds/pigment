@@ -344,6 +344,25 @@ fn tools() -> Value {
                   "foliage": { "type": "boolean", "description": "also export the foliage layers (export_foliage; default true when there are any)" } }), &["dir"]),
         t("export_mesh", "Write the loaded mesh exactly as Pigment paints it (world transforms applied, UVs, normals, and in .glb the tangents the normal map was baked with).",
           json!({ "path": { "type": "string", "description": ".glb or .obj (no extension: .glb)" }, "format": { "type": "string", "enum": ["glb", "obj"] } }), &["path"]),
+        t("export_window_map", "Interior mapping (parallax windows): write a window map of the mesh for the given glass parts. <dir>/<name>_WindowMap.png is a UV-space grey map (glTF UVs, row 0 = v 0) whose texels hold pane index + 1 (0 = not a pane; 16-bit if over 255 panes); panes grow `pad` texels into empty gutter, never over other parts. <dir>/<name>_panes.json lists every pane's frame: part id, centre, outward normal, right / up (as seen from outside), size [w, h] in metres and centre UV. A shader looks the pane up from the fragment UV and ray-casts into a room behind it (see pack_interiors).",
+          json!({ "dir": { "type": "string" }, "name": { "type": "string", "description": "file prefix (default: mesh name)" },
+                  "parts": { "type": ["array", "object"], "description": "pane part ids, or a shape query as in list_parts (e.g. {max_thickness: 0.02, min_area: 0.3})" },
+                  "resolution": { "type": "integer", "description": "map size (default: the project resolution); nearest-sampled, so it can be lower" },
+                  "pad": { "type": "integer", "description": "texels to grow panes into the empty atlas gutter (default 4)" },
+                  "outward_from": { "type": "array", "items": { "type": "number" }, "description": "normals point away from this point (default: the mesh bounds centre)" },
+                  "up": { "type": "array", "items": { "type": "number" }, "description": "world up for the panes' vertical axis (default [0, 1, 0])" } }), &["dir", "parts"]),
+        t("pack_interiors", "Interior mapping: pack rooms into one texture-array strip (<dir>/<name>_atlas.png: cell x (cell * 2 * rooms), RGBA8, layers lit / off per room) plus <dir>/<name>.json. Format 'pre-projected': a room is a box size [w, h, d] metres behind the window plane, imaged by a pinhole camera `eye` metres in front of the window (default d) whose frustum passes through the front rectangle; alpha = depth of the surface seen (0 window plane .. 1 back wall) so shaders can ray-march furniture with parallax. Give each room `lit` (+ optional `off`, `depth`) rendered images, or the classic `faces` {back, left, right, floor, ceiling}, which are reprojected (analytic depth). Colour grade per room (`grade`, `off_grade`) on top of the pack-wide `grade`. Needs no project or GPU.",
+          json!({ "dir": { "type": "string" }, "name": { "type": "string", "description": "default interiors" },
+                  "cell": { "type": "integer", "description": "layer size in pixels (default 512)" },
+                  "base_dir": { "type": "string", "description": "relative image paths are resolved against this folder" },
+                  "grade": { "type": "object", "description": "pack-wide grade: exposure (stops), contrast, saturation, tint [r,g,b], lift [r,g,b], vignette" },
+                  "rooms": { "type": "array", "items": { "type": "object", "properties": {
+                      "name": { "type": "string" }, "size": { "type": "array", "items": { "type": "number" }, "description": "[width, height, depth] m (default [4, 3, 4])" },
+                      "eye": { "type": "number" }, "lit": { "type": "string" }, "off": { "type": "string", "description": "lights-off render (default: lit at 3 %)" },
+                      "depth": { "type": "string", "description": "grey depth image, 0 window .. 1 back wall (default: the empty box)" },
+                      "faces": { "type": "object", "description": "{back, left, right, floor, ceiling} images instead of lit" },
+                      "grade": { "type": "object" }, "off_grade": { "type": "object" }, "tags": { "type": "array", "items": { "type": "string" } } },
+                      "required": ["name"], "additionalProperties": false } } }), &["dir", "rooms"]),
         t("get_project_info", "Overview of the session in one call: mesh (name, source, triangles, bounds), texture resolution, parts count, layers, bake status, project folder, last export timing.", json!({}), &[]),
         t("batch", "Run several tool calls in one request, in order: {calls: [{tool, args}, ...]}. Returns {ok, failed, results: [{index, tool, ok, ms, result | error}]}. Stops at the first error unless stop_on_error is false. Images from render are saved to disk (path in the result) rather than returned.",
           json!({ "calls": { "type": "array", "items": { "type": "object", "properties": { "tool": { "type": "string" }, "args": { "type": "object" } }, "required": ["tool"], "additionalProperties": false } },
@@ -577,6 +596,10 @@ fn call(session: &mut Option<Session>, name: &str, args: &Value) -> Result<Vec<V
     if name == "batch" {
         return batch(session, args);
     }
+    if name == "pack_interiors" {
+        let v = pigment_engine::app::automation::pack_interiors(args)?;
+        return Ok(vec![json!({ "type": "text", "text": serde_json::to_string_pretty(&v).unwrap() })]);
+    }
     if session.is_none() {
         *session = Some(Session::new()?);
     }
@@ -612,6 +635,7 @@ fn call(session: &mut Option<Session>, name: &str, args: &Value) -> Result<Vec<V
         "paint_foliage" => text(s.paint_foliage(args)?),
         "grow_ivy" => text(s.grow_ivy(args)?),
         "export_foliage" => text(s.export_foliage(args)?),
+        "export_window_map" => text(s.export_window_map(args)?),
         "undo" => text(s.undo(false)?),
         "redo" => text(s.undo(true)?),
         "render" => {

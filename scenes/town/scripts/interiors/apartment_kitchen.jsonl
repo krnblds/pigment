@@ -1,0 +1,33 @@
+{"tool": "new_project", "args": {"mesh": "scenes/town/textures/interiors/meshes/apartment_kitchen.glb", "resolution": 2048, "material": "White plastic"}}
+{"tool": "bake", "args": {"ao_distance": 0.25, "curvature_radius": 0.005, "curvature_strength": 0.7}}
+{"tool": "delete_layer", "args": {"layer": "Paint"}}
+{"tool": "add_layer", "args": {"name": "Role 0", "mask": {"parts": [34, 36]}, "values": {"base_color": [0.02, 0.02, 0.022], "roughness": 0.5, "metallic": 0.0}}}
+{"tool": "add_layer", "args": {"name": "Role 1", "mask": {"parts": [35]}, "values": {"base_color": [0.06, 0.04, 0.03], "roughness": 0.95, "metallic": 0.0}}}
+{"tool": "add_layer", "args": {"name": "Role 2", "mask": {"parts": [32, 37, 38, 39, 40]}, "values": {"base_color": [0.07, 0.2, 0.05], "roughness": 0.7, "metallic": 0.0}}}
+{"tool": "add_layer", "args": {"name": "Role 2 veins", "mask": {"parts": [32, 37, 38, 39, 40], "generator": "spots", "amount": 0.4, "scale": 30.0, "softness": 0.4, "seed": 1811}, "values": {"base_color": [0.15, 0.32, 0.08]}, "opacity": 0.6}}
+{"tool": "add_layer", "args": {"name": "Role 3", "mask": {"parts": [18, 23, 24, 29, 31]}, "values": {"base_color": [0.12, 0.07, 0.04], "roughness": 0.45, "metallic": 0.0}}}
+{"tool": "add_layer", "args": {"name": "Role 3 grain", "mask": {"parts": [18, 23, 24, 29, 31], "generator": "stripes", "amount": 0.45, "scale": 18.0, "softness": 0.6, "breakup": 0.8, "seed": 1812}, "values": {"base_color": [0.072, 0.042, 0.024], "roughness": 0.55}, "opacity": 0.5, "channels": {"height": false}}}
+{"tool": "add_layer", "args": {"name": "Role 4", "mask": {"parts": [14, 15, 16, 17, 19, 20, 21, 22, 25, 26, 27, 28]}, "values": {"base_color": [0.12, 0.13, 0.14], "roughness": 0.4, "metallic": 0.8}}}
+{"tool": "add_layer", "args": {"name": "Role 5", "mask": {"parts": [6]}, "values": {"base_color": [0.15, 0.15, 0.15], "roughness": 0.3, "metallic": 0.0}}}
+{"tool": "add_layer", "args": {"name": "Role 6", "mask": {"parts": [33]}, "values": {"base_color": [0.15, 0.15, 0.16], "roughness": 0.6, "metallic": 0.0}}}
+{"tool": "add_layer", "args": {"name": "Glow 7", "mask": {"parts": [12]}, "values": {"base_color": [0.3, 0.7, 1.0], "roughness": 0.3, "metallic": 0.0, "emissive": [0.3, 0.7, 1.0], "emissive_strength": 4.0}}}
+{"tool": "add_layer", "args": {"name": "Role 8", "mask": {"parts": [13]}, "values": {"base_color": [0.32, 0.2, 0.11], "roughness": 0.55, "metallic": 0.0}}}
+{"tool": "add_layer", "args": {"name": "Role 8 grain", "mask": {"parts": [13], "generator": "stripes", "amount": 0.45, "scale": 18.0, "softness": 0.6, "breakup": 0.8, "seed": 1817}, "values": {"base_color": [0.192, 0.12, 0.066], "roughness": 0.65}, "opacity": 0.5, "channels": {"height": false}}}
+{"tool": "add_layer", "args": {"name": "Role 9", "mask": {"parts": [0]}, "values": {"base_color": [0.35, 0.3, 0.25], "roughness": 0.6, "metallic": 0.0}}}
+{"tool": "add_layer", "args": {"name": "Role 9 grout", "mask": {"parts": [0], "generator": "tiles", "variant": "square", "scale": 3.0, "aspect": 1.0, "mortar": 0.04, "amount": 0.5, "softness": 0.02, "seed": 1818}, "values": {"base_color": [0.1575, 0.135, 0.1125], "roughness": 0.9, "height": -0.4}}}
+{"tool": "add_layer", "args": {"name": "Role 10", "mask": {"parts": [2, 3, 4]}, "values": {"base_color": [0.55, 0.46, 0.36], "roughness": 0.8, "metallic": 0.0}}}
+{"tool": "add_layer", "args": {"name": "Role 11", "mask": {"parts": [7, 11]}, "values": {"base_color": [0.55, 0.56, 0.58], "roughness": 0.35, "metallic": 0.9}}}
+{"tool": "add_layer", "args": {"name": "Role 12", "mask": {"parts": [1]}, "values": {"base_color": [0.6, 0.58, 0.55], "roughness": 0.7, "metallic": 0.0}}}
+{"tool": "add_layer", "args": {"name": "Role 13", "mask": {"parts": [5, 8, 9, 30]}, "values": {"base_color": [0.75, 0.75, 0.73], "roughness": 0.45, "metallic": 0.0}}}
+{"tool": "add_layer", "args": {"name": "Glow 14", "mask": {"parts": [10]}, "values": {"base_color": [1.0, 0.85, 0.6], "roughness": 0.3, "metallic": 0.0, "emissive": [1.0, 0.85, 0.6], "emissive_strength": 4.0}}}
+{"tool": "add_layer", "args": {"name": "Wall scuffs", "mask": {"parts": [2, 3, 4], "generator": "gradient", "amount": 0.12, "softness": 0.4, "breakup": 0.7, "seed": 1809}, "values": {"base_color": [0.1, 0.09, 0.08], "roughness": 0.9}, "opacity": 0.45, "channels": {"height": false, "metallic": false, "emissive": false}}}
+{"tool": "add_layer", "args": {"name": "Wall stains", "mask": {"parts": [2, 3, 4], "generator": "leaks", "amount": 0.35, "scale": 2.0, "breakup": 0.6, "drip_length": 2.0, "softness": 0.15, "seed": 1810}, "values": {"base_color": [0.12, 0.1, 0.08], "roughness": 0.9}, "opacity": 0.35, "channels": {"height": false, "metallic": false, "emissive": false}}}
+{"tool": "add_layer", "args": {"name": "Floor wear", "mask": {"parts": [0], "generator": "grunge", "amount": 0.4, "scale": 1.5, "softness": 0.35, "seed": 1811}, "values": {"base_color": [0.06, 0.055, 0.05], "roughness": 0.95}, "opacity": 0.5, "channels": {"height": false, "metallic": false, "emissive": false}}}
+{"tool": "add_layer", "args": {"name": "Edge wear", "mask": {"parts": [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40], "generator": "edge_wear", "amount": 0.25, "scale": 20.0, "breakup": 0.7, "softness": 0.05, "seed": 1812}, "values": {"base_color": [0.6, 0.6, 0.6], "roughness": 0.3, "metallic": 0.6}, "opacity": 0.6, "channels": {"height": false, "emissive": false}}}
+{"tool": "add_layer", "args": {"name": "Grime", "material": "Grime", "mask": {"generator": "dirt", "amount": 0.45, "softness": 0.25, "breakup": 0.5, "seed": 1813}, "opacity": 0.6, "channels": {"emissive": false, "metallic": false}}}
+{"tool": "add_layer", "args": {"kind": "paint", "name": "Decals"}}
+{"tool": "project_decal", "args": {"image": "assets/decals/story/poster_missing_aiko.png", "layer": "Decals", "position": [1.998, 1.5, -2.5], "normal": [-1, 0, 0], "size": [0.35, 0.48999999999999994]}}
+{"tool": "project_decal", "args": {"image": "assets/decals/neon_noodles_24h.png", "layer": "Decals", "position": [-1.998, 2.2, -1.2], "normal": [1, 0, 0], "size": [0.8, 0.3]}}
+{"tool": "export_textures", "args": {"dir": "scenes/town/textures/interiors/apartment_kitchen", "name": "apartment_kitchen", "preset": "separate"}}
+{"tool": "send_to_blender", "args": {"dir": "scenes/town/textures/interiors/apartment_kitchen", "name": "apartment_kitchen", "mesh": false}}
+{"tool": "save_project", "args": {"path": "scenes/town/textures/interiors/projects/apartment_kitchen.pigment"}}

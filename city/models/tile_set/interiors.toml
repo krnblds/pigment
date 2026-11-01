@@ -1,0 +1,197 @@
+# Smart model (tile_set/interiors): the interior-mapped window rooms. Hand written; see
+# docs/agents/interiors/NOTES.md and docs/CITY_BUILD.md.
+#   mesh     headless Blender builds every room (tools/interiors/rooms.py) -> meshes/<room>.glb + .json
+#   recipe   writes the Pigment scripts: one per room (materials, grime, wear, posters, emissive
+#            screens / neon decals), the kit window maps and the atlas pack
+#   pigment  runs them (pigment-mcp --script)
+#   export   Cycles renders (lit / off / depth), Pigment pack_interiors, contact sheet, game copy
+
+[model]
+name = "interiors"
+kind = "tile_set"
+title = "Interior-mapped windows: 22 futuristic rooms + kit window maps"
+family = "world"
+derived = []
+
+[mesh]
+runner = "blender"
+generator = "tools/interiors/rooms.py"
+args = ["build", "scenes/town/textures/interiors"]
+outputs = [
+  "scenes/town/textures/interiors/meshes/capsule_hotel.glb",
+  "scenes/town/textures/interiors/meshes/apartment_holo.glb",
+  "scenes/town/textures/interiors/meshes/apartment_holo_person.glb",
+  "scenes/town/textures/interiors/meshes/apartment_kitchen.glb",
+  "scenes/town/textures/interiors/meshes/dreamlink_lease.glb",
+  "scenes/town/textures/interiors/meshes/noctis_clinic.glb",
+  "scenes/town/textures/interiors/meshes/meridian_office.glb",
+  "scenes/town/textures/interiors/meshes/hoshikawa_office.glb",
+  "scenes/town/textures/interiors/meshes/office_cubicles.glb",
+  "scenes/town/textures/interiors/meshes/server_room.glb",
+  "scenes/town/textures/interiors/meshes/ramen_kitchen.glb",
+  "scenes/town/textures/interiors/meshes/pachinko_parlour.glb",
+  "scenes/town/textures/interiors/meshes/implant_clinic.glb",
+  "scenes/town/textures/interiors/meshes/neon_bedroom.glb",
+  "scenes/town/textures/interiors/meshes/evicted_room.glb",
+  "scenes/town/textures/interiors/meshes/gym.glb",
+  "scenes/town/textures/interiors/meshes/karaoke_box.glb",
+  "scenes/town/textures/interiors/meshes/hydroponics.glb",
+  "scenes/town/textures/interiors/meshes/konbini.glb",
+  "scenes/town/textures/interiors/meshes/memory_pawn.glb",
+  "scenes/town/textures/interiors/meshes/unplug_hideout.glb",
+  "scenes/town/textures/interiors/meshes/bar_counter.glb",
+  "scenes/town/textures/interiors/meshes/capsule_hotel.json",
+  "scenes/town/textures/interiors/meshes/apartment_holo.json",
+  "scenes/town/textures/interiors/meshes/apartment_holo_person.json",
+  "scenes/town/textures/interiors/meshes/apartment_kitchen.json",
+  "scenes/town/textures/interiors/meshes/dreamlink_lease.json",
+  "scenes/town/textures/interiors/meshes/noctis_clinic.json",
+  "scenes/town/textures/interiors/meshes/meridian_office.json",
+  "scenes/town/textures/interiors/meshes/hoshikawa_office.json",
+  "scenes/town/textures/interiors/meshes/office_cubicles.json",
+  "scenes/town/textures/interiors/meshes/server_room.json",
+  "scenes/town/textures/interiors/meshes/ramen_kitchen.json",
+  "scenes/town/textures/interiors/meshes/pachinko_parlour.json",
+  "scenes/town/textures/interiors/meshes/implant_clinic.json",
+  "scenes/town/textures/interiors/meshes/neon_bedroom.json",
+  "scenes/town/textures/interiors/meshes/evicted_room.json",
+  "scenes/town/textures/interiors/meshes/gym.json",
+  "scenes/town/textures/interiors/meshes/karaoke_box.json",
+  "scenes/town/textures/interiors/meshes/hydroponics.json",
+  "scenes/town/textures/interiors/meshes/konbini.json",
+  "scenes/town/textures/interiors/meshes/memory_pawn.json",
+  "scenes/town/textures/interiors/meshes/unplug_hideout.json",
+  "scenes/town/textures/interiors/meshes/bar_counter.json",
+]
+deps = []
+params = {}
+
+[recipe]
+runner = "python"
+tool = "tools/interiors/interiors.py"
+args = ["scripts"]
+inputs = [
+  "scenes/town/textures/interiors/meshes/capsule_hotel.json",
+  "scenes/town/textures/interiors/meshes/apartment_holo.json",
+  "scenes/town/textures/interiors/meshes/apartment_holo_person.json",
+  "scenes/town/textures/interiors/meshes/apartment_kitchen.json",
+  "scenes/town/textures/interiors/meshes/dreamlink_lease.json",
+  "scenes/town/textures/interiors/meshes/noctis_clinic.json",
+  "scenes/town/textures/interiors/meshes/meridian_office.json",
+  "scenes/town/textures/interiors/meshes/hoshikawa_office.json",
+  "scenes/town/textures/interiors/meshes/office_cubicles.json",
+  "scenes/town/textures/interiors/meshes/server_room.json",
+  "scenes/town/textures/interiors/meshes/ramen_kitchen.json",
+  "scenes/town/textures/interiors/meshes/pachinko_parlour.json",
+  "scenes/town/textures/interiors/meshes/implant_clinic.json",
+  "scenes/town/textures/interiors/meshes/neon_bedroom.json",
+  "scenes/town/textures/interiors/meshes/evicted_room.json",
+  "scenes/town/textures/interiors/meshes/gym.json",
+  "scenes/town/textures/interiors/meshes/karaoke_box.json",
+  "scenes/town/textures/interiors/meshes/hydroponics.json",
+  "scenes/town/textures/interiors/meshes/konbini.json",
+  "scenes/town/textures/interiors/meshes/memory_pawn.json",
+  "scenes/town/textures/interiors/meshes/unplug_hideout.json",
+  "scenes/town/textures/interiors/meshes/bar_counter.json",
+  "assets/town/building_a.glb",
+  "assets/town/building_b.glb",
+  "assets/town/building_c.glb",
+  "tools/town_textures.py",
+]
+outputs = [
+  "scenes/town/scripts/interiors/capsule_hotel.jsonl",
+  "scenes/town/scripts/interiors/apartment_holo.jsonl",
+  "scenes/town/scripts/interiors/apartment_holo_person.jsonl",
+  "scenes/town/scripts/interiors/apartment_kitchen.jsonl",
+  "scenes/town/scripts/interiors/dreamlink_lease.jsonl",
+  "scenes/town/scripts/interiors/noctis_clinic.jsonl",
+  "scenes/town/scripts/interiors/meridian_office.jsonl",
+  "scenes/town/scripts/interiors/hoshikawa_office.jsonl",
+  "scenes/town/scripts/interiors/office_cubicles.jsonl",
+  "scenes/town/scripts/interiors/server_room.jsonl",
+  "scenes/town/scripts/interiors/ramen_kitchen.jsonl",
+  "scenes/town/scripts/interiors/pachinko_parlour.jsonl",
+  "scenes/town/scripts/interiors/implant_clinic.jsonl",
+  "scenes/town/scripts/interiors/neon_bedroom.jsonl",
+  "scenes/town/scripts/interiors/evicted_room.jsonl",
+  "scenes/town/scripts/interiors/gym.jsonl",
+  "scenes/town/scripts/interiors/karaoke_box.jsonl",
+  "scenes/town/scripts/interiors/hydroponics.jsonl",
+  "scenes/town/scripts/interiors/konbini.jsonl",
+  "scenes/town/scripts/interiors/memory_pawn.jsonl",
+  "scenes/town/scripts/interiors/unplug_hideout.jsonl",
+  "scenes/town/scripts/interiors/bar_counter.jsonl",
+  "scenes/town/scripts/interiors/windows.jsonl",
+  "scenes/town/scripts/interiors/pack.jsonl",
+]
+
+[pigment]
+scripts = [
+  "scenes/town/scripts/interiors/capsule_hotel.jsonl",
+  "scenes/town/scripts/interiors/apartment_holo.jsonl",
+  "scenes/town/scripts/interiors/apartment_holo_person.jsonl",
+  "scenes/town/scripts/interiors/apartment_kitchen.jsonl",
+  "scenes/town/scripts/interiors/dreamlink_lease.jsonl",
+  "scenes/town/scripts/interiors/noctis_clinic.jsonl",
+  "scenes/town/scripts/interiors/meridian_office.jsonl",
+  "scenes/town/scripts/interiors/hoshikawa_office.jsonl",
+  "scenes/town/scripts/interiors/office_cubicles.jsonl",
+  "scenes/town/scripts/interiors/server_room.jsonl",
+  "scenes/town/scripts/interiors/ramen_kitchen.jsonl",
+  "scenes/town/scripts/interiors/pachinko_parlour.jsonl",
+  "scenes/town/scripts/interiors/implant_clinic.jsonl",
+  "scenes/town/scripts/interiors/neon_bedroom.jsonl",
+  "scenes/town/scripts/interiors/evicted_room.jsonl",
+  "scenes/town/scripts/interiors/gym.jsonl",
+  "scenes/town/scripts/interiors/karaoke_box.jsonl",
+  "scenes/town/scripts/interiors/hydroponics.jsonl",
+  "scenes/town/scripts/interiors/konbini.jsonl",
+  "scenes/town/scripts/interiors/memory_pawn.jsonl",
+  "scenes/town/scripts/interiors/unplug_hideout.jsonl",
+  "scenes/town/scripts/interiors/bar_counter.jsonl",
+  "scenes/town/scripts/interiors/windows.jsonl",
+]
+textures = "scenes/town/textures/interiors"
+resolution = 2048
+variants = []
+decals = []
+outputs = [
+  "scenes/town/textures/interiors/capsule_hotel",
+  "scenes/town/textures/interiors/apartment_holo",
+  "scenes/town/textures/interiors/apartment_holo_person",
+  "scenes/town/textures/interiors/apartment_kitchen",
+  "scenes/town/textures/interiors/dreamlink_lease",
+  "scenes/town/textures/interiors/noctis_clinic",
+  "scenes/town/textures/interiors/meridian_office",
+  "scenes/town/textures/interiors/hoshikawa_office",
+  "scenes/town/textures/interiors/office_cubicles",
+  "scenes/town/textures/interiors/server_room",
+  "scenes/town/textures/interiors/ramen_kitchen",
+  "scenes/town/textures/interiors/pachinko_parlour",
+  "scenes/town/textures/interiors/implant_clinic",
+  "scenes/town/textures/interiors/neon_bedroom",
+  "scenes/town/textures/interiors/evicted_room",
+  "scenes/town/textures/interiors/gym",
+  "scenes/town/textures/interiors/karaoke_box",
+  "scenes/town/textures/interiors/hydroponics",
+  "scenes/town/textures/interiors/konbini",
+  "scenes/town/textures/interiors/memory_pawn",
+  "scenes/town/textures/interiors/unplug_hideout",
+  "scenes/town/textures/interiors/bar_counter",
+  "scenes/town/textures/interiors/windows",
+]
+patch = []
+decal_slots = {}
+
+[export]
+runner = "python"
+tool = "tools/interiors/interiors.py"
+args = ["finish"]
+deps = ["tools/interiors/rooms.py", "tools/blender_pigment.py"]
+inputs = []
+outputs = ["scenes/town/textures/interiors/interiors_atlas.png", "scenes/town/textures/interiors/interiors.json", "game/assets/interiors/interiors_atlas.png", "game/assets/interiors/interiors.json"]
+mutable = ["docs/agents/interiors/rooms_contact_sheet.png", "scenes/town/textures/interiors/renders"]
+
+[game]
+category = "material"
+images = []

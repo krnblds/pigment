@@ -13,7 +13,9 @@ type Res<T> = Result<T, String>;
 
 mod decal_tools;
 mod foliage_tools;
+mod interior_tools;
 mod sheet_tools;
+pub use interior_tools::pack_interiors;
 
 /// A GPU device without a window.
 pub fn headless_render_state() -> Option<RenderState> {
