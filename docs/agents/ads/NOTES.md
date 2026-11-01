@@ -15,9 +15,10 @@ corporate ads.
 |---|---|
 | `contact_sheet.jpg` | Every new design (116). |
 | `yoimachi_night.png` | Cycles, 128 samples, street level in Yoimachi at night. It shows the ホテル blades, Velvet Moon fascias, the WELCOME 宵町 hanging sign, the Noir Satin rooftop billboard and the karaoke and hotel signs down the street. |
-| `downtown_corporate.png` | Cycles, a downtown street. The building_c crowns carry the corporate ads (platinum / showroom variants), and the towers have corporate crown billboards. |
-| `godot_yoimachi.png`, `godot_downtown.png` | The game (Godot) from the same two cameras (`--spot-cams`). |
-| `closeup_*.png` | Pigment close-ups of the new variants: love hotel, hostess bar, cabaret row, the dense ad walls. |
+| `downtown_corporate.png` | Cycles, downtown, looking up from the walk at the building_c crowns (platinum / showroom variants): Safety Is A Subscription, Upgrade to Platinum, Kagerou, MERIDIAN. A building_b with the Volt Rush roof billboard is in front. |
+| `godot_yoimachi.png`, `godot_downtown.png` | The game (Godot 4.7, rain on, `--clean`) from the same two cameras (`--spot-cams`). Yoimachi runs at 81 fps, downtown at 131 fps (RTX 4070 Ti, 1080p). |
+| `closeup_fronts.png` | Pigment, night: love_hotel (VELVET MOON HOTEL fascia, rates vinyl on the lit shop window), hostess_bar (CLUB SAPPHIRE), and cabaret_row's four bays (CABARET LUNA, PEEP SHOW with hearts vinyl, HOST ZERO, スナック夜蝶). |
+| `closeup_ad_walls.png` | Pigment, overcast light so the paper reads: the dense ad walls on love_hotel's back wall, cabaret_row's back wall, and hostess_row's east wall (UNPLUG painted over them). |
 
 ## Content boundaries
 
@@ -212,6 +213,9 @@ godot --path game -- --bench-spots=<T>/godot --spot-cams=<T>/cams.json --spots=y
 - **Texel density.** Street-level paper reads at 20–30 texels across at 2048 (see
   decalfix). The ad walls read as colour and layout, not small print.
 - **Lightbox editions.** 7 of the 9 lightboxes reuse their poster's art over a brand strip.
+- **Window vinyl.** The vinyl is backlit (emissive 3, or it vanishes into a lit shop
+  pane). The shop glass has few texels, so the price list reads as lettering, not
+  numbers.
 - **District weights are soft.** A few ordinary variants still turn up in Yoimachi, and the
   district edge at downtown's radius is a hard boundary.
 - **Size.** The 116 PNGs are 17 MB, because the posters carry noise and torn alpha.

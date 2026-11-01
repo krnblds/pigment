@@ -20,8 +20,33 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SHOTS = {
     # name: (district, variants that make the shot, camera height, look-up)
     "yoimachi_night": ("yoimachi", {"love_hotel", "hostess_bar", "cabaret_row", "hostess_row", "welcome", "velvet_moon", "peep_show", "snack"}, 1.6, 4.0),
-    "downtown_corporate": ("downtown", {"platinum", "showroom"}, 1.6, 22.0),
 }
+
+
+def crown_cam(w):
+    """Downtown: a walk 45-75 m from a building_c with ad crowns (platinum / showroom), looking up at
+    its crown, placed where the most other ad crowns line up behind it."""
+    cs = [i for i in w["instances"] if i["asset"] == "building_c" and i.get("variant") in ("platinum", "showroom") and i["district"] == "downtown"]
+    best = None
+    for c in cs:
+        for r in w["roads"]:
+            if r.get("class") not in ("street", "avenue"):
+                continue
+            for p in r["points"][::3]:
+                d = math.dist(p[:2], c["pos"][:2])
+                if not 45 < d < 75:
+                    continue
+                n = 0
+                for o in cs:
+                    do = math.dist(p[:2], o["pos"][:2])
+                    if 30 < do < 140 and ((o["pos"][0] - p[0]) * (c["pos"][0] - p[0]) + (o["pos"][1] - p[1]) * (c["pos"][1] - p[1])) / (do * d) > 0.85:
+                        n += 1
+                if best is None or n > best[0]:
+                    best = (n, p, c)
+    n, p, c = best
+    print(f"downtown_corporate: {n} ad crowns in view, cam {p}")
+    return {"name": "downtown_corporate", "loc": [p[0], p[1], p[2] + 1.7], "target": [c["pos"][0], c["pos"][1], c["pos"][2] + 24],
+            "fov_y": 62, "exposure": 0.6, "fog": 0.0015}
 
 
 def main():
@@ -64,6 +89,9 @@ def main():
                      "exposure": 0.6, "fog": 0.002})
         boxes.append((min(loc[0], tgt[0]) - 140, min(loc[1], tgt[1]) - 140, max(loc[0], tgt[0]) + 140, max(loc[1], tgt[1]) + 140))
         print(f"{name}: {score} ad-heavy buildings in view, road {r['id']}, cam {cams[-1]['loc']}")
+    cams.append(crown_cam(w))
+    l, t = cams[-1]["loc"], cams[-1]["target"]
+    boxes.append((min(l[0], t[0]) - 150, min(l[1], t[1]) - 150, max(l[0], t[0]) + 150, max(l[1], t[1]) + 150))
     p = os.path.join(out, "cams.json")
     json.dump(cams, open(p, "w", encoding="utf-8"), indent=1)
     for (x0, y0, x1, y1), c in zip(boxes, cams):
