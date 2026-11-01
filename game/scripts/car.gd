@@ -51,6 +51,8 @@ var autopilot := false
 var town: Node                           ## for surface lookup (layout categories); optional
 var wet := 1.0                           ## 0 dry .. 1 wet (main: rain on = wet)
 var steer_override := NAN                ## tests / autopilot: front steer angle (rad) to aim for
+var power_scale := 1.0                   ## damage (scripts/damage/vehicle_damage.gd): engine power left
+var steer_pull := 0.0                    ## damage: a bent front wheel pulls the steering (rad, + = left)
 
 var abs_on := true
 var tc_on := true
@@ -705,6 +707,7 @@ func _steering(dt: float, vfwd: float, lv: Vector3, av: Vector3, com_w: Vector3,
 		var side := vf.dot(basis.x)
 		var follow := atan2(side, absf(along)) * signf(along) if absf(along) > 0.5 else 0.0
 		target = clampf(follow * float(st.self_align), -lim, lim)
+	target = clampf(target + steer_pull, -lock, lock)
 	steer_angle = move_toward(steer_angle, target, 6.0 * dt)
 	# Ackermann
 	var t := absf(float(P.wheels.Wheel_FL[0]) - float(P.wheels.Wheel_FR[0]))
@@ -1103,7 +1106,7 @@ func _substeps(dt: float, thr_eff: float) -> void:
 				thr_e = 0.7 if (_shift_to < gear or gear == 0) and engine_w < want else 0.0
 			if _limiter_cut:
 				thr_e = 0.0
-		var te := thr_e * _torque_curve(e_rpm) * eff - (1.0 - thr_e) * (fr0 + fr1 * e_rpm / 1000.0) * signf(engine_w)
+		var te := thr_e * _torque_curve(e_rpm) * eff * power_scale - (1.0 - thr_e) * (fr0 + fr1 * e_rpm / 1000.0) * signf(engine_w)
 		# tyre forces from the slip states, per wheel; wheel torques
 		for w: Wheel in wheels:
 			w.t_ext = 0.0

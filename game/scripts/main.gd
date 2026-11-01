@@ -19,6 +19,9 @@ extends Node3D
 ##   --bench-traffic    fps with 0 / 30 / 60 / 80 cars
 ##   --interior-shots=<dir>  night views into the interior-mapped windows   --no-interiors  plain panes
 ##   --bridge-shots=<dir> --bridge-cams=<json>  bridge proof views + drive across (tools/world/bridge_cams.py --godot)
+##   --no-damage        no damage / destruction (scripts/damage/)
+##   --damage-test      damage test (headless OK): walls at 30 / 60 km/h, a lamp post, a hydrant, 40 debris bodies
+##   --damage-shots=<dir>  damage proof screenshots (windowed)    --damage-bench  fps with debris (windowed)
 
 const TownLoader := preload("res://scripts/town_loader.gd")
 const Car := preload("res://scripts/car.gd")
@@ -49,6 +52,7 @@ var _ap_stuck := 0.0
 var ap_speed := 15.0
 var map_name := "town"
 var traffic: Node3D                     ## living traffic (scripts/traffic/), --no-traffic to skip
+var damage: Node3D                      ## damage + destruction (scripts/damage/), --no-damage to skip
 
 
 func _ready() -> void:
@@ -122,7 +126,15 @@ func _ready() -> void:
 		if not traffic.setup(self, topts):
 			traffic.queue_free()
 			traffic = null
-	if args.has("traffic-test") or args.has("traffic-shots") or args.has("bench-traffic"):
+	if not args.has("no-damage"):
+		damage = preload("res://scripts/damage/damage_manager.gd").new()
+		add_child(damage)
+		damage.setup(self)
+	if args.has("damage-test") or args.has("damage-shots") or args.has("damage-bench"):
+		var dt := preload("res://scripts/damage/damage_tests.gd").new()
+		dt.main = self
+		add_child(dt)
+	elif args.has("traffic-test") or args.has("traffic-shots") or args.has("bench-traffic"):
 		var tauto := preload("res://scripts/traffic/traffic_automation.gd").new()
 		tauto.main = self
 		add_child(tauto)
@@ -211,6 +223,8 @@ func stream_now(p: Vector3) -> void:
 
 
 func reset_car() -> void:
+	if damage:
+		damage.reset_hero()
 	if not town.layout:
 		car.place(Transform3D(Basis(), Vector3(0, 2, 0)))
 		return
