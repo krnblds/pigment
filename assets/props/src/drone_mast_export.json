@@ -1,0 +1,10 @@
+{
+ "lod0": "drone_mast.glb",
+ "lod0_bytes": 518524,
+ "lod0_tris": 2292,
+ "texture": 1024,
+ "lod1": "drone_mast_lod1.glb",
+ "lod1_bytes": 205220,
+ "lod1_tris": 1031,
+ "lod1_texture": 512
+}

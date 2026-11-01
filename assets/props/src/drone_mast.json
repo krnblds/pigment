@@ -1,0 +1,698 @@
+{
+ "name": "drone_mast",
+ "bounds_gl": {
+  "min": [
+   -0.99,
+   0.0,
+   -0.8574
+  ],
+  "max": [
+   0.99,
+   8.0,
+   0.8574
+  ]
+ },
+ "size_m": [
+  1.98,
+  8.0,
+  1.715
+ ],
+ "tris": 2292,
+ "texels_per_m": 244.3,
+ "nodes": [],
+ "pieces": [
+  {
+   "piece": "cabinet_plate",
+   "group": "sign",
+   "node": null,
+   "center": [
+    0.0,
+    0.975,
+    0.323
+   ],
+   "size": [
+    0.5,
+    0.25,
+    0.006
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "cabinet",
+   "group": "paint2",
+   "node": null,
+   "center": [
+    0.0,
+    0.65,
+    -0.0
+   ],
+   "size": [
+    0.9,
+    1.3,
+    0.6
+   ],
+   "tris": 108
+  },
+  {
+   "piece": "cabinet_door",
+   "group": "paint2",
+   "node": null,
+   "center": [
+    0.0,
+    0.65,
+    0.31
+   ],
+   "size": [
+    0.7,
+    1.0,
+    0.02
+   ],
+   "tris": 44
+  },
+  {
+   "piece": "cabinet_stripe",
+   "group": "hazard",
+   "node": null,
+   "center": [
+    0.0,
+    0.06,
+    -0.0
+   ],
+   "size": [
+    0.92,
+    0.12,
+    0.62
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "cabinet_led",
+   "group": "led",
+   "node": null,
+   "center": [
+    0.28,
+    1.18,
+    0.322
+   ],
+   "size": [
+    0.06,
+    0.02,
+    0.006
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "pad_rim",
+   "group": "hazard",
+   "node": null,
+   "center": [
+    0.0,
+    7.54,
+    -0.0
+   ],
+   "size": [
+    1.98,
+    0.04,
+    1.7147
+   ],
+   "tris": 20
+  },
+  {
+   "piece": "conduit",
+   "group": "dark_metal",
+   "node": null,
+   "center": [
+    0.155,
+    4.3501,
+    -0.0
+   ],
+   "size": [
+    0.09,
+    6.1003,
+    0.06
+   ],
+   "tris": 44
+  },
+  {
+   "piece": "mast",
+   "group": "galv",
+   "node": null,
+   "center": [
+    0.0,
+    4.45,
+    -0.0
+   ],
+   "size": [
+    0.3151,
+    6.3,
+    0.32
+   ],
+   "tris": 68
+  },
+  {
+   "piece": "pad_deck",
+   "group": "paint",
+   "node": null,
+   "center": [
+    0.0,
+    7.6,
+    -0.0
+   ],
+   "size": [
+    1.88,
+    0.1,
+    1.6454
+   ],
+   "tris": 68
+  },
+  {
+   "piece": "mast_collar",
+   "group": "dark_metal",
+   "node": null,
+   "center": [
+    0.0,
+    1.4,
+    -0.0
+   ],
+   "size": [
+    0.4333,
+    0.2,
+    0.44
+   ],
+   "tris": 68
+  },
+  {
+   "piece": "pad_center",
+   "group": "dark_metal",
+   "node": null,
+   "center": [
+    0.0,
+    7.663,
+    -0.0
+   ],
+   "size": [
+    0.48,
+    0.026,
+    0.48
+   ],
+   "tris": 108
+  },
+  {
+   "piece": "pad_ring_inner",
+   "group": "led",
+   "node": null,
+   "center": [
+    0.0,
+    7.661,
+    -0.0
+   ],
+   "size": [
+    0.6,
+    0.022,
+    0.6
+   ],
+   "tris": 108
+  },
+  {
+   "piece": "pad_ring_outer",
+   "group": "led",
+   "node": null,
+   "center": [
+    0.0,
+    7.656,
+    -0.0
+   ],
+   "size": [
+    1.4,
+    0.012,
+    1.4
+   ],
+   "tris": 140
+  },
+  {
+   "piece": "beacon",
+   "group": "beacon_red",
+   "node": null,
+   "center": [
+    0.82,
+    7.785,
+    -0.0
+   ],
+   "size": [
+    0.1,
+    0.11,
+    0.0975
+   ],
+   "tris": 56
+  },
+  {
+   "piece": "pad_core",
+   "group": "paint",
+   "node": null,
+   "center": [
+    0.0,
+    7.658,
+    -0.0
+   ],
+   "size": [
+    1.24,
+    0.016,
+    1.24
+   ],
+   "tris": 140
+  },
+  {
+   "piece": "pad_strut_2",
+   "group": "galv",
+   "node": null,
+   "center": [
+    0.0,
+    6.97,
+    0.375
+   ],
+   "size": [
+    0.08,
+    1.184,
+    0.8168
+   ],
+   "tris": 28
+  },
+  {
+   "piece": "beacon_base",
+   "group": "dark_metal",
+   "node": null,
+   "center": [
+    0.82,
+    7.69,
+    -0.0
+   ],
+   "size": [
+    0.117,
+    0.08,
+    0.12
+   ],
+   "tris": 52
+  },
+  {
+   "piece": "pad_strut_1",
+   "group": "galv",
+   "node": null,
+   "center": [
+    -0.3248,
+    6.97,
+    -0.1875
+   ],
+   "size": [
+    0.7187,
+    1.184,
+    0.4476
+   ],
+   "tris": 28
+  },
+  {
+   "piece": "pad_strut_0",
+   "group": "galv",
+   "node": null,
+   "center": [
+    0.3248,
+    6.97,
+    -0.1875
+   ],
+   "size": [
+    0.7187,
+    1.184,
+    0.4476
+   ],
+   "tris": 28
+  },
+  {
+   "piece": "drone_cam",
+   "group": "cam_eye",
+   "node": null,
+   "center": [
+    0.0,
+    7.75,
+    0.275
+   ],
+   "size": [
+    0.078,
+    0.08,
+    0.03
+   ],
+   "tris": 52
+  },
+  {
+   "piece": "drone_rotor_0",
+   "group": "black_plastic",
+   "node": null,
+   "center": [
+    0.3889,
+    7.849,
+    -0.3889
+   ],
+   "size": [
+    0.4,
+    0.008,
+    0.4
+   ],
+   "tris": 92
+  },
+  {
+   "piece": "drone_motor_0",
+   "group": "dark_metal",
+   "node": null,
+   "center": [
+    0.3889,
+    7.81,
+    -0.3889
+   ],
+   "size": [
+    0.078,
+    0.06,
+    0.08
+   ],
+   "tris": 52
+  },
+  {
+   "piece": "drone_motor_1",
+   "group": "dark_metal",
+   "node": null,
+   "center": [
+    -0.3889,
+    7.81,
+    -0.3889
+   ],
+   "size": [
+    0.078,
+    0.06,
+    0.08
+   ],
+   "tris": 52
+  },
+  {
+   "piece": "drone_body",
+   "group": "white_plastic",
+   "node": null,
+   "center": [
+    0.0,
+    7.75,
+    -0.0
+   ],
+   "size": [
+    0.4,
+    0.14,
+    0.5
+   ],
+   "tris": 188
+  },
+  {
+   "piece": "drone_cargo",
+   "group": "paint",
+   "node": null,
+   "center": [
+    0.0,
+    7.91,
+    -0.0
+   ],
+   "size": [
+    0.32,
+    0.18,
+    0.36
+   ],
+   "tris": 108
+  },
+  {
+   "piece": "drone_arm_1",
+   "group": "black_plastic",
+   "node": null,
+   "center": [
+    -0.2475,
+    7.78,
+    -0.2475
+   ],
+   "size": [
+    0.314,
+    0.0838,
+    0.314
+   ],
+   "tris": 28
+  },
+  {
+   "piece": "drone_led_0",
+   "group": "led",
+   "node": null,
+   "center": [
+    0.3889,
+    7.771,
+    -0.3889
+   ],
+   "size": [
+    0.024,
+    0.012,
+    0.024
+   ],
+   "tris": 28
+  },
+  {
+   "piece": "drone_arm_0",
+   "group": "black_plastic",
+   "node": null,
+   "center": [
+    0.2475,
+    7.78,
+    -0.2475
+   ],
+   "size": [
+    0.314,
+    0.0838,
+    0.314
+   ],
+   "tris": 28
+  },
+  {
+   "piece": "drone_rotor_1",
+   "group": "black_plastic",
+   "node": null,
+   "center": [
+    -0.3889,
+    7.849,
+    -0.3889
+   ],
+   "size": [
+    0.4,
+    0.008,
+    0.4
+   ],
+   "tris": 92
+  },
+  {
+   "piece": "drone_arm_2",
+   "group": "black_plastic",
+   "node": null,
+   "center": [
+    -0.2475,
+    7.78,
+    0.2475
+   ],
+   "size": [
+    0.314,
+    0.0838,
+    0.314
+   ],
+   "tris": 28
+  },
+  {
+   "piece": "drone_led_1",
+   "group": "led",
+   "node": null,
+   "center": [
+    -0.3889,
+    7.771,
+    -0.3889
+   ],
+   "size": [
+    0.024,
+    0.012,
+    0.024
+   ],
+   "tris": 28
+  },
+  {
+   "piece": "drone_motor_2",
+   "group": "dark_metal",
+   "node": null,
+   "center": [
+    -0.3889,
+    7.81,
+    0.3889
+   ],
+   "size": [
+    0.078,
+    0.06,
+    0.08
+   ],
+   "tris": 52
+  },
+  {
+   "piece": "drone_led_2",
+   "group": "led",
+   "node": null,
+   "center": [
+    -0.3889,
+    7.771,
+    0.3889
+   ],
+   "size": [
+    0.024,
+    0.012,
+    0.024
+   ],
+   "tris": 28
+  },
+  {
+   "piece": "drone_arm_3",
+   "group": "black_plastic",
+   "node": null,
+   "center": [
+    0.2475,
+    7.78,
+    0.2475
+   ],
+   "size": [
+    0.314,
+    0.0838,
+    0.314
+   ],
+   "tris": 28
+  },
+  {
+   "piece": "drone_rotor_2",
+   "group": "black_plastic",
+   "node": null,
+   "center": [
+    -0.3889,
+    7.849,
+    0.3889
+   ],
+   "size": [
+    0.4,
+    0.008,
+    0.4
+   ],
+   "tris": 92
+  },
+  {
+   "piece": "drone_motor_3",
+   "group": "dark_metal",
+   "node": null,
+   "center": [
+    0.3889,
+    7.81,
+    0.3889
+   ],
+   "size": [
+    0.078,
+    0.06,
+    0.08
+   ],
+   "tris": 52
+  },
+  {
+   "piece": "drone_led_3",
+   "group": "led",
+   "node": null,
+   "center": [
+    0.3889,
+    7.771,
+    0.3889
+   ],
+   "size": [
+    0.024,
+    0.012,
+    0.024
+   ],
+   "tris": 28
+  },
+  {
+   "piece": "drone_rotor_3",
+   "group": "black_plastic",
+   "node": null,
+   "center": [
+    0.3889,
+    7.849,
+    0.3889
+   ],
+   "size": [
+    0.4,
+    0.008,
+    0.4
+   ],
+   "tris": 92
+  }
+ ],
+ "lights": [
+  {
+   "name": "Light_Beacon",
+   "pos": [
+    0.82,
+    7.8,
+    0
+   ],
+   "type": "omni",
+   "color": [
+    1.0,
+    0.05,
+    0.05
+   ],
+   "energy": 4,
+   "range": 6.0,
+   "dir": null,
+   "shadow": false
+  },
+  {
+   "name": "Light_Pad",
+   "pos": [
+    0,
+    7.9,
+    0
+   ],
+   "type": "omni",
+   "color": [
+    0.2,
+    0.8,
+    1.0
+   ],
+   "energy": 20,
+   "range": 4.0,
+   "dir": null,
+   "shadow": false
+  }
+ ],
+ "sockets": [],
+ "collider": [
+  {
+   "type": "box",
+   "center": [
+    0,
+    0.65,
+    0
+   ],
+   "size": [
+    0.9,
+    1.3,
+    0.6
+   ]
+  },
+  {
+   "type": "cylinder",
+   "center": [
+    0,
+    3.8,
+    0
+   ],
+   "radius": 0.2,
+   "height": 7.6
+  }
+ ],
+ "meta": {}
+}

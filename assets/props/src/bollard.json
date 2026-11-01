@@ -1,0 +1,123 @@
+{
+ "name": "bollard",
+ "bounds_gl": {
+  "min": [
+   -0.13,
+   0.0,
+   -0.13
+  ],
+  "max": [
+   0.13,
+   0.96,
+   0.13
+  ]
+ },
+ "size_m": [
+  0.26,
+  0.96,
+  0.26
+ ],
+ "tris": 468,
+ "texels_per_m": 443.5,
+ "nodes": [],
+ "pieces": [
+  {
+   "piece": "body",
+   "group": "paint",
+   "node": null,
+   "center": [
+    0.0,
+    0.48,
+    -0.0
+   ],
+   "size": [
+    0.21,
+    0.96,
+    0.21
+   ],
+   "tris": 192
+  },
+  {
+   "piece": "reflect_band",
+   "group": "reflector",
+   "node": null,
+   "center": [
+    0.0,
+    0.73,
+    -0.0
+   ],
+   "size": [
+    0.216,
+    0.06,
+    0.216
+   ],
+   "tris": 92
+  },
+  {
+   "piece": "led_ring",
+   "group": "led",
+   "node": null,
+   "center": [
+    0.0,
+    0.8075,
+    -0.0
+   ],
+   "size": [
+    0.218,
+    0.015,
+    0.218
+   ],
+   "tris": 92
+  },
+  {
+   "piece": "base_ring",
+   "group": "dark_metal",
+   "node": null,
+   "center": [
+    0.0,
+    0.015,
+    -0.0
+   ],
+   "size": [
+    0.26,
+    0.03,
+    0.26
+   ],
+   "tris": 92
+  }
+ ],
+ "lights": [
+  {
+   "name": "Light_Ring",
+   "pos": [
+    0,
+    0.81,
+    0.12
+   ],
+   "type": "omni",
+   "color": [
+    0.1,
+    0.9,
+    1.0
+   ],
+   "energy": 0.4,
+   "range": 1.5,
+   "dir": null,
+   "shadow": false
+  }
+ ],
+ "sockets": [],
+ "collider": [
+  {
+   "type": "cylinder",
+   "center": [
+    0,
+    0.48,
+    0
+   ],
+   "radius": 0.11,
+   "height": 0.96
+  }
+ ],
+ "meta": {}
+}

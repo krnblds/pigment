@@ -1,0 +1,989 @@
+{
+ "name": "skewer_stall",
+ "bounds_gl": {
+  "min": [
+   -1.22,
+   -0.0026,
+   -0.77
+  ],
+  "max": [
+   1.22,
+   2.35,
+   1.0148
+  ]
+ },
+ "size_m": [
+  2.44,
+  2.353,
+  1.785
+ ],
+ "tris": 1964,
+ "texels_per_m": 283.1,
+ "nodes": [],
+ "pieces": [
+  {
+   "piece": "table_leg_0",
+   "group": "steel",
+   "node": null,
+   "center": [
+    -0.85,
+    0.42,
+    0.35
+   ],
+   "size": [
+    0.04,
+    0.84,
+    0.04
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "table_top",
+   "group": "wood",
+   "node": null,
+   "center": [
+    0.0,
+    0.86,
+    -0.0
+   ],
+   "size": [
+    1.8,
+    0.04,
+    0.8
+   ],
+   "tris": 44
+  },
+  {
+   "piece": "table_leg_1",
+   "group": "steel",
+   "node": null,
+   "center": [
+    0.85,
+    0.42,
+    0.35
+   ],
+   "size": [
+    0.04,
+    0.84,
+    0.04
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "table_leg_2",
+   "group": "steel",
+   "node": null,
+   "center": [
+    -0.85,
+    0.42,
+    -0.35
+   ],
+   "size": [
+    0.04,
+    0.84,
+    0.04
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "table_leg_3",
+   "group": "steel",
+   "node": null,
+   "center": [
+    0.85,
+    0.42,
+    -0.35
+   ],
+   "size": [
+    0.04,
+    0.84,
+    0.04
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "shelf",
+   "group": "wood",
+   "node": null,
+   "center": [
+    0.0,
+    0.2625,
+    -0.0
+   ],
+   "size": [
+    1.7,
+    0.025,
+    0.7
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "coals",
+   "group": "coal",
+   "node": null,
+   "center": [
+    0.15,
+    1.03,
+    0.12
+   ],
+   "size": [
+    1.02,
+    0.02,
+    0.26
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "grill",
+   "group": "dark_metal",
+   "node": null,
+   "center": [
+    0.15,
+    0.97,
+    0.12
+   ],
+   "size": [
+    1.1,
+    0.18,
+    0.34
+   ],
+   "tris": 44
+  },
+  {
+   "piece": "meat_0",
+   "group": "meat",
+   "node": null,
+   "center": [
+    -0.3018,
+    1.0806,
+    0.1419
+   ],
+   "size": [
+    0.0546,
+    0.0582,
+    0.1982
+   ],
+   "tris": 20
+  },
+  {
+   "piece": "skewer_0",
+   "group": "bamboo",
+   "node": null,
+   "center": [
+    -0.3,
+    1.075,
+    0.09
+   ],
+   "size": [
+    0.0069,
+    0.008,
+    0.42
+   ],
+   "tris": 20
+  },
+  {
+   "piece": "meat_1",
+   "group": "meat",
+   "node": null,
+   "center": [
+    -0.1895,
+    1.0715,
+    0.1285
+   ],
+   "size": [
+    0.0552,
+    0.0506,
+    0.2159
+   ],
+   "tris": 20
+  },
+  {
+   "piece": "skewer_1",
+   "group": "bamboo",
+   "node": null,
+   "center": [
+    -0.19,
+    1.075,
+    0.09
+   ],
+   "size": [
+    0.0069,
+    0.008,
+    0.42
+   ],
+   "tris": 20
+  },
+  {
+   "piece": "meat_2",
+   "group": "meat",
+   "node": null,
+   "center": [
+    -0.0807,
+    1.076,
+    0.1264
+   ],
+   "size": [
+    0.0514,
+    0.0589,
+    0.21
+   ],
+   "tris": 20
+  },
+  {
+   "piece": "skewer_2",
+   "group": "bamboo",
+   "node": null,
+   "center": [
+    -0.08,
+    1.075,
+    0.09
+   ],
+   "size": [
+    0.0069,
+    0.008,
+    0.42
+   ],
+   "tris": 20
+  },
+  {
+   "piece": "meat_3",
+   "group": "meat",
+   "node": null,
+   "center": [
+    0.0284,
+    1.0746,
+    0.1283
+   ],
+   "size": [
+    0.0596,
+    0.0604,
+    0.1761
+   ],
+   "tris": 20
+  },
+  {
+   "piece": "skewer_3",
+   "group": "bamboo",
+   "node": null,
+   "center": [
+    0.03,
+    1.075,
+    0.09
+   ],
+   "size": [
+    0.0069,
+    0.008,
+    0.42
+   ],
+   "tris": 20
+  },
+  {
+   "piece": "meat_4",
+   "group": "meat",
+   "node": null,
+   "center": [
+    0.1363,
+    1.0741,
+    0.1313
+   ],
+   "size": [
+    0.0585,
+    0.0508,
+    0.2042
+   ],
+   "tris": 20
+  },
+  {
+   "piece": "skewer_4",
+   "group": "bamboo",
+   "node": null,
+   "center": [
+    0.14,
+    1.075,
+    0.09
+   ],
+   "size": [
+    0.0069,
+    0.008,
+    0.42
+   ],
+   "tris": 20
+  },
+  {
+   "piece": "meat_5",
+   "group": "meat",
+   "node": null,
+   "center": [
+    0.2442,
+    1.0716,
+    0.1231
+   ],
+   "size": [
+    0.061,
+    0.0521,
+    0.2007
+   ],
+   "tris": 20
+  },
+  {
+   "piece": "skewer_5",
+   "group": "bamboo",
+   "node": null,
+   "center": [
+    0.25,
+    1.075,
+    0.09
+   ],
+   "size": [
+    0.0069,
+    0.008,
+    0.42
+   ],
+   "tris": 20
+  },
+  {
+   "piece": "meat_6",
+   "group": "meat",
+   "node": null,
+   "center": [
+    0.3656,
+    1.0741,
+    0.1355
+   ],
+   "size": [
+    0.0514,
+    0.0616,
+    0.1881
+   ],
+   "tris": 20
+  },
+  {
+   "piece": "skewer_6",
+   "group": "bamboo",
+   "node": null,
+   "center": [
+    0.36,
+    1.075,
+    0.09
+   ],
+   "size": [
+    0.0069,
+    0.008,
+    0.42
+   ],
+   "tris": 20
+  },
+  {
+   "piece": "meat_7",
+   "group": "meat",
+   "node": null,
+   "center": [
+    0.4738,
+    1.0735,
+    0.1201
+   ],
+   "size": [
+    0.0524,
+    0.0561,
+    0.1867
+   ],
+   "tris": 20
+  },
+  {
+   "piece": "skewer_7",
+   "group": "bamboo",
+   "node": null,
+   "center": [
+    0.47,
+    1.075,
+    0.09
+   ],
+   "size": [
+    0.0069,
+    0.008,
+    0.42
+   ],
+   "tris": 20
+  },
+  {
+   "piece": "meat_8",
+   "group": "meat",
+   "node": null,
+   "center": [
+    0.5783,
+    1.0746,
+    0.1301
+   ],
+   "size": [
+    0.0528,
+    0.0483,
+    0.1963
+   ],
+   "tris": 20
+  },
+  {
+   "piece": "skewer_8",
+   "group": "bamboo",
+   "node": null,
+   "center": [
+    0.58,
+    1.075,
+    0.09
+   ],
+   "size": [
+    0.0069,
+    0.008,
+    0.42
+   ],
+   "tris": 20
+  },
+  {
+   "piece": "tray",
+   "group": "steel",
+   "node": null,
+   "center": [
+    -0.6,
+    0.895,
+    0.1
+   ],
+   "size": [
+    0.4,
+    0.03,
+    0.3
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "pole_foot_1",
+   "group": "dark_metal",
+   "node": null,
+   "center": [
+    1.1,
+    0.015,
+    0.65
+   ],
+   "size": [
+    0.24,
+    0.03,
+    0.24
+   ],
+   "tris": 44
+  },
+  {
+   "piece": "pole_3",
+   "group": "galv",
+   "node": null,
+   "center": [
+    1.1,
+    1.075,
+    -0.65
+   ],
+   "size": [
+    0.044,
+    2.15,
+    0.044
+   ],
+   "tris": 28
+  },
+  {
+   "piece": "sauce_pot",
+   "group": "red_plastic",
+   "node": null,
+   "center": [
+    -0.6,
+    0.95,
+    -0.2
+   ],
+   "size": [
+    0.156,
+    0.14,
+    0.16
+   ],
+   "tris": 52
+  },
+  {
+   "piece": "pole_1",
+   "group": "galv",
+   "node": null,
+   "center": [
+    1.1,
+    1.175,
+    0.65
+   ],
+   "size": [
+    0.044,
+    2.35,
+    0.044
+   ],
+   "tris": 28
+  },
+  {
+   "piece": "pole_0",
+   "group": "galv",
+   "node": null,
+   "center": [
+    -1.1,
+    1.175,
+    0.65
+   ],
+   "size": [
+    0.044,
+    2.35,
+    0.044
+   ],
+   "tris": 28
+  },
+  {
+   "piece": "pole_foot_0",
+   "group": "dark_metal",
+   "node": null,
+   "center": [
+    -1.1,
+    0.015,
+    0.65
+   ],
+   "size": [
+    0.24,
+    0.03,
+    0.24
+   ],
+   "tris": 44
+  },
+  {
+   "piece": "tarp",
+   "group": "canvas",
+   "node": null,
+   "center": [
+    0.0,
+    2.2396,
+    -0.0
+   ],
+   "size": [
+    2.4,
+    0.2207,
+    1.5
+   ],
+   "tris": 464
+  },
+  {
+   "piece": "pole_2",
+   "group": "galv",
+   "node": null,
+   "center": [
+    -1.1,
+    1.075,
+    -0.65
+   ],
+   "size": [
+    0.044,
+    2.15,
+    0.044
+   ],
+   "tris": 28
+  },
+  {
+   "piece": "pole_foot_2",
+   "group": "dark_metal",
+   "node": null,
+   "center": [
+    -1.1,
+    0.015,
+    -0.65
+   ],
+   "size": [
+    0.24,
+    0.03,
+    0.24
+   ],
+   "tris": 44
+  },
+  {
+   "piece": "pole_foot_3",
+   "group": "dark_metal",
+   "node": null,
+   "center": [
+    1.1,
+    0.015,
+    -0.65
+   ],
+   "size": [
+    0.24,
+    0.03,
+    0.24
+   ],
+   "tris": 44
+  },
+  {
+   "piece": "valance",
+   "group": "canvas",
+   "node": null,
+   "center": [
+    0.0,
+    2.13,
+    0.76
+   ],
+   "size": [
+    2.4,
+    0.22,
+    0.01
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "light_wire",
+   "group": "dark_metal",
+   "node": null,
+   "center": [
+    0.0,
+    2.0099,
+    0.78
+   ],
+   "size": [
+    2.202,
+    0.1879,
+    0.008
+   ],
+   "tris": 84
+  },
+  {
+   "piece": "bulb_1",
+   "group": "bulb",
+   "node": null,
+   "center": [
+    -0.88,
+    2.0044,
+    0.78
+   ],
+   "size": [
+    0.0537,
+    0.078,
+    0.051
+   ],
+   "tris": 20
+  },
+  {
+   "piece": "bulb_2",
+   "group": "bulb",
+   "node": null,
+   "center": [
+    -0.66,
+    1.9542,
+    0.78
+   ],
+   "size": [
+    0.0537,
+    0.078,
+    0.051
+   ],
+   "tris": 20
+  },
+  {
+   "piece": "bulb_3",
+   "group": "bulb",
+   "node": null,
+   "center": [
+    -0.44,
+    1.9144,
+    0.78
+   ],
+   "size": [
+    0.0537,
+    0.078,
+    0.051
+   ],
+   "tris": 20
+  },
+  {
+   "piece": "bulb_4",
+   "group": "bulb",
+   "node": null,
+   "center": [
+    -0.22,
+    1.8888,
+    0.78
+   ],
+   "size": [
+    0.0537,
+    0.078,
+    0.051
+   ],
+   "tris": 20
+  },
+  {
+   "piece": "bulb_5",
+   "group": "bulb",
+   "node": null,
+   "center": [
+    0.0,
+    1.88,
+    0.78
+   ],
+   "size": [
+    0.0537,
+    0.078,
+    0.051
+   ],
+   "tris": 20
+  },
+  {
+   "piece": "bulb_6",
+   "group": "bulb",
+   "node": null,
+   "center": [
+    0.22,
+    1.8888,
+    0.78
+   ],
+   "size": [
+    0.0537,
+    0.078,
+    0.051
+   ],
+   "tris": 20
+  },
+  {
+   "piece": "bulb_7",
+   "group": "bulb",
+   "node": null,
+   "center": [
+    0.44,
+    1.9144,
+    0.78
+   ],
+   "size": [
+    0.0537,
+    0.078,
+    0.051
+   ],
+   "tris": 20
+  },
+  {
+   "piece": "bulb_8",
+   "group": "bulb",
+   "node": null,
+   "center": [
+    0.66,
+    1.9542,
+    0.78
+   ],
+   "size": [
+    0.0537,
+    0.078,
+    0.051
+   ],
+   "tris": 20
+  },
+  {
+   "piece": "bulb_9",
+   "group": "bulb",
+   "node": null,
+   "center": [
+    0.88,
+    2.0044,
+    0.78
+   ],
+   "size": [
+    0.0537,
+    0.078,
+    0.051
+   ],
+   "tris": 20
+  },
+  {
+   "piece": "menu_a",
+   "group": "sign",
+   "node": null,
+   "center": [
+    -0.6,
+    0.3693,
+    0.9349
+   ],
+   "size": [
+    0.5,
+    0.7438,
+    0.1598
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "menu_b",
+   "group": "wood",
+   "node": null,
+   "center": [
+    -0.6,
+    0.3693,
+    0.9051
+   ],
+   "size": [
+    0.5,
+    0.7438,
+    0.1598
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "gas_bottle",
+   "group": "paint2",
+   "node": null,
+   "center": [
+    0.7,
+    0.29,
+    -0.15
+   ],
+   "size": [
+    0.28,
+    0.58,
+    0.2757
+   ],
+   "tris": 180
+  },
+  {
+   "piece": "crate_0",
+   "group": "plastic",
+   "node": null,
+   "center": [
+    -0.5,
+    0.12,
+    -0.1
+   ],
+   "size": [
+    0.5,
+    0.24,
+    0.34
+   ],
+   "tris": 44
+  },
+  {
+   "piece": "crate_1",
+   "group": "plastic",
+   "node": null,
+   "center": [
+    0.1,
+    0.12,
+    -0.1
+   ],
+   "size": [
+    0.5,
+    0.24,
+    0.34
+   ],
+   "tris": 44
+  },
+  {
+   "piece": "gas_hose",
+   "group": "rubber",
+   "node": null,
+   "center": [
+    0.601,
+    0.7349,
+    -0.0236
+   ],
+   "size": [
+    0.2133,
+    0.2423,
+    0.2612
+   ],
+   "tris": 32
+  },
+  {
+   "piece": "gas_valve",
+   "group": "steel",
+   "node": null,
+   "center": [
+    0.7,
+    0.61,
+    -0.15
+   ],
+   "size": [
+    0.05,
+    0.06,
+    0.05
+   ],
+   "tris": 28
+  }
+ ],
+ "lights": [
+  {
+   "name": "Light_Grill",
+   "pos": [
+    0.15,
+    1.15,
+    0.12
+   ],
+   "type": "omni",
+   "color": [
+    1.0,
+    0.4,
+    0.1
+   ],
+   "energy": 15,
+   "range": 3.0,
+   "dir": null,
+   "shadow": false
+  },
+  {
+   "name": "Light_String",
+   "pos": [
+    0,
+    1.95,
+    0.85
+   ],
+   "type": "omni",
+   "color": [
+    1.0,
+    0.8,
+    0.5
+   ],
+   "energy": 25,
+   "range": 5.0,
+   "dir": null,
+   "shadow": false
+  }
+ ],
+ "sockets": [
+  {
+   "name": "Socket_Smoke",
+   "pos": [
+    0.15,
+    1.1,
+    0.12
+   ],
+   "kind": "smoke",
+   "dir": [
+    0,
+    1,
+    0
+   ],
+   "rate": "light"
+  }
+ ],
+ "collider": [
+  {
+   "type": "box",
+   "center": [
+    0,
+    0.45,
+    0
+   ],
+   "size": [
+    1.8,
+    0.9,
+    0.8
+   ]
+  },
+  {
+   "type": "box",
+   "center": [
+    0,
+    0.4,
+    1.0
+   ],
+   "size": [
+    0.5,
+    0.8,
+    0.35
+   ]
+  }
+ ],
+ "meta": {}
+}
