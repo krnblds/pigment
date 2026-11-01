@@ -501,3 +501,6 @@ fn render_demo() {
         image::save_buffer(out.join(format!("demo_{name}.png")), &img, size[0], size[1], image::ExtendedColorType::Rgba8).unwrap();
     }
 }
+
+#[path = "gpu_tests_weather.rs"]
+mod weather;
