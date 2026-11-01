@@ -1,0 +1,328 @@
+{
+ "name": "fire_hydrant",
+ "bounds_gl": {
+  "min": [
+   -0.235,
+   0.0,
+   -0.15
+  ],
+  "max": [
+   0.235,
+   0.8,
+   0.245
+  ]
+ },
+ "size_m": [
+  0.47,
+  0.8,
+  0.395
+ ],
+ "tris": 1632,
+ "texels_per_m": 388.4,
+ "nodes": [],
+ "pieces": [
+  {
+   "piece": "body",
+   "group": "paint",
+   "node": null,
+   "center": [
+    0.0,
+    0.33,
+    -0.0
+   ],
+   "size": [
+    0.3,
+    0.66,
+    0.3
+   ],
+   "tris": 528
+  },
+  {
+   "piece": "bonnet",
+   "group": "paint",
+   "node": null,
+   "center": [
+    0.0,
+    0.7,
+    -0.0
+   ],
+   "size": [
+    0.2,
+    0.12,
+    0.2
+   ],
+   "tris": 144
+  },
+  {
+   "piece": "outlet_cap_0",
+   "group": "steel",
+   "node": null,
+   "center": [
+    -0.195,
+    0.45,
+    -0.0
+   ],
+   "size": [
+    0.03,
+    0.0904,
+    0.0904
+   ],
+   "tris": 188
+  },
+  {
+   "piece": "op_nut",
+   "group": "steel",
+   "node": null,
+   "center": [
+    0.0,
+    0.775,
+    -0.0024
+   ],
+   "size": [
+    0.0476,
+    0.05,
+    0.0452
+   ],
+   "tris": 16
+  },
+  {
+   "piece": "outlet_0",
+   "group": "paint",
+   "node": null,
+   "center": [
+    -0.135,
+    0.45,
+    -0.0
+   ],
+   "size": [
+    0.09,
+    0.08,
+    0.08
+   ],
+   "tris": 60
+  },
+  {
+   "piece": "outlet_1",
+   "group": "paint",
+   "node": null,
+   "center": [
+    0.135,
+    0.45,
+    -0.0
+   ],
+   "size": [
+    0.09,
+    0.08,
+    0.08
+   ],
+   "tris": 60
+  },
+  {
+   "piece": "outlet_cap_1",
+   "group": "steel",
+   "node": null,
+   "center": [
+    0.195,
+    0.45,
+    -0.0
+   ],
+   "size": [
+    0.03,
+    0.0904,
+    0.0904
+   ],
+   "tris": 188
+  },
+  {
+   "piece": "pumper_cap",
+   "group": "steel",
+   "node": null,
+   "center": [
+    0.0,
+    0.36,
+    0.1975
+   ],
+   "size": [
+    0.1339,
+    0.1346,
+    0.035
+   ],
+   "tris": 212
+  },
+  {
+   "piece": "outlet_nut_0",
+   "group": "steel",
+   "node": null,
+   "center": [
+    -0.2225,
+    0.45,
+    -0.0019
+   ],
+   "size": [
+    0.025,
+    0.038,
+    0.0362
+   ],
+   "tris": 16
+  },
+  {
+   "piece": "outlet_nut_1",
+   "group": "steel",
+   "node": null,
+   "center": [
+    0.2225,
+    0.45,
+    -0.0019
+   ],
+   "size": [
+    0.025,
+    0.038,
+    0.0362
+   ],
+   "tris": 16
+  },
+  {
+   "piece": "pumper",
+   "group": "paint",
+   "node": null,
+   "center": [
+    0.0,
+    0.36,
+    0.135
+   ],
+   "size": [
+    0.1182,
+    0.12,
+    0.09
+   ],
+   "tris": 68
+  },
+  {
+   "piece": "flange_bolt_0",
+   "group": "steel",
+   "node": null,
+   "center": [
+    0.1039,
+    0.1625,
+    -0.06
+   ],
+   "size": [
+    0.0208,
+    0.025,
+    0.024
+   ],
+   "tris": 20
+  },
+  {
+   "piece": "pumper_nut",
+   "group": "steel",
+   "node": null,
+   "center": [
+    0.0,
+    0.3624,
+    0.23
+   ],
+   "size": [
+    0.0476,
+    0.0452,
+    0.03
+   ],
+   "tris": 16
+  },
+  {
+   "piece": "flange_bolt_1",
+   "group": "steel",
+   "node": null,
+   "center": [
+    0.0,
+    0.1625,
+    -0.12
+   ],
+   "size": [
+    0.0208,
+    0.025,
+    0.024
+   ],
+   "tris": 20
+  },
+  {
+   "piece": "flange_bolt_3",
+   "group": "steel",
+   "node": null,
+   "center": [
+    -0.1039,
+    0.1625,
+    0.06
+   ],
+   "size": [
+    0.0208,
+    0.025,
+    0.024
+   ],
+   "tris": 20
+  },
+  {
+   "piece": "flange_bolt_2",
+   "group": "steel",
+   "node": null,
+   "center": [
+    -0.1039,
+    0.1625,
+    -0.06
+   ],
+   "size": [
+    0.0208,
+    0.025,
+    0.024
+   ],
+   "tris": 20
+  },
+  {
+   "piece": "flange_bolt_4",
+   "group": "steel",
+   "node": null,
+   "center": [
+    0.0,
+    0.1625,
+    0.12
+   ],
+   "size": [
+    0.0208,
+    0.025,
+    0.024
+   ],
+   "tris": 20
+  },
+  {
+   "piece": "flange_bolt_5",
+   "group": "steel",
+   "node": null,
+   "center": [
+    0.1039,
+    0.1625,
+    0.06
+   ],
+   "size": [
+    0.0208,
+    0.025,
+    0.024
+   ],
+   "tris": 20
+  }
+ ],
+ "lights": [],
+ "sockets": [],
+ "collider": [
+  {
+   "type": "cylinder",
+   "center": [
+    0,
+    0.38,
+    0
+   ],
+   "radius": 0.15,
+   "height": 0.76
+  }
+ ],
+ "meta": {}
+}

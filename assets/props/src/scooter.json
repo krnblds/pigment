@@ -1,0 +1,315 @@
+{
+ "name": "scooter",
+ "bounds_gl": {
+  "min": [
+   -0.4901,
+   0.0002,
+   -0.1744
+  ],
+  "max": [
+   0.4984,
+   1.1036,
+   0.3814
+  ]
+ },
+ "size_m": [
+  0.989,
+  1.103,
+  0.556
+ ],
+ "tris": 1144,
+ "texels_per_m": 604.3,
+ "nodes": [],
+ "pieces": [
+  {
+   "piece": "deck_grip",
+   "group": "rubber",
+   "node": null,
+   "center": [
+    -0.06,
+    0.1313,
+    0.0138
+   ],
+   "size": [
+    0.48,
+    0.0176,
+    0.1297
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "deck",
+   "group": "paint",
+   "node": null,
+   "center": [
+    -0.04,
+    0.1069,
+    0.0112
+   ],
+   "size": [
+    0.56,
+    0.0573,
+    0.1507
+   ],
+   "tris": 108
+  },
+  {
+   "piece": "tyre_r",
+   "group": "rubber",
+   "node": null,
+   "center": [
+    -0.38,
+    0.0995,
+    0.0105
+   ],
+   "size": [
+    0.1969,
+    0.1985,
+    0.0681
+   ],
+   "tris": 284
+  },
+  {
+   "piece": "tyre_f",
+   "group": "rubber",
+   "node": null,
+   "center": [
+    0.4,
+    0.0995,
+    0.0105
+   ],
+   "size": [
+    0.1969,
+    0.1985,
+    0.0681
+   ],
+   "tris": 284
+  },
+  {
+   "piece": "hub_r",
+   "group": "dark_metal",
+   "node": null,
+   "center": [
+    -0.38,
+    0.0995,
+    0.0105
+   ],
+   "size": [
+    0.12,
+    0.1252,
+    0.0682
+   ],
+   "tris": 60
+  },
+  {
+   "piece": "fender_r",
+   "group": "paint",
+   "node": null,
+   "center": [
+    -0.38,
+    0.2046,
+    0.0212
+   ],
+   "size": [
+    0.2202,
+    0.0782,
+    0.0444
+   ],
+   "tris": 100
+  },
+  {
+   "piece": "hub_f",
+   "group": "dark_metal",
+   "node": null,
+   "center": [
+    0.4,
+    0.0995,
+    0.0105
+   ],
+   "size": [
+    0.12,
+    0.1252,
+    0.0682
+   ],
+   "tris": 60
+  },
+  {
+   "piece": "neck",
+   "group": "paint",
+   "node": null,
+   "center": [
+    0.29,
+    0.1591,
+    0.0167
+   ],
+   "size": [
+    0.1648,
+    0.1227,
+    0.0581
+   ],
+   "tris": 28
+  },
+  {
+   "piece": "stem",
+   "group": "paint",
+   "node": null,
+   "center": [
+    0.3498,
+    0.5709,
+    0.0601
+   ],
+   "size": [
+    0.1414,
+    0.9525,
+    0.1431
+   ],
+   "tris": 56
+  },
+  {
+   "piece": "handlebar",
+   "group": "black_plastic",
+   "node": null,
+   "center": [
+    0.3,
+    1.0542,
+    0.1108
+   ],
+   "size": [
+    0.028,
+    0.0801,
+    0.5002
+   ],
+   "tris": 28
+  },
+  {
+   "piece": "grip_0",
+   "group": "rubber",
+   "node": null,
+   "center": [
+    0.3,
+    1.0307,
+    0.3346
+   ],
+   "size": [
+    0.04,
+    0.0492,
+    0.0937
+   ],
+   "tris": 28
+  },
+  {
+   "piece": "grip_1",
+   "group": "rubber",
+   "node": null,
+   "center": [
+    0.3,
+    1.0777,
+    -0.113
+   ],
+   "size": [
+    0.04,
+    0.0492,
+    0.0937
+   ],
+   "tris": 28
+  },
+  {
+   "piece": "display",
+   "group": "screen",
+   "node": null,
+   "center": [
+    0.29,
+    1.0741,
+    0.1129
+   ],
+   "size": [
+    0.0642,
+    0.0591,
+    0.0947
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "qr_plate",
+   "group": "sign",
+   "node": null,
+   "center": [
+    0.335,
+    0.6166,
+    0.0648
+   ],
+   "size": [
+    0.0259,
+    0.2087,
+    0.1104
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "stem_wrap",
+   "group": "sign2",
+   "node": null,
+   "center": [
+    0.32,
+    0.8155,
+    0.0857
+   ],
+   "size": [
+    0.0708,
+    0.3063,
+    0.0814
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "front_light",
+   "group": "led",
+   "node": null,
+   "center": [
+    0.37,
+    0.4177,
+    0.0439
+   ],
+   "size": [
+    0.0317,
+    0.0321,
+    0.0526
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "kickstand",
+   "group": "dark_metal",
+   "node": null,
+   "center": [
+    -0.15,
+    0.0518,
+    -0.1102
+   ],
+   "size": [
+    0.1118,
+    0.0813,
+    0.1285
+   ],
+   "tris": 20
+  }
+ ],
+ "lights": [],
+ "sockets": [],
+ "collider": [
+  {
+   "type": "box",
+   "center": [
+    0.0,
+    0.55,
+    -0.05
+   ],
+   "size": [
+    1.0,
+    1.1,
+    0.55
+   ]
+  }
+ ],
+ "meta": {}
+}

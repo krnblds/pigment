@@ -1,0 +1,584 @@
+{
+ "name": "crate_stack",
+ "bounds_gl": {
+  "min": [
+   -0.505,
+   0.0,
+   -0.3721
+  ],
+  "max": [
+   0.505,
+   1.38,
+   0.355
+  ]
+ },
+ "size_m": [
+  1.01,
+  1.38,
+  0.727
+ ],
+ "tris": 1100,
+ "texels_per_m": 223.6,
+ "nodes": [],
+ "pieces": [
+  {
+   "piece": "corner_a_0",
+   "group": "steel",
+   "node": null,
+   "center": [
+    -0.47,
+    0.595,
+    0.32
+   ],
+   "size": [
+    0.07,
+    0.07,
+    0.07
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "crate_a",
+   "group": "wood2",
+   "node": null,
+   "center": [
+    0.0,
+    0.3,
+    -0.0
+   ],
+   "size": [
+    0.96,
+    0.6,
+    0.66
+   ],
+   "tris": 44
+  },
+  {
+   "piece": "batten_f_a_0",
+   "group": "wood",
+   "node": null,
+   "center": [
+    0.0,
+    0.035,
+    0.3375
+   ],
+   "size": [
+    1.0,
+    0.07,
+    0.025
+   ],
+   "tris": 44
+  },
+  {
+   "piece": "batten_b_a_0",
+   "group": "wood",
+   "node": null,
+   "center": [
+    0.0,
+    0.035,
+    -0.3375
+   ],
+   "size": [
+    1.0,
+    0.07,
+    0.025
+   ],
+   "tris": 44
+  },
+  {
+   "piece": "batten_f_a_1",
+   "group": "wood",
+   "node": null,
+   "center": [
+    0.0,
+    0.585,
+    0.3375
+   ],
+   "size": [
+    1.0,
+    0.07,
+    0.025
+   ],
+   "tris": 44
+  },
+  {
+   "piece": "batten_b_a_1",
+   "group": "wood",
+   "node": null,
+   "center": [
+    0.0,
+    0.585,
+    -0.3375
+   ],
+   "size": [
+    1.0,
+    0.07,
+    0.025
+   ],
+   "tris": 44
+  },
+  {
+   "piece": "post_a_0",
+   "group": "wood",
+   "node": null,
+   "center": [
+    -0.47,
+    0.31,
+    0.32
+   ],
+   "size": [
+    0.06,
+    0.62,
+    0.06
+   ],
+   "tris": 44
+  },
+  {
+   "piece": "corner_a_1",
+   "group": "steel",
+   "node": null,
+   "center": [
+    0.47,
+    0.595,
+    0.32
+   ],
+   "size": [
+    0.07,
+    0.07,
+    0.07
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "post_a_1",
+   "group": "wood",
+   "node": null,
+   "center": [
+    0.47,
+    0.31,
+    0.32
+   ],
+   "size": [
+    0.06,
+    0.62,
+    0.06
+   ],
+   "tris": 44
+  },
+  {
+   "piece": "corner_a_2",
+   "group": "steel",
+   "node": null,
+   "center": [
+    -0.47,
+    0.595,
+    -0.32
+   ],
+   "size": [
+    0.07,
+    0.07,
+    0.07
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "post_a_2",
+   "group": "wood",
+   "node": null,
+   "center": [
+    -0.47,
+    0.31,
+    -0.32
+   ],
+   "size": [
+    0.06,
+    0.62,
+    0.06
+   ],
+   "tris": 44
+  },
+  {
+   "piece": "corner_a_3",
+   "group": "steel",
+   "node": null,
+   "center": [
+    0.47,
+    0.595,
+    -0.32
+   ],
+   "size": [
+    0.07,
+    0.07,
+    0.07
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "post_a_3",
+   "group": "wood",
+   "node": null,
+   "center": [
+    0.47,
+    0.31,
+    -0.32
+   ],
+   "size": [
+    0.06,
+    0.62,
+    0.06
+   ],
+   "tris": 44
+  },
+  {
+   "piece": "stencil_a",
+   "group": "stencil",
+   "node": null,
+   "center": [
+    0.0,
+    0.279,
+    0.333
+   ],
+   "size": [
+    0.7,
+    0.31,
+    0.004
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "corner_b_0",
+   "group": "steel",
+   "node": null,
+   "center": [
+    -0.2943,
+    1.095,
+    0.2931
+   ],
+   "size": [
+    0.078,
+    0.07,
+    0.078
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "crate_b",
+   "group": "wood2",
+   "node": null,
+   "center": [
+    0.04,
+    0.86,
+    -0.02
+   ],
+   "size": [
+    0.8216,
+    0.48,
+    0.6475
+   ],
+   "tris": 44
+  },
+  {
+   "piece": "batten_f_b_0",
+   "group": "wood",
+   "node": null,
+   "center": [
+    0.075,
+    0.655,
+    0.2654
+   ],
+   "size": [
+    0.7961,
+    0.07,
+    0.1213
+   ],
+   "tris": 44
+  },
+  {
+   "piece": "batten_b_b_0",
+   "group": "wood",
+   "node": null,
+   "center": [
+    0.005,
+    0.655,
+    -0.3054
+   ],
+   "size": [
+    0.7961,
+    0.07,
+    0.1213
+   ],
+   "tris": 44
+  },
+  {
+   "piece": "batten_f_b_1",
+   "group": "wood",
+   "node": null,
+   "center": [
+    0.075,
+    1.085,
+    0.2654
+   ],
+   "size": [
+    0.7961,
+    0.07,
+    0.1213
+   ],
+   "tris": 44
+  },
+  {
+   "piece": "batten_b_b_1",
+   "group": "wood",
+   "node": null,
+   "center": [
+    0.005,
+    1.085,
+    -0.3054
+   ],
+   "size": [
+    0.7961,
+    0.07,
+    0.1213
+   ],
+   "tris": 44
+  },
+  {
+   "piece": "post_b_0",
+   "group": "wood",
+   "node": null,
+   "center": [
+    -0.2943,
+    0.87,
+    0.2931
+   ],
+   "size": [
+    0.0659,
+    0.5,
+    0.0659
+   ],
+   "tris": 44
+  },
+  {
+   "piece": "corner_b_1",
+   "group": "steel",
+   "node": null,
+   "center": [
+    0.4401,
+    1.095,
+    0.2029
+   ],
+   "size": [
+    0.078,
+    0.07,
+    0.078
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "post_b_1",
+   "group": "wood",
+   "node": null,
+   "center": [
+    0.4401,
+    0.87,
+    0.2029
+   ],
+   "size": [
+    0.0659,
+    0.5,
+    0.0659
+   ],
+   "tris": 44
+  },
+  {
+   "piece": "corner_b_2",
+   "group": "steel",
+   "node": null,
+   "center": [
+    -0.3601,
+    1.095,
+    -0.2429
+   ],
+   "size": [
+    0.078,
+    0.07,
+    0.078
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "post_b_2",
+   "group": "wood",
+   "node": null,
+   "center": [
+    -0.3601,
+    0.87,
+    -0.2429
+   ],
+   "size": [
+    0.0659,
+    0.5,
+    0.0659
+   ],
+   "tris": 44
+  },
+  {
+   "piece": "corner_b_3",
+   "group": "steel",
+   "node": null,
+   "center": [
+    0.3743,
+    1.095,
+    -0.3331
+   ],
+   "size": [
+    0.078,
+    0.07,
+    0.078
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "post_b_3",
+   "group": "wood",
+   "node": null,
+   "center": [
+    0.3743,
+    0.87,
+    -0.3331
+   ],
+   "size": [
+    0.0659,
+    0.5,
+    0.0659
+   ],
+   "tris": 44
+  },
+  {
+   "piece": "stencil_b",
+   "group": "stencil",
+   "node": null,
+   "center": [
+    0.0745,
+    0.845,
+    0.2609
+   ],
+   "size": [
+    0.5563,
+    0.25,
+    0.0722
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "pcrate_floor",
+   "group": "plastic",
+   "node": null,
+   "center": [
+    -0.05,
+    1.13,
+    -0.0
+   ],
+   "size": [
+    0.5,
+    0.02,
+    0.36
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "pcrate_wall_0",
+   "group": "plastic",
+   "node": null,
+   "center": [
+    -0.05,
+    1.25,
+    0.17
+   ],
+   "size": [
+    0.5,
+    0.26,
+    0.02
+   ],
+   "tris": 44
+  },
+  {
+   "piece": "pcrate_wall_1",
+   "group": "plastic",
+   "node": null,
+   "center": [
+    -0.05,
+    1.25,
+    -0.17
+   ],
+   "size": [
+    0.5,
+    0.26,
+    0.02
+   ],
+   "tris": 44
+  },
+  {
+   "piece": "pcrate_wall_2",
+   "group": "plastic",
+   "node": null,
+   "center": [
+    -0.29,
+    1.25,
+    -0.0
+   ],
+   "size": [
+    0.02,
+    0.26,
+    0.36
+   ],
+   "tris": 44
+  },
+  {
+   "piece": "pcrate_wall_3",
+   "group": "plastic",
+   "node": null,
+   "center": [
+    0.19,
+    1.25,
+    -0.0
+   ],
+   "size": [
+    0.02,
+    0.26,
+    0.36
+   ],
+   "tris": 44
+  }
+ ],
+ "lights": [],
+ "sockets": [],
+ "collider": [
+  {
+   "type": "box",
+   "center": [
+    0,
+    0.56,
+    0
+   ],
+   "size": [
+    1.0,
+    1.12,
+    0.7
+   ]
+  },
+  {
+   "type": "box",
+   "center": [
+    -0.05,
+    1.26,
+    -0.0
+   ],
+   "size": [
+    0.5,
+    0.28,
+    0.36
+   ]
+  }
+ ],
+ "meta": {}
+}

@@ -1,0 +1,171 @@
+{
+ "name": "jersey_barrier",
+ "bounds_gl": {
+  "min": [
+   -1.5,
+   0.0,
+   -0.31
+  ],
+  "max": [
+   1.5,
+   0.892,
+   0.31
+  ]
+ },
+ "size_m": [
+  3.0,
+  0.892,
+  0.62
+ ],
+ "tris": 408,
+ "texels_per_m": 308.6,
+ "nodes": [],
+ "pieces": [
+  {
+   "piece": "loop_0",
+   "group": "rebar",
+   "node": null,
+   "center": [
+    -0.9,
+    0.8501,
+    -0.0
+   ],
+   "size": [
+    0.0208,
+    0.0839,
+    0.1637
+   ],
+   "tris": 128
+  },
+  {
+   "piece": "body",
+   "group": "concrete",
+   "node": null,
+   "center": [
+    0.0,
+    0.405,
+    -0.0
+   ],
+   "size": [
+    3.0,
+    0.81,
+    0.61
+   ],
+   "tris": 92
+  },
+  {
+   "piece": "loop_1",
+   "group": "rebar",
+   "node": null,
+   "center": [
+    0.9,
+    0.8501,
+    -0.0
+   ],
+   "size": [
+    0.0208,
+    0.0839,
+    0.1637
+   ],
+   "tris": 128
+  },
+  {
+   "piece": "reflector_0",
+   "group": "reflector",
+   "node": null,
+   "center": [
+    -1.2,
+    0.55,
+    0.165
+   ],
+   "size": [
+    0.1,
+    0.0703,
+    0.0266
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "reflector_1",
+   "group": "reflector",
+   "node": null,
+   "center": [
+    0.0,
+    0.55,
+    0.165
+   ],
+   "size": [
+    0.1,
+    0.0703,
+    0.0266
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "reflector_2",
+   "group": "reflector",
+   "node": null,
+   "center": [
+    1.2,
+    0.55,
+    0.165
+   ],
+   "size": [
+    0.1,
+    0.0703,
+    0.0266
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "drain_slot_0",
+   "group": "dark_metal",
+   "node": null,
+   "center": [
+    -0.75,
+    0.04,
+    -0.0
+   ],
+   "size": [
+    0.3,
+    0.08,
+    0.62
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "drain_slot_1",
+   "group": "dark_metal",
+   "node": null,
+   "center": [
+    0.75,
+    0.04,
+    -0.0
+   ],
+   "size": [
+    0.3,
+    0.08,
+    0.62
+   ],
+   "tris": 12
+  }
+ ],
+ "lights": [],
+ "sockets": [],
+ "collider": [
+  {
+   "type": "box",
+   "center": [
+    0,
+    0.405,
+    0
+   ],
+   "size": [
+    3.0,
+    0.81,
+    0.61
+   ]
+  }
+ ],
+ "meta": {}
+}

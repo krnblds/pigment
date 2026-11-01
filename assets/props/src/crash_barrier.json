@@ -1,0 +1,171 @@
+{
+ "name": "crash_barrier",
+ "bounds_gl": {
+  "min": [
+   -0.92,
+   0.0,
+   -0.26
+  ],
+  "max": [
+   0.92,
+   0.825,
+   0.26
+  ]
+ },
+ "size_m": [
+  1.84,
+  0.825,
+  0.52
+ ],
+ "tris": 344,
+ "texels_per_m": 317.7,
+ "nodes": [],
+ "pieces": [
+  {
+   "piece": "lug_0",
+   "group": "plastic",
+   "node": null,
+   "center": [
+    -0.86,
+    0.45,
+    -0.0
+   ],
+   "size": [
+    0.12,
+    0.5,
+    0.16
+   ],
+   "tris": 44
+  },
+  {
+   "piece": "fork_slot_0",
+   "group": "dark_plastic",
+   "node": null,
+   "center": [
+    -0.45,
+    0.035,
+    -0.0
+   ],
+   "size": [
+    0.36,
+    0.07,
+    0.52
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "body",
+   "group": "plastic",
+   "node": null,
+   "center": [
+    0.0,
+    0.4,
+    -0.0
+   ],
+   "size": [
+    1.66,
+    0.8,
+    0.5
+   ],
+   "tris": 116
+  },
+  {
+   "piece": "lug_1",
+   "group": "plastic",
+   "node": null,
+   "center": [
+    0.86,
+    0.4,
+    -0.0
+   ],
+   "size": [
+    0.12,
+    0.7,
+    0.16
+   ],
+   "tris": 44
+  },
+  {
+   "piece": "fork_slot_1",
+   "group": "dark_plastic",
+   "node": null,
+   "center": [
+    0.45,
+    0.035,
+    -0.0
+   ],
+   "size": [
+    0.36,
+    0.07,
+    0.52
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "drain_cap",
+   "group": "dark_plastic",
+   "node": null,
+   "center": [
+    0.6,
+    0.12,
+    0.215
+   ],
+   "size": [
+    0.08,
+    0.08,
+    0.02
+   ],
+   "tris": 44
+  },
+  {
+   "piece": "fill_cap",
+   "group": "dark_plastic",
+   "node": null,
+   "center": [
+    -0.5,
+    0.8125,
+    -0.0
+   ],
+   "size": [
+    0.12,
+    0.025,
+    0.12
+   ],
+   "tris": 60
+  },
+  {
+   "piece": "reflector_strip",
+   "group": "reflector",
+   "node": null,
+   "center": [
+    0.0,
+    0.62,
+    0.145
+   ],
+   "size": [
+    1.2,
+    0.0606,
+    0.0152
+   ],
+   "tris": 12
+  }
+ ],
+ "lights": [],
+ "sockets": [],
+ "collider": [
+  {
+   "type": "box",
+   "center": [
+    0,
+    0.4,
+    0
+   ],
+   "size": [
+    1.8,
+    0.8,
+    0.5
+   ]
+  }
+ ],
+ "meta": {}
+}
