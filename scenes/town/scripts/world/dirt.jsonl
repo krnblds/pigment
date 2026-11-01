@@ -1,0 +1,11 @@
+{"tool": "new_project", "args": {"tile": {"size_m": [4, 4], "name": "dirt"}, "resolution": 2048, "material": "Concrete"}}
+{"tool": "delete_layer", "args": {"layer": "Paint"}}
+{"tool": "update_layer", "args": {"layer": "Base", "values": {"base_color": [0.14, 0.1, 0.07], "roughness": 0.9}}}
+{"tool": "add_layer", "args": {"name": "Tone", "values": {"base_color": [0.19, 0.14, 0.1]}, "opacity": 0.7, "mask": {"generator": "grunge", "amount": 0.5, "scale": 0.7, "softness": 0.3, "seed": 31}}}
+{"tool": "add_layer", "args": {"name": "Pebbles", "values": {"base_color": [0.3, 0.28, 0.25], "height": 0.6, "roughness": 0.7}, "mask": {"generator": "spots", "amount": 0.12, "scale": 28.0, "softness": 0.08, "seed": 33}}}
+{"tool": "add_layer", "args": {"name": "Gravel", "values": {"base_color": [0.22, 0.2, 0.18], "height": 0.3}, "opacity": 0.8, "mask": {"generator": "spots", "amount": 0.25, "scale": 90.0, "softness": 0.05, "seed": 35}}}
+{"tool": "add_layer", "args": {"name": "Ruts", "values": {"base_color": [0.08, 0.06, 0.045], "height": -0.6}, "opacity": 0.7, "mask": {"generator": "scratches", "amount": 0.08, "scale": 0.5, "softness": 0.1, "seed": 37}}}
+{"tool": "add_layer", "args": {"name": "Mud", "values": {"base_color": [0.06, 0.045, 0.035], "roughness": 0.2}, "opacity": 0.5, "channels": {"height": false}, "mask": {"generator": "puddles", "amount": 0.18, "scale": 0.7, "breakup": 0.6, "softness": 0.2, "seed": 39}}}
+{"tool": "render", "args": {"yaw": 0, "pitch": 89.9, "zoom": 1.0, "width": 700, "height": 700, "background": false, "path": "C:/Users/kiera/AppData/Local/Temp/pig/world_dirt.png"}}
+{"tool": "export_textures", "args": {"dir": "scenes/town/textures/world/dirt", "name": "dirt", "preset": "separate"}}
+{"tool": "save_project", "args": {"path": "scenes/town/projects/world/dirt.pigment"}}

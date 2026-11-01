@@ -521,6 +521,183 @@ def sign_extra(parts):
     return L + S, defs
 
 
+# ------------------------------------------------------------------ world sheets (tools/world)
+# Seamless Pigment tiles for the open world (flat sheet projects, see
+# docs/agents/roads/NOTES.md): terrain (rock, grass, dirt, sand), tower
+# facades (8 x 8 m: 4 bays x 2 storeys, glass panes placed as box decals so
+# the runtime shader knows exactly where the windows are) and corrugated
+# metal for warehouses and containers. They export to
+# scenes/town/textures/world/<name>/.
+#     python tools/town_textures.py world            (all of them)
+#     python tools/town_textures.py world:rock,sand  (some)
+
+WORLD_TEX = "scenes/town/textures/world"
+WORLD_PROJ = "scenes/town/projects/world"
+BAR = "assets/decals/roads/bar.png"          # white box stencil (tools/road_textures.py)
+
+
+def _sheet(name, size, res, material, base, layers, extra=()):
+    L = [{"tool": "new_project", "args": {"tile": {"size_m": size, "name": name}, "resolution": res, "material": material}},
+         {"tool": "delete_layer", "args": {"layer": "Paint"}},
+         {"tool": "update_layer", "args": {"layer": "Base", "values": base}}]
+    for a in layers:
+        L.append({"tool": "add_layer", "args": a})
+    L += list(extra)
+    T = str(TMP).replace("\\", "/")
+    L += [{"tool": "render", "args": {"yaw": 0, "pitch": 89.9, "zoom": 1.0, "width": 700, "height": 700, "background": False, "path": f"{T}/world_{name}.png"}},
+          {"tool": "export_textures", "args": {"dir": f"{WORLD_TEX}/{name}", "name": name, "preset": "separate"}},
+          {"tool": "save_project", "args": {"path": f"{WORLD_PROJ}/{name}.pigment"}}]
+    return L
+
+
+def _g(gen, **kw):
+    d = {"generator": gen}
+    d.update(kw)
+    return d
+
+
+def world_rock():
+    return _sheet("rock", [4, 4], 2048, "Concrete", {"base_color": [0.21, 0.2, 0.19], "roughness": 0.85}, [
+        {"name": "Strata", "values": {"base_color": [0.29, 0.27, 0.25], "height": 0.35}, "opacity": 0.8, "mask": _g("grunge", amount=0.5, scale=0.6, softness=0.2, seed=3)},
+        {"name": "Boulders", "values": {"base_color": [0.33, 0.32, 0.3], "height": 0.8}, "mask": _g("grunge", amount=0.42, scale=1.1, softness=0.12, seed=5)},
+        {"name": "Ledges", "values": {"base_color": [0.25, 0.24, 0.22], "height": 0.5}, "opacity": 0.8, "mask": _g("grunge", amount=0.35, scale=2.6, softness=0.06, seed=6)},
+        {"name": "Fissures", "values": {"base_color": [0.06, 0.055, 0.05], "height": -1.0}, "mask": _g("scratches", amount=0.14, scale=0.8, softness=0.03, seed=7)},
+        {"name": "Grain", "values": {"base_color": [0.4, 0.38, 0.35], "height": 0.15}, "opacity": 0.5, "mask": _g("spots", amount=0.25, scale=80.0, softness=0.05, seed=9)},
+        {"name": "Lichen", "values": {"base_color": [0.32, 0.33, 0.2], "roughness": 0.95}, "opacity": 0.55, "mask": _g("spots", amount=0.18, scale=6.0, softness=0.2, seed=11)},
+        {"name": "Moss in cracks", "values": {"base_color": [0.08, 0.12, 0.05], "roughness": 0.95}, "opacity": 0.7, "mask": _g("moss", amount=0.25, scale=1.5, breakup=0.8, seed=13)},
+        {"name": "Wet", "values": {"base_color": [0.1, 0.1, 0.1], "roughness": 0.3}, "opacity": 0.35, "channels": {"height": False}, "mask": _g("puddles", amount=0.2, scale=0.8, breakup=0.6, softness=0.2, seed=15)},
+    ])
+
+
+def world_grass():
+    return _sheet("grass", [4, 4], 2048, "Concrete", {"base_color": [0.075, 0.11, 0.04], "roughness": 0.92}, [
+        {"name": "Blades light", "values": {"base_color": [0.13, 0.17, 0.06], "height": 0.3}, "opacity": 0.8, "mask": _g("scratches", amount=0.35, scale=9.0, softness=0.05, seed=21)},
+        {"name": "Clumps", "values": {"base_color": [0.1, 0.15, 0.05], "height": 0.25}, "mask": _g("spots", amount=0.4, scale=14.0, softness=0.2, seed=23)},
+        {"name": "Dry", "values": {"base_color": [0.2, 0.18, 0.09]}, "opacity": 0.6, "mask": _g("grunge", amount=0.3, scale=0.8, softness=0.35, seed=25)},
+        {"name": "Soil", "values": {"base_color": [0.08, 0.06, 0.04], "height": -0.3}, "opacity": 0.8, "mask": _g("spots", amount=0.12, scale=5.0, softness=0.15, seed=27)},
+        {"name": "Flowers", "values": {"base_color": [0.5, 0.45, 0.3]}, "opacity": 0.6, "mask": _g("spots", amount=0.02, scale=40.0, softness=0.05, seed=29)},
+    ])
+
+
+def world_dirt():
+    return _sheet("dirt", [4, 4], 2048, "Concrete", {"base_color": [0.14, 0.1, 0.07], "roughness": 0.9}, [
+        {"name": "Tone", "values": {"base_color": [0.19, 0.14, 0.1]}, "opacity": 0.7, "mask": _g("grunge", amount=0.5, scale=0.7, softness=0.3, seed=31)},
+        {"name": "Pebbles", "values": {"base_color": [0.3, 0.28, 0.25], "height": 0.6, "roughness": 0.7}, "mask": _g("spots", amount=0.12, scale=28.0, softness=0.08, seed=33)},
+        {"name": "Gravel", "values": {"base_color": [0.22, 0.2, 0.18], "height": 0.3}, "opacity": 0.8, "mask": _g("spots", amount=0.25, scale=90.0, softness=0.05, seed=35)},
+        {"name": "Ruts", "values": {"base_color": [0.08, 0.06, 0.045], "height": -0.6}, "opacity": 0.7, "mask": _g("scratches", amount=0.08, scale=0.5, softness=0.1, seed=37)},
+        {"name": "Mud", "values": {"base_color": [0.06, 0.045, 0.035], "roughness": 0.2}, "opacity": 0.5, "channels": {"height": False}, "mask": _g("puddles", amount=0.18, scale=0.7, breakup=0.6, softness=0.2, seed=39)},
+    ])
+
+
+def world_sand():
+    return _sheet("sand", [4, 4], 2048, "Concrete", {"base_color": [0.42, 0.37, 0.28], "roughness": 0.95}, [
+        {"name": "Ripples", "values": {"base_color": [0.48, 0.43, 0.33], "height": 0.4}, "opacity": 0.8, "mask": _g("stripes", amount=0.45, scale=6.0, softness=0.45, seed=41)},
+        {"name": "Tone", "values": {"base_color": [0.34, 0.3, 0.23]}, "opacity": 0.6, "mask": _g("grunge", amount=0.45, scale=0.6, softness=0.35, seed=43)},
+        {"name": "Grains", "values": {"base_color": [0.55, 0.5, 0.42], "height": 0.1}, "opacity": 0.5, "mask": _g("spots", amount=0.3, scale=150.0, softness=0.05, seed=45)},
+        {"name": "Shells and debris", "values": {"base_color": [0.6, 0.58, 0.55], "height": 0.4}, "mask": _g("spots", amount=0.015, scale=20.0, softness=0.05, seed=47)},
+        {"name": "Wet sand", "values": {"base_color": [0.2, 0.17, 0.13], "roughness": 0.35}, "opacity": 0.5, "channels": {"height": False}, "mask": _g("grunge", amount=0.3, scale=0.4, softness=0.4, seed=49)},
+    ])
+
+
+# facade tile: 8 x 8 m, 4 bays (2 m) x 2 storeys (4 m). Sheet x = facade U, sheet z = height.
+FACADE_STYLES = {
+    #                wall colour           wall rough  glass colour         glass rough  frame colour
+    "glass_blue":    ([0.16, 0.2, 0.24],   0.35,       [0.05, 0.09, 0.13],  0.05,        [0.25, 0.28, 0.3]),
+    "glass_dark":    ([0.05, 0.05, 0.055], 0.3,        [0.02, 0.025, 0.03], 0.04,        [0.1, 0.1, 0.11]),
+    "concrete_warm": ([0.36, 0.33, 0.29],  0.85,       [0.04, 0.045, 0.05], 0.08,        [0.15, 0.14, 0.13]),
+    "panel_cyan":    ([0.22, 0.24, 0.25],  0.5,        [0.03, 0.06, 0.07],  0.05,        [0.06, 0.4, 0.45]),
+}
+FACADE_WINDOW = {"bay_m": 2.0, "storey_m": 4.0, "curtain": (1.86, 3.4), "punched": (1.5, 2.6), "sill_m": 0.55}
+
+
+def world_facade(style):
+    wall, wr, glass, gr, frame = FACADE_STYLES[style]
+    curtain = style.startswith("glass")
+    layers = [
+        {"name": "Panels", "values": {"base_color": [c * 0.85 for c in wall]}, "opacity": 0.6,
+         "mask": _g("tiles", variant="square", scale=1.0, aspect=1.0, mortar=0.02, amount=0.5, softness=0.01, seed=3)},
+        {"name": "Panel joints", "values": {"base_color": [c * 0.4 for c in wall], "height": -0.5}, "mask": _g("panel_lines", amount=0.03, scale=1.0, softness=0.01, seed=5)},
+        {"kind": "paint", "name": "Frames"},
+        {"kind": "paint", "name": "Glass"},
+    ]
+    dec = []
+    w, h = FACADE_WINDOW["curtain"] if curtain else FACADE_WINDOW["punched"]
+    for bay in range(4):
+        for storey in range(2):
+            cx = -4.0 + 1.0 + bay * 2.0
+            cz = -4.0 + storey * 4.0 + FACADE_WINDOW["sill_m"] + h / 2
+            dec.append({"tool": "project_decal", "args": {"image": BAR, "layer": "Frames", "position": [cx, 0, cz], "normal": [0, 1, 0],
+                                                          "size": [w + 0.12, h + 0.12], "tint": frame, "values": {"roughness": 0.35, "metallic": 0.8}, "height": 0.3}})
+            dec.append({"tool": "project_decal", "args": {"image": BAR, "layer": "Glass", "position": [cx, 0, cz], "normal": [0, 1, 0],
+                                                          "size": [w, h], "tint": glass, "values": {"roughness": gr, "metallic": 0.3}, "height": -0.2}})
+            if not curtain:      # mullion splitting the pane
+                dec.append({"tool": "project_decal", "args": {"image": BAR, "layer": "Frames", "position": [cx, 0, cz], "normal": [0, 1, 0],
+                                                              "size": [0.06, h], "tint": frame, "values": {"roughness": 0.35, "metallic": 0.8}}})
+    weather = [
+        {"name": "Rain streaks", "material": "Grime", "opacity": 0.45, "mask": _g("streaks", amount=0.3, scale=2.0, softness=0.15, seed=7)},
+        {"name": "Grime", "material": "Grime", "opacity": 0.35, "channels": {"height": False}, "mask": _g("grunge", amount=0.35, scale=0.9, softness=0.3, seed=9)},
+    ]
+    L = _sheet(f"facade_{style}", [8, 8], 2048, "Concrete", {"base_color": wall, "roughness": wr}, layers)
+    tail = L[-3:]
+    return L[:-3] + dec + [{"tool": "add_layer", "args": a} for a in weather] + tail
+
+
+def rib_stencil():
+    """Soft vertical bar (alpha = rib profile) for the corrugation decals."""
+    from PIL import Image
+    import math as _m
+    p = ROOT / "assets" / "decals" / "world" / "rib.png"
+    p.parent.mkdir(parents=True, exist_ok=True)
+    w, h = 64, 16
+    img = Image.new("RGBA", (w, h), (255, 255, 255, 0))
+    for x in range(w):
+        a = int(255 * (0.5 - 0.5 * _m.cos(2 * _m.pi * (x + 0.5) / w)))
+        for y in range(h):
+            img.putpixel((x, y), (255, 255, 255, a))
+    img.save(p)
+    return p.relative_to(ROOT).as_posix()
+
+
+def world_corrugated():
+    """Corrugated sheet metal (warehouses, containers): neutral, tinted per instance at runtime.
+    Ribs every 0.2 m (soft rib decals: a cosine height profile)."""
+    rib = rib_stencil()
+    ribs = [{"tool": "project_decal", "args": {"image": rib, "layer": "Ribs", "position": [-2.0 + 0.1 + k * 0.2, 0, 0], "normal": [0, 1, 0],
+                                               "size": [0.2, 4.2], "tint": [0.6, 0.61, 0.62], "channels": ["base_color", "height"], "height": 1.0}} for k in range(20)]
+    L = _corrugated_sheet()
+    i = next(k for k, l in enumerate(L) if l["tool"] == "add_layer" and l["args"].get("name") == "Paint")
+    return L[:i] + ribs + L[i:]
+
+
+def _corrugated_sheet():
+    return _sheet("corrugated", [4, 4], 2048, "Brushed steel", {"base_color": [0.55, 0.56, 0.57], "roughness": 0.45, "metallic": 0.7}, [
+        {"kind": "paint", "name": "Ribs"},
+        {"name": "Paint", "values": {"base_color": [0.7, 0.7, 0.7], "roughness": 0.6, "metallic": 0.0}, "opacity": 0.85, "channels": {"height": False},
+         "mask": _g("grunge", amount=0.8, scale=1.0, softness=0.2, seed=53)},
+        {"name": "Rust", "material": "Rust", "opacity": 0.8, "mask": _g("spots", amount=0.2, scale=4.0, softness=0.15, seed=55)},
+        {"name": "Streaks", "material": "Grime", "opacity": 0.55, "mask": _g("streaks", amount=0.3, scale=2.5, softness=0.15, seed=57)},
+        {"name": "Dents", "values": {"height": -0.4}, "opacity": 0.8, "channels": {"base_color": False, "roughness": False, "metallic": False},
+         "mask": _g("spots", amount=0.06, scale=3.0, softness=0.3, seed=59)},
+    ])
+
+
+WORLD_JOBS = {"rock": world_rock, "grass": world_grass, "dirt": world_dirt, "sand": world_sand, "corrugated": world_corrugated,
+              **{f"facade_{k}": (lambda k=k: world_facade(k)) for k in FACADE_STYLES}}
+
+
+def world_sheets(names=None):
+    """Write scenes/town/scripts/world/<name>.jsonl and run each through pigment-mcp."""
+    d = OUT / "scripts" / "world"
+    d.mkdir(parents=True, exist_ok=True)
+    for name in names or WORLD_JOBS:
+        L = WORLD_JOBS[name]()
+        (d / f"{name}.jsonl").write_text("".join(json.dumps(l) + "\n" for l in L), encoding="utf8")
+        r = subprocess.run([str(MCP), "--script", str(d / f"{name}.jsonl")], cwd=ROOT, capture_output=True, text=True)
+        if r.returncode != 0:
+            raise SystemExit(f"world {name}: {r.stderr[-2000:]}")
+        print("world", name, "ok")
+
+
 if __name__ == "__main__":
     TMP.mkdir(parents=True, exist_ok=True)
     PREVIEWS.mkdir(parents=True, exist_ok=True)
@@ -534,6 +711,10 @@ if __name__ == "__main__":
         "power_pole": lambda: small("power_pole", "Concrete", pole_extra),
         "overhead_sign": lambda: small("overhead_sign", "Gunmetal", sign_extra, variants=True),
         "fence": fence,
+        "world": world_sheets,          # every world sheet (or world:<name>,<name>)
     }
-    for name in sys.argv[1:] or jobs:
+    for name in sys.argv[1:] or [j for j in jobs if j != "world"]:
+        if name.startswith("world:"):
+            world_sheets(name[6:].split(","))
+            continue
         jobs[name]()

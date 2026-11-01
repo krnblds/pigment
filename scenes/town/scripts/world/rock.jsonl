@@ -1,0 +1,14 @@
+{"tool": "new_project", "args": {"tile": {"size_m": [4, 4], "name": "rock"}, "resolution": 2048, "material": "Concrete"}}
+{"tool": "delete_layer", "args": {"layer": "Paint"}}
+{"tool": "update_layer", "args": {"layer": "Base", "values": {"base_color": [0.21, 0.2, 0.19], "roughness": 0.85}}}
+{"tool": "add_layer", "args": {"name": "Strata", "values": {"base_color": [0.29, 0.27, 0.25], "height": 0.35}, "opacity": 0.8, "mask": {"generator": "grunge", "amount": 0.5, "scale": 0.6, "softness": 0.2, "seed": 3}}}
+{"tool": "add_layer", "args": {"name": "Boulders", "values": {"base_color": [0.33, 0.32, 0.3], "height": 0.8}, "mask": {"generator": "grunge", "amount": 0.42, "scale": 1.1, "softness": 0.12, "seed": 5}}}
+{"tool": "add_layer", "args": {"name": "Ledges", "values": {"base_color": [0.25, 0.24, 0.22], "height": 0.5}, "opacity": 0.8, "mask": {"generator": "grunge", "amount": 0.35, "scale": 2.6, "softness": 0.06, "seed": 6}}}
+{"tool": "add_layer", "args": {"name": "Fissures", "values": {"base_color": [0.06, 0.055, 0.05], "height": -1.0}, "mask": {"generator": "scratches", "amount": 0.14, "scale": 0.8, "softness": 0.03, "seed": 7}}}
+{"tool": "add_layer", "args": {"name": "Grain", "values": {"base_color": [0.4, 0.38, 0.35], "height": 0.15}, "opacity": 0.5, "mask": {"generator": "spots", "amount": 0.25, "scale": 80.0, "softness": 0.05, "seed": 9}}}
+{"tool": "add_layer", "args": {"name": "Lichen", "values": {"base_color": [0.32, 0.33, 0.2], "roughness": 0.95}, "opacity": 0.55, "mask": {"generator": "spots", "amount": 0.18, "scale": 6.0, "softness": 0.2, "seed": 11}}}
+{"tool": "add_layer", "args": {"name": "Moss in cracks", "values": {"base_color": [0.08, 0.12, 0.05], "roughness": 0.95}, "opacity": 0.7, "mask": {"generator": "moss", "amount": 0.25, "scale": 1.5, "breakup": 0.8, "seed": 13}}}
+{"tool": "add_layer", "args": {"name": "Wet", "values": {"base_color": [0.1, 0.1, 0.1], "roughness": 0.3}, "opacity": 0.35, "channels": {"height": false}, "mask": {"generator": "puddles", "amount": 0.2, "scale": 0.8, "breakup": 0.6, "softness": 0.2, "seed": 15}}}
+{"tool": "render", "args": {"yaw": 0, "pitch": 89.9, "zoom": 1.0, "width": 700, "height": 700, "background": false, "path": "C:/Users/kiera/AppData/Local/Temp/pig/world_rock.png"}}
+{"tool": "export_textures", "args": {"dir": "scenes/town/textures/world/rock", "name": "rock", "preset": "separate"}}
+{"tool": "save_project", "args": {"path": "scenes/town/projects/world/rock.pigment"}}

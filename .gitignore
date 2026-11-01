@@ -7,3 +7,9 @@ __pycache__/
 assets/town/generated/
 *.blend1
 scenes/car/textures/
+
+# tools/world outputs (regenerate: tools/world/world_driver.py)
+scenes/world/heightfield.f32
+scenes/world/*.npy
+scenes/world/*.blend
+scenes/world/export/

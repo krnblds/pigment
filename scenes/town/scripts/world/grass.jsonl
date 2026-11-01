@@ -1,0 +1,11 @@
+{"tool": "new_project", "args": {"tile": {"size_m": [4, 4], "name": "grass"}, "resolution": 2048, "material": "Concrete"}}
+{"tool": "delete_layer", "args": {"layer": "Paint"}}
+{"tool": "update_layer", "args": {"layer": "Base", "values": {"base_color": [0.075, 0.11, 0.04], "roughness": 0.92}}}
+{"tool": "add_layer", "args": {"name": "Blades light", "values": {"base_color": [0.13, 0.17, 0.06], "height": 0.3}, "opacity": 0.8, "mask": {"generator": "scratches", "amount": 0.35, "scale": 9.0, "softness": 0.05, "seed": 21}}}
+{"tool": "add_layer", "args": {"name": "Clumps", "values": {"base_color": [0.1, 0.15, 0.05], "height": 0.25}, "mask": {"generator": "spots", "amount": 0.4, "scale": 14.0, "softness": 0.2, "seed": 23}}}
+{"tool": "add_layer", "args": {"name": "Dry", "values": {"base_color": [0.2, 0.18, 0.09]}, "opacity": 0.6, "mask": {"generator": "grunge", "amount": 0.3, "scale": 0.8, "softness": 0.35, "seed": 25}}}
+{"tool": "add_layer", "args": {"name": "Soil", "values": {"base_color": [0.08, 0.06, 0.04], "height": -0.3}, "opacity": 0.8, "mask": {"generator": "spots", "amount": 0.12, "scale": 5.0, "softness": 0.15, "seed": 27}}}
+{"tool": "add_layer", "args": {"name": "Flowers", "values": {"base_color": [0.5, 0.45, 0.3]}, "opacity": 0.6, "mask": {"generator": "spots", "amount": 0.02, "scale": 40.0, "softness": 0.05, "seed": 29}}}
+{"tool": "render", "args": {"yaw": 0, "pitch": 89.9, "zoom": 1.0, "width": 700, "height": 700, "background": false, "path": "C:/Users/kiera/AppData/Local/Temp/pig/world_grass.png"}}
+{"tool": "export_textures", "args": {"dir": "scenes/town/textures/world/grass", "name": "grass", "preset": "separate"}}
+{"tool": "save_project", "args": {"path": "scenes/town/projects/world/grass.pigment"}}
