@@ -30,7 +30,10 @@
           ],
           "emissive_strength": 0.0,
           "opacity": 1.0,
-          "transmission": 0.0
+          "transmission": 0.0,
+          "coat": 0.0,
+          "coat_roughness": 0.03,
+          "flake": 0.0
         }
       },
       "channels": {
@@ -70,6 +73,21 @@
           "opacity": 1.0
         },
         "transmission": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat_roughness": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "flake": {
           "enabled": false,
           "blend": "normal",
           "opacity": 1.0
@@ -103,7 +121,10 @@
           ],
           "emissive_strength": 0.0,
           "opacity": 1.0,
-          "transmission": 0.0
+          "transmission": 0.0,
+          "coat": 0.0,
+          "coat_roughness": 0.03,
+          "flake": 0.0
         }
       },
       "channels": {
@@ -143,6 +164,21 @@
           "opacity": 1.0
         },
         "transmission": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat_roughness": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "flake": {
           "enabled": false,
           "blend": "normal",
           "opacity": 1.0
@@ -196,7 +232,10 @@
           ],
           "emissive_strength": 0.0,
           "opacity": 0.3,
-          "transmission": 1.0
+          "transmission": 1.0,
+          "coat": 0.0,
+          "coat_roughness": 0.03,
+          "flake": 0.0
         }
       },
       "channels": {
@@ -237,6 +276,21 @@
         },
         "transmission": {
           "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat_roughness": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "flake": {
+          "enabled": false,
           "blend": "normal",
           "opacity": 1.0
         }
@@ -313,7 +367,10 @@
           ],
           "emissive_strength": 1.5,
           "opacity": 1.0,
-          "transmission": 0.0
+          "transmission": 0.0,
+          "coat": 0.0,
+          "coat_roughness": 0.03,
+          "flake": 0.0
         }
       },
       "channels": {
@@ -354,6 +411,21 @@
         },
         "transmission": {
           "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat_roughness": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "flake": {
+          "enabled": false,
           "blend": "normal",
           "opacity": 1.0
         }
@@ -438,7 +510,10 @@
           ],
           "emissive_strength": 1.1,
           "opacity": 1.0,
-          "transmission": 0.0
+          "transmission": 0.0,
+          "coat": 0.0,
+          "coat_roughness": 0.03,
+          "flake": 0.0
         }
       },
       "channels": {
@@ -479,6 +554,21 @@
         },
         "transmission": {
           "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat_roughness": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "flake": {
+          "enabled": false,
           "blend": "normal",
           "opacity": 1.0
         }
@@ -563,7 +653,10 @@
           ],
           "emissive_strength": 0.55,
           "opacity": 1.0,
-          "transmission": 0.0
+          "transmission": 0.0,
+          "coat": 0.0,
+          "coat_roughness": 0.03,
+          "flake": 0.0
         }
       },
       "channels": {
@@ -604,6 +697,21 @@
         },
         "transmission": {
           "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat_roughness": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "flake": {
+          "enabled": false,
           "blend": "normal",
           "opacity": 1.0
         }
@@ -688,7 +796,10 @@
           ],
           "emissive_strength": 1.2,
           "opacity": 1.0,
-          "transmission": 0.0
+          "transmission": 0.0,
+          "coat": 0.0,
+          "coat_roughness": 0.03,
+          "flake": 0.0
         }
       },
       "channels": {
@@ -729,6 +840,21 @@
         },
         "transmission": {
           "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat_roughness": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "flake": {
+          "enabled": false,
           "blend": "normal",
           "opacity": 1.0
         }
@@ -813,7 +939,10 @@
           ],
           "emissive_strength": 0.5,
           "opacity": 1.0,
-          "transmission": 0.0
+          "transmission": 0.0,
+          "coat": 0.0,
+          "coat_roughness": 0.03,
+          "flake": 0.0
         }
       },
       "channels": {
@@ -854,6 +983,21 @@
         },
         "transmission": {
           "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat_roughness": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "flake": {
+          "enabled": false,
           "blend": "normal",
           "opacity": 1.0
         }
@@ -938,7 +1082,10 @@
           ],
           "emissive_strength": 0.25,
           "opacity": 1.0,
-          "transmission": 0.0
+          "transmission": 0.0,
+          "coat": 0.0,
+          "coat_roughness": 0.03,
+          "flake": 0.0
         }
       },
       "channels": {
@@ -979,6 +1126,21 @@
         },
         "transmission": {
           "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat_roughness": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "flake": {
+          "enabled": false,
           "blend": "normal",
           "opacity": 1.0
         }
@@ -1073,7 +1235,10 @@
           ],
           "emissive_strength": 1.6,
           "opacity": 1.0,
-          "transmission": 0.0
+          "transmission": 0.0,
+          "coat": 0.0,
+          "coat_roughness": 0.03,
+          "flake": 0.0
         }
       },
       "channels": {
@@ -1114,6 +1279,21 @@
         },
         "transmission": {
           "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat_roughness": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "flake": {
+          "enabled": false,
           "blend": "normal",
           "opacity": 1.0
         }
@@ -1198,7 +1378,10 @@
           ],
           "emissive_strength": 0.0,
           "opacity": 1.0,
-          "transmission": 0.0
+          "transmission": 0.0,
+          "coat": 0.0,
+          "coat_roughness": 0.03,
+          "flake": 0.0
         }
       },
       "channels": {
@@ -1238,6 +1421,21 @@
           "opacity": 1.0
         },
         "transmission": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat_roughness": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "flake": {
           "enabled": false,
           "blend": "normal",
           "opacity": 1.0
@@ -1280,7 +1478,10 @@
           ],
           "emissive_strength": 0.0,
           "opacity": 1.0,
-          "transmission": 0.0
+          "transmission": 0.0,
+          "coat": 0.0,
+          "coat_roughness": 0.03,
+          "flake": 0.0
         }
       },
       "channels": {
@@ -1320,6 +1521,21 @@
           "opacity": 1.0
         },
         "transmission": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat_roughness": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "flake": {
           "enabled": false,
           "blend": "normal",
           "opacity": 1.0
@@ -1408,7 +1624,10 @@
           ],
           "emissive_strength": 0.0,
           "opacity": 1.0,
-          "transmission": 0.0
+          "transmission": 0.0,
+          "coat": 0.0,
+          "coat_roughness": 0.03,
+          "flake": 0.0
         }
       },
       "channels": {
@@ -1448,6 +1667,21 @@
           "opacity": 1.0
         },
         "transmission": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat_roughness": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "flake": {
           "enabled": false,
           "blend": "normal",
           "opacity": 1.0
@@ -1489,7 +1723,10 @@
           ],
           "emissive_strength": 0.0,
           "opacity": 1.0,
-          "transmission": 0.0
+          "transmission": 0.0,
+          "coat": 0.0,
+          "coat_roughness": 0.03,
+          "flake": 0.0
         }
       },
       "channels": {
@@ -1529,6 +1766,21 @@
           "opacity": 1.0
         },
         "transmission": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat_roughness": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "flake": {
           "enabled": false,
           "blend": "normal",
           "opacity": 1.0
@@ -1608,7 +1860,10 @@
           ],
           "emissive_strength": 0.0,
           "opacity": 1.0,
-          "transmission": 0.0
+          "transmission": 0.0,
+          "coat": 0.0,
+          "coat_roughness": 0.03,
+          "flake": 0.0
         }
       },
       "channels": {
@@ -1648,6 +1903,21 @@
           "opacity": 1.0
         },
         "transmission": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat_roughness": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "flake": {
           "enabled": false,
           "blend": "normal",
           "opacity": 1.0
@@ -1690,7 +1960,10 @@
           ],
           "emissive_strength": 0.0,
           "opacity": 1.0,
-          "transmission": 0.0
+          "transmission": 0.0,
+          "coat": 0.0,
+          "coat_roughness": 0.03,
+          "flake": 0.0
         }
       },
       "channels": {
@@ -1730,6 +2003,21 @@
           "opacity": 1.0
         },
         "transmission": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat_roughness": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "flake": {
           "enabled": false,
           "blend": "normal",
           "opacity": 1.0
@@ -1782,7 +2070,10 @@
           ],
           "emissive_strength": 0.0,
           "opacity": 1.0,
-          "transmission": 0.0
+          "transmission": 0.0,
+          "coat": 0.0,
+          "coat_roughness": 0.03,
+          "flake": 0.0
         }
       },
       "channels": {
@@ -1822,6 +2113,21 @@
           "opacity": 1.0
         },
         "transmission": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat_roughness": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "flake": {
           "enabled": false,
           "blend": "normal",
           "opacity": 1.0
@@ -1866,7 +2172,10 @@
           ],
           "emissive_strength": 0.0,
           "opacity": 1.0,
-          "transmission": 0.0
+          "transmission": 0.0,
+          "coat": 0.0,
+          "coat_roughness": 0.03,
+          "flake": 0.0
         }
       },
       "channels": {
@@ -1906,6 +2215,21 @@
           "opacity": 1.0
         },
         "transmission": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat_roughness": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "flake": {
           "enabled": false,
           "blend": "normal",
           "opacity": 1.0
@@ -1960,7 +2284,10 @@
           ],
           "emissive_strength": 0.0,
           "opacity": 1.0,
-          "transmission": 0.0
+          "transmission": 0.0,
+          "coat": 0.0,
+          "coat_roughness": 0.03,
+          "flake": 0.0
         }
       },
       "channels": {
@@ -2000,6 +2327,21 @@
           "opacity": 1.0
         },
         "transmission": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat_roughness": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "flake": {
           "enabled": false,
           "blend": "normal",
           "opacity": 1.0
@@ -2046,7 +2388,10 @@
           ],
           "emissive_strength": 0.0,
           "opacity": 1.0,
-          "transmission": 0.0
+          "transmission": 0.0,
+          "coat": 0.0,
+          "coat_roughness": 0.03,
+          "flake": 0.0
         }
       },
       "channels": {
@@ -2086,6 +2431,21 @@
           "opacity": 1.0
         },
         "transmission": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat_roughness": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "flake": {
           "enabled": false,
           "blend": "normal",
           "opacity": 1.0
@@ -2132,7 +2492,10 @@
           ],
           "emissive_strength": 0.0,
           "opacity": 0.0,
-          "transmission": 0.0
+          "transmission": 0.0,
+          "coat": 0.0,
+          "coat_roughness": 0.03,
+          "flake": 0.0
         }
       },
       "channels": {
@@ -2172,6 +2535,21 @@
           "opacity": 1.0
         },
         "transmission": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat_roughness": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "flake": {
           "enabled": false,
           "blend": "normal",
           "opacity": 1.0
@@ -2218,7 +2596,10 @@
           ],
           "emissive_strength": 0.0,
           "opacity": 1.0,
-          "transmission": 0.0
+          "transmission": 0.0,
+          "coat": 0.0,
+          "coat_roughness": 0.03,
+          "flake": 0.0
         }
       },
       "channels": {
@@ -2258,6 +2639,21 @@
           "opacity": 1.0
         },
         "transmission": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat_roughness": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "flake": {
           "enabled": false,
           "blend": "normal",
           "opacity": 1.0
@@ -2314,7 +2710,10 @@
           ],
           "emissive_strength": 0.0,
           "opacity": 1.0,
-          "transmission": 0.0
+          "transmission": 0.0,
+          "coat": 0.0,
+          "coat_roughness": 0.03,
+          "flake": 0.0
         }
       },
       "channels": {
@@ -2354,6 +2753,21 @@
           "opacity": 1.0
         },
         "transmission": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat_roughness": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "flake": {
           "enabled": false,
           "blend": "normal",
           "opacity": 1.0
@@ -2418,7 +2832,10 @@
           ],
           "emissive_strength": 5.0,
           "opacity": 1.0,
-          "transmission": 0.0
+          "transmission": 0.0,
+          "coat": 0.0,
+          "coat_roughness": 0.03,
+          "flake": 0.0
         }
       },
       "channels": {
@@ -2458,6 +2875,21 @@
           "opacity": 1.0
         },
         "transmission": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat_roughness": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "flake": {
           "enabled": false,
           "blend": "normal",
           "opacity": 1.0
@@ -2500,7 +2932,10 @@
           ],
           "emissive_strength": 5.0,
           "opacity": 1.0,
-          "transmission": 0.0
+          "transmission": 0.0,
+          "coat": 0.0,
+          "coat_roughness": 0.03,
+          "flake": 0.0
         }
       },
       "channels": {
@@ -2540,6 +2975,21 @@
           "opacity": 1.0
         },
         "transmission": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat_roughness": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "flake": {
           "enabled": false,
           "blend": "normal",
           "opacity": 1.0
@@ -2582,7 +3032,10 @@
           ],
           "emissive_strength": 0.0,
           "opacity": 1.0,
-          "transmission": 0.0
+          "transmission": 0.0,
+          "coat": 0.0,
+          "coat_roughness": 0.03,
+          "flake": 0.0
         }
       },
       "channels": {
@@ -2622,6 +3075,21 @@
           "opacity": 1.0
         },
         "transmission": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat_roughness": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "flake": {
           "enabled": false,
           "blend": "normal",
           "opacity": 1.0
@@ -2675,7 +3143,10 @@
           ],
           "emissive_strength": 0.0,
           "opacity": 1.0,
-          "transmission": 0.0
+          "transmission": 0.0,
+          "coat": 0.0,
+          "coat_roughness": 0.03,
+          "flake": 0.0
         }
       },
       "channels": {
@@ -2715,6 +3186,21 @@
           "opacity": 1.0
         },
         "transmission": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat_roughness": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "flake": {
           "enabled": false,
           "blend": "normal",
           "opacity": 1.0
@@ -2768,7 +3254,10 @@
           ],
           "emissive_strength": 0.0,
           "opacity": 1.0,
-          "transmission": 0.0
+          "transmission": 0.0,
+          "coat": 0.0,
+          "coat_roughness": 0.03,
+          "flake": 0.0
         }
       },
       "channels": {
@@ -2808,6 +3297,21 @@
           "opacity": 1.0
         },
         "transmission": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat_roughness": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "flake": {
           "enabled": false,
           "blend": "normal",
           "opacity": 1.0
@@ -2861,7 +3365,10 @@
           ],
           "emissive_strength": 0.0,
           "opacity": 1.0,
-          "transmission": 0.0
+          "transmission": 0.0,
+          "coat": 0.0,
+          "coat_roughness": 0.03,
+          "flake": 0.0
         }
       },
       "channels": {
@@ -2901,6 +3408,21 @@
           "opacity": 1.0
         },
         "transmission": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat_roughness": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "flake": {
           "enabled": false,
           "blend": "normal",
           "opacity": 1.0
@@ -2997,7 +3519,10 @@
           ],
           "emissive_strength": 0.0,
           "opacity": 1.0,
-          "transmission": 0.0
+          "transmission": 0.0,
+          "coat": 0.0,
+          "coat_roughness": 0.03,
+          "flake": 0.0
         }
       },
       "channels": {
@@ -3037,6 +3562,21 @@
           "opacity": 1.0
         },
         "transmission": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat_roughness": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "flake": {
           "enabled": false,
           "blend": "normal",
           "opacity": 1.0
@@ -3133,7 +3673,10 @@
           ],
           "emissive_strength": 0.0,
           "opacity": 1.0,
-          "transmission": 0.0
+          "transmission": 0.0,
+          "coat": 0.0,
+          "coat_roughness": 0.03,
+          "flake": 0.0
         }
       },
       "channels": {
@@ -3173,6 +3716,21 @@
           "opacity": 1.0
         },
         "transmission": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat_roughness": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "flake": {
           "enabled": false,
           "blend": "normal",
           "opacity": 1.0
@@ -3258,6 +3816,21 @@
           "enabled": true,
           "blend": "normal",
           "opacity": 1.0
+        },
+        "coat": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat_roughness": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "flake": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
         }
       }
     },
@@ -3307,6 +3880,21 @@
           "opacity": 1.0
         },
         "transmission": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat_roughness": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "flake": {
           "enabled": true,
           "blend": "normal",
           "opacity": 1.0
