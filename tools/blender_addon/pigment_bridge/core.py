@@ -39,6 +39,8 @@ DEFAULT_OPTIONS = {
     "ao_strength": 0.5,          # multiply base colour by AO (0 = off)
     "emission_mult": 1.0,        # on top of Pigment's emissive_scale
     "emission_override": 0.0,    # > 0: absolute emission strength (legacy API)
+    "flake_normal": True,        # metallic flake map -> per-flake normal jitter on the base (not the coat)
+    "flake_scale": 2500.0,       # flake cells per metre (object space): 2500 = 0.4 mm flakes
 }
 
 # Fallback when there is no sidecar: suffix -> (sources, colorspace), for every
@@ -60,18 +62,22 @@ SUFFIXES = {
     "Height": (["height"], "non-color"), "height": (["height"], "non-color"),
     "Emissive": (EMI, "srgb"), "Emission": (EMI, "srgb"), "emission": (EMI, "srgb"),
     "Opacity": (["opacity"], "non-color"), "Transmission": (["transmission"], "non-color"),
+    "Coat": (["coat"], "non-color"), "CoatRoughness": (["coat_roughness"], "non-color"),
+    "Flake": (["flake"], "non-color"),
 }
 
 # label of the image node by the channel a map carries (kept stable: scripts and
 # tests look nodes up by these labels)
 CHANNEL_LABEL = {"base_color": "BaseColor", "roughness": "Roughness", "metallic": "Metallic", "ao": "AO",
                  "normal": "Normal", "height": "Height", "emissive": "Emissive",
-                 "opacity": "Opacity", "transmission": "Transmission"}
+                 "opacity": "Opacity", "transmission": "Transmission",
+                 "coat": "Coat", "coat_roughness": "CoatRoughness", "flake": "Flake"}
 SOURCE_CHANNEL = {"red": "base_color", "green": "base_color", "blue": "base_color", "roughness": "roughness",
                   "smoothness": "roughness", "metallic": "metallic", "ao": "ao", "height": "height",
                   "normal_x": "normal", "normal_y": "normal", "normal_y_flipped": "normal", "normal_z": "normal",
                   "emissive_r": "emissive", "emissive_g": "emissive", "emissive_b": "emissive",
-                  "opacity": "opacity", "transmission": "transmission"}
+                  "opacity": "opacity", "transmission": "transmission",
+                  "coat": "coat", "coat_roughness": "coat_roughness", "flake": "flake"}
 
 
 # ------------------------------------------------------------------ discovery
@@ -607,6 +613,22 @@ def build_material(spec, mat=None, options=None, uv_map=""):
             ior.default_value = 1.5
     configure_see_through(mat, alpha="opacity" in src, transmission="transmission" in src)
 
+    # Clearcoat: image nodes straight into Coat Weight / Coat Roughness, so the
+    # glTF exporter can write KHR_materials_clearcoat.
+    if "coat" in src:
+        cw = input_socket(bsdf, "Coat Weight", "Coat", kind="VALUE")
+        if cw is not None:
+            links.new(src["coat"], cw)
+        cr = input_socket(bsdf, "Coat Roughness", kind="VALUE")
+        if cr is not None:
+            if "coat_roughness" in src:
+                links.new(src["coat_roughness"], cr)
+            else:
+                cr.default_value = 0.03
+        cior = input_socket(bsdf, "Coat IOR", kind="VALUE")
+        if cior is not None:
+            cior.default_value = 1.5
+
     # normal: OpenGL tangent space is Blender's; DirectX needs green flipped
     normal_out = None
     ncol = rgb.get("normal")
@@ -654,6 +676,13 @@ def build_material(spec, mat=None, options=None, uv_map=""):
             mat.displacement_method = "BOTH"
     else:
         mat.displacement_method = "BUMP"
+    # the coat follows the painted detail (scratches, dents), never the flakes
+    if normal_out is not None and "coat" in src:
+        cn = input_socket(bsdf, "Coat Normal", kind="VECTOR")
+        if cn is not None:
+            links.new(normal_out, cn)
+    if "flake" in src and opts.get("flake_normal", True):
+        normal_out = _flake_normal(nodes, links, src["flake"], normal_out, float(opts.get("flake_scale", 2500.0)))
     if normal_out is not None:
         link(normal_out, "Normal")
 
@@ -670,6 +699,51 @@ def build_material(spec, mat=None, options=None, uv_map=""):
     _seen[mat.name] = signature(spec)
     mat.update_tag()  # re-evaluate the emission driver
     return mat
+
+
+def _flake_normal(nodes, links, flake, normal_in, scale):
+    """Metallic flake: jitter the base normal per Voronoi cell (object space),
+    by up to 0.45 x the flake map. Returns the new normal socket."""
+    tc = nodes.new("ShaderNodeTexCoord")
+    tc.location = (-450, -600)
+    vor = nodes.new("ShaderNodeTexVoronoi")
+    vor.name = vor.label = "Pigment Flake cells"
+    vor.location = (-250, -600)
+    sock(vor.inputs, "Scale").default_value = scale
+    links.new(sock(tc.outputs, "Object"), sock(vor.inputs, "Vector"))
+    # random cell colour 0..1 -> direction -1..1
+    to_dir = nodes.new("ShaderNodeVectorMath")
+    to_dir.operation = "MULTIPLY_ADD"
+    to_dir.location = (-50, -600)
+    links.new(sock(vor.outputs, "Color"), to_dir.inputs[0])
+    to_dir.inputs[1].default_value = (2.0, 2.0, 2.0)
+    to_dir.inputs[2].default_value = (-1.0, -1.0, -1.0)
+    amt = nodes.new("ShaderNodeMath")
+    amt.operation = "MULTIPLY"
+    amt.location = (-50, -800)
+    links.new(flake, amt.inputs[0])
+    amt.inputs[1].default_value = 0.45
+    jit = nodes.new("ShaderNodeVectorMath")
+    jit.operation = "SCALE"
+    jit.location = (150, -600)
+    links.new(to_dir.outputs[0], jit.inputs[0])
+    links.new(amt.outputs[0], sock(jit.inputs, "Scale"))
+    base = normal_in
+    if base is None:
+        geo = nodes.new("ShaderNodeNewGeometry")
+        geo.location = (150, -850)
+        base = sock(geo.outputs, "Normal")
+    add = nodes.new("ShaderNodeVectorMath")
+    add.operation = "ADD"
+    add.location = (330, -600)
+    links.new(base, add.inputs[0])
+    links.new(jit.outputs[0], add.inputs[1])
+    nrm = nodes.new("ShaderNodeVectorMath")
+    nrm.operation = "NORMALIZE"
+    nrm.name = nrm.label = "Pigment Flake normal"
+    nrm.location = (480, -600)
+    links.new(add.outputs[0], nrm.inputs[0])
+    return nrm.outputs[0]
 
 
 def find_material(folder, name):
