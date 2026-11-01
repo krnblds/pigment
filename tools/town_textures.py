@@ -86,11 +86,27 @@ def windows(glass, seed):
     rng.shuffle(glass)
     n = len(glass)
     warm, cyan, pink = glass[: int(n * 0.32)], glass[int(n * 0.32): int(n * 0.40)], glass[int(n * 0.40): int(n * 0.43)]
-    L = [fill("Dark glass", None, glass, values={"base_color": [0.02, 0.025, 0.03], "roughness": 0.04, "metallic": 0.0}, channels={"height": False})]
+    # real glass: partly see-through, refracting, glossy (reflections)
+    L = [fill("Glass", None, glass, values=GLASS, channels={"height": False})]
+    # lit windows stay solid glowing panes (opacity 1 over the glass below)
     for name, parts, col, k in (("Lit windows (warm)", warm, [1.0, 0.72, 0.42], 2.4), ("Lit windows (cyan)", cyan, [0.35, 0.85, 1.0], 2.2), ("Lit windows (pink)", pink, [1.0, 0.3, 0.7], 2.2)):
         if parts:
-            L.append(fill(name, None, parts, values={"base_color": col, "roughness": 0.1, "metallic": 0.0, "emissive": col, "emissive_strength": k}, channels={"height": False}))
+            L.append(fill(name, None, parts, values={"base_color": col, "roughness": 0.1, "metallic": 0.0, "emissive": col, "emissive_strength": k, "opacity": 1.0, "transmission": 0.0}, channels={"height": False}))
     return L
+
+
+GLASS = {"base_color": [0.6, 0.7, 0.75], "roughness": 0.03, "metallic": 0.0, "opacity": 0.3, "transmission": 1.0}
+# only the opacity channel: holes don't drag their colour into the wire edges
+CUT_ONLY = {"base_color": False, "roughness": False, "metallic": False, "height": False, "normal": False}
+
+
+def perforated(name, parts, holes_per_metre, bar):
+    """Square holes in a world-aligned grid: cut the whole part out (opacity 0),
+    then bring the bars back (opacity 1) through a panel-lines mask. (An
+    inverted mask would also invert its part selection.)"""
+    return [fill(name, "Cut-out", parts, channels=CUT_ONLY),
+            fill(name + " (bars)", None, parts, {"generator": "panel_lines", "amount": bar, "scale": holes_per_metre, "softness": 0.02},
+                 values={"opacity": 1.0}, channels=CUT_ONLY)]
 
 
 def common(c, seed):
@@ -112,6 +128,7 @@ def common(c, seed):
         L.append(fill("AC units", "White plastic", c["ac"]))
     if c.get("grille"):
         L.append(fill("Grilles", "Dark iron", c["grille"]))
+        L += perforated("Grille holes", c["grille"], 30.0, 0.3)
     if c.get("wire"):
         L.append(fill("Cables", "Matte black", c["wire"]))
     if c.get("led"):
@@ -247,6 +264,21 @@ def pole_extra(parts):
     return [fill("Insulators", "White plastic", small_parts)]
 
 
+def fence():
+    """Chain-link (welded wire) fence: the panel is one quad, the wire is a cut-out."""
+    parts = parts_of("fence")
+    panel = [min(parts, key=lambda p: sorted(p["size"])[0])["id"]]  # the flat quad
+    frame = [p["id"] for p in parts if p["id"] not in panel]
+    L = [{"tool": "new_project", "args": {"mesh": "assets/town/fence.glb", "resolution": 4096, "material": "Brushed steel"}},
+         {"tool": "bake", "args": {"curvature_radius": 0.004, "ao_distance": 0.1}},
+         fill("Wire", None, panel, values={"base_color": [0.55, 0.57, 0.58], "roughness": 0.45, "metallic": 1.0}),
+         *perforated("Chain-link holes", panel, 16.0, 0.14),
+         fill("Posts", "Gunmetal", frame),
+         fill("Rust", "Rust", None, {"generator": "spots", "amount": 0.25, "scale": 6.0}, opacity=0.7),
+         fill("Grime", "Grime", None, {"generator": "gradient", "amount": 0.25, "breakup": 0.5}, opacity=0.6)]
+    finish(L, "fence")
+
+
 def sign_extra(parts):
     faces = [p for p in parts if sorted(p["size"])[0] <= 0.03 and sorted(p["size"])[1] >= 0.8]
     L = [{"tool": "add_layer", "args": {"kind": "paint", "name": "Sign faces"}}]
@@ -266,6 +298,7 @@ if __name__ == "__main__":
         "street_lamp": lambda: small("street_lamp", "Gunmetal", lamp_extra),
         "power_pole": lambda: small("power_pole", "Concrete", pole_extra),
         "overhead_sign": lambda: small("overhead_sign", "Gunmetal", sign_extra),
+        "fence": fence,
     }
     for name in sys.argv[1:] or jobs:
         jobs[name]()

@@ -1,0 +1,12 @@
+{"tool": "new_project", "args": {"mesh": "assets/town/fence.glb", "resolution": 4096, "material": "Brushed steel"}}
+{"tool": "bake", "args": {"curvature_radius": 0.004, "ao_distance": 0.1}}
+{"tool": "add_layer", "args": {"name": "Wire", "mask": {"parts": [0]}, "values": {"base_color": [0.55, 0.57, 0.58], "roughness": 0.45, "metallic": 1.0}}}
+{"tool": "add_layer", "args": {"name": "Chain-link holes", "material": "Cut-out", "mask": {"parts": [0]}, "channels": {"base_color": false, "roughness": false, "metallic": false, "height": false, "normal": false}}}
+{"tool": "add_layer", "args": {"name": "Chain-link holes (bars)", "mask": {"parts": [0], "generator": "panel_lines", "amount": 0.14, "scale": 16.0, "softness": 0.02}, "values": {"opacity": 1.0}, "channels": {"base_color": false, "roughness": false, "metallic": false, "height": false, "normal": false}}}
+{"tool": "add_layer", "args": {"name": "Posts", "material": "Gunmetal", "mask": {"parts": [1, 2, 3, 4]}}}
+{"tool": "add_layer", "args": {"name": "Rust", "material": "Rust", "mask": {"generator": "spots", "amount": 0.25, "scale": 6.0}, "opacity": 0.7}}
+{"tool": "add_layer", "args": {"name": "Grime", "material": "Grime", "mask": {"generator": "gradient", "amount": 0.25, "breakup": 0.5}, "opacity": 0.6}}
+{"tool": "render", "args": {"yaw": 25, "pitch": 12, "width": 640, "height": 800, "exposure": -0.3, "path": "C:/Users/kiera/AppData/Local/Temp/pig/town_tex_fence_a.png"}}
+{"tool": "render", "args": {"yaw": -50, "pitch": 18, "width": 640, "height": 800, "exposure": -0.3, "path": "C:/Users/kiera/AppData/Local/Temp/pig/town_tex_fence_b.png"}}
+{"tool": "export_textures", "args": {"dir": "scenes/town/textures/fence", "preset": "separate", "name": "fence"}}
+{"tool": "save_project", "args": {"path": "scenes/town/projects/fence.pigment"}}
