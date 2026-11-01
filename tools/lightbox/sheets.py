@@ -43,7 +43,7 @@ def label_cell(im, text, size=None):
         return im
     im = im.convert("RGB")
     w, h = im.size
-    size = size or max(10, int(h * 0.042))
+    size = size or max(10, int(h * 0.034))
     f = font(size)
     d = ImageDraw.Draw(im, "RGBA")
     x0, y0, x1, y1 = d.textbbox((0, 0), text, font=f)
@@ -84,6 +84,11 @@ def grid(rows, out, cell=None, cols=None, bg=(0, 0, 0), gap=0, labels=True, titl
         cell = Image.open(first["path"]).size
     cw, ch = cell
     cols = cols or max(len(r) for r in rows)
+    if width:
+        # scale cells to their final size first, so labels are sized in final pixels
+        full = cols * cw + (cols - 1) * gap
+        sc = width / full
+        cw, ch, gap = round(cw * sc), round(ch * sc), round(gap * sc)
     th = 0
     if title:
         th = max(28, int(ch * 0.16))
@@ -106,7 +111,7 @@ def grid(rows, out, cell=None, cols=None, bg=(0, 0, 0), gap=0, labels=True, titl
                 im = label_cell(im, c.get("label", ""), label_size)
             sheet.paste(im, (ci * (cw + gap), th + ri * (ch + gap)))
     if width and width != W:
-        sheet = sheet.resize((width, round(H * width / W)), Image.LANCZOS)
+        sheet = sheet.resize((width, round(H * width / W)), Image.LANCZOS)   # rounding only
     save_small(sheet, out, max_bytes)
     if delete_cells:
         for r in rows:

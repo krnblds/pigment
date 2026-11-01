@@ -63,7 +63,7 @@ PRESETS = {
     "rear34":  dict(yaw=148.0, elev=10.0, lens=55, pad=1.10),
     "rear":    dict(yaw=180.0, elev=8.0, lens=60, pad=1.12),
     "front":   dict(yaw=0.0, elev=8.0, lens=60, pad=1.12),
-    "top":     dict(yaw=-90.0, elev=88.0, lens=50, pad=1.08),
+    "top":     dict(yaw=-90.0, elev=88.0, lens=50, pad=1.08, overhead=0.12),
     "detail":  dict(yaw=-42.0, elev=4.0, lens=90, pad=1.0, detail=True),
 }
 
@@ -246,8 +246,8 @@ def set_livery(asset, which):
 LOOKS = {
     # sweep colour / roughness / coat, world colour + strength, light gain, exposure
     "light": dict(sweep=(0.80, 0.80, 0.80), rough=0.55, coat=0.0, world=(0.95, 0.96, 1.0), world_s=0.06,
-                  gain=1.0, exposure=0.0),
-    "dark": dict(sweep=(0.006, 0.006, 0.007), rough=0.16, coat=0.0, world=(0.0, 0.0, 0.0), world_s=0.0,
+                  gain=1.0, exposure=-0.3),
+    "dark": dict(sweep=(0.007, 0.007, 0.008), rough=0.16, coat=0.0, world=(0.0, 0.0, 0.0), world_s=0.0,
                  gain=1.0, exposure=0.0),
 }
 
@@ -404,12 +404,12 @@ def build_studio(asset_or_dims, look="light", turn_clear=True):
             area_light("Overhead", (0, 0, h + 1.5 * k), (2.6 * k, 0.25 * k), (0, 0, 0), 260 * g, spread=80),
             area_light("Key", (-2.1 * k, -1.9 * k, h + 0.5 * k), (1.4 * k, 0.5 * k), tgt, 280 * g, (0.95, 0.97, 1.0)),
             area_light("Flank", (0, -2.8 * k, h * 0.55), (4.0 * k, 0.10 * k), (0, 0, h * 0.4), 220 * g),
-            area_light("FlankLine", (2.4 * k, 0.2 * k, h * 0.7), (0.10 * k, 3.6 * k), tgt, 360 * g),
+            area_light("FlankLine", (2.4 * k, 0.2 * k, h * 0.7), (0.10 * k, 3.6 * k), tgt, 270 * g),
             area_light("RimL", (-2.0 * k, 1.1 * k, h * 0.85), (0.08 * k, 1.6 * k), tgt, 160 * g),
             area_light("RimR", (2.0 * k, 1.1 * k, h * 0.85), (0.08 * k, 1.6 * k), tgt, 160 * g),
-            area_light("Glow", (0, back - 1.2 * k, 0.25 * k), (6 * k, 0.4 * k), (0, back + 1.0, 0.6 * k), 400 * g, spread=70),
+            area_light("Glow", (0, back - 1.8 * k, h + 1.6 * k), (8 * k, 2.0 * k), (0, back, 0), 170 * g, spread=120),
         ]
-        exclude_from(st.sweep, [o for o in Ls if o.name not in ("Overhead", "Glow")])
+        exclude_from(st.sweep, [o for o in Ls if o.name != "Glow"])
     return st
 
 
@@ -487,6 +487,12 @@ def shoot_camera(asset, preset="front34", res=(1600, 1000), yaw_extra=0.0, all_y
             pts.append(points(asset))
         pts = np.concatenate(pts, 0)
     turn(asset, P["yaw"] + yaw_extra)
+    # lights straight above mirror into roof / hood when the camera looks down: dim them for top
+    for o in bpy.context.scene.objects:
+        if o.type == "LIGHT" and o.name.startswith(("Overhead", "HoodLine")):
+            if "lb_energy" not in o:
+                o["lb_energy"] = o.data.energy
+            o.data.energy = o["lb_energy"] * P.get("overhead", 1.0)
     if not all_yaws:
         pts = detail_points(asset) if P.get("detail") else points(asset)
     loc, tgt, D = fit(pts, P["elev"], P["lens"], aspect, pad or P["pad"])
@@ -499,6 +505,7 @@ def render(cam, out):
     os.makedirs(os.path.dirname(os.path.abspath(out)), exist_ok=True)
     sc.render.filepath = out
     bpy.ops.render.render(write_still=True)
+    LAST[0] = out
     print("[lightbox]", out)
     return out
 
@@ -513,7 +520,11 @@ def system_python():
     raise RuntimeError("no system python with PIL for contact sheets (set LIGHTBOX_PYTHON)")
 
 
+LAST = [None]
+
+
 def make_sheet(rows, out, **kw):
+    LAST[0] = out
     spec = dict(rows=rows, out=out, **kw)
     fd, sp = tempfile.mkstemp(suffix=".json")
     with os.fdopen(fd, "w") as fh:
@@ -586,7 +597,7 @@ def liveries_job(vids, out, look="dark", preset="front34", cell=(480, 300), samp
         rows.append(row)
     bg = (235, 235, 235) if look == "light" else (0, 0, 0)
     make_sheet(rows, out, cols=max(cols, max(len(r) for r in rows)), cell=list(cell), bg=bg, labels=labels,
-               width=width, delete_cells=True, label_size=max(11, cell[1] // 20))
+               width=width, delete_cells=True)
     shutil.rmtree(tmp, ignore_errors=True)
     return out
 
@@ -697,6 +708,8 @@ def _cli():
     out_dir = os.path.join(ROOT, "docs", "agents", "lightbox")
     name = os.path.splitext(os.path.basename(asset))[0]
 
+    made = []
+    LAST[0] = None
     for look in looks:
         def out(default):
             o = opt("--out")
@@ -731,6 +744,13 @@ def _cli():
                         livery, labels, width, lod)
         else:
             raise SystemExit(f"unknown mode {mode!r}")
+        made.append(LAST[0])
+    if "--stack" in argv and len(made) > 1:
+        # light and dark sheets one above the other in one file (--out names it)
+        o = opt("--out") or os.path.join(out_dir, f"{mode}_{name}.png")
+        make_sheet([[dict(path=p)] for p in made], o, labels=False, gap=0, width=width)
+        for p in made:
+            os.remove(p)
 
 
 if __name__ == "__main__":
