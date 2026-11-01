@@ -16,3 +16,5 @@ scenes/world/heightfield.f32
 scenes/world/*.npy
 scenes/world/*.blend
 scenes/world/export/
+scenes/world/map.png
+scenes/world/verify.json
