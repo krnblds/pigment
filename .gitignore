@@ -6,3 +6,4 @@ scenes/town/textures/
 __pycache__/
 assets/town/generated/
 *.blend1
+scenes/car/textures/

@@ -48,6 +48,8 @@ def box(name, c, s, bevel=0.0, rot=None, subd=0, seg=2):
         mat = Matrix.Translation(Vector(c)) @ rot @ Matrix.Translation(-Vector(c))
     bm_box(bm, c, s, mat)
     ob = obj(name, bm, smooth=bool(subd))
+    if bevel:
+        bevel = min(bevel, 0.4 * min(s))   # wider bevels collapse thin boxes into degenerate faces
     if bevel or subd:
         mods(ob, bevel=bevel or None, subd=subd, seg=seg)
     return ob
