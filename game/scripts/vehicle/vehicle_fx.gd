@@ -86,7 +86,7 @@ func _add_mark(a: Vector3, b: Vector3, n: Vector3, width: float, alpha: float) -
 # ------------------------------------------------------------------ smoke
 func _build_smoke() -> GPUParticles3D:
 	var p := GPUParticles3D.new()
-	p.amount = 40
+	p.amount = 64
 	p.lifetime = 2.4
 	p.local_coords = false
 	p.emitting = false
@@ -116,8 +116,9 @@ func _build_smoke() -> GPUParticles3D:
 	pm.scale_max = 2.6
 	pm.scale_curve = sct
 	var grad := Gradient.new()
-	grad.set_color(0, Color(0.8, 0.8, 0.82, 0.32))
-	grad.set_color(1, Color(0.7, 0.7, 0.74, 0.0))
+	grad.set_color(0, Color(0.85, 0.85, 0.88, 0.55))
+	grad.add_point(0.25, Color(0.8, 0.8, 0.84, 0.45))
+	grad.set_color(grad.get_point_count() - 1, Color(0.7, 0.7, 0.74, 0.0))
 	var gt := GradientTexture1D.new()
 	gt.gradient = grad
 	pm.color_ramp = gt
@@ -130,6 +131,8 @@ func _build_smoke() -> GPUParticles3D:
 	m.vertex_color_use_as_albedo = true
 	m.albedo_texture = _puff_texture()
 	m.roughness = 1.0
+	m.emission_enabled = true
+	m.emission = Color(0.06, 0.06, 0.07)
 	m.proximity_fade_enabled = true
 	m.proximity_fade_distance = 0.6
 	m.disable_receive_shadows = true

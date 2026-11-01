@@ -9,6 +9,8 @@ extends Node
 ##       0-100 km/h, top speed, 100-0 braking on dry and wet, 60 m skidpad lateral g, a 120 km/h lane
 ##       change, a handbrake turn; plus the rest / rollover / reset checks of the old test.
 ##       Prints DRIVETEST {...}.
+##   --physics-shots=<dir>   (opens a window, ~1 min) drift with smoke and skid marks, the tach, a kerb
+##       climb: PNGs for docs/agents/physics/
 
 var main: Node3D
 var car: RigidBody3D
@@ -22,6 +24,8 @@ func _ready() -> void:
 		_curb_test.call_deferred()
 	elif main.args.has("drive-test"):
 		_drive_test.call_deferred()
+	elif main.args.has("physics-shots"):
+		_shots.call_deferred(String(main.args["physics-shots"]))
 
 
 func _wait(t: float) -> void:
@@ -560,6 +564,8 @@ func _drive_test() -> void:
 		vmax_map = maxf(vmax_map, _kmh())
 		if car.needs_reset():
 			resets += 1
+
+	res["car_tick_us"] = snappedf(float(car.get("prof_us")), 0.1) if car.get("prof_us") != null else -1.0
 	res["map_drive"] = {"seconds": 30, "distance": snappedf(car.global_position.distance_to(start), 0.1),
 		"vmax_kmh": snappedf(vmax_map, 0.1), "min_up": snappedf(min_up, 0.01), "auto_resets": resets}
 	checks["map_drive_no_rollover"] = min_up > 0.7 and resets == 0
@@ -815,3 +821,93 @@ func _power_on(tc: bool) -> Dictionary:
 				max_beta = maxf(max_beta, absf(car.global_basis.z.signed_angle_to(vel.normalized(), Vector3.UP)))
 	car.steer_override = NAN
 	return {"max_slip_deg": snappedf(rad_to_deg(max_beta), 0.1), "gear": car.gear}
+
+
+# ================================================================== screenshots (windowed)
+func _shot(dir: String, name: String) -> void:
+	await RenderingServer.frame_post_draw
+	var img := get_viewport().get_texture().get_image()
+	if img.get_width() > 1600:
+		img.resize(1600, int(1600.0 * img.get_height() / img.get_width()), Image.INTERPOLATE_LANCZOS)
+	var full := dir.path_join(name + ".png")
+	img.save_png(full)
+	print("SHOT ", full)
+
+
+func _shots(dir: String) -> void:
+	DirAccess.make_dir_recursive_absolute(dir)
+	DisplayServer.window_set_size(Vector2i(1920, 1080))
+	if main.traffic:
+		main.traffic.process_mode = Node.PROCESS_MODE_DISABLED
+		main.traffic.visible = false
+	car.wet = 0.0                       # dry tarmac: tyre smoke (the rain makes it spray instead)
+	main.rain.emitting = false
+	main.rain.visible = false
+	var spot := {}
+	if FileAccess.file_exists("res://assets/world/world.json") and main.map_name != "town":
+		var w = JSON.parse_string(FileAccess.get_file_as_string("res://assets/world/world.json"))
+		for sp in preload("res://scripts/automation.gd")._spots(w):
+			if sp.name == "avenue":
+				spot = sp
+	var p0: Vector3
+	var d: Vector3
+	if spot:
+		var t: Vector3 = (spot.at - spot.eye) * Vector3(1, 0, 1)
+		d = t.normalized()
+		p0 = spot.eye - Vector3.UP * 2.2 - Vector3.UP.cross(d).normalized() * 3.0 - d * 25.0
+	else:
+		var xf: Transform3D = main.town.spawn_transform()
+		p0 = xf.origin
+		d = xf.basis.z
+	main.stream_now(p0)
+	main.town.ensure_collision(p0, 60.0)
+	var basis := Basis(Vector3.UP.cross(d).normalized(), Vector3.UP, d)
+	car.place(Transform3D(basis, p0 + Vector3.UP * 0.5))
+	_set_inputs(0.0, 0.0, 0.0, true)
+	await _wait(6.0)                    # shaders, SDFGI, streaming
+	# 1. the tach while pulling away hard
+	car.esc_on = false
+	car.tc_on = false
+	var t := 0.0
+	while t < 2.4:
+		await _tick()
+		t += _dt()
+		_set_inputs(1.0, 0.0, 0.0)
+	await _shot(dir, "03_hud_tach_launch")
+	# 2. handbrake flick into a drift, then power on with counter-steer
+	t = 0.0
+	while t < 1.4:
+		await _tick()
+		t += _dt()
+		_set_inputs(1.0, 0.0, 0.0)
+	var shots := [[0.55, "01_drift_smoke"], [0.95, "01b_drift_smoke"], [1.35, "01c_drift_smoke"]]
+	var drift_start: Vector3 = car.global_position
+	t = 0.0
+	main.cam.mode = 1
+	main.cam.snap()
+	while t < 1.9:
+		await _tick()
+		t += _dt()
+		if t < 0.45:
+			_set_inputs(0.3, 0.0, 1.0, true)
+		else:
+			_set_inputs(1.0, 0.0, -0.35, false)
+		if not shots.is_empty() and t >= shots[0][0]:
+			await _shot(dir, shots[0][1])
+			shots.pop_front()
+	var drift_end: Vector3 = car.global_position
+	_set_inputs(0.0, 0.0, 0.0, true)
+	await _wait(2.0)
+	# 3. the skid marks, from above the line the car slid along
+	main.cam.manual = true
+	main.cam.fov = 60.0
+	var cp: Vector3 = (drift_end + drift_start) * 0.5
+	var away: Vector3 = (drift_end - drift_start) * Vector3(1, 0, 1)
+	var side := Vector3.UP.cross(away.normalized())
+	main.cam.global_position = cp + Vector3(0, 7.0, 0) + side * 7.0
+	main.cam.look_at(cp, Vector3.UP)
+	await _wait(1.0)
+	await _shot(dir, "02_skid_marks")
+	main.cam.manual = false
+	main.cam.mode = 0
+	_quit(0)

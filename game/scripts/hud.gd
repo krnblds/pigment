@@ -54,6 +54,14 @@ func _ready() -> void:
 	_gear_label = _label(root, "D", 34, MAGENTA)
 	_gear_label.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
 	_gear_label.position = Vector2(-84, -150)
+	# tachometer (scripts/vehicle/tacho.gd): rpm, gear, gearbox mode, assist lamps
+	if car and "rpm" in car:
+		var tach := preload("res://scripts/vehicle/tacho.gd").new()
+		tach.car = car
+		tach.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+		tach.position = Vector2(-590, -265)
+		tach.size = Vector2(250, 250)
+		root.add_child(tach)
 	# MERIDIAN bar (top)
 	var bar := ColorRect.new()
 	bar.color = Color(0.02, 0.03, 0.06, 0.72)
@@ -85,7 +93,7 @@ func _ready() -> void:
 	_ticker.position = Vector2(0, 10)
 	_ticker_x = 0.0
 	# controls hint (bottom left)
-	_hint = _label(root, "W/S or RT/LT  drive / brake-reverse     A/D or stick  steer     SPACE / A  handbrake\nR / Y  reset to road     C / RB  camera     L / X  light bar     F  rain     G  GI     F3  stats     ESC  quit", 18, Color(0.75, 0.85, 0.95))
+	_hint = _label(root, "W/S or RT/LT  drive / brake-reverse     A/D or stick  steer     SPACE / A  handbrake     M / START  manual box     E Q / B LB  shift\nT  traction     J  stability     B  ABS     K  steer assist     R / Y  reset to road     C / RB  camera     L / X  light bar     F  rain (wet road)     G  GI     F3  stats     ESC  quit", 18, Color(0.75, 0.85, 0.95))
 	_hint.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
 	_hint.position = Vector2(24, -80)
 	_fps_label = _label(root, "", 16, Color(0.6, 0.7, 0.8))
@@ -123,7 +131,10 @@ func _process(delta: float) -> void:
 	if car:
 		var kmh := absf(car.forward_speed()) * 3.6
 		_speed_label.text = "%d" % int(round(kmh))
-		_gear_label.text = "R" if car.reversing else ("P" if kmh < 0.5 else "D")
+		if car.has_method("gear_label"):
+			_gear_label.text = ("M" if car.manual else "D") if car.gear >= 1 else car.gear_label()
+		else:
+			_gear_label.text = "R" if car.reversing else ("P" if kmh < 0.5 else "D")
 		# flavour: MERIDIAN watches your driving
 		if kmh > 110.0:
 			_speed_t += delta

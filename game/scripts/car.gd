@@ -31,7 +31,9 @@ signal bump(strength: float)
 const Params := preload("res://scripts/vehicle/vehicle_params.gd")
 const VehicleFx := preload("res://scripts/vehicle/vehicle_fx.gd")
 
-const SUBSTEPS := 6
+const SUBSTEPS := 4
+const PROBE_ALL: Array[float] = [0.0, 0.88, 0.55, -0.6]
+const PROBE_FWD: Array[float] = [0.0, 0.88, 0.55]
 const G := 9.81
 
 ## Grip by surface: [dry mu, wet mu, rolling resistance]
@@ -564,6 +566,15 @@ func _physics_process(delta: float) -> void:
 		return
 	if _snap_pending:
 		_snap_to_ground()
+	var _t0 := Time.get_ticks_usec()
+	_physics_tick(delta)
+	prof_us = prof_us * 0.99 + float(Time.get_ticks_usec() - _t0) * 0.01
+
+
+var prof_us := 0.0                       ## running average cost of a physics tick (µs), for benches
+
+
+func _physics_tick(delta: float) -> void:
 	_read_inputs(delta)
 	var xf := global_transform
 	var basis := xf.basis
@@ -573,6 +584,9 @@ func _physics_process(delta: float) -> void:
 	var lv := linear_velocity
 	var av := angular_velocity
 	var vfwd := lv.dot(fwd_car)
+	_com_rel = com_w - xf.origin
+	_acc_f = Vector3.ZERO
+	_acc_t = Vector3.ZERO
 	var speed := lv.length()
 	speed_kmh = speed * 3.6
 	# --- controls: which pedal does what (automatic: brake at a stop selects reverse)
@@ -620,6 +634,8 @@ func _physics_process(delta: float) -> void:
 			continue
 		var fvec := w.fwd * w.fx + w.lat * w.fy
 		_force(fvec, w.cpoint + up * w.roll_centre - xf.origin, w, "tyre")
+	apply_central_force(_acc_f)
+	apply_torque(_acc_t)
 	# --- aero drag (and optional downforce), at the centre of mass
 	var aero: Dictionary = P.aero
 	var q := 0.5 * float(aero.air_density) * speed * speed
@@ -730,7 +746,13 @@ func _probe(w: Wheel, xf: Transform3D, up: Vector3, lv: Vector3, av: Vector3, co
 	var best_hit := {}
 	var best_off := 0.0
 	var start := hub + up * top
-	for d: float in [0.0, 0.55, 0.88, -0.6]:
+	# the trailing sample (rolling off an edge backwards) only matters when slow
+	var x0 := NAN
+	var x88 := NAN
+	for d: float in (PROBE_FWD if vlen > 2.5 else PROBE_ALL):
+		# ground level under the centre and the leading sample: nothing in between to find
+		if d == 0.55 and not is_nan(x0) and not is_nan(x88) and absf((x88 - x0)) < 0.006:
+			continue
 		var o := dir * (d * r)
 		var a := o.dot(wfwd)                         # along the tyre's rolling direction
 		var l := (o - wfwd * a).length()            # across its width
@@ -759,6 +781,11 @@ func _probe(w: Wheel, xf: Transform3D, up: Vector3, lv: Vector3, av: Vector3, co
 			break
 		if hit.is_empty():
 			continue
+		# compare like with like: the centre and leading samples' ground heights (not the tyre heights)
+		if d == 0.0:
+			x0 = xr - reff
+		elif d == 0.88:
+			x88 = xr - reff
 		if xr > best + 0.002:
 			best = xr
 			best_hit = hit
@@ -940,7 +967,19 @@ func _carrier_w() -> float:
 	return (a.omega + b.omega) * 0.5
 
 
+var _curve_lut := PackedFloat32Array()   ## torque per 50 rpm
+
+
 func _torque_curve(r: float) -> float:
+	if _curve_lut.is_empty():
+		for i in 241:
+			_curve_lut.append(_torque_curve_raw(i * 50.0))
+	var f := clampf(r / 50.0, 0.0, 239.999)
+	var i := int(f)
+	return lerpf(_curve_lut[i], _curve_lut[i + 1], f - i)
+
+
+func _torque_curve_raw(r: float) -> float:
 	var c: Array = P.engine.torque_curve
 	if r <= float(c[0][0]):
 		return float(c[0][1])
@@ -1192,9 +1231,17 @@ var _nan_reported := false
 
 
 ## apply_force, refusing non-finite values (and saying where they came from, once).
+var _acc_f := Vector3.ZERO
+var _acc_t := Vector3.ZERO
+var _com_rel := Vector3.ZERO               ## centre of mass - body origin (global orientation)
+
+
+## Accumulates a force at `at` (relative to the body origin, global orientation); one
+## apply_central_force + apply_torque per tick instead of 8 apply_force calls.
 func _force(f: Vector3, at: Vector3, w: Wheel, what: String) -> void:
 	if f.is_finite() and at.is_finite():
-		apply_force(f, at)
+		_acc_f += f
+		_acc_t += (at - _com_rel).cross(f)
 		return
 	if not _nan_reported:
 		_nan_reported = true
