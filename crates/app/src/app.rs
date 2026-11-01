@@ -759,6 +759,12 @@ impl PigmentApp {
     /// enabled channels (roughness, metallic, height, emission) are painted
     /// wherever the image is opaque. One undo step.
     pub(super) fn project_decal(&mut self, rs: &RenderState, image: &Path, rect: [f32; 4], viewport_px: Vec2, luminance_alpha: bool) -> Result<(), String> {
+        self.project_decal_ex(rs, image, rect, viewport_px, luminance_alpha, true)
+    }
+
+    /// `project_decal`, optionally without an undo step (variant export
+    /// replays decals onto scratch layers that never enter the history).
+    pub(super) fn project_decal_ex(&mut self, rs: &RenderState, image: &Path, rect: [f32; 4], viewport_px: Vec2, luminance_alpha: bool, record_history: bool) -> Result<(), String> {
         if self.stroke.is_some() {
             return Err("finish the current stroke first".into());
         }
@@ -789,7 +795,7 @@ impl PigmentApp {
             let (depth, mg) = (self.viewport.paint_depth().unwrap(), self.mesh_gpu.as_ref().unwrap());
             self.painter.decal(&rs.device, &rs.queue, &self.ts, mg, depth, view, tex, decal, &brush, texels);
         }
-        if let Some(snap) = self.painter.end(&rs.device, &rs.queue, &tiles) {
+        if let Some(snap) = self.painter.end(&rs.device, &rs.queue, &tiles).filter(|_| record_history) {
             self.ts.unsaved.insert(target.res());
             let name = image.file_stem().map(|s| s.to_string_lossy().to_string()).unwrap_or_default();
             self.counters.strokes += 1;
