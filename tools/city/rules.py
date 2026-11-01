@@ -78,7 +78,7 @@ def build_graph(models: dict | None = None) -> G.Graph:
             g.add(G.Node(id=f"recipe:{name}", kind="recipe." + rec["runner"], model=mid, title=f"{name}: write Pigment script",
                          tools=[tool, "tools/city/recipe.py"] + rec.get("deps", []) + tools_city if tool else rec.get("deps", []),
                          inputs=sorted(set(mesh_inputs) | set(rec.get("inputs", []))), outputs=rec.get("outputs", []),
-                         mutable=rec.get("mutable", []), params={"job": rec.get("job"), "args": rec.get("args", [])},
+                         mutable=rec.get("mutable", []), params={"job": rec.get("job"), "args": rec.get("args", []), "env": rec.get("env", {})},
                          pool="pigment", run=A.run_recipe(rec)))
         # ---------------------------------------------------------- pigment runs
         for s in scripts:
@@ -196,7 +196,7 @@ def build_graph(models: dict | None = None) -> G.Graph:
                  outputs=["game/assets/car/car.glb", "game/assets/car/car.json"], pool="cpu",
                  run=A.run_tool({"runner": "python", "tool": "tools/godot/sync_car.py", "args": []})))
     g.add(G.Node(id="godot.import", kind="godot.import", title="Godot headless re-import",
-                 tools=tools_city, inputs=["game/assets", "game/sky"], pool="godot", cache=False,
+                 tools=tools_city, inputs=["game/assets", "game/sky"], pool="godot", cache=False, rekey=True,
                  run=A.run_godot_import()))
     # -------------------------------------------------------------- MCP script checks (gate)
     scripts = sorted({s for d in models.values() for s in (d.get("pigment") or {}).get("scripts", [])})

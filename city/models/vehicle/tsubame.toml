@@ -36,6 +36,8 @@ params = {}
 runner = "python"
 tool = "tools/vehicles/textures.py"
 args = ["tsubame", "--no-run"]
+# the hero was textured at 2048: the 4K body runs out of GPU memory on a shared 12 GB card (docs/agents/fleet)
+env = { FLEET_RES = "2048" }
 outputs = [
   "scenes/vehicles/tsubame/scripts/tsubame_body.jsonl",
   "scenes/vehicles/tsubame/scripts/tsubame_wheel.jsonl",

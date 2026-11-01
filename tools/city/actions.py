@@ -78,7 +78,7 @@ def run_recipe(rec):
         elif r == "blender":
             ctx.blender(rec["tool"], [str(a) for a in rec.get("args", [])])
         else:
-            ctx.python(rec["tool"], [str(a) for a in rec.get("args", [])])
+            ctx.python(rec["tool"], [str(a) for a in rec.get("args", [])], env={k: str(v) for k, v in rec.get("env", {}).items()})
     return run
 
 

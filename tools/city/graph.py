@@ -34,6 +34,8 @@ class Node:
     mutable: list = field(default_factory=list)  # outputs other steps may patch: tracked, not verified
     cache: bool = True                          # keep outputs in the content-addressed cache
     always: bool = False                        # gates: run on every build of their target
+    rekey: bool = False                         # the step writes into its own inputs (Godot's import extracts
+                                                # textures next to the glbs): key it on the files after the run
     run: Callable | None = None                 # filled by the rules (actions)
 
     def describe(self) -> dict:

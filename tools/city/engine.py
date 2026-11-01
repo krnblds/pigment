@@ -220,6 +220,8 @@ class Engine:
                 node.run(ctx)
                 secs = time.time() - t1
             outs = cache.output_files(node)
+            if node.rekey:
+                key, detail = G.node_key(node)
             if ctx.partial:     # fast path: not what a full build of this key makes -> not cached, stays stale
                 cache.write_stamp(node, "partial:" + key, detail, outs, secs, note=ctx.note)
             else:
