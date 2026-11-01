@@ -6,18 +6,19 @@ headlessly; see tools/blender_pigment.py).
 
 Road network
     A graph of junctions (X, T and Y) joined by winding 3D roads.  Every
-    junction mesh is generated procedurally from its arm angles: filleted
-    curbs, continuous corner sidewalks, zebra crossings and arm mouths whose
-    cross-section matches the street kit exactly (road 8 m, curbs 0.25 m,
-    sidewalks out to 7 m).  The runs between junctions are the Pigment
-    textured street piece, swept along the path by our own deformer (no
-    pinching: lateral offsets follow the path normal and the path radius is
-    kept well above the street half width).  Junctions are flat; road grades
-    ease in and out of them.
-    With export_junctions=True the junction meshes are written to
-    assets/town/junction_*.glb (+ .parts.json) so tools/town_junction_textures.py
-    can texture them in Pigment; their textures are picked up from
-    scenes/town/textures/junction_*/ on the next build.
+    junction is generated procedurally from its arm angles: filleted curbs,
+    continuous corner sidewalks and arm mouths with the road cross-section
+    (asphalt, gutter, curb, walk edge, paving out to 7 m).  Runs between
+    junctions are spline meshes swept along the path (tools/town_roads.py):
+    asphalt has world-space planar UVs on runs and junctions alike, so they
+    join without a seam; sidewalks and curbs use an along-path coordinate
+    scaled to whole 2 m tiles between junction mouths, so slabs and curb
+    joints line up at every join.  One shared material each for asphalt,
+    paving, trim (curbs / gutters) and concrete, all seamless Pigment tiles
+    from scenes/town/textures/roads/ (python tools/road_textures.py --run),
+    with world-space macro variation and puddles.  Markings, zebra
+    crossings, cracks, patches, oil, manholes and drains are decal quads from
+    a Pigment atlas.  Junctions are flat; road grades ease in and out of them.
 
 Terrain
     Smooth, flat terraces at sidewalk level beside every road (the "lots"),
