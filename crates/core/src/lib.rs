@@ -19,6 +19,7 @@ pub mod project;
 pub mod sheet;
 pub mod smart;
 pub mod stroke;
+pub mod tile;
 pub mod tiles;
 pub mod undo;
 pub mod variants;

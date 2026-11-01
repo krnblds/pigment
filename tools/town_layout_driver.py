@@ -3,8 +3,6 @@
     blender -b --factory-startup --python tools/town_layout_driver.py -- [options]
 
 Options (after "--"):
-    --export-junctions   write assets/town/junction_*.glb + .parts.json and stop
-                         (then run: python tools/town_junction_textures.py)
     --no-render          build and save only
     --no-save            do not save scenes/town/cyberpunk_town.blend
     --samples N          Cycles samples (default 128)
@@ -12,7 +10,9 @@ Options (after "--"):
     --shots a,b,...      subset of: overview, yfork, tjunction, crossroads, stairs
 
 Steps: import assets/town/*.glb into the TownKit collection as KIT_<asset>,
-apply the Pigment maps from scenes/town/textures/<asset>/, run
+apply the Pigment maps from scenes/town/textures/<asset>/ (roads use the
+shared tiles, trim sheet and decal atlas in scenes/town/textures/roads/, made
+by `python tools/road_textures.py --run`), run
 tools/blender_town.py, render night shots to docs/agents/town-layout/ and save
 scenes/town/cyberpunk_town.blend.
 """
@@ -275,10 +275,8 @@ def main():
         bpy.ops.render.render(write_still=True)
         return
     town = load_tool("blender_town", {"TOWN_NO_AUTOBUILD": True, "TOWN_ROOT": ROOT})
-    info = town["build"](root=ROOT, export_junctions=bool(opt("--export-junctions")))
+    info = town["build"](root=ROOT)
     print(f"built in {time.time() - t0:.0f} s")
-    if opt("--export-junctions"):
-        return
     if opt("--verify"):
         verify()
     res = tuple(int(v) for v in str(opt("--res", "1600x900")).split("x"))

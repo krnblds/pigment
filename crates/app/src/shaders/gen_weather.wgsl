@@ -16,7 +16,9 @@ fn wx_hash2(c: vec2<f32>, salt: f32) -> f32 {
 // (x, z); walls use (horizontal, y) so rows stay level.
 fn wx_surface(pw: vec3<f32>, n: vec3<f32>) -> vec3<f32> {
     let a = abs(n);
-    let q = pw - sh.bmin.xyz;
+    // tile mode anchors patterns to the world origin, so a tile moved by part
+    // of its period scrolls the pattern (it stays periodic either way)
+    let q = pw - select(sh.bmin.xyz, vec3<f32>(0.0), tile_on());
     if (a.y >= a.x && a.y >= a.z) {
         return vec3<f32>(q.x, q.z, select(1.0, 0.0, n.y > 0.0));
     }
@@ -24,6 +26,15 @@ fn wx_surface(pw: vec3<f32>, n: vec3<f32>) -> vec3<f32> {
         return vec3<f32>(q.z, q.y, select(3.0, 2.0, n.x > 0.0));
     }
     return vec3<f32>(q.x, q.y, select(5.0, 4.0, n.z > 0.0));
+}
+
+
+// Tile mode: the wrap period (metres) along the two in-surface axes of
+// wx_surface, for floor-facing texels (the tile plane is a floor); 0 = none.
+fn tile_plane_period(n: vec3<f32>) -> vec2<f32> {
+    let a = abs(n);
+    if (a.y >= a.x && a.y >= a.z) { return vec2<f32>(sh.res.z, sh.res.w); }
+    return vec2<f32>(0.0);
 }
 
 fn wx_threshold(v: f32, gp: vec4<f32>) -> f32 {
@@ -53,7 +64,8 @@ fn wx_leaks(t: vec2<i32>, gp: vec4<f32>, gp2: vec4<f32>) -> f32 {
     }
     // vertical runs: noise strongly stretched along world up
     let q = vec3<f32>(pw.x * s, pw.y * s * 0.05, pw.z * s) + seed;
-    let runs = fbm(q) * 0.7 + fbm(q * vec3<f32>(3.1, 1.7, 3.1) + seed.yzx) * 0.3;
+    let sq = vec3<f32>(s, s * 0.05, s);
+    let runs = fbm_s(q, pw, sq, seed) * 0.7 + fbm_s(q * vec3<f32>(3.1, 1.7, 3.1) + seed.yzx, pw, sq * vec3<f32>(3.1, 1.7, 3.1), seed * vec3<f32>(3.1, 1.7, 3.1) + seed.yzx) * 0.3;
     let streak = smoothstep(0.38, 0.62, runs);
     let broken = mix(1.0, streak * 1.5, clamp(gp.w, 0.0, 1.0));
     // damp, sheltered wall right under overhangs (AO), also streaky
@@ -75,7 +87,7 @@ fn wx_puddles(t: vec2<i32>, gp: vec4<f32>, gp2: vec4<f32>) -> f32 {
     let level = smoothstep(0.88, 0.985, n.y);
     let rain = smoothstep(0.08, 0.4, bk.a);
     let g = vec3<f32>(pw.x, 0.0, pw.z) * s;
-    let relief = fbm(g + seed) * 0.7 + fbm(g * 3.7 + seed.zxy) * 0.3;
+    let relief = fbm_s(g + seed, pw, vec3<f32>(s, 0.0, s), seed) * 0.7 + fbm_s(g * 3.7 + seed.zxy, pw, vec3<f32>(s * 3.7, 0.0, s * 3.7), seed.zxy) * 0.3;
     let low = (0.5 - relief) * (1.5 + 3.0 * gp.w);
     let cavity = clamp((0.5 - bk.g) * 2.0, 0.0, 1.0);
     let occl = 1.0 - bk.r;
@@ -102,7 +114,7 @@ fn wx_moss(t: vec2<i32>, gp: vec4<f32>, gp2: vec4<f32>) -> f32 {
     // nothing hangs on ceilings
     let not_down = smoothstep(-0.6, -0.2, n.y);
     let base = max(up * (0.55 + 0.45 * damp), max(damp * 0.8, cavity)) * not_down;
-    let clump = fbm(pw * s + seed) * 0.65 + fbm(pw * s * 3.1 + seed.yzx) * 0.35;
+    let clump = fbm_s(pw * s + seed, pw, vec3<f32>(s), seed) * 0.65 + fbm_s(pw * s * 3.1 + seed.yzx, pw, vec3<f32>(s * 3.1), seed.yzx) * 0.35;
     let v = base + (clump - 0.5) * gp.w * 1.6;
     return wx_threshold(v, gp);
 }
@@ -116,7 +128,7 @@ fn wx_tiles(t: vec2<i32>, gp: vec4<f32>, gp2: vec4<f32>) -> f32 {
     let n = normalize(textureLoad(wnormal, t, 0).xyz + vec3<f32>(0.0, 1e-5, 0.0));
     let sf = wx_surface(pw, n);
     let rows = max(gp.z, 0.01);
-    let h = 1.0 / rows;                      // row height, metres
+    var h = 1.0 / rows;                      // row height, metres
     let mortar = clamp(gp2.y, 0.0, 0.9) * h;
     let soft = max(gp.y, 0.002) * h;
     let jitter = clamp(gp.w, 0.0, 1.0);
@@ -124,27 +136,48 @@ fn wx_tiles(t: vec2<i32>, gp: vec4<f32>, gp2: vec4<f32>) -> f32 {
     var edge = 0.0;                          // metres to the cell border
     if (u32(gp2.w + 0.5) == 2u) {
         // hexagons, flat-to-flat = one row
-        let p = sf.xy * rows;
+        var p = sf.xy * rows;
         let r = vec2<f32>(1.0, 1.7320508);
+        // tile mode: whole hex periods across the tile (slightly anisotropic)
+        let tp = tile_plane_period(n);
+        var hper = vec2<f32>(0.0);
+        if (tp.x > 0.0) { hper.x = max(round(tp.x * rows), 1.0); p.x = sf.x * hper.x / tp.x; }
+        if (tp.y > 0.0) { hper.y = max(round(tp.y * rows / r.y), 1.0) * r.y; p.y = sf.y * hper.y / tp.y; }
         let hr = r * 0.5;
         let a = p - r * floor(p / r) - hr;
         let b = (p - hr) - r * floor((p - hr) / r) - hr;
         let gv = select(b, a, dot(a, a) < dot(b, b));
-        cell = floor((p - gv) * 2.0 + 0.5);
+        var ctr = p - gv;
+        if (hper.x > 0.0) { ctr.x = ctr.x - hper.x * floor((ctr.x + 0.25) / hper.x); }
+        if (hper.y > 0.0) { ctr.y = ctr.y - hper.y * floor((ctr.y + 0.25) / hper.y); }
+        cell = floor(ctr * 2.0 + 0.5);
         let hd = max(dot(abs(gv), normalize(vec2<f32>(1.0, 1.7320508))), abs(gv.x));
         edge = (0.5 - hd) * h;
     } else {
-        let w = h * max(gp2.z, 0.05);
+        var w = h * max(gp2.z, 0.05);
+        // tile mode: whole rows (an even count for running bond) and columns per tile
+        let tp = tile_plane_period(n);
+        var ncol = 0.0;
+        if (tp.y > 0.0) {
+            var nr = max(round(tp.y / h), 1.0);
+            if (u32(gp2.w + 0.5) == 0u) { nr = max(2.0, 2.0 * round(tp.y / h * 0.5)); }
+            h = tp.y / nr;
+        }
+        if (tp.x > 0.0) { ncol = max(round(tp.x / w), 1.0); w = tp.x / ncol; }
         let row = floor(sf.y / h);
+        // tile mode: row ids repeat every period (hashes, running-bond parity)
+        var rowh = row;
+        if (tp.y > 0.0) { let nr = round(tp.y / h); rowh = row - nr * floor(row / nr); }
         var off = 0.0;
         if (u32(gp2.w + 0.5) == 0u) {
-            off = select(0.0, 0.5, (i32(row) & 1) == 1) + (wx_hash2(vec2<f32>(row, sf.z), gp2.x) - 0.5) * jitter * 0.5;
+            off = select(0.0, 0.5, (i32(rowh) & 1) == 1) + (wx_hash2(vec2<f32>(rowh, sf.z), gp2.x) - 0.5) * jitter * 0.5;
         }
         let u = sf.x / w + off;
-        let col = floor(u);
+        var col = floor(u);
         let fx = u - col;
+        if (ncol > 0.0) { col = col - ncol * floor(col / ncol); }
         let fy = sf.y / h - row;
-        cell = vec2<f32>(col, row);
+        cell = vec2<f32>(col, rowh);
         edge = min(min(fx, 1.0 - fx) * w, min(fy, 1.0 - fy) * h);
     }
     let face = smoothstep(mortar * 0.5, mortar * 0.5 + soft, edge);

@@ -190,8 +190,22 @@ fn tools() -> Value {
         p
     };
     json!([
-        t("new_project", "Start a project from a mesh (.glb/.gltf/.obj with UVs). Bakes AO + curvature. Optionally starts from a smart material or a base material; a paint layer goes on top.",
-          json!({ "mesh": { "type": "string" }, "resolution": { "type": "integer", "enum": [512, 1024, 2048, 4096] }, "smart_material": { "type": "string" }, "material": { "type": "string" } }), &["mesh"]),
+        t("new_project", "Start a project from a mesh (.glb/.gltf/.obj with UVs), or a flat sheet with `tile` instead of `mesh`: a seamless tile (size_m; strokes, decals, generator noise and normals wrap across the edges), a trim sheet (strips stacked in V, wrapping along U; one part + folder per strip) or a decal atlas (cells packed with padding; one part + folder per cell, transparent base). The sheet lies in world XZ (y up, metres; u -> +x, v -> +z). export_textures then also writes <name>_layout.json (strip/cell UV rects) and, for atlases, <name>_BaseColorAlpha.png. Bakes AO + curvature. Optionally starts from a smart material or a base material; a paint layer goes on top.",
+          json!({ "mesh": { "type": "string" }, "resolution": { "type": "integer", "enum": [512, 1024, 2048, 4096] }, "smart_material": { "type": "string" }, "material": { "type": "string" },
+                  "tile": { "type": "object", "additionalProperties": false, "description": "flat sheet instead of a mesh",
+                            "properties": {
+                                "size_m": { "type": ["number", "array"], "items": { "type": "number" }, "description": "seamless tile: [width, height] in metres (or one number); trim: width (height = sum of strips)" },
+                                "wrap": { "type": "string", "enum": ["both", "u", "v", "none"], "description": "axes that wrap (default: tile both, trim u, atlas none)" },
+                                "strips": { "type": "array", "description": "trim sheet strips, top (v = 0) to bottom", "items": { "type": "object", "additionalProperties": false,
+                                            "properties": { "name": { "type": "string" }, "height_m": { "type": "number", "minimum": 0 } } } },
+                                "cells": { "type": "array", "description": "decal atlas cells, shelf-packed", "items": { "type": "object", "additionalProperties": false,
+                                           "properties": { "name": { "type": "string" }, "size_m": { "type": ["number", "array"], "items": { "type": "number" }, "description": "[width, height] in metres" } } } },
+                                "padding_px": { "type": "integer", "minimum": 0, "description": "atlas: texels between cells (default 16)" },
+                                "offset_m": { "type": "array", "items": { "type": "number" }, "description": "world [x, z] of the sheet centre (default [0, 0]); moving a tile scrolls its periodic pattern" },
+                                "width_m": { "type": "number", "description": "trim: sheet width (same as size_m)" },
+                                "folders": { "type": "boolean", "description": "trim / atlas: add a folder masked to each strip / cell (default true)" },
+                                "name": { "type": "string", "description": "export name (default: TileWxHm / TrimSheet / DecalAtlas)" }
+                            } } }), &[]),
         t("open_project", "Open a .pigment project folder.", json!({ "path": { "type": "string" } }), &["path"]),
         t("save_project", "Save the project folder (git-friendly).", json!({ "path": { "type": "string" } }), &[]),
         t("list_library", "Material presets, smart materials, generators, blend modes, export presets, views.", json!({}), &[]),

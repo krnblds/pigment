@@ -83,7 +83,7 @@ impl PigmentApp {
         let mut landed = 0;
         for d in decals {
             let mut tiles = TileSet::default();
-            if d.placement.mark_tiles(&self.mesh, &mut tiles) == 0 {
+            if d.placement.mark_tiles(self.wrap_mesh.as_ref().unwrap_or(&self.mesh), &mut tiles) == 0 {
                 continue;
             }
             let Some(texels) = tiles.texel_bounds(self.ts.res) else { continue };
