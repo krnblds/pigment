@@ -181,6 +181,11 @@ def export_prop(name):
             o.location = (0, 0, 0)
     col = collider_obj(data["collider"], main)
     emp = empties(data)
+    # one root: the main mesh first, everything else parented under it (Godot loaders that take
+    # the first MeshInstance3D get the right mesh; the lamps / collider / empties follow it)
+    if name != "puddle_decal":
+        for o in nodes + ([col] if col else []) + emp:
+            o.parent = main
     tmp = tempfile.mkdtemp(prefix="props_glb_")
     size = info["embed"]
     resize_images(mat, size, tmp)
@@ -202,6 +207,8 @@ def export_prop(name):
         bpy.ops.object.modifier_apply(modifier="dec")
         main.name = name + "_LOD0"
         lod.name = name
+        for o in nodes + extra:
+            o.parent = lod
         resize_images(mat, max(128, size // 2), tmp)
         path1 = os.path.join(OUT, f"{name}_lod1.glb")
         b1 = export(path1, [lod] + nodes + extra)

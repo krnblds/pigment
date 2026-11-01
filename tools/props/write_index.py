@@ -106,7 +106,7 @@ def main():
                           "center": [round((lo[0] + hi[0]) / 2, 3), round((lo[2] + hi[2]) / 2, 3)]},
             "bounds": src["bounds_gl"],
             "mount": mount,
-            "nodes": {"main": node_names[0] if node_names else name, "all": node_names, "driven": src["nodes"]},
+            "nodes": {"main": g["nodes"][g["scenes"][0]["nodes"][0]]["name"], "all": node_names, "driven": src["nodes"]},
             "collider": {"type": ("none" if src["collider"][0]["type"] == "none" else
                                   "convex" if src["collider"][0]["type"] == "convex" else
                                   src["collider"][0]["type"] if len(src["collider"]) == 1 else "compound"),
