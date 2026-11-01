@@ -26,7 +26,9 @@ jobs:
         include:
           - { os: windows-latest, name: windows-x64, ext: .exe }
           - { os: ubuntu-22.04,   name: linux-x64,   ext: '' }
-          - { os: macos-14,       name: macos-arm64, ext: '' }
+          # macOS: the runner was cancelled before starting (account runner limits / macOS minutes).
+          # Uncomment once macOS runners are available on this account:
+          # - { os: macos-14,       name: macos-arm64, ext: '' }
     steps:
       - uses: actions/checkout@v4
         with:
@@ -94,5 +96,5 @@ jobs:
             **Pigment ${{ github.event.inputs.tag || github.ref_name }}**: a PBR texture painter with an MCP server for AI agents.
 
             - **Windows:** unzip and run `pigment.exe`. `pigment-mcp.exe` is the MCP server.
-            - **Linux / macOS:** extract and run `./pigment`.
+            - **Linux:** extract and run `./pigment`.
             - **Agents:** see the README section *Use it from an AI agent (MCP)*. `mcp.json` in the archive is a ready-made config; fill in the path.
