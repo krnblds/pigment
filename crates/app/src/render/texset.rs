@@ -199,6 +199,9 @@ struct Pipes {
     shared_bgl: wgpu::BindGroupLayout,
     acc_bgl: wgpu::BindGroupLayout,
     layer_bgl: wgpu::BindGroupLayout,
+    /// A folder pass only needs the mask and params (bindings 6, 7 of the
+    /// layer group), which keeps it within 16 sampled textures per stage.
+    folder_bgl: wgpu::BindGroupLayout,
     jfa_bgl: wgpu::BindGroupLayout,
     clear: wgpu::RenderPipeline,
     layer: wgpu::RenderPipeline,
@@ -225,7 +228,8 @@ impl Pipes {
         let full_layout = gpu::layout(device, "composite", &[&shared_bgl, &acc_bgl, &layer_bgl]);
         let folder_src = [common, include_str!("../shaders/composite.wgsl"), include_str!("../shaders/folder.wgsl")].concat();
         let folder_mod = gpu::shader(device, "folder.wgsl", &folder_src);
-        let folder_layout = gpu::layout(device, "folder", &[&shared_bgl, &acc_bgl, &layer_bgl, &acc_bgl]);
+        let folder_bgl = gpu::bgl(device, "folder", &[gpu::ntex(6), gpu::uniform_entry(7, true)]);
+        let folder_layout = gpu::layout(device, "folder", &[&shared_bgl, &acc_bgl, &folder_bgl, &acc_bgl]);
         let fin_layout = gpu::layout(device, "finalize", &[&shared_bgl, &acc_bgl]);
         let empty_layout = gpu::layout(device, "empty", &[]);
         let acc_targets = [gpu::target(ACC, None), gpu::target(ACC, None), gpu::target(ACC, None), gpu::target(ACC, None)];
@@ -267,6 +271,7 @@ impl Pipes {
             shared_bgl,
             acc_bgl,
             layer_bgl,
+            folder_bgl,
             jfa_bgl,
         }
     }
@@ -541,7 +546,23 @@ impl TexSet {
 
         let layer_bgs: Vec<wgpu::BindGroup> = passes
             .iter()
-            .map(|(l, _)| {
+            .map(|(l, folder)| {
+                let mask = l.mask.as_ref().and_then(|m| self.masks.get(&m.res)).unwrap_or(&self.dummy_mask);
+                let params = wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+                    buffer: &self.layer_buf,
+                    offset: 0,
+                    size: wgpu::BufferSize::new(std::mem::size_of::<LayerParams>() as u64),
+                });
+                if *folder {
+                    return device.create_bind_group(&wgpu::BindGroupDescriptor {
+                        label: Some("folder"),
+                        layout: &self.p.folder_bgl,
+                        entries: &[
+                            wgpu::BindGroupEntry { binding: 6, resource: wgpu::BindingResource::TextureView(&mask.view) },
+                            wgpu::BindGroupEntry { binding: 7, resource: params },
+                        ],
+                    });
+                }
                 let lt = l.paint_res().and_then(|r| self.layers.get(&r)).unwrap_or(&self.dummy_layer);
                 let mask = l.mask.as_ref().and_then(|m| self.masks.get(&m.res)).unwrap_or(&self.dummy_mask);
                 let mut res: Vec<wgpu::BindingResource> = lt.ch.iter().map(|t| wgpu::BindingResource::TextureView(&t.view)).collect();
