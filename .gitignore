@@ -28,3 +28,7 @@ scenes/world/*.blend
 scenes/world/export/
 scenes/world/map.png
 scenes/world/verify.json
+# tree kit (tools/trees): stencils, Pigment textures / projects and build scratch are regenerated
+scenes/trees/stencils/
+scenes/trees/textures/
+scenes/trees/projects/
