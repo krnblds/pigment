@@ -456,12 +456,22 @@
             "enabled": true,
             "args": {
               "emissive_strength": 6.0,
-              "facing": "-x",
-              "fit": "contain",
               "image": "assets/decals/story/sign_memory_pawn.png",
-              "margin": 0.08,
               "material": "Neon pink",
-              "part": 9,
+              "normal": [
+                -1,
+                0,
+                0
+              ],
+              "position": [
+                -0.134,
+                0.475,
+                0.92
+              ],
+              "size": [
+                0.89,
+                0.4624
+              ],
               "tint": [
                 1.0,
                 0.6,
@@ -475,12 +485,22 @@
             "enabled": true,
             "args": {
               "emissive_strength": 6.0,
-              "facing": "+x",
-              "fit": "contain",
               "image": "assets/decals/story/sign_memory_pawn.png",
-              "margin": 0.08,
               "material": "Neon pink",
-              "part": 10,
+              "normal": [
+                1,
+                0,
+                0
+              ],
+              "position": [
+                0.134,
+                0.475,
+                0.92
+              ],
+              "size": [
+                0.89,
+                0.4624
+              ],
               "tint": [
                 1.0,
                 0.6,
@@ -494,12 +514,22 @@
             "enabled": false,
             "args": {
               "emissive_strength": 6.0,
-              "facing": "-x",
-              "fit": "contain",
               "image": "assets/decals/story/sign_implant_repair.png",
-              "margin": 0.08,
               "material": "Neon pink",
-              "part": 9,
+              "normal": [
+                -1,
+                0,
+                0
+              ],
+              "position": [
+                -0.134,
+                0.475,
+                0.92
+              ],
+              "size": [
+                0.89,
+                0.4511
+              ],
               "tint": [
                 0.2,
                 0.9,
@@ -513,12 +543,22 @@
             "enabled": false,
             "args": {
               "emissive_strength": 6.0,
-              "facing": "+x",
-              "fit": "contain",
               "image": "assets/decals/story/sign_implant_repair.png",
-              "margin": 0.08,
               "material": "Neon pink",
-              "part": 10,
+              "normal": [
+                1,
+                0,
+                0
+              ],
+              "position": [
+                0.134,
+                0.475,
+                0.92
+              ],
+              "size": [
+                0.89,
+                0.4511
+              ],
               "tint": [
                 0.2,
                 0.9,
@@ -532,12 +572,22 @@
             "enabled": false,
             "args": {
               "emissive_strength": 6.0,
-              "facing": "-x",
-              "fit": "contain",
               "image": "assets/decals/story/sign_score_reset.png",
-              "margin": 0.08,
               "material": "Neon pink",
-              "part": 9,
+              "normal": [
+                -1,
+                0,
+                0
+              ],
+              "position": [
+                -0.134,
+                0.475,
+                0.92
+              ],
+              "size": [
+                0.8513,
+                0.69
+              ],
               "tint": [
                 1.0,
                 0.2,
@@ -551,12 +601,22 @@
             "enabled": false,
             "args": {
               "emissive_strength": 6.0,
-              "facing": "+x",
-              "fit": "contain",
               "image": "assets/decals/story/sign_score_reset.png",
-              "margin": 0.08,
               "material": "Neon pink",
-              "part": 10,
+              "normal": [
+                1,
+                0,
+                0
+              ],
+              "position": [
+                0.134,
+                0.475,
+                0.92
+              ],
+              "size": [
+                0.8513,
+                0.69
+              ],
               "tint": [
                 1.0,
                 0.2,
@@ -570,12 +630,22 @@
             "enabled": false,
             "args": {
               "emissive_strength": 6.0,
-              "facing": "-x",
-              "fit": "contain",
               "image": "assets/decals/story/sign_capsule_2h.png",
-              "margin": 0.08,
               "material": "Neon pink",
-              "part": 9,
+              "normal": [
+                -1,
+                0,
+                0
+              ],
+              "position": [
+                -0.134,
+                0.475,
+                0.92
+              ],
+              "size": [
+                0.89,
+                0.4328
+              ],
               "tint": [
                 0.6,
                 0.35,
@@ -589,12 +659,22 @@
             "enabled": false,
             "args": {
               "emissive_strength": 6.0,
-              "facing": "+x",
-              "fit": "contain",
               "image": "assets/decals/story/sign_capsule_2h.png",
-              "margin": 0.08,
               "material": "Neon pink",
-              "part": 10,
+              "normal": [
+                1,
+                0,
+                0
+              ],
+              "position": [
+                0.134,
+                0.475,
+                0.92
+              ],
+              "size": [
+                0.89,
+                0.4328
+              ],
               "tint": [
                 0.6,
                 0.35,
@@ -608,12 +688,22 @@
             "enabled": false,
             "args": {
               "emissive_strength": 6.0,
-              "facing": "-x",
-              "fit": "contain",
               "image": "assets/decals/story/sign_dumplings.png",
-              "margin": 0.08,
               "material": "Neon pink",
-              "part": 9,
+              "normal": [
+                -1,
+                0,
+                0
+              ],
+              "position": [
+                -0.134,
+                0.475,
+                0.92
+              ],
+              "size": [
+                0.89,
+                0.3355
+              ],
               "tint": [
                 1.0,
                 0.35,
@@ -627,12 +717,22 @@
             "enabled": false,
             "args": {
               "emissive_strength": 6.0,
-              "facing": "+x",
-              "fit": "contain",
               "image": "assets/decals/story/sign_dumplings.png",
-              "margin": 0.08,
               "material": "Neon pink",
-              "part": 10,
+              "normal": [
+                1,
+                0,
+                0
+              ],
+              "position": [
+                0.134,
+                0.475,
+                0.92
+              ],
+              "size": [
+                0.89,
+                0.3355
+              ],
               "tint": [
                 1.0,
                 0.35,
@@ -646,12 +746,22 @@
             "enabled": false,
             "args": {
               "emissive_strength": 6.0,
-              "facing": "-x",
-              "fit": "contain",
               "image": "assets/decals/story/sign_clinic.png",
-              "margin": 0.08,
               "material": "Neon pink",
-              "part": 9,
+              "normal": [
+                -1,
+                0,
+                0
+              ],
+              "position": [
+                -0.134,
+                0.475,
+                0.92
+              ],
+              "size": [
+                0.89,
+                0.3259
+              ],
               "tint": [
                 0.3,
                 1.0,
@@ -665,12 +775,22 @@
             "enabled": false,
             "args": {
               "emissive_strength": 6.0,
-              "facing": "+x",
-              "fit": "contain",
               "image": "assets/decals/story/sign_clinic.png",
-              "margin": 0.08,
               "material": "Neon pink",
-              "part": 10,
+              "normal": [
+                1,
+                0,
+                0
+              ],
+              "position": [
+                0.134,
+                0.475,
+                0.92
+              ],
+              "size": [
+                0.89,
+                0.3259
+              ],
               "tint": [
                 0.3,
                 1.0,
@@ -684,12 +804,22 @@
             "enabled": false,
             "args": {
               "emissive_strength": 6.0,
-              "facing": "-x",
-              "fit": "contain",
               "image": "assets/decals/story/sign_jailbreak.png",
-              "margin": 0.08,
               "material": "Neon pink",
-              "part": 9,
+              "normal": [
+                -1,
+                0,
+                0
+              ],
+              "position": [
+                -0.134,
+                0.475,
+                0.92
+              ],
+              "size": [
+                0.89,
+                0.2999
+              ],
               "tint": [
                 0.55,
                 1.0,
@@ -703,12 +833,22 @@
             "enabled": false,
             "args": {
               "emissive_strength": 6.0,
-              "facing": "+x",
-              "fit": "contain",
               "image": "assets/decals/story/sign_offgrid.png",
-              "margin": 0.08,
               "material": "Neon pink",
-              "part": 10,
+              "normal": [
+                1,
+                0,
+                0
+              ],
+              "position": [
+                0.134,
+                0.475,
+                0.92
+              ],
+              "size": [
+                0.89,
+                0.4207
+              ],
               "tint": [
                 0.2,
                 1.0,
@@ -722,12 +862,22 @@
             "enabled": false,
             "args": {
               "emissive_strength": 6.0,
-              "facing": "-x",
-              "fit": "contain",
               "image": "assets/decals/story/sign_organ_credit.png",
-              "margin": 0.08,
               "material": "Neon pink",
-              "part": 9,
+              "normal": [
+                -1,
+                0,
+                0
+              ],
+              "position": [
+                -0.134,
+                0.475,
+                0.92
+              ],
+              "size": [
+                0.89,
+                0.6632
+              ],
               "tint": [
                 1.0,
                 0.12,
@@ -741,12 +891,22 @@
             "enabled": false,
             "args": {
               "emissive_strength": 6.0,
-              "facing": "+x",
-              "fit": "contain",
               "image": "assets/decals/story/sign_organ_credit.png",
-              "margin": 0.08,
               "material": "Neon pink",
-              "part": 10,
+              "normal": [
+                1,
+                0,
+                0
+              ],
+              "position": [
+                0.134,
+                0.475,
+                0.92
+              ],
+              "size": [
+                0.89,
+                0.6632
+              ],
               "tint": [
                 1.0,
                 0.12,
@@ -760,12 +920,22 @@
             "enabled": false,
             "args": {
               "emissive_strength": 6.0,
-              "facing": "-x",
-              "fit": "contain",
               "image": "assets/decals/story/sign_karaoke.png",
-              "margin": 0.08,
               "material": "Neon pink",
-              "part": 9,
+              "normal": [
+                -1,
+                0,
+                0
+              ],
+              "position": [
+                -0.134,
+                0.475,
+                0.92
+              ],
+              "size": [
+                0.89,
+                0.4102
+              ],
               "tint": [
                 1.0,
                 0.3,
@@ -779,12 +949,22 @@
             "enabled": false,
             "args": {
               "emissive_strength": 6.0,
-              "facing": "+x",
-              "fit": "contain",
               "image": "assets/decals/story/sign_dreams.png",
-              "margin": 0.08,
               "material": "Neon pink",
-              "part": 10,
+              "normal": [
+                1,
+                0,
+                0
+              ],
+              "position": [
+                0.134,
+                0.475,
+                0.92
+              ],
+              "size": [
+                0.89,
+                0.5745
+              ],
               "tint": [
                 0.8,
                 0.5,
@@ -793,36 +973,27 @@
             }
           },
           {
-            "name": "face_w/sign_meridian_kiosk",
+            "name": "face_w/sign_charge",
             "group": "story",
             "enabled": false,
             "args": {
               "emissive_strength": 6.0,
-              "facing": "-x",
-              "fit": "contain",
-              "image": "assets/decals/story/sign_meridian_kiosk.png",
-              "margin": 0.08,
-              "material": "Neon pink",
-              "part": 9,
-              "tint": [
-                0.4,
-                0.9,
-                1.0
-              ]
-            }
-          },
-          {
-            "name": "face_e/sign_charge",
-            "group": "story",
-            "enabled": false,
-            "args": {
-              "emissive_strength": 6.0,
-              "facing": "+x",
-              "fit": "contain",
               "image": "assets/decals/story/sign_charge.png",
-              "margin": 0.08,
               "material": "Neon pink",
-              "part": 10,
+              "normal": [
+                -1,
+                0,
+                0
+              ],
+              "position": [
+                -0.134,
+                0.475,
+                0.92
+              ],
+              "size": [
+                0.89,
+                0.531
+              ],
               "tint": [
                 1.0,
                 0.85,
@@ -945,11 +1116,11 @@
         ]
       },
       {
-        "name": "kiosk",
+        "name": "charging",
         "seed": 163,
         "enable": [
-          "face_w/sign_meridian_kiosk",
-          "face_e/sign_charge"
+          "face_w/sign_charge",
+          "face_e/sign_offgrid"
         ],
         "disable": [
           "story"

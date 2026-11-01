@@ -24,7 +24,7 @@ GF = 4.2  # ground floor height
 FH = 3.2  # upper floor height
 ROOF = GF + 5 * FH  # 20.2, roof deck
 TOP = 21.0  # parapet top
-GROUND_UV = 2.5  # ground-floor wall texel density vs the rest
+GROUND_UV = 3.0  # ground-floor wall texel density vs the rest
 F = Facade(W, D)
 fy = -D / 2
 
@@ -52,13 +52,13 @@ for s in (-1, 1):
     box("shutter_rail", (0.07, 0.1, SH - 0.02), F.pos("S", SU + s * (SW / 2 - 0.045), 0.3, SH / 2), bevel=0.008)
 # the shutter housing doubles as the shop's fascia: a lightbox sign the full
 # width of the shopfront (the shop sign decal goes on its front face)
-uv_boost(box("shop_sign", (SW + 0.3, 0.4, 0.8), F.pos("S", SU, -0.198, SH + 0.44), bevel=0.02, segments=2), 7, (0, -1, 0))
+uv_boost(box("shop_sign", (SW + 0.3, 0.4, 0.8), F.pos("S", SU, -0.198, SH + 0.44), bevel=0.02, segments=2), 9, (0, -1, 0))
 # stair door with a small canopy and an intercom
 box("stair_door", (DW - 0.02, 0.06, DH - 0.02), F.pos("S", DU, 0.25, 0.01 + (DH - 0.02) / 2), bevel=0.008)
 box("stair_canopy", (1.7, 0.7, 0.08), F.pos("S", DU, -0.348, DH + 0.3), bevel=0.012)
 box("intercom", (0.16, 0.06, 0.26), F.pos("S", DU + 0.82, -0.028, 1.4), bevel=0.008)
 # enamel notice plate on the pier between the shop and the stair door (eye height)
-uv_boost(box("plate", (0.46, 0.012, 0.23), F.pos("S", 1.7, -0.007, 1.62), bevel=0.002), 24, (0, -1, 0))
+uv_boost(box("plate", (0.46, 0.012, 0.23), F.pos("S", 1.7, -0.007, 1.62), bevel=0.002), 32, (0, -1, 0))
 
 # string course over the ground floor and a cornice under the parapet
 box("band", (W + 0.16, D + 0.16, 0.25), (0, 0, GF), bevel=0.02)
@@ -71,7 +71,7 @@ finish(cap, 0.015)
 
 # --- upper floors ---
 balconies = {(1, 0.0), (3, 0.0), (2, -2.6)}
-acs = [("S", 0, 2.6), ("S", 2, 2.6), ("S", 4, -2.6), ("E", 1, -2.5), ("E", 3, 2.5), ("W", 2, 2.5)]
+acs = [("S", 0, 2.6), ("S", 2, 0.0), ("S", 4, -2.6), ("E", 1, -2.5), ("E", 3, 2.5), ("W", 2, 2.5)]
 for i in range(5):
     fz = GF + i * FH
     for u in (-2.6, 0.0, 2.6):
@@ -103,7 +103,7 @@ finish(shell, 0.03, 2, angle=40)
 sx, sy0 = W / 2 - 0.45, fy - 0.15
 box("sign_box", (0.3, 1.2, 6.0), (sx, sy0 - 0.6, 10.0), bevel=0.03, segments=3)
 for s in (-1, 1):
-    uv_boost(box("sign_face", (0.012, 1.08, 5.88), (sx + s * 0.158, sy0 - 0.6, 10.0), bevel=0.002), 4.6, (s, 0, 0))
+    uv_boost(box("sign_face", (0.012, 1.08, 5.88), (sx + s * 0.158, sy0 - 0.6, 10.0), bevel=0.002), 5.8, (s, 0, 0))
 for z in (7.6, 10.0, 12.4):
     box("sign_bracket", (0.1, 0.18, 0.1), (sx, fy - 0.07, z), bevel=0.01)
 

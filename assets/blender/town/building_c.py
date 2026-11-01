@@ -52,14 +52,14 @@ box("canopy_led", (LW + 1.9, 0.05, 0.06), F.pos("S", 0, -2.23, LH + 0.4), bevel=
 # corporate fascia standing on the canopy's front edge (the lobby logo goes on it)
 uv_boost(box("lobby_fascia", (LW, 0.2, 0.9), F.pos("S", 0, -2.0, LH + 0.535 + 0.45), bevel=0.02), 8, (0, -1, 0))
 # a wall sign box left of the lobby (security / kiosk notice)
-uv_boost(box("lobby_sign", (2.9, 0.15, 0.5), F.pos("S", -5.1, -0.078, 3.2), bevel=0.015), 15, (0, -1, 0))
+uv_boost(box("lobby_sign", (2.9, 0.15, 0.5), F.pos("S", -5.1, -0.078, 3.2), bevel=0.015), 17, (0, -1, 0))
 for u in (-2.0, 2.0):
     box("canopy_light", (0.8, 0.8, 0.04), F.pos("S", u, -1.1, LH + 0.255), bevel=0.006)
 # lobby side windows and a service door
 for side in ("E", "W"):
     window(F, cuts, side, -2.5, 1.0, 3.5, 2.6, mullions=1, sill=False, name="lobby_side")
 # enamel notice plate on the lobby recess's side wall beside the doors (eye height)
-uv_boost(box("plate", (0.012, 0.46, 0.23), (LW / 2 - 0.007, -(D / 2) + 0.65, 1.62), bevel=0.002), 26, (-1, 0, 0))
+uv_boost(box("plate", (0.012, 0.46, 0.23), (LW / 2 - 0.007, -(D / 2) + 0.65, 1.62), bevel=0.002), 32, (-1, 0, 0))
 box("service_door", (1.2, 0.08, 2.3), F.pos("N", 3.0, -0.03, 1.16), bevel=0.01, rot=(0, 0, math.pi))
 
 # --- repeated floors: ribbon windows on every side ---
