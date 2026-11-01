@@ -310,7 +310,7 @@ func _clear_viewpoint(J, target: Vector3, heights: Array, dists: Array) -> Vecto
 	var best: Vector3 = J.pos + Vector3(20, 12, 20)
 	var best_score := -1.0
 	for ap in J.approaches:
-		for side in [0.0, 0.6, -0.6]:
+		for side in [0.0, 0.78, -0.78]:
 			var d: Vector3 = (-ap.dir).rotated(Vector3.UP, side).normalized()
 			for h in heights:
 				for r in dists:
@@ -329,7 +329,7 @@ func _clear_viewpoint(J, target: Vector3, heights: Array, dists: Array) -> Vecto
 						pq.position = p + m
 						if not space.intersect_point(pq, 1).is_empty():
 							clear -= 1.0
-					var score := clear * 10.0 - absf(r - 26.0) * 0.1 - absf(h - 9.0) * 0.1
+					var score := clear * 10.0 - absf(r - 34.0) * 0.1 - absf(h - 17.0) * 0.1 + (6.0 if side != 0.0 else 0.0)
 					if score > best_score:
 						best_score = score
 						best = p
@@ -389,17 +389,38 @@ func _shots(dir: String) -> void:
 	await _wait(5.0)
 	# 1. busy junction at night (J1 crossroads), from a first-floor window
 	var J = _junction("J1")
-	_populate(J.pos, 70.0, 14)
+	var before: int = T.active.size()
+	for ai in J.approaches.size():
+		_queue(J, ai, 3)
+	_populate(J.pos, 60.0, 8)
+	print("  junction shot: placed %d (active %d), within 40 m of J1: %d" % [T.active.size() - before, T.active.size(), T.active.filter(func(c): return c.global_position.distance_to(J.pos) < 40.0).size()])
 	cam.manual = true
 	main.car.freeze = true
 	main.car.global_position = J.pos + Vector3(60, 0.5, 60)    # hero out of the frame
 	var look_at_j: Vector3 = J.pos + Vector3.UP * 0.5
-	var cpos: Vector3 = _clear_viewpoint(J, look_at_j, [9.0, 7.0, 12.0, 5.0], [22.0, 30.0, 18.0, 38.0])
-	cam.fov = 62.0
+	var cpos: Vector3 = _clear_viewpoint(J, look_at_j, [17.0, 21.0, 25.0, 14.0], [30.0, 36.0, 26.0, 42.0])
+	cam.fov = 60.0
 	cam.global_position = cpos
 	cam.look_at(look_at_j, Vector3.UP)
-	await _wait(9.0)
+	# shoot ~3 s into a green: the released queue is crossing while the others wait at red
+	var sc: Dictionary = T.signals.ctl[J.id]
+	var tw := 0.0
+	while tw < 45.0 and not (sc.state == T.signals.GREEN and sc.t > 2.8 and tw > 6.0):
+		await get_tree().process_frame
+		tw += get_process_delta_time()
+		if sc.state == T.signals.RED and sc.t < 0.1:
+			for ai in J.approaches.size():      # top the queues up during the all-red
+				if not sc.phases[(sc.phase + 1) % sc.phases.size()].aps.has(ai):
+					continue
+				_queue(J, ai, 2)
+	print("  junction shot: %d active, %d within 40 m of J1, despawned %d, dead_end %d" % [T.active.size(), T.active.filter(func(c): return c.global_position.distance_to(J.pos) < 40.0).size(), T.stats.despawned, T.stats.dead_end])
 	await _shot(dir, "01_busy_junction")
+	if main.args.has("shots-one"):
+		print("  cam ", cam.global_position, " current ", cam.current, " vp cam ", get_viewport().get_camera_3d().name, " J ", J.pos)
+		for c in T.active.filter(func(c): return c.global_position.distance_to(J.pos) < 40.0).slice(0, 5):
+			print("  car ", c.name, " ", c.global_position.snappedf(0.1), " vis ", c.is_visible_in_tree(), " mode ", c.mode, " lods ", c.lod_nodes.size(), " meshes ", c.lod_nodes[0].meshes.size(), " range ", c.lod_nodes[0].meshes[0].visibility_range_end, " in frustum ", cam.is_position_in_frustum(c.global_position))
+		get_tree().quit()
+		return
 	perf["junction_view"] = await _measure_for(3.0)
 	# 2. jam at a red light: hold one approach red and queue cars on it, look along the queue
 	var ai := 1 if J.approaches.size() > 1 else 0
