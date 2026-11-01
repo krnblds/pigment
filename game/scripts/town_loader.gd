@@ -460,8 +460,8 @@ const INTERIOR_SETS := {
 		"cool": ["office_cubicles", "server_room", "hoshikawa_office", "meridian_office"],
 		"screen": ["meridian_office", "server_room"]},
 	"tower": {"ground": [],
-		"warm": ["hoshikawa_office", "office_cubicles", "hydroponics"],
-		"cool": ["office_cubicles", "server_room", "server_room", "hydroponics"],
+		"warm": ["hoshikawa_office", "office_cubicles", "office_cubicles", "hoshikawa_office"],
+		"cool": ["office_cubicles", "server_room", "server_room", "office_cubicles", "hydroponics"],
 		"screen": ["meridian_office", "server_room"]},
 	"proxy": {"ground": [],
 		"warm": ["apartment_holo", "apartment_kitchen", "hoshikawa_office", "neon_bedroom"],
@@ -484,8 +484,8 @@ func _interior_data() -> Dictionary:
 		return _interiors
 	var j = JSON.parse_string(FileAccess.get_file_as_string(jp))
 	var tex = load(INTERIOR_DIR + "interiors_atlas.png")
-	if not (j is Dictionary) or not (tex is Texture2DArray):
-		push_warning("interiors: %sinteriors_atlas.png is not a Texture2DArray (re-import game/assets/interiors)" % INTERIOR_DIR)
+	if not (j is Dictionary) or not (tex is TextureLayered):
+		push_warning("interiors: %sinteriors_atlas.png is not a texture array (re-import game/assets/interiors)" % INTERIOR_DIR)
 		return _interiors
 	var index := {}
 	var dims := PackedVector4Array()

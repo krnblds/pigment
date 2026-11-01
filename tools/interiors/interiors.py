@@ -158,9 +158,9 @@ def texture_script(name):
         if role.get("city"):
             # a night skyline seen through the back window: lit window grid, dimmer towards the top
             L.append(_layer(f"{label} city", ids, {"base_color": [1.0, 0.8, 0.55], "emissive": [1.0, 0.75, 0.45], "emissive_strength": 3.0},
-                            {"generator": "window_grid", "amount": 0.3, "scale": 6.0, "softness": 0.05, "seed": seed + i}))
+                            {"generator": "spots", "amount": 0.05, "scale": 7.0, "softness": 0.05, "seed": seed + i}))
             L.append(_layer(f"{label} city blue", ids, {"base_color": [0.5, 0.7, 1.0], "emissive": [0.45, 0.65, 1.0], "emissive_strength": 2.0},
-                            {"generator": "window_grid", "amount": 0.12, "scale": 9.0, "softness": 0.05, "seed": seed + i + 7}))
+                            {"generator": "spots", "amount": 0.03, "scale": 11.0, "softness": 0.05, "seed": seed + i + 7}))
     # wear and grime: Pigment generators driven by the AO / curvature bake
     if walls:
         L.append(_layer("Wall scuffs", walls, {"base_color": [0.1, 0.09, 0.08], "roughness": 0.9},
@@ -202,6 +202,9 @@ def texture(names):
 
 
 # ------------------------------------------------------------------ pack / window maps / sheet / sync
+# per-room exposure trims after looking at the contact sheet (white rooms under fluorescents clip)
+ROOM_EXPOSURE = {"konbini": -0.7, "office_cubicles": -0.5, "capsule_hotel": -0.4, "noctis_clinic": -0.4, "implant_clinic": -0.4,
+                 "hoshikawa_office": -0.3, "gym": -0.2, "hydroponics": -0.3}
 GRADE = {"contrast": 1.05, "saturation": 1.08, "lift": [0.004, 0.004, 0.008]}
 
 
@@ -212,10 +215,10 @@ def pack(names):
         rd = (OUT / "renders").relative_to(ROOT).as_posix()
         rooms.append({"name": n, "size": side["size"][:1] + side["size"][1:2] + side["size"][2:3], "eye": side["eye"],
                       "lit": f"{rd}/{n}_lit.png", "off": f"{rd}/{n}_off.png", "depth": f"{rd}/{n}_depth.png",
-                      "grade": side.get("grade") or {}, "off_grade": {"saturation": 0.85, "tint": [0.85, 0.92, 1.1]}, "tags": side["tags"]})
+                      "grade": dict(side.get("grade") or {}, **({"exposure": ROOM_EXPOSURE[n]} if n in ROOM_EXPOSURE else {})), "off_grade": {"saturation": 0.85, "tint": [0.85, 0.92, 1.1]}, "tags": side["tags"]})
     a = {"dir": OUT.relative_to(ROOT).as_posix(), "name": "interiors", "cell": CELL, "grade": GRADE, "rooms": rooms}
     out = run_script([{"tool": "pack_interiors", "args": a}], SCRIPTS / "pack.jsonl")
-    print("[pigment] pack_interiors:", [l for l in out.splitlines() if l.startswith("script:")][0])
+    print("[pigment] pack_interiors ok")
 
 
 def kit_glass(asset):
@@ -236,7 +239,7 @@ def windows():
         L += [{"tool": "new_project", "args": {"mesh": f"assets/town/{a}.glb", "resolution": 512}},
               {"tool": "export_window_map", "args": {"dir": (OUT / "windows").relative_to(ROOT).as_posix(), "name": a, "parts": kit_glass(a), "resolution": res, "pad": 3}}]
     out = run_script(L, SCRIPTS / "windows.jsonl")
-    print("[pigment] window maps:", [l for l in out.splitlines() if l.startswith("script:")][0])
+    print("[pigment] window maps:", out.count("export_window_map"), "assets")
 
 
 def sheet():

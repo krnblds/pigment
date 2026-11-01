@@ -15,6 +15,7 @@ extends Node3D
 ##   --world=<res path> traffic lane graph from a world-lanes/1 file instead of the town layout
 ##   --traffic-test=<s> headless traffic test   --traffic-shots=<dir>  traffic screenshots + perf
 ##   --bench-traffic    fps with 0 / 30 / 60 / 80 cars
+##   --interior-shots=<dir>  night views into the interior-mapped windows   --no-interiors  plain panes
 
 const TownLoader := preload("res://scripts/town_loader.gd")
 const Car := preload("res://scripts/car.gd")
@@ -57,6 +58,7 @@ func _ready() -> void:
 	_setup_environment()
 	town = TownLoader.new()
 	town.name = "Town"
+	town.interiors_enabled = not args.has("no-interiors")      # --no-interiors: plain window panes (A/B)
 	add_child(town)
 	# --map=town | world (default: the open world when it has been exported)
 	map_name = String(args.get("map", "world" if FileAccess.file_exists("res://assets/world/world_layout.json") else "town"))
@@ -124,7 +126,7 @@ func _ready() -> void:
 		var vt := preload("res://scripts/vehicle/vehicle_tests.gd").new()
 		vt.main = self
 		add_child(vt)
-	elif args.has("autoshot") or args.has("bench") or args.has("bench-spots") or args.has("bench-matrix") or args.has("drive-old"):
+	elif args.has("autoshot") or args.has("bench") or args.has("bench-spots") or args.has("bench-matrix") or args.has("drive-old") or args.has("interior-shots"):
 		var auto := preload("res://scripts/automation.gd").new()
 		auto.main = self
 		add_child(auto)

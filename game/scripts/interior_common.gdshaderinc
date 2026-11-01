@@ -23,8 +23,8 @@ uniform int rooms_cool[8];
 uniform int n_cool = 0;
 uniform int rooms_screen[8];
 uniform int n_screen = 0;
-uniform float interior_lit_energy = 2.4;  // lit room brightness (emission)
-uniform float interior_off_energy = 0.22; // unlit room (city glow)
+uniform float interior_lit_energy = 1.1;  // lit room brightness (emission)
+uniform float interior_off_energy = 0.4; // unlit room (city glow)
 uniform float interior_tint = 0.35;       // how much the pane's lit colour tints its room
 
 float ihash13(vec3 p) {

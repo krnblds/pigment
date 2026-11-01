@@ -32,6 +32,7 @@ import bmesh
 import bpy
 from mathutils import Matrix, Vector
 
+BULB_GAIN = 3.0       # bare bulbs / pendants light a whole room at night
 LIT_GAIN = 2.5        # switchable lights are authored in watts, then scaled up for a night-time window
 ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
 STORY = "assets/decals/story/"
@@ -518,7 +519,7 @@ def hoshikawa_office(r):
         r.desk_station((x, y, 0), rz=180, image=[DEC + "logo_hoshikawa_dynamics.png"] if r.rng.random() < 0.5 else None, color=(0.85, 0.9, 1.0), person=r.rng.random() < 0.3)
     for p in ((-W / 2 + 0.35, 1.0), (W / 2 - 0.35, 3.1), (-W / 2 + 0.35, 4.9), (0.0, 5.3)):
         r.plant(p, 1.3, r=0.22)
-    r.box((0, 1.1, 1.1), (1.6, 0.02, 2.2), {"color": [0.6, 0.7, 0.72], "rough": 0.05, "metal": 0.0})
+    r.box((-W / 2 + 0.9, 3.1, 0.55), (1.4, 0.02, 1.1), {"color": [0.6, 0.7, 0.72], "rough": 0.05, "metal": 0.0})
     r.decal(DEC + "logo_hoshikawa_dynamics.png", (W / 2 - 0.003, 1.6, 1.9), (-1, 0, 0), (1.2, 0.5), emissive=2.0)
     for y in (1.5, 3.1, 4.7):
         r.lamp_panel((0, y, H - 0.02), (2.6, 0.25, 0.04), (1.0, 0.92, 0.8), 140)
@@ -930,12 +931,13 @@ def render(name, out, samples=128, res=768):
             o = bpy.context.active_object
         o.data.materials.append(_emission_mat(f"lamp{k}", l["color"], l["strength"]))
         o["state"] = l["state"]
+        o.visible_shadow = False          # the light inside a bulb / under a panel must get out
         lamp_objs.append(o)
     for k, l in enumerate(side["lights"]):
         ld = bpy.data.lights.new(f"L{k}", l["type"])
         ld.color = l["color"]
         # lights that switch with the room carry most of the lit look
-        ld.energy = l["power"] * (LIT_GAIN if l["state"] == "lit" else 1.0)
+        ld.energy = l["power"] * (LIT_GAIN if l["state"] == "lit" else 1.0) * (BULB_GAIN if l["type"] == "POINT" and l["state"] == "lit" else 1.0)
         if l["type"] == "AREA":
             ld.shape = "RECTANGLE"
             ld.size, ld.size_y = l["size"][0], l["size"][1]
