@@ -26,7 +26,10 @@ from mathutils import Vector
 AVENUE_SPECIES = {"downtown": "zelkova", "midtown": "ginkgo", "old_town": "pagoda", "hillside": "cherry", "corporate": "palm"}
 STREET_SPECIES = {"downtown": ["zelkova"], "midtown": ["ginkgo", "zelkova"], "old_town": ["pagoda", "cherry"],
                   "hillside": ["cherry", "pagoda"], "corporate": ["palm"], "port": ["zelkova"]}
-SPACING = {"zelkova": 9.0, "ginkgo": 8.0, "pagoda": 10.0, "cherry": 8.5, "palm": 9.5}
+# Fewer trees (user feedback): avenue trees roughly every 20 m, sparser groves and forest.
+SPACING = {"zelkova": 20.0, "ginkgo": 18.0, "pagoda": 22.0, "cherry": 19.0, "palm": 20.0}
+GROVE_GRID_M = 80.0         # was 46
+NATURE_STEP_M = 15.0        # was 8.5 (about a third of the forest)
 
 
 class Kit:
@@ -139,6 +142,8 @@ def street_swaps(cfg, P, kit, log):
         a = i["asset"]
         if a in ("street_tree", "palm_tree") and i.get("kind") == "prop":
             d = i.get("district", "midtown")
+            if rng.random() < 0.55:                 # fewer trees: drop about half of the street spots
+                continue
             sp = "palm" if a == "palm_tree" else rng.choice(STREET_SPECIES.get(d, ["zelkova"]))
             key = kit.pick(rng, sp)
             if key is None:
@@ -174,8 +179,8 @@ def park_groves(cfg, P, kit, hf, log, rect, district_of):
             continue
         cx, cy = isl["center"]
         R = max(isl["radius"]) * 1.05
-        for gy in np.arange(cy - R, cy + R, 46.0):
-            for gx in np.arange(cx - R, cx + R, 46.0):
+        for gy in np.arange(cy - R, cy + R, GROVE_GRID_M):
+            for gx in np.arange(cx - R, cx + R, GROVE_GRID_M):
                 c = Vector((gx + rng.uniform(-14, 14), gy + rng.uniform(-14, 14)))
                 d = district_of(cfg, isl["name"], c)
                 if d is None or rng.random() > want.get(d["name"], 0.0):
@@ -192,7 +197,7 @@ def park_groves(cfg, P, kit, hf, log, rect, district_of):
                 look = "green" if main == "cherry" and rng.random() < 0.3 else None
                 k = int(rng.integers(3, 6)) if hasattr(rng, "integers") else rng.randint(3, 5)
                 pts = []
-                for j in range(k * 3):
+                for j in range(k * 2):
                     if len(pts) >= k:
                         break
                     q = c + Vector((rng.uniform(-6.5, 6.5), rng.uniform(-6.5, 6.5)))
@@ -204,7 +209,7 @@ def park_groves(cfg, P, kit, hf, log, rect, district_of):
                     sc = rng.uniform(0.85, 1.1)
                     P.add(key, (q.x, q.y, z - 0.1), rng.uniform(0, 6.28), d["name"], scale=(sc, sc, sc), kind="tree", slot="park")
                     n += 1
-                for j in range(rng.randint(4, 8)):            # azalea / box borders
+                for j in range(rng.randint(2, 4)):            # azalea / box borders
                     a = rng.uniform(0, 2 * math.pi)
                     q = c + Vector((math.cos(a), math.sin(a))) * rng.uniform(6.5, 8.0)
                     z = float(hf.sample_tri(np.array([q.x]), np.array([q.y]))[0])
@@ -220,7 +225,7 @@ def nature_trees(cfg, P, hf, masks, kit, log, rect, Perlin, net=None, rot90=None
     rng = random.Random(cfg["seed"] * 7 + 304)
     noise = Perlin(cfg["seed"] + 55)
     noise2 = Perlin(cfg["seed"] + 77)
-    step = 8.5
+    step = NATURE_STEP_M
     xs = np.arange(-cfg["size_m"] / 2 + 10, cfg["size_m"] / 2 - 10, step)
     X, Y = np.meshgrid(xs, xs)
     rs = np.random.default_rng(cfg["seed"] + 11)
@@ -292,7 +297,7 @@ def nature_trees(cfg, P, hf, masks, kit, log, rect, Perlin, net=None, rot90=None
             if nd.kind != "plaza" or nd.J is None:
                 continue
             J = nd.J
-            for k in range(14):
+            for k in range(7):
                 a = 2 * math.pi * k / 14 + rng.uniform(-0.1, 0.1)
                 p = J.pos + Vector((math.cos(a), math.sin(a))) * (J.R + rng.uniform(5.0, 8.0))
                 z = float(hf.sample_tri(np.array([p.x]), np.array([p.y]))[0])
