@@ -302,8 +302,12 @@ fn gn_shape(shape: u32, l: vec2<f32>, r: f32, e: f32, irr: f32, ph: f32) -> f32 
                 m = max(m, dot(x, vec2<f32>(cos(a), sin(a))) / dist);
             }
             if (m >= 1.0) { return 0.0; }
-            let ridge = 0.12 * abs(dot(x, vec2<f32>(cos(ph * 9.0), sin(ph * 9.0))));
-            return clamp(pow(1.0 - m, 0.55) - ridge, 0.0, 1.0);
+            // a bevelled rim, then a top broken into tilted facets along a ridge
+            let bevel = smoothstep(0.0, 0.28 + 0.25 * fract(ph * 3.1), 1.0 - m);
+            let d1 = vec2<f32>(cos(ph * 9.0), sin(ph * 9.0));
+            let d2 = vec2<f32>(-d1.y, d1.x);
+            let top = 0.82 + 0.2 * dot(x, d1) * (fract(ph * 5.3) - 0.5) * 2.0 - 0.16 * abs(dot(x, d2) + 0.25 * (fract(ph * 2.7) - 0.5));
+            return clamp(bevel * top, 0.0, 1.0);
         }
         default: {
             // pebble: an ellipsoid dome with an irregular outline
@@ -387,7 +391,7 @@ fn gn_rock(t: vec2<i32>, gp: vec4<f32>, gp2: vec4<f32>, gp3: vec4<f32>) -> f32 {
     let bands = select(1.6, gp3.x, gp3.x > 0.0);
     let kb = gn_k(vec2<f32>(1.0, bands), fr.tp).y;
     let bper = select(0.0, round(kb * fr.tp.y), fr.tp.y > 0.0);
-    let b = p.y * kb + (gn_fbm(fr.p, vec2<f32>(s * 0.35), fr.tp, 2, salt + 8.0) - 0.5) * 1.2;
+    let b = p.y * kb + (gn_fbm(fr.p, vec2<f32>(s * 0.35), fr.tp, 2, salt + 8.0) - 0.5) * 2.2 + (gn_fbm(fr.p, vec2<f32>(s * 1.3, s * 0.6), fr.tp, 3, salt + 6.0) - 0.5) * 0.9;
     let bi = floor(b);
     let bf = b - bi;
     let bid = select(bi, bi - bper * floor(bi / max(bper, 1.0)), bper > 0.5);
