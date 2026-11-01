@@ -645,14 +645,16 @@ func _drive_test() -> void:
 	car.steer_override = NAN
 	var dry: Dictionary = res.dry
 	var wetr: Dictionary = res.wet
-	checks["0_100_7_to_10.5s"] = dry.t_0_100 > 7.0 and dry.t_0_100 < 10.5
+	# easy handling (the default) is lighter and grippier: quicker 0-100, shorter stops, more grip
+	var easy: bool = preload("res://scripts/vehicle/vehicle_params.gd").easy
+	checks["0_100_7_to_10.5s"] = dry.t_0_100 > (5.5 if easy else 7.0) and dry.t_0_100 < 10.5
 	checks["vmax_168_196"] = dry.vmax_kmh > 168.0 and dry.vmax_kmh < 196.0
-	checks["brake_dry_33_47m"] = dry.brake_100_0.m > 33.0 and dry.brake_100_0.m < 47.0
-	checks["brake_wet_46_64m"] = wetr.brake_100_0.m > 46.0 and wetr.brake_100_0.m < 64.0
+	checks["brake_dry_33_47m"] = dry.brake_100_0.m > (28.0 if easy else 33.0) and dry.brake_100_0.m < 47.0
+	checks["brake_wet_46_64m"] = wetr.brake_100_0.m > (38.0 if easy else 46.0) and wetr.brake_100_0.m < 64.0
 	# --- skidpad: 60 m circle (radius 30 m); speed creeps up until the car can't hold the line
 	res["skidpad"] = await _skidpad(30.0)
 	print("  skidpad ", JSON.stringify(res.skidpad))
-	checks["skidpad_0.75_1.08g"] = res.skidpad.lat_g > 0.75 and res.skidpad.lat_g < 1.08
+	checks["skidpad_0.75_1.08g"] = res.skidpad.lat_g > 0.75 and res.skidpad.lat_g < (1.25 if easy else 1.08)
 	# --- lane change at 120 km/h: a smooth driver, and a keyboard-style one (full-lock taps)
 	res["lane_change_120"] = await _lane_change(120.0, false)
 	res["lane_change_120_keyboard"] = await _lane_change(120.0, true)

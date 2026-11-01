@@ -7,6 +7,21 @@ extends RefCounted
 const CLASSES := "res://data/vehicles/classes.json"
 const DIR := "res://data/vehicles/"
 
+## Easy handling (default): the realistic model, lightened and made more forgiving for
+## keyboard driving. --sim on the command line turns it off for the full simulation feel.
+static var easy := true
+const EASY := {
+	"mass": 0.82,            # lighter car: quicker to turn and to stop
+	"inertia": 0.75,         # rotates more willingly
+	"torque": 1.18,          # a bit more pull
+	"mu": 1.15,              # more grip
+	"slip_angle": 1.25,      # grip peaks later, so the limit is easier to feel
+	"shape_lat": 0.9,        # and falls off more gently past it
+	"steer_rate": 1.35,      # snappier steering
+	"steer_rate_hs": 1.3,
+	"return": 1.35,          # wheel recentres faster
+}
+
 
 static func _read(path: String) -> Dictionary:
 	if not FileAccess.file_exists(path):
@@ -42,8 +57,26 @@ static func build(spec: Dictionary, id := "") -> Dictionary:
 	p = merge(p, own)
 	p["id"] = id
 	p["class"] = cls
+	if easy:
+		_easy(p)
 	_finish(p)
 	return p
+
+
+static func _easy(p: Dictionary) -> void:
+	p["mass"] = float(p.mass) * EASY.mass
+	p["inertia"] = (p.inertia as Array).map(func(v): return float(v) * EASY.mass * EASY.inertia)
+	var tc: Array = p.engine.torque_curve
+	p.engine["torque_curve"] = tc.map(func(pt): return [pt[0], float(pt[1]) * EASY.torque])
+	for ax in ["front", "rear"]:
+		var t: Dictionary = p.tyres[ax]
+		t["mu"] = float(t.mu) * EASY.mu
+		t["peak_slip_angle_deg"] = float(t.peak_slip_angle_deg) * EASY.slip_angle
+		t["shape_lat"] = float(t.shape_lat) * EASY.shape_lat
+	var st: Dictionary = p.steering
+	st["rate"] = float(st.rate) * EASY.steer_rate
+	st["rate_high_speed"] = float(st.rate_high_speed) * EASY.steer_rate_hs
+	st["return_rate"] = float(st.return_rate) * EASY["return"]
 
 
 ## What the car contract tells us about this vehicle.

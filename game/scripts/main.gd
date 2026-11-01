@@ -51,6 +51,8 @@ func _ready() -> void:
 	for a in OS.get_cmdline_user_args():
 		var kv := String(a).trim_prefix("--").split("=", true, 1)
 		args[kv[0]] = kv[1] if kv.size() > 1 else "1"
+	if args.has("sim"):
+		preload("res://scripts/vehicle/vehicle_params.gd").easy = false   # full simulation handling
 	_setup_input()
 	_setup_environment()
 	town = TownLoader.new()
