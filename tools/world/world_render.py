@@ -194,7 +194,7 @@ def game_cams(path):
     out = {}
     for c in json.load(open(path, encoding="utf-8")):
         out[c["name"]] = {"loc": tuple(c["loc"]), "target": tuple(c["target"]), "fov_y": c["fov_y"],
-                          "sky": "night", "exposure": c.get("exposure", 0.4), "fog": c.get("fog", 0.0015)}
+                          "sky": c.get("sky", "night"), "exposure": c.get("exposure", 0.4), "fog": c.get("fog", 0.0015)}
     return out
 
 
