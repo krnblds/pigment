@@ -856,6 +856,56 @@ mod tests {
     }
 
     #[test]
+    fn glass_and_cut_outs_flow_through_fill_brush_viewport_export_and_save() {
+        let Ok(mut s) = Session::new() else { return };
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        s.new_project(&json!({ "mesh": root.join("assets/ammo_box.glb"), "resolution": 512, "material": "Steel" })).unwrap();
+        let out = std::env::temp_dir().join(format!("pigment-glass-{}", std::process::id()));
+        // a solid material exports no opacity / transmission maps and an RGB base colour
+        let e = s.export_textures(&json!({ "dir": out, "preset": "separate", "name": "Solid" })).unwrap();
+        assert!(!e["files"].to_string().contains("Opacity"), "{e}");
+        // glass fill over everything
+        s.add_layer(&json!({ "name": "Glass", "values": { "base_color": [0.9, 0.95, 1.0], "roughness": 0.05, "opacity": 0.3, "transmission": 1.0 } })).unwrap();
+        let l = s.layers();
+        let glass = l.as_array().unwrap().iter().find(|l| l["name"] == "Glass").unwrap();
+        assert!(glass["channels"].to_string().contains("opacity") && glass["channels"].to_string().contains("transmission"), "{glass}");
+        s.export_textures(&json!({ "dir": out, "preset": "separate", "name": "Glass" })).unwrap();
+        let op = image::open(out.join("Glass_Opacity.png")).unwrap().to_luma8();
+        let tr = image::open(out.join("Glass_Transmission.png")).unwrap().to_luma8();
+        let mid = |i: &image::GrayImage| i.get_pixel(i.width() / 2, i.height() / 2).0[0];
+        assert!((mid(&op) as i32 - 77).abs() <= 3, "opacity {}", mid(&op));
+        assert!(mid(&tr) >= 250, "transmission {}", mid(&tr));
+        // unreal: alpha rides in BaseColor
+        s.export_textures(&json!({ "dir": out, "preset": "unreal", "name": "GlassUE" })).unwrap();
+        let bc = image::open(out.join("GlassUE_BaseColor.png")).unwrap();
+        assert_eq!(bc.color(), image::ColorType::Rgba8);
+        // the viewport shows the background through the glass: the material
+        // view differs from an opaque render of the same values
+        let a = s.render(&json!({ "width": 160, "height": 120 })).unwrap();
+        s.update_layer(&json!({ "layer": "Glass", "values": { "opacity": 1.0, "transmission": 0.0 } })).unwrap();
+        let b = s.render(&json!({ "width": 160, "height": 120 })).unwrap();
+        assert_ne!(a.png, b.png);
+        let ov = s.render(&json!({ "view": "opacity", "width": 160, "height": 120 })).unwrap();
+        assert!(ov.png.len() > 100);
+        // brush: punch a hole (opacity 0) on the paint layer
+        s.update_layer(&json!({ "layer": "Glass", "visible": false })).unwrap();
+        let p = s.paint_stroke(&json!({ "points": [[0.4, 0.5], [0.6, 0.5]], "size": 60, "yaw": 0, "pitch": 0, "values": { "opacity": 0.0 }, "channels": ["opacity"] })).unwrap();
+        assert_eq!(p["painted_on"], "Paint");
+        s.export_textures(&json!({ "dir": out, "preset": "separate", "name": "Holes" })).unwrap();
+        let holes = image::open(out.join("Holes_Opacity.png")).unwrap().to_luma8();
+        assert!(holes.pixels().any(|p| p.0[0] < 10), "no hole painted");
+        assert!(holes.pixels().any(|p| p.0[0] == 255));
+        // save + reopen keeps the painted opacity
+        s.save_project(&json!({ "path": out.join("holes.pigment") })).unwrap();
+        assert!(out.join("holes.pigment/layers").read_dir().unwrap().flatten().any(|d| d.path().join("opacity.png").exists()));
+        s.open_project(&json!({ "path": out.join("holes.pigment") })).unwrap();
+        s.export_textures(&json!({ "dir": out, "preset": "separate", "name": "Reopened" })).unwrap();
+        let again = image::open(out.join("Reopened_Opacity.png")).unwrap().to_luma8();
+        assert_eq!(holes.as_raw(), again.as_raw());
+        std::fs::remove_dir_all(out).ok();
+    }
+
+    #[test]
     fn neon_glows_in_material_export_and_brush() {
         let Ok(mut s) = Session::new() else { return };
         let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");

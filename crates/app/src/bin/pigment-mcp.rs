@@ -15,7 +15,7 @@ use std::io::{BufRead, Write};
 const PROTOCOL: &str = "2025-06-18";
 
 fn tools() -> Value {
-    let layer_fields = json!({
+    let mut layer_fields = json!({
         "name": { "type": "string" },
         "material": { "type": "string", "description": "Material preset name (see list_library)" },
         "values": { "type": "object", "description": "Override fill values", "properties": {
@@ -27,6 +27,17 @@ fn tools() -> Value {
         "blend": { "type": "object", "description": "per channel, e.g. {\"base_color\": \"multiply\", \"height\": \"add\"}" },
         "mask": { "description": "\"white\" | \"black\" | null (remove) | {generator: edge_wear|dirt|grunge|streaks|stripes|spots|scratches|panel_lines|gradient, amount, softness, scale, breakup, seed, ao_influence, curvature_weight, invert, parts: [part ids from list_parts / pick_parts: limit the layer to those mesh pieces], effects: [{generator, op: multiply|add|subtract|max|min, amount, scale, breakup, ...}] (max 2)}" }
     });
+    // material values beyond the basics: emission, opacity (cut-outs), transmission (glass)
+    let value_extras = json!({
+        "emissive": { "type": "array", "items": { "type": "number" }, "description": "emitted colour, sRGB 0..1" },
+        "emissive_strength": { "type": "number" },
+        "opacity": { "type": "number", "description": "material alpha 0..1: 1 = solid, 0 = hole (cut-out: fences, grilles). Not the layer opacity." },
+        "transmission": { "type": "number", "description": "0..1, 1 = clear glass (refracts; pair with low roughness and opacity < 1 for see-through windows)" }
+    });
+    for (k, v) in value_extras.as_object().unwrap() {
+        layer_fields["values"]["properties"][k] = v.clone();
+    }
+    let brush_values = json!({ "type": "object", "description": "brush material values (same keys as a fill's values: base_color, roughness, metallic, height, emissive, emissive_strength, opacity, transmission); opacity/transmission given here are painted too", "properties": layer_fields["values"]["properties"].clone() });
     let camera = json!({
         "yaw": { "type": "number", "description": "degrees around the model (default 35)" },
         "pitch": { "type": "number", "description": "degrees above (default 20)" },
@@ -51,11 +62,12 @@ fn tools() -> Value {
         ("mask", json!({ "type": "boolean", "description": "paint the layer's mask instead" })),
         ("mask_value", json!({ "type": "string", "enum": ["white", "black"] })),
         ("erase", json!({ "type": "boolean" })),
+        ("values", brush_values.clone()),
     ] {
         paint_props[k] = v;
     }
     let mut render_props = camera;
-    render_props["view"] = json!({ "type": "string", "description": "material (default), base color, roughness, metallic, height, normal, ambient occlusion, curvature, world normal, uv checker" });
+    render_props["view"] = json!({ "type": "string", "description": "material (default), base color, roughness, metallic, height, normal, ambient occlusion, curvature, world normal, uv checker, emission, opacity, transmission" });
     render_props["path"] = json!({ "type": "string", "description": "where to save the PNG (default: temp)" });
     render_props["exposure"] = json!({ "type": "number" });
     render_props["background"] = json!({ "type": "boolean" });
@@ -84,9 +96,10 @@ fn tools() -> Value {
                   "yaw": { "type": "number" }, "pitch": { "type": "number" }, "zoom": { "type": "number" },
                   "tint": { "type": "array", "items": { "type": "number" } }, "material": { "type": "string", "description": "preset for roughness/metallic (default plain paint)" },
                   "emissive_strength": { "type": "number" }, "height": { "type": "number" }, "opacity": { "type": "number" },
-                  "layer": {}, "mask": { "type": "boolean" }, "alpha_from_luminance": { "type": "boolean" } }), &["image"]),
+                  "layer": {}, "mask": { "type": "boolean" }, "alpha_from_luminance": { "type": "boolean" }, "values": brush_values,
+                  "channels": { "type": "array", "items": { "type": "string" }, "description": "channels to paint (e.g. [\"opacity\"] with values {opacity: 0} punches holes in the image's shape)" } }), &["image"]),
         t("render", "Render the model with its current material (PBR, studio lighting). Returns the image.", render_props, &[]),
-        t("export_textures", "Export PNG texture maps. Presets: unreal, unity, godot, separate (glTF/Blender: BaseColor, Roughness, Metallic, AO, Normal_OpenGL, Height).",
+        t("export_textures", "Export PNG texture maps. Presets: unreal, unity, godot, separate (glTF/Blender: BaseColor, Roughness, Metallic, AO, Normal_OpenGL, Height, Emissive, plus Opacity / Transmission when the material has any). unreal/unity/godot put opacity in the base colour's alpha (RGBA) when it isn't solid.",
           json!({ "dir": { "type": "string" }, "preset": { "type": "string" }, "name": { "type": "string" } }), &["dir"]),
         t("undo", "Undo the last action.", json!({}), &[]),
         t("redo", "Redo.", json!({}), &[]),
