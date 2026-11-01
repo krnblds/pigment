@@ -32,7 +32,8 @@ python tools/world/world_map.py --out docs/agents/world/map.png
 
 - The `gen` stage takes about 35 s and `build` about 3 min. `verify` takes about 30 s, and the full
   `render` run about 3 min.
-- The export writes one glb per mesh key and takes several minutes.
+- The export writes one glb per mesh key: 1,194 glbs plus 234 terrain LODs, 285 MB. It takes about 55 min,
+  because Blender's glTF exporter costs about 2.5 s per file.
 - Driver options:
   - `--config FILE` (default `tools/world/world_config.json`)
   - `--seed N`
@@ -277,7 +278,7 @@ spawn: {pos, dir, road}       metrics: {...}
   - Shared mesh data becomes one glb: kit buildings per variant, tower archetypes, containers,
     cranes, trees, props.
   - Unique pieces are 256 m terrain chunks, roads, junctions, decals, bridges and sea walls.
-  - That is about 1,200 glbs. Never one mesh.
+  - That is 1,194 glbs for 36,941 placed instances (footings included). Never one mesh.
 - **Other output.**
   - `terrain_lod/<chunk>_{8,32}m.glb` holds terrain LODs.
   - `world.json` and `heightfield.f32` are copied next to the layout.
