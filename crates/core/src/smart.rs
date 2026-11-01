@@ -78,12 +78,13 @@ impl Document {
                 l.parent = None;
             }
             if let Some(m) = &mut l.mask {
+                if m.generator.is_none() && m.parts.is_empty() {
+                    // hand-painted pixels (a parts-only mask is plain white anyway)
+                    warnings.push(format!("the painted mask of `{}` is saved as a white mask", l.name));
+                }
                 if !m.parts.is_empty() {
                     warnings.push(format!("dropped the part selection of `{}`", l.name));
                     m.parts.clear();
-                }
-                if m.generator.is_none() {
-                    warnings.push(format!("the mask of `{}` has no generator: saved as a white mask", l.name));
                 }
                 m.res = 0;
             }
