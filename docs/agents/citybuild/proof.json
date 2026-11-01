@@ -1,0 +1,252 @@
+{
+ "at": "2026-11-01 15:44:29",
+ "godot_startup_s": 4.4,
+ "decal": {
+  "image": {
+   "label": "decal -> image material",
+   "total_s": 1.4,
+   "first_swap_s": 1.4,
+   "nodes": {
+    "godot.images:world": 0.0
+   },
+   "states": {
+    "fresh": 14,
+    "restored": 1
+   },
+   "acks": 1,
+   "acks_ok": 1,
+   "swap_ms_max": 6.288,
+   "failed": [],
+   "edit_to_image_swap_s": 1.4
+  },
+  "variants": {
+   "label": "decal -> Pigment variants (fast path)",
+   "total_s": 17.9,
+   "first_swap_s": 4.1,
+   "nodes": {
+    "pigment:building_a": 2.2,
+    "godot.tex:building_a__memory_pawn": 0.1,
+    "pigment:building_b": 10.5,
+    "godot.tex:building_b__body_shop": 0.1,
+    "pigment:building_c": 16.1,
+    "godot.tex:building_c__dreamlink": 0.1
+   },
+   "states": {
+    "fresh": 24,
+    "restored": 3,
+    "built": 3
+   },
+   "acks": 6,
+   "acks_ok": 6,
+   "swap_ms_max": 451.117,
+   "failed": [],
+   "edit_to_variants_swap_s": 21.5
+  },
+  "revert": {
+   "label": "revert decal (cache restore)",
+   "total_s": 1.3,
+   "first_swap_s": 1.3,
+   "nodes": {
+    "godot.images:world": 0.0
+   },
+   "states": {
+    "fresh": 14,
+    "restored": 1
+   },
+   "acks": 1,
+   "acks_ok": 1,
+   "swap_ms_max": 6.601,
+   "failed": []
+  },
+  "revert_variants": {
+   "label": "revert variants",
+   "total_s": 2.6,
+   "first_swap_s": 1.8,
+   "nodes": {
+    "pigment:building_c": 0.1,
+    "pigment:building_a": 0.2,
+    "pigment:building_b": 0.2,
+    "godot.tex:building_c__dreamlink": 0.1,
+    "godot.tex:building_a__memory_pawn": 0.1,
+    "godot.tex:building_b__body_shop": 0.1
+   },
+   "states": {
+    "fresh": 24,
+    "restored": 6
+   },
+   "acks": 6,
+   "acks_ok": 6,
+   "swap_ms_max": 362.269,
+   "failed": []
+  },
+  "camera": {
+   "pos": [
+    -488.73,
+    160.4,
+    181.9
+   ],
+   "look": [
+    -488.73,
+    173.28,
+    106.9
+   ],
+   "fov": 50,
+   "tower": "tw11"
+  }
+ },
+ "recipe": {
+  "build": {
+   "label": "building_b recipe patch",
+   "total_s": 13.7,
+   "first_swap_s": 11.4,
+   "nodes": {
+    "pigment:building_b": 7.2,
+    "godot.tex:building_b__seized": 1.7,
+    "godot.tex:building_b__night_market": 1.9,
+    "godot.tex:building_b__noodle_row": 2.0,
+    "godot.tex:building_b__body_shop": 2.1,
+    "godot.tex:building_b__score_fixers": 2.3,
+    "godot.tex:building_b__dream_strip": 2.2,
+    "godot.tex:building_b__pawn_row": 2.4
+   },
+   "states": {
+    "built": 8,
+    "fresh": 3
+   },
+   "acks": 14,
+   "acks_ok": 14,
+   "swap_ms_max": 391.768,
+   "failed": []
+  },
+  "revert": {
+   "label": "revert recipe (cache restore)",
+   "total_s": 4.1,
+   "first_swap_s": 2.0,
+   "nodes": {
+    "pigment:building_b": 0.2,
+    "godot.tex:building_b__body_shop": 0.1,
+    "godot.tex:building_b__pawn_row": 0.1,
+    "godot.tex:building_b__seized": 0.1,
+    "godot.tex:building_b__noodle_row": 0.1,
+    "godot.tex:building_b__dream_strip": 0.1,
+    "godot.tex:building_b__score_fixers": 0.1,
+    "godot.tex:building_b__night_market": 0.1
+   },
+   "states": {
+    "restored": 8,
+    "fresh": 3
+   },
+   "acks": 14,
+   "acks_ok": 14,
+   "swap_ms_max": 358.711,
+   "failed": []
+  },
+  "camera": {
+   "pos": [
+    -517.9016916206707,
+    10.008,
+    68.68138401186832
+   ],
+   "look": [
+    -513.343,
+    12.008,
+    98.333
+   ],
+   "fov": 60,
+   "instance": {
+    "asset": "building_b",
+    "variant": "dream_strip",
+    "pos": [
+     -513.343,
+     -98.333,
+     4.008
+    ],
+    "rot": 3.29414,
+    "scale": [
+     1,
+     1,
+     1
+    ],
+    "district": "downtown",
+    "footing": 1.1,
+    "kind": "building"
+   }
+  }
+ },
+ "prop": {
+  "build": {
+   "label": "bollard height 0.96 -> 1.6",
+   "total_s": 9.6,
+   "first_swap_s": 6.1,
+   "nodes": {
+    "mesh:bollard": 1.4,
+    "recipe:bollard": 1.4,
+    "pigment:bollard": 1.4,
+    "godot.tex:bollard": 0.1,
+    "export:bollard": 1.8,
+    "world.mesh:bollard": 1.7
+   },
+   "states": {
+    "built": 6
+   },
+   "acks": 2,
+   "acks_ok": 2,
+   "swap_ms_max": 222.975,
+   "failed": []
+  },
+  "revert": {
+   "label": "revert prop (cache restore)",
+   "total_s": 2.0,
+   "first_swap_s": 1.8,
+   "nodes": {
+    "mesh:bollard": 0.0,
+    "recipe:bollard": 0.0,
+    "pigment:bollard": 0.2,
+    "export:bollard": 0.0,
+    "godot.tex:bollard": 0.0,
+    "world.mesh:bollard": 0.0
+   },
+   "states": {
+    "restored": 6
+   },
+   "acks": 2,
+   "acks_ok": 2,
+   "swap_ms_max": 196.467,
+   "failed": []
+  },
+  "camera": {
+   "pos": [
+    -506.3211534445239,
+    5.647,
+    81.88574063858559
+   ],
+   "look": [
+    -505.409,
+    4.646999999999999,
+    87.816
+   ],
+   "fov": 60,
+   "instance": {
+    "asset": "bollard",
+    "variant": "graphite",
+    "pos": [
+     -505.409,
+     -87.816,
+     4.047
+    ],
+    "rot": 3.29421,
+    "scale": [
+     1,
+     1,
+     1
+    ],
+    "district": "downtown",
+    "kind": "prop",
+    "slot": "curb",
+    "file": "assets/props/bollard.glb"
+   }
+  }
+ },
+ "total_s": 67.2,
+ "godot_startup_s_recipe_run": 4.5
+}

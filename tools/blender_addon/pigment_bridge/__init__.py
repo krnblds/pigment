@@ -291,7 +291,8 @@ def _tick():
     if s.auto_reload:
         try:
             r = core.check_reload(watch_projects=s.watch_projects, exe=_exe())
-            if r["reloaded"] or r["rebuilt"]:
+            c = core.check_city_events()        # tools/city build / watch events (file queue)
+            if r["reloaded"] or r["rebuilt"] or c["events"]:
                 for w in bpy.context.window_manager.windows:
                     for a in w.screen.areas:
                         a.tag_redraw()
