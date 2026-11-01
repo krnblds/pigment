@@ -27,7 +27,7 @@
     "aero": {"cd": 0.34, "area_scale": 0.84, "downforce": 0.0, "air_density": 1.225},
     "steering": {"lock_deg": 34.0, "rate": 2.7, "rate_high_speed": 1.5, "return_rate": 4.0, "self_align": 0.55},
     "assists": {"abs": true, "tc": true, "esc": true, "steer_assist": true},
-    "body": {"clearance": 0.27, "approach": 0.22, "friction": 0.25, "bounce": 0.05}
+    "body": {"clearance": 0.27, "approach": 0.22, "friction": 0.3, "bounce": 0.05}
   },
   "sports": {
     "engine": {"idle_rpm": 950, "redline_rpm": 7600, "limiter_rpm": 7800,

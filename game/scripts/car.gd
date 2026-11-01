@@ -186,6 +186,9 @@ class Wheel:
 	var abs_p := 1.0
 	var t_ext := 0.0                     ## sub-step: torque on the wheel from the road + brakes
 	var held := false                    ## the brake holds it still
+	var ref_point := Vector3.ZERO        ## last ground contact (world): what counts as a kerb vs a wall
+	var ref_valid := false
+	var air_t := 0.0
 
 	func is_in_contact() -> bool:
 		return contact
@@ -732,17 +735,29 @@ func _probe(w: Wheel, xf: Transform3D, up: Vector3, lv: Vector3, av: Vector3, co
 		var a := o.dot(wfwd)                         # along the tyre's rolling direction
 		var l := (o - wfwd * a).length()            # across its width
 		var reff := sqrt(maxf(r * r - a * a, 0.0)) - maxf(0.0, l - w.half_w) * 0.9
-		_ray.from = start + o
-		_ray.to = start + o - up * length
-		var hit := space.intersect_ray(_ray)
+		var from := start + o
+		var end := start + o - up * length
+		var hit := {}
+		var xr := -INF
+		# a rejected hit (a wall top, an overhang) hides the ground under it: look past it, twice at most
+		for _try in 3:
+			_ray.from = from
+			_ray.to = end
+			hit = space.intersect_ray(_ray)
+			if hit.is_empty():
+				break
+			var hp: Vector3 = hit.position
+			var nrm: Vector3 = hit.normal
+			# taller than a kerb above the ground the wheel was last on (not above the hub: a body lifted
+			# by a crash must not let the tyre climb onto a barrier), or a steep face: the body's job
+			var rise := (hp - w.ref_point).dot(up) if w.ref_valid else 0.0
+			if rise > max_step or nrm.dot(up) < 0.3 or (nrm.dot(up) < 0.7 and rise > 0.12):
+				from = hp - up * 0.02
+				hit = {}
+				continue
+			xr = top - (start + o - hp).dot(up) + reff
+			break
 		if hit.is_empty():
-			continue
-		var hp: Vector3 = hit.position
-		var g := top - (start + o - hp).dot(up)
-		var xr := g + reff
-		var nrm: Vector3 = hit.normal
-		# taller than a kerb, or a wall face: the body collider deals with it
-		if xr - maxf(w.x, 0.0) > max_step or nrm.dot(up) < 0.35:
 			continue
 		if xr > best + 0.002:
 			best = xr
@@ -750,6 +765,9 @@ func _probe(w: Wheel, xf: Transform3D, up: Vector3, lv: Vector3, av: Vector3, co
 			best_off = d
 	w.xs_prev = w.xs
 	if best_hit.is_empty() or best < -w.droop:
+		w.air_t += dt
+		if w.air_t > 0.4:
+			w.ref_valid = false            # long airborne: whatever it lands on is the new ground
 		w.contact = false
 		w.x = -w.droop
 		w.xs = -w.droop
@@ -758,6 +776,9 @@ func _probe(w: Wheel, xf: Transform3D, up: Vector3, lv: Vector3, av: Vector3, co
 		w.beta *= 0.9
 		return
 	w.contact = true
+	w.air_t = 0.0
+	w.ref_point = best_hit.position
+	w.ref_valid = true
 	w.x = best
 	w.xs = clampf(best, -w.droop, w.bump)
 	w.cpoint = best_hit.position
@@ -891,12 +912,15 @@ func _gearbox(dt: float, thr: float) -> void:
 			if rpm_drive > idle + 350.0:
 				target = 1.0
 			else:
-				# launch: the clutch bites as the engine passes the launch revs (more throttle, more revs)
-				var launch := lerpf(idle + 250.0, 3300.0, clampf(throttle_out, 0.0, 1.0))
-				target = clampf((rpm - launch + 1100.0) / 1600.0, 0.0, 1.0)
+				# launch: torque-converter-like slip, capacity ~ rpm^2 -- the engine settles at a stall
+				# speed where its torque matches (~3000 rpm flat out), smooth against any load
+				var k := float(P.gearbox.get("launch_k", 19.0))
+				target = clampf(k * (rpm / 1000.0) * (rpm / 1000.0) / float(P.gearbox.clutch_torque), 0.0, 1.0)
+				if rpm < idle + 80.0 and _thr < 0.05:
+					target = 0.0
 				if input_handbrake:
 					target = 0.0
-	clutch = move_toward(clutch, target, (4.0 if target > clutch else 10.0) * dt)
+	clutch = move_toward(clutch, target, (6.0 if target > clutch else 20.0) * dt)
 
 
 func _ratio(g: int) -> float:
@@ -932,22 +956,28 @@ func _assists(dt: float, thr: float, brk: float, vfwd: float, av: Vector3, up: V
 	var lim := float(eng.get("speed_limiter_kmh", 0.0))
 	if lim > 0.0 and gear >= 1:
 		t *= clampf((lim / 3.6 - absf(vfwd)) / 0.4, 0.0, 1.0)
-	# traction control: cut the throttle while a driven wheel spins past its peak slip
+	for w: Wheel in wheels:
+		w.brake_extra = 0.0
+	# traction control: cut the throttle while a driven wheel spins past its peak slip; at low speed
+	# it brakes the spinning wheel instead (works like a locking diff) and keeps some throttle, so a
+	# car with one wheel light (half on a kerb, against a wall) still pulls away
 	var spin := 0.0
+	var slow := clampf(1.0 - absf(vfwd) / 8.0, 0.0, 1.0)
 	for w: Wheel in _drive:
 		if w.contact and gear != 0:
 			var sr := (w.omega * w.r - w.vx) / maxf(absf(w.vx), 3.0) * signf(_ratio(gear))
 			spin = maxf(spin, sr / w.kp)
+			if tc_on and slow > 0.0 and sr / w.kp > 1.5:
+				w.brake_extra += clampf((sr / w.kp - 1.5) * 250.0, 0.0, 900.0) * slow
+	var floor_t := lerpf(0.08, 0.45, slow)
 	if tc_on and spin > 1.35 and t > 0.05:
-		_tc = maxf(0.08, _tc - 7.0 * dt * (spin - 1.0))
+		_tc = maxf(floor_t, _tc - 7.0 * dt * (spin - 1.0))
 	else:
 		_tc = minf(1.0, _tc + 1.8 * dt)
 	tc_active = 1.0 - _tc if tc_on else 0.0
 	t *= _tc if tc_on else 1.0
 	# stability control: brake the outer front wheel when the car yaws past the bicycle-model rate
 	esc_active = 0.0
-	for w: Wheel in wheels:
-		w.brake_extra = 0.0
 	if esc_on and not input_handbrake and absf(vfwd) > 6.0 and gear >= 1:
 		var wb := float(P.wheels.Wheel_FL[2]) - float(P.wheels.Wheel_RL[2])
 		var r_meas := av.dot(up)
@@ -1060,14 +1090,13 @@ func _substeps(dt: float, thr_eff: float) -> void:
 				var fym := mu * n * sin(w.cy * atan(w.by * s))
 				fx = fxm * sx / s
 				fy = -fym * sy / s
-			# low-speed damping of the slip springs (they have no |v| term to damp them at a stop):
-			# on the body only -- laterally, and lengthwise while the brake holds the wheel
+			# low-speed damping of the slip springs (they have no |v| term to damp them near a stop):
+			# sliding friction on the patch velocity, acting on both the body and the wheel
 			var lo := clampf(1.0 - vxa / 3.0, 0.0, 1.0)
 			var fdx := 0.0
 			if lo > 0.0:
 				fy -= lo * 3.2 * n * w.vy
-				if w.held:
-					fdx = -lo * 3.0 * n * w.vx
+				fdx = lo * (3.0 if w.held else 1.0) * n * sv
 			var fmax := mu * n * 1.02
 			var fl := sqrt((fx + fdx) * (fx + fdx) + fy * fy)
 			var sc := fmax / fl if fl > fmax and fl > 1e-6 else 1.0
@@ -1075,7 +1104,7 @@ func _substeps(dt: float, thr_eff: float) -> void:
 			w.fy += fy * sc / SUBSTEPS
 			w.slip_vel += sqrt(sv * sv + w.vy * w.vy) / SUBSTEPS
 			# rolling resistance as a torque that can't reverse the wheel
-			w.t_ext = -fx * sc * w.r - signf(w.omega) * minf(w.rr * n * w.r, absf(w.omega) * iw / h)
+			w.t_ext = -(fx + (0.0 if w.held else fdx)) * sc * w.r - signf(w.omega) * minf(w.rr * n * w.r, absf(w.omega) * iw / h)
 		# brakes: Coulomb friction that holds a stopped wheel (the engine side adds its inertia).
 		# ABS: a slip controller per wheel that holds the brake slip just under the tyre's peak
 		for w: Wheel in wheels:
@@ -1199,6 +1228,7 @@ func place(xf: Transform3D) -> void:
 		w.xs_prev = 0.0
 		w.abs_p = 1.0
 		w.steer = 0.0
+		w.ref_valid = false
 	gear = 1
 	_shift_t = 0.0
 	engine_w = float(P.engine.idle_rpm) * TAU / 60.0

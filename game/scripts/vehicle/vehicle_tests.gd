@@ -66,6 +66,9 @@ func _set_inputs(throttle: float, brake: float, steer: float, handbrake := false
 
 # ================================================================== curb test
 var _whys := {}
+var _spacing := 15.0          ## candidate spacing along a road (the town is small: 5 m)
+var _end_pad := 30.0          ## keep away from junctions
+var _clear_len := 6.5         ## sidewalk past the kerb that must be free of lamps / walls (town: 4.5)
 
 
 func _why(w: String) -> void:
@@ -78,6 +81,9 @@ func _curb_sites() -> Array:
 	var want := []         # [kind, Array of candidate [p, t, o]]
 	var lay: Dictionary = main.town.layout
 	if main.map_name == "town" or not FileAccess.file_exists("res://assets/world/world.json"):
+		_spacing = 5.0
+		_end_pad = 18.0
+		_clear_len = 4.5
 		var roads: Array = lay.get("roads", [])
 		var info: Array = lay.get("road_info", [])
 		var cands := []
@@ -114,6 +120,7 @@ func _curb_sites() -> Array:
 		var n_want: int = wk[2]
 		var got := 0
 		var tries := 0
+		var blocked := []
 		# spread: shuffle deterministically, try until n_want good sites
 		var order := range(cands.size())
 		for i in range(order.size() - 1, 0, -1):
@@ -127,8 +134,18 @@ func _curb_sites() -> Array:
 			tries += 1
 			var c: Array = cands[idx]
 			var s = _probe_site(kind, c[0], c[1], c[2], c[3])
-			if s != null and sites.all(func(o): return o.p.distance_to(s.p) > 60.0):
+			if s != null and not s.clear:
+				blocked.append(s)
+			elif s != null and sites.all(func(o): return o.p.distance_to(s.p) > (60.0 if _spacing > 10.0 else 20.0)):
 				sites.append(s)
+				got += 1
+		# small maps (the town): lamps, poles and walls line every sidewalk -- use those sites too;
+		# there "climbed" means the front axle got up the kerb (the car may then hit a lamp)
+		for b in blocked:
+			if got >= n_want or not main.args.has("curb-blocked"):
+				break
+			if sites.all(func(o): return o.p.distance_to(b.p) > 25.0):
+				sites.append(b)
 				got += 1
 		print("curb sites: %s %d / %d (from %d candidates, %d probed) rejected: %s" % [kind, got, n_want, cands.size(), tries, _whys])
 		_whys.clear()
@@ -150,7 +167,7 @@ func _road_candidates(pts: Array, hw: float, _pad: float) -> Array:
 	var L: float = cum[n - 1]
 	var i := 0
 	while i < n:
-		if cum[i] > 30.0 and cum[i] < L - 30.0:
+		if cum[i] > _end_pad and cum[i] < L - _end_pad:
 			# straightness over +-12 m
 			var a := i
 			while a > 0 and cum[i] - cum[a] < 12.0:
@@ -169,7 +186,7 @@ func _road_candidates(pts: Array, hw: float, _pad: float) -> Array:
 				out.append([P[i], -t, -nl, hw])
 		# next candidate ~15 m on
 		var j := i + 1
-		while j < n and cum[j] - cum[i] < 15.0:
+		while j < n and cum[j] - cum[i] < _spacing:
 			j += 1
 		i = j
 	return out
@@ -177,6 +194,10 @@ func _road_candidates(pts: Array, hw: float, _pad: float) -> Array:
 
 ## Scan across the road edge for the kerb / barrier face; check the path beyond is clear (kerbs).
 func _probe_site(kind: String, c: Vector3, t: Vector3, o: Vector3, hw: float):
+	var bd: AABB = main.town.bounds
+	if c.x < bd.position.x + 16.0 or c.x > bd.end.x - 16.0 or c.z < bd.position.z + 16.0 or c.z > bd.end.z - 16.0:
+		_why("map edge")
+		return null
 	main.town.ensure_collision(c + o * hw, 30.0)
 	var road_y := _ground(c + o * (hw - 1.4))
 	if is_nan(road_y):
@@ -229,21 +250,38 @@ func _probe_site(kind: String, c: Vector3, t: Vector3, o: Vector3, hw: float):
 	var p := c + o * edge
 	p.y = road_y
 	# kerbs: the sidewalk the car will climb onto must be clear (lamps, poles, buildings, walls)
+	# kerbs: the sidewalk the car drives onto must be clear (lamps, poles, walls) and have nothing
+	# hanging over it lower than the roof (a footing / sign box wedges any car) -- per approach angle
+	var angles := []
 	if kind == "curb":
+		var ss := car.get_world_3d().direct_space_state
 		for ang in [15.0, 30.0, 50.0, 80.0]:
 			var dir := (t * cos(deg_to_rad(ang)) + o * sin(deg_to_rad(ang))).normalized()
 			var q := PhysicsShapeQueryParameters3D.new()
 			var box := BoxShape3D.new()
-			box.size = Vector3(2.6, 1.2, 7.5)
+			box.size = Vector3(2.4, 1.2, _clear_len)
 			q.shape = box
 			var basis := Basis(Vector3.UP.cross(dir).normalized(), Vector3.UP, dir)
-			q.transform = Transform3D(basis, p + dir * 4.2 + Vector3.UP * (step + 0.75))
+			q.transform = Transform3D(basis, p + dir * (_clear_len * 0.5 + 0.35) + Vector3.UP * (step + 0.75))
 			q.collision_mask = 1
 			q.exclude = [car.get_rid()]
-			if not car.get_world_3d().direct_space_state.intersect_shape(q, 1).is_empty():
-				_why("blocked")
-				return null
-	return {"kind": kind, "p": p, "t": t, "o": o, "step": snappedf(step, 0.01), "edge": snappedf(edge - hw, 0.01)}
+			if not ss.intersect_shape(q, 1).is_empty():
+				continue
+			var over := false
+			var side := Vector3.UP.cross(dir).normalized()
+			for k in range(1, 7):
+				for l in [-0.8, 0.0, 0.8]:
+					var base: Vector3 = p + dir * float(k) + side * l + Vector3.UP * (step + 0.05)
+					var hu := _ray(base, base + Vector3.UP * 1.4)
+					if hu and hu.normal.y < -0.5 and hu.position.y - base.y > 0.25:
+						over = true
+			if not over:
+				angles.append(ang)
+		if angles.size() < 2:
+			_why("blocked")
+			return null
+	return {"kind": kind, "p": p, "t": t, "o": o, "step": snappedf(step, 0.01), "edge": snappedf(edge - hw, 0.01),
+		"clear": true, "angles": angles}
 
 
 func _curb_test() -> void:
@@ -261,6 +299,8 @@ func _curb_test() -> void:
 	for s in sites:
 		for ang in angles:
 			for v in speeds:
+				if s.kind == "curb" and not (ang in s.angles):
+					continue
 				if main.args.has("curb-only"):
 					var f: PackedStringArray = String(main.args["curb-only"]).split(":")
 					if f[0] != s.kind or float(f[1]) != ang or float(f[2]) != v:
@@ -307,9 +347,12 @@ func _curb_case(s: Dictionary, ang: float, kmh: float) -> Dictionary:
 	var half_w := 0.92
 	var corner := half_l * sin(a) + half_w * cos(a)
 	var perp := corner + 0.6 + v * 0.7 * sin(a)
-	var start: Vector3 = s.p - s.o * perp - s.t * 0.0
+	var start: Vector3 = s.p - dir * (perp / sin(a))
 	start.y = s.p.y
 	main.town.ensure_collision(start, 30.0)
+	var gy := _ground(start, 3.0)          # roads have grades: the start may sit higher / lower
+	if not is_nan(gy):
+		start.y = gy
 	var basis := Basis(Vector3.UP.cross(dir).normalized(), Vector3.UP, dir)
 	car.place(Transform3D(basis, start + Vector3.UP * 0.05))
 	for i in 3:
@@ -317,31 +360,43 @@ func _curb_case(s: Dictionary, ang: float, kmh: float) -> Dictionary:
 	car.place(Transform3D(basis, start + Vector3.UP * 0.05))
 	car.linear_velocity = dir * v
 	car.angular_velocity = Vector3.ZERO
+	if main.args.has("curb-trace"):
+		for k in 4:
+			var q := start + dir * (k * 1.5) + Vector3.UP * 1.0
+			var hh := _ray(q, q + Vector3.DOWN * 3.0)
+			print("   ground probe ", k, " ", hh.get("position", "-"), " n=", hh.get("normal", "-"), " ", hh.collider.name if hh else "", " car y ", car.global_position.y)
 	if car.has_method("prime_speed"):
 		car.prime_speed(v)
 	var res := {"kind": s.kind, "angle": ang, "kmh": kmh, "climbed": false, "stuck": false, "flipped": false,
 		"min_up": 1.0, "max_rise": 0.0, "end_kmh": 0.0, "fail": false, "must_climb": s.kind == "curb" and ang >= 30.0}
 	var y0: float = s.p.y
 	var max_pen := -9.0
+	var max_rear := -9.0
+	var crashed := false
 	var t := 0.0
 	# phase A: hold the speed, steering straight, 3.5 s (or until well past the kerb)
 	while t < 3.5:
 		await _tick()
 		t += _dt()
 		var fwd := car.linear_velocity.dot(car.global_basis.z)
-		_set_inputs(clampf((v - fwd) * 0.6 + 0.15, 0.0, 1.0), 0.0, 0.0)
+		# the driver holds the speed; after a crash (speed halved by a hit) they lift
+		if fwd < v * 0.5 and t > 0.3:
+			crashed = true
+		_set_inputs(0.0 if crashed else clampf((v - fwd) * 0.6 + 0.15, 0.0, 1.0), 0.0, 0.0)
 		res.min_up = minf(res.min_up, car.global_basis.y.y)
 		var pen: float = (car.global_position - s.p).dot(s.o)
 		max_pen = maxf(max_pen, pen)
+		var rear_now: Vector3 = car.global_position - car.global_basis.z * 1.32
+		max_rear = maxf(max_rear, (rear_now - s.p).dot(s.o))
 		res.max_rise = maxf(res.max_rise, car.global_position.y - y0)
 		if main.args.has("curb-trace") and int(t * 120.0) % 6 == 0:
 			_trace(t, s, pen)
 		if pen > 3.2:
 			break
 	# climbed: the whole car (its rear axle) is past the kerb line, onto the sidewalk
-	var rear: Vector3 = car.global_position - car.global_basis.z * 1.32
 	if s.kind == "curb":
-		res.climbed = (rear - s.p).dot(s.o) > 0.25 or max_pen > 1.6
+		# both axles got over the kerb line (a site with a lamp / wall close behind: the front axle)
+		res.climbed = max_rear > 0.2 if s.clear else max_rear + 2.65 > 0.5
 	# phase B: is it stuck?  Moving on: fine.  Stopped: try forwards, then reverse.
 	var speed := car.linear_velocity.length()
 	if speed < 1.0:
@@ -366,6 +421,18 @@ func _curb_case(s: Dictionary, ang: float, kmh: float) -> Dictionary:
 		res.stuck = not moved
 		if res.stuck:
 			res["contacts"] = _contacts_desc(s)
+			if main.args.has("curb-trace"):
+				for w in car.wheels:
+					var hub: Vector3 = car.global_transform * w.rest
+					var from: Vector3 = hub + Vector3.UP * 0.5
+					var hits := []
+					for k in 4:
+						var hh := _ray(from, hub + Vector3.DOWN * 1.0)
+						if hh.is_empty():
+							break
+						hits.append([snappedf(hh.position.y - s.p.y, 0.01), snappedf(hh.normal.y, 0.01), hh.collider.name])
+						from = hh.position + Vector3.DOWN * 0.02
+					print("   wheel ", w.name, " hub h=", snappedf(hub.y - s.p.y, 0.01), " hits ", hits, " ref ", w.ref_valid, " ", snappedf(w.ref_point.y - s.p.y, 0.01))
 	res.end_kmh = snappedf(car.linear_velocity.length() * 3.6, 0.1)
 	res.flipped = res.min_up < 0.3 or car.global_basis.y.y < 0.6
 	res.min_up = snappedf(res.min_up, 0.01)
@@ -389,8 +456,9 @@ func _contacts_desc(s: Dictionary) -> String:
 		# get_contact_local_position is in global coordinates (despite the name)
 		var gp: Vector3 = st.get_contact_local_position(i)
 		var lp: Vector3 = car.global_transform.affine_inverse() * gp
-		out.append("body(%.2f,%.2f,%.2f) n.y=%.2f h=%.2f" % [lp.x, lp.y, lp.z, st.get_contact_local_normal(i).y,
-			gp.y - s.p.y])
+		var co = st.get_contact_collider_object(i)
+		out.append("body(%.2f,%.2f,%.2f) n.y=%.2f h=%.2f %s" % [lp.x, lp.y, lp.z, st.get_contact_local_normal(i).y,
+			gp.y - s.p.y, co.name if co is Node else ""])
 	var wc := []
 	if "wheels" in car:
 		for w in car.wheels:
