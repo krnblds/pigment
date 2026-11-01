@@ -1,0 +1,11 @@
+{
+ "wheel_radius": 0.34,
+ "wheel_width": 0.24,
+ "track": 1.62,
+ "wheelbase": 2.74,
+ "mass": 1350.0,
+ "length": 4.62,
+ "width": 1.92,
+ "height": 1.32,
+ "placeholder": true
+}
