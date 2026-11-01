@@ -71,12 +71,15 @@ fn tools() -> Value {
         "emissive": { "type": "array", "items": { "type": "number" }, "description": "emitted colour, sRGB 0..1" },
         "emissive_strength": { "type": "number" },
         "opacity": { "type": "number", "description": "material alpha 0..1: 1 = solid, 0 = hole (cut-out: fences, grilles). Not the layer opacity." },
-        "transmission": { "type": "number", "description": "0..1, 1 = clear glass (refracts; pair with low roughness and opacity < 1 for see-through windows)" }
+        "transmission": { "type": "number", "description": "0..1, 1 = clear glass (refracts; pair with low roughness and opacity < 1 for see-through windows)" },
+        "coat": { "type": "number", "description": "clearcoat weight 0..1: a glossy dielectric varnish over the base (car paint, lacquer). Giving it (even 0, e.g. on a dirt/rust layer) turns the coat channel on" },
+        "coat_roughness": { "type": "number", "description": "clearcoat roughness 0..1 (default 0.03 = fresh lacquer; 0.2-0.4 = hazy, weathered coat)" },
+        "flake": { "type": "number", "description": "metallic flake amount 0..1 in the base under the coat (sparkle); pair with metallic 0.3-0.7 and coat 1" }
     });
     for (k, v) in value_extras.as_object().unwrap() {
         layer_fields["values"]["properties"][k] = v.clone();
     }
-    let brush_values = json!({ "type": "object", "description": "brush material values (same keys as a fill's values: base_color, roughness, metallic, height, emissive, emissive_strength, opacity, transmission); opacity/transmission given here are painted too", "properties": layer_fields["values"]["properties"].clone() });
+    let brush_values = json!({ "type": "object", "description": "brush material values (same keys as a fill's values: base_color, roughness, metallic, height, emissive, emissive_strength, opacity, transmission, coat, coat_roughness, flake); opacity/transmission/coat/coat_roughness/flake given here are painted too", "properties": layer_fields["values"]["properties"].clone() });
     let camera = json!({
         "yaw": { "type": "number", "description": "degrees around the model (default 35)" },
         "pitch": { "type": "number", "description": "degrees above (default 20)" },
@@ -113,7 +116,7 @@ fn tools() -> Value {
         paint_props[k] = v;
     }
     let mut render_props = camera.clone();
-    render_props["view"] = json!({ "type": "string", "description": "material (default), base color, roughness, metallic, height, normal, ambient occlusion, curvature, world normal, uv checker, emission, opacity, transmission" });
+    render_props["view"] = json!({ "type": "string", "description": "material (default), base color, roughness, metallic, height, normal, ambient occlusion, curvature, world normal, uv checker, emission, opacity, transmission, coat, coat roughness, flake" });
     render_props["path"] = json!({ "type": "string", "description": "where to save the PNG (default: temp)" });
     render_props["exposure"] = json!({ "type": "number" });
     render_props["background"] = json!({ "type": "boolean" });
