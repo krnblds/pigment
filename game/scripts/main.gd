@@ -4,7 +4,11 @@ extends Node3D
 ## User args (after "--" on the Godot command line):
 ##   --autoshot=<dir>   scripted drive, saves PNGs + perf.json to <dir>, quits
 ##   --bench=<seconds>  autopilot drive, prints FPS / draw calls, quits
-##   --drive-test       physics-only check (works with --headless), prints, quits
+##   --drive-test       vehicle physics test (headless OK): 0-100, top speed, braking dry / wet, skidpad,
+##                      lane change, handbrake turn, rollover, reset (scripts/vehicle/vehicle_tests.gd)
+##   --curb-test        kerbs / barriers / guard rails at several angles and speeds: never stuck or flipped
+##   --dry / --wet      road grip regardless of the rain (default: wet while it rains)
+##   --vehicle=<id>     drive a fleet vehicle (hayate, mame, hakobi, kago, kaiun, tsubame)
 ##   --no-gi            start with SDFGI off      --no-rain   start without rain
 ##   --no-town          skip the town (empty ground)
 ##   --no-traffic       no traffic          --traffic=<n>  fixed number of moving cars (default: adaptive 24-80)
@@ -22,7 +26,7 @@ const CAR_GLB := "res://assets/car/car.glb"
 const CAR_JSON := "res://assets/car/car.json"
 
 var town: Node3D
-var car: VehicleBody3D
+var car: RigidBody3D
 var cam: Camera3D
 var hud: CanvasLayer
 var env: Environment
@@ -59,7 +63,15 @@ func _ready() -> void:
 	car = Car.new()
 	car.name = "Car"
 	add_child(car)
-	car.setup(_car_path(CAR_GLB), _car_path(CAR_JSON))
+	# --vehicle=<fleet id>: drive another fleet car (assets/vehicles/<id>/<id>.glb + .json, physics from
+	# data/vehicles/<id>.json or its class defaults); default: the Tsubame from assets/car/
+	var vid := String(args.get("vehicle", ""))
+	var vglb := "res://assets/vehicles/%s/%s.glb" % [vid, vid]
+	if vid != "" and FileAccess.file_exists(vglb):
+		car.setup(vglb, "res://assets/vehicles/%s/%s.json" % [vid, vid], vid)
+	else:
+		car.setup(_car_path(CAR_GLB), _car_path(CAR_JSON))
+	car.town = town
 	car.place(town.spawn_transform() if town.layout else Transform3D(Basis(), Vector3(0, 2, 0)))
 	town.collision_focus = car         # collision streams around the car, visuals around the camera
 	cam = ChaseCamera.new()
@@ -74,9 +86,13 @@ func _ready() -> void:
 	hud.car = car
 	add_child(hud)
 	car.impact.connect(hud.on_impact)
+	car.impact.connect(func(s: float): cam.shake(clampf(s / 400.0, 0.1, 1.0)))
+	car.bump.connect(func(s: float): cam.shake(clampf(s * 0.08, 0.0, 0.3)))
 	_setup_rain()
 	if args.has("no-rain"):
 		rain.emitting = false
+	# wet roads while it rains (grip, spray instead of smoke); --dry / --wet override
+	car.wet = 0.0 if args.has("dry") else (1.0 if args.has("wet") else (1.0 if rain.emitting else 0.0))
 	if args.has("no-gi"):
 		env.sdfgi_enabled = false
 	_road_lines = town.road_polylines() if town.layout else []
@@ -100,7 +116,11 @@ func _ready() -> void:
 		var tauto := preload("res://scripts/traffic/traffic_automation.gd").new()
 		tauto.main = self
 		add_child(tauto)
-	elif args.has("autoshot") or args.has("bench") or args.has("bench-spots") or args.has("bench-matrix") or args.has("drive-test"):
+	elif args.has("curb-test") or args.has("drive-test") or args.has("physics-shots") or args.has("car-cost"):
+		var vt := preload("res://scripts/vehicle/vehicle_tests.gd").new()
+		vt.main = self
+		add_child(vt)
+	elif args.has("autoshot") or args.has("bench") or args.has("bench-spots") or args.has("bench-matrix") or args.has("drive-old"):
 		var auto := preload("res://scripts/automation.gd").new()
 		auto.main = self
 		add_child(auto)
@@ -118,9 +138,12 @@ func _setup_input() -> void:
 		"accelerate": [KEY_W, KEY_UP], "brake": [KEY_S, KEY_DOWN], "steer_left": [KEY_A, KEY_LEFT],
 		"steer_right": [KEY_D, KEY_RIGHT], "handbrake": [KEY_SPACE], "reset": [KEY_R], "camera": [KEY_C],
 		"toggle_rain": [KEY_F], "lightbar": [KEY_L], "toggle_gi": [KEY_G], "toggle_stats": [KEY_F3], "quit": [KEY_ESCAPE],
+		"shift_up": [KEY_E], "shift_down": [KEY_Q], "toggle_manual": [KEY_M], "toggle_abs": [KEY_B],
+		"toggle_tc": [KEY_T], "toggle_esc": [KEY_J], "toggle_steer_assist": [KEY_K],
 	}
 	var pads := {"handbrake": [JOY_BUTTON_A], "lightbar": [JOY_BUTTON_X], "reset": [JOY_BUTTON_Y], "camera": [JOY_BUTTON_RIGHT_SHOULDER],
-		"toggle_stats": [JOY_BUTTON_BACK]}
+		"toggle_stats": [JOY_BUTTON_BACK], "shift_up": [JOY_BUTTON_B], "shift_down": [JOY_BUTTON_LEFT_SHOULDER],
+		"toggle_manual": [JOY_BUTTON_START]}
 	var axes := {"accelerate": [JOY_AXIS_TRIGGER_RIGHT, 1.0], "brake": [JOY_AXIS_TRIGGER_LEFT, 1.0],
 		"steer_left": [JOY_AXIS_LEFT_X, -1.0], "steer_right": [JOY_AXIS_LEFT_X, 1.0]}
 	for action in keys:
@@ -151,6 +174,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event.is_action_pressed("toggle_rain"):
 		rain.emitting = not rain.emitting
 		rain.visible = rain.emitting
+		car.wet = 1.0 if rain.emitting else 0.0
 	elif event.is_action_pressed("toggle_gi"):
 		env.sdfgi_enabled = not env.sdfgi_enabled
 		print("SDFGI ", env.sdfgi_enabled)

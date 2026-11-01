@@ -865,21 +865,49 @@ func _prepare_collision() -> void:
 	for i in results.size():
 		var key: String = _trimesh_parts[i][0]
 		var cat: String = layout.meshes[key].get("cat", "other")
-		for k in results[i]:
-			var it := _col_cell(k)
-			if not it.faces.has(cat):
-				it.faces[cat] = PackedVector3Array()
-				it.rep[cat] = key
-			it.faces[cat].append_array(results[i][k])
+		for k3 in results[i]:
+			var it := _col_cell(Vector2i(k3.x, k3.y))
+			# road meshes are split by surface material (asphalt / kerb / paving / concrete / metal), so
+			# the car's tyres can tell them apart: the body keeps the "Col_<mesh>" name, plus a meta
+			var grp: String = cat if k3.z == 0 else cat + "/" + SURF_KINDS[k3.z]
+			if not it.faces.has(grp):
+				it.faces[grp] = PackedVector3Array()
+				it.rep[grp] = key
+			it.faces[grp].append_array(results[i][k3])
 	_trimesh_parts.clear()
 	stats["collision_prep_ms"] = Time.get_ticks_msec() - t0
 
 
-## One trimesh instance -> {cell: PackedVector3Array of triangle corners}
+const SURF_KINDS := ["", "asphalt", "curb", "paving", "concrete", "metal"]
+
+
+## Material name -> index in SURF_KINDS (0: don't split).
+static func surface_kind(mat: String) -> int:
+	var m := mat.to_lower()
+	if m.contains("asphalt"):
+		return 1
+	if m.contains("trim") or m.contains("curb"):
+		return 2
+	if m.contains("paving"):
+		return 3
+	if m.contains("concrete"):
+		return 4
+	if m.contains("metal"):
+		return 5
+	return 0
+
+
+## One trimesh instance -> {Vector3i(cell x, cell y, surface kind): PackedVector3Array of triangle corners}
+## (surface kind only for roads, see SURF_KINDS; 0 otherwise)
 func _faces_job(part: Array) -> Dictionary:
 	var out := {}
 	var xf: Transform3D = part[1]
+	var split: bool = layout.meshes[part[0]].get("cat", "") == "road"
+	var mats: Array = _arrays_mats.get(part[0], [])
+	var si := -1
 	for a in _arrays_cache.get(part[0], []):
+		si += 1
+		var sk := surface_kind(String(mats[si])) if split and si < mats.size() else 0
 		var v: PackedVector3Array = xf * PackedVector3Array(a[Mesh.ARRAY_VERTEX])
 		var has_idx: bool = a[Mesh.ARRAY_INDEX] != null
 		var idx := PackedInt32Array()
@@ -898,7 +926,8 @@ func _faces_job(part: Array) -> Dictionary:
 				p0 = v[t]
 				p1 = v[t + 1]
 				p2 = v[t + 2]
-			var k := _key((p0 + p1 + p2) / 3.0, COL_CELL)
+			var k2 := _key((p0 + p1 + p2) / 3.0, COL_CELL)
+			var k := Vector3i(k2.x, k2.y, sk)
 			if not out.has(k):
 				out[k] = PackedVector3Array()
 			out[k].append(p0)        # in place on the stored array (a local copy would be COW-copied)
@@ -954,12 +983,22 @@ func _make_collision(item: Dictionary) -> Node:
 				# sub-shape ID bits
 				var sb := StaticBody3D.new()
 				sb.name = "Col_" + String(item.rep[cat])
+				if String(cat).contains("/"):
+					sb.set_meta("surface", String(cat).get_slice("/", 1))
 				var shape := ConcavePolygonShape3D.new()
 				shape.set_faces(item.faces[cat])
 				var cs := CollisionShape3D.new()
 				cs.shape = shape
 				sb.add_child(cs)
-				node.add_child(sb)
+				if String(cat).contains("/"):
+					# surface bodies of one road mesh share its "Col_<mesh>" name: each gets its own
+					# parent so the name stays unique (siblings with one name would be renamed)
+					var holder := Node3D.new()
+					holder.name = "S_" + String(cat).replace("/", "_")
+					holder.add_child(sb)
+					node.add_child(holder)
+				else:
+					node.add_child(sb)
 		"height":
 			node.name = "Height_" + item.key
 			var sb := StaticBody3D.new()

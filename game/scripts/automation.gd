@@ -48,7 +48,7 @@ func _ready() -> void:
 			pr.process_physics_priority = 100000 if last else -100000
 			add_child(pr)
 	var a: Dictionary = main.args
-	if a.has("drive-test"):
+	if a.has("drive-old"):
 		_drive_test.call_deferred()
 	elif a.has("autoshot"):
 		_autoshot.call_deferred(String(a.autoshot))
@@ -163,7 +163,8 @@ func _measure_for(t: float) -> Dictionary:
 		"objects": int(_mean(_objs)),
 		"phys_active": Performance.get_monitor(Performance.PHYSICS_3D_ACTIVE_OBJECTS),
 		"phys_pairs": Performance.get_monitor(Performance.PHYSICS_3D_COLLISION_PAIRS),
-		"nodes": Performance.get_monitor(Performance.OBJECT_NODE_COUNT)}
+		"nodes": Performance.get_monitor(Performance.OBJECT_NODE_COUNT),
+		"car_tick_us": snappedf(float(main.car.get("prof_us")), 0.1) if main.car.get("prof_us") != null else -1.0}
 	if main.args.has("bench-prof"):
 		r["hitches"] = _hitches.duplicate()
 		r["physics_scripts_ms"] = snappedf(_mean(_pp_scripts), 0.01)
@@ -410,7 +411,7 @@ static func _spots(w: Dictionary) -> Array:
 
 # ------------------------------------------------------------------ physics check (headless OK)
 func _drive_test() -> void:
-	var car: VehicleBody3D = main.car
+	var car: RigidBody3D = main.car
 	var res := {}
 	print("drive test: settling")
 	await _wait(2.0)

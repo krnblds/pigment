@@ -2,7 +2,7 @@ extends Camera3D
 ## Smooth chase camera: follows the car's heading (blended with its velocity), springs in
 ## when a wall is between it and the car, FOV widens with speed.  C cycles chase / far / hood.
 
-var target: VehicleBody3D
+var target: RigidBody3D
 var mode := 0
 var manual := false                  ## automation drives the camera directly
 const MODES := [
@@ -14,6 +14,12 @@ var _dir := Vector3.BACK
 var _pos := Vector3.ZERO
 var _primed := false
 var _ray_frac := 1.0                 ## 0..1 of the boom that is free of obstacles (physics tick)
+var _shake := 0.0                    ## impact shake, decays (h / v offsets, so it never fights the follow)
+var _shake_t := 0.0
+
+
+func shake(amount: float) -> void:
+	_shake = clampf(maxf(_shake, amount), 0.0, 1.0)
 
 
 func cycle() -> void:
@@ -40,6 +46,10 @@ func _physics_process(_delta: float) -> void:
 
 
 func _process(delta: float) -> void:
+	_shake = maxf(0.0, _shake - delta * 2.2)
+	_shake_t += delta
+	h_offset = (sin(_shake_t * 47.0) + sin(_shake_t * 71.0) * 0.5) * _shake * 0.09
+	v_offset = (sin(_shake_t * 59.0 + 1.3) + sin(_shake_t * 83.0) * 0.5) * _shake * 0.07
 	if manual or target == null:
 		return
 	var m: Dictionary = MODES[mode]
