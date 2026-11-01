@@ -89,6 +89,7 @@ graffiti_not_data = [
   "building/building_b",
   "building/building_c",
   "prop/bench",
+  "prop/container",
   "prop/jersey_barrier",
   "prop/trash_bin",
   "vehicle/kago",
@@ -97,7 +98,10 @@ graffiti_unplug = [
   "building/building_a",
   "building/building_b",
   "building/building_c",
+  "prop/bollard",
   "prop/bus_stop",
+  "prop/container",
+  "prop/crane_sts",
   "prop/data_kiosk",
   "prop/jersey_barrier",
   "prop/ped_signal",
@@ -122,12 +126,12 @@ graffiti_who_owns = [
 ]
 plate_curfew = ["building/building_a", "building/building_b", "building/building_c"]
 plate_loitering = ["building/building_a", "building/building_b"]
-plate_observed = ["building/building_a", "building/building_b", "building/building_c"]
-plate_property = ["building/building_a", "building/building_b", "building/building_c"]
+plate_observed = ["building/building_a", "building/building_b", "building/building_c", "prop/light_mast"]
+plate_property = ["building/building_a", "building/building_b", "building/building_c", "prop/fence"]
 poster_missing_aiko = ["prop/bus_stop", "prop/phone_kiosk"]
-poster_missing_mika = ["prop/data_kiosk", "prop/ramen_cart"]
-poster_missing_ren = ["prop/traffic_light_pole", "prop/vending_machine"]
-poster_unplug = ["prop/bus_stop", "prop/cctv_pole", "prop/skewer_stall", "prop/street_name_sign"]
+poster_missing_mika = ["prop/container", "prop/data_kiosk", "prop/ramen_cart"]
+poster_missing_ren = ["prop/crane_sts", "prop/traffic_light_pole", "prop/vending_machine"]
+poster_unplug = ["prop/bus_stop", "prop/cctv_pole", "prop/light_mast", "prop/skewer_stall", "prop/street_name_sign"]
 sign_capsule_2h = ["building/building_a", "building/building_b", "prop/overhead_sign"]
 sign_charge = ["building/building_b", "prop/overhead_sign"]
 sign_clinic = ["building/building_b", "prop/overhead_sign"]
@@ -149,9 +153,11 @@ stencil_eye_crossed = [
   "prop/ac_unit",
   "prop/bus_stop",
   "prop/cctv_pole",
+  "prop/container",
   "prop/crate_stack",
   "prop/parking_meter",
   "prop/traffic_light_pole",
+  "prop/trash_bag_pile",
   "vehicle/hakobi",
   "vehicle/hayate",
   "vehicle/kago",
@@ -161,5 +167,12 @@ stencil_eye_crossed = [
 # Game rules (Godot): collision, streaming policy, LOD / proxy, lights.
 [game]
 category = "decal"
-images = ["images/billboard_jobs.png", "images/billboard_meridian.png", "images/billboard_score.png"]
+images = [
+  "images/billboard_jobs.png",
+  "images/billboard_meridian.png",
+  "images/billboard_score.png",
+  "images/graffiti_not_data.png",
+  "images/graffiti_unplug.png",
+  "images/graffiti_who_owns.png",
+]
 note = "images listed here are also used directly by world materials (tower crown billboards)"

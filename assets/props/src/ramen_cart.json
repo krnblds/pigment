@@ -758,22 +758,6 @@
    "tris": 92
   },
   {
-   "piece": "lantern_cord_1",
-   "group": "dark_metal",
-   "node": null,
-   "center": [
-    1.02,
-    2.115,
-    0.45
-   ],
-   "size": [
-    0.01,
-    0.07,
-    0.01
-   ],
-   "tris": 12
-  },
-  {
    "piece": "stool_seat_0",
    "group": "red_plastic",
    "node": null,
@@ -790,36 +774,20 @@
    "tris": 236
   },
   {
-   "piece": "menu",
-   "group": "sign",
+   "piece": "lantern_cord_1",
+   "group": "dark_metal",
    "node": null,
    "center": [
-    0.915,
-    1.225,
-    -0.05
+    1.02,
+    2.115,
+    0.45
    ],
    "size": [
-    0.02,
-    0.45,
-    0.6
+    0.01,
+    0.07,
+    0.01
    ],
    "tris": 12
-  },
-  {
-   "piece": "stool_seat_1",
-   "group": "red_plastic",
-   "node": null,
-   "center": [
-    0.0,
-    0.48,
-    0.95
-   ],
-   "size": [
-    0.3369,
-    0.04,
-    0.3369
-   ],
-   "tris": 236
   },
   {
    "piece": "stool_leg_0",
@@ -838,6 +806,22 @@
    "tris": 28
   },
   {
+   "piece": "stool_seat_1",
+   "group": "red_plastic",
+   "node": null,
+   "center": [
+    0.0,
+    0.48,
+    0.95
+   ],
+   "size": [
+    0.3369,
+    0.04,
+    0.3369
+   ],
+   "tris": 236
+  },
+  {
    "piece": "stool_base_0",
    "group": "steel",
    "node": null,
@@ -852,6 +836,22 @@
     0.3
    ],
    "tris": 60
+  },
+  {
+   "piece": "menu",
+   "group": "sign",
+   "node": null,
+   "center": [
+    0.915,
+    1.225,
+    -0.05
+   ],
+   "size": [
+    0.02,
+    0.45,
+    0.6
+   ],
+   "tris": 12
   },
   {
    "piece": "stool_leg_1",
@@ -870,20 +870,20 @@
    "tris": 28
   },
   {
-   "piece": "stool_seat_2",
-   "group": "red_plastic",
+   "piece": "stool_leg_2",
+   "group": "steel",
    "node": null,
    "center": [
     0.6,
-    0.48,
+    0.24,
     0.95
    ],
    "size": [
-    0.3369,
-    0.04,
-    0.3369
+    0.05,
+    0.44,
+    0.05
    ],
-   "tris": 236
+   "tris": 28
   },
   {
    "piece": "stool_base_1",
@@ -902,20 +902,20 @@
    "tris": 60
   },
   {
-   "piece": "stool_leg_2",
-   "group": "steel",
+   "piece": "stool_seat_2",
+   "group": "red_plastic",
    "node": null,
    "center": [
     0.6,
-    0.24,
+    0.48,
     0.95
    ],
    "size": [
-    0.05,
-    0.44,
-    0.05
+    0.3369,
+    0.04,
+    0.3369
    ],
-   "tris": 28
+   "tris": 236
   },
   {
    "piece": "stool_base_2",

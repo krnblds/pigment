@@ -70,26 +70,20 @@ lod1_ratio = 0.35
 
 # Game rules (Godot): collision, streaming policy, LOD / proxy, lights.
 [game]
-category = "other"
-collision = "none"
-tris = 2680
-policy = "cell"
-proxy = false
-world_keys = ["PROP_palm_tree"]
-visible_to_m = 150.0
 collider = "cylinder"
 mount = "ground"
 lights = [
   { name = "Light_Uplight", type = "spot", color = [1.0, 0.85, 0.6], energy = 80, range = 9.0 },
 ]
 alpha = ["OPAQUE"]
+category = "nature"
 lod = { lod0_tris = 2680, lod1_tris = 937, lod1_from_m = 69.1, visible_to_m = 345.7 }
 
 # Where the world places it (read from scenes/world/world.json; scatter rules live in the props catalog).
 [placement]
-instances = 40
+instances = 0
 source = "tools/props/scatter.py (rules: tools/props/catalog.py)"
-districts = { corporate = 40 }
+districts = {}
 
 [placement.scatter]
 slots = ["curb", "plaza", "frontage"]

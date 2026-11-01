@@ -32,22 +32,6 @@
  ],
  "pieces": [
   {
-   "piece": "base_collar",
-   "group": "dark_metal",
-   "node": null,
-   "center": [
-    0.0,
-    0.175,
-    -0.0
-   ],
-   "size": [
-    0.435,
-    0.3,
-    0.435
-   ],
-   "tris": 236
-  },
-  {
    "piece": "pole_cap",
    "group": "dark_metal",
    "node": null,
@@ -64,11 +48,27 @@
    "tris": 76
   },
   {
-   "piece": "bolt_1",
+   "piece": "base_collar",
+   "group": "dark_metal",
+   "node": null,
+   "center": [
+    0.0,
+    0.175,
+    -0.0
+   ],
+   "size": [
+    0.435,
+    0.3,
+    0.435
+   ],
+   "tris": 236
+  },
+  {
+   "piece": "bolt_0",
    "group": "steel",
    "node": null,
    "center": [
-    -0.1471,
+    0.1471,
     0.045,
     -0.1471
    ],
@@ -96,11 +96,11 @@
    "tris": 44
   },
   {
-   "piece": "bolt_0",
+   "piece": "bolt_1",
    "group": "steel",
    "node": null,
    "center": [
-    0.1471,
+    -0.1471,
     0.045,
     -0.1471
    ],
@@ -117,22 +117,6 @@
    "node": null,
    "center": [
     -0.1471,
-    0.045,
-    0.1471
-   ],
-   "size": [
-    0.0208,
-    0.04,
-    0.024
-   ],
-   "tris": 20
-  },
-  {
-   "piece": "bolt_3",
-   "group": "steel",
-   "node": null,
-   "center": [
-    0.1471,
     0.045,
     0.1471
    ],
@@ -174,6 +158,22 @@
     0.26
    ],
    "tris": 76
+  },
+  {
+   "piece": "bolt_3",
+   "group": "steel",
+   "node": null,
+   "center": [
+    0.1471,
+    0.045,
+    0.1471
+   ],
+   "size": [
+    0.0208,
+    0.04,
+    0.024
+   ],
+   "tris": 20
   },
   {
    "piece": "arm",
@@ -240,20 +240,20 @@
    "tris": 52
   },
   {
-   "piece": "name_blade_hanger",
+   "piece": "Lamp_B_Green_ring",
    "group": "dark_metal",
    "node": null,
    "center": [
-    1.2,
-    5.6,
-    -0.0
+    2.98,
+    5.3114,
+    0.152
    ],
    "size": [
-    0.04,
-    0.25,
-    0.04
+    0.26,
+    0.26,
+    0.012
    ],
-   "tris": 12
+   "tris": 76
   },
   {
    "piece": "Lamp_B_Green",
@@ -272,20 +272,20 @@
    "tris": 76
   },
   {
-   "piece": "Lamp_B_Green_ring",
+   "piece": "name_blade_hanger",
    "group": "dark_metal",
    "node": null,
    "center": [
-    2.98,
-    5.3114,
-    0.152
+    1.2,
+    5.6,
+    -0.0
    ],
    "size": [
-    0.26,
-    0.26,
-    0.012
+    0.04,
+    0.25,
+    0.04
    ],
-   "tris": 76
+   "tris": 12
   },
   {
    "piece": "Lamp_B_Green_visor",
@@ -448,11 +448,27 @@
    "tris": 44
   },
   {
-   "piece": "Lamp_C_Amber_ring",
+   "piece": "Lamp_C_Green",
+   "group": "lens_green",
+   "node": "Lamp_C_Green",
+   "center": [
+    5.38,
+    5.3778,
+    0.165
+   ],
+   "size": [
+    0.22,
+    0.22,
+    0.02
+   ],
+   "tris": 76
+  },
+  {
+   "piece": "Lamp_C_Green_ring",
    "group": "dark_metal",
    "node": null,
    "center": [
-    5.7,
+    5.38,
     5.3778,
     0.152
    ],
@@ -478,22 +494,6 @@
     0.17
    ],
    "tris": 84
-  },
-  {
-   "piece": "Lamp_C_Green",
-   "group": "lens_green",
-   "node": "Lamp_C_Green",
-   "center": [
-    5.38,
-    5.3778,
-    0.165
-   ],
-   "size": [
-    0.22,
-    0.22,
-    0.02
-   ],
-   "tris": 76
   },
   {
    "piece": "Head_C_housing",
@@ -540,22 +540,6 @@
     0.22,
     0.22,
     0.02
-   ],
-   "tris": 76
-  },
-  {
-   "piece": "Lamp_C_Green_ring",
-   "group": "dark_metal",
-   "node": null,
-   "center": [
-    5.38,
-    5.3778,
-    0.152
-   ],
-   "size": [
-    0.26,
-    0.26,
-    0.012
    ],
    "tris": 76
   },
@@ -608,6 +592,22 @@
    "tris": 76
   },
   {
+   "piece": "Lamp_C_Amber_ring",
+   "group": "dark_metal",
+   "node": null,
+   "center": [
+    5.7,
+    5.3778,
+    0.152
+   ],
+   "size": [
+    0.26,
+    0.26,
+    0.012
+   ],
+   "tris": 76
+  },
+  {
    "piece": "Lamp_C_Red_visor",
    "group": "paint",
    "node": null,
@@ -640,38 +640,6 @@
    "tris": 108
   },
   {
-   "piece": "Lamp_A_Red_visor",
-   "group": "paint",
-   "node": null,
-   "center": [
-    0.0,
-    3.3537,
-    0.55
-   ],
-   "size": [
-    0.2561,
-    0.1526,
-    0.17
-   ],
-   "tris": 84
-  },
-  {
-   "piece": "Lamp_A_Amber_ring",
-   "group": "dark_metal",
-   "node": null,
-   "center": [
-    0.0,
-    3.0,
-    0.462
-   ],
-   "size": [
-    0.24,
-    0.24,
-    0.012
-   ],
-   "tris": 76
-  },
-  {
    "piece": "Lamp_A_Red",
    "group": "lens_red",
    "node": "Lamp_A_Red",
@@ -686,6 +654,38 @@
     0.02
    ],
    "tris": 76
+  },
+  {
+   "piece": "Lamp_A_Red_ring",
+   "group": "dark_metal",
+   "node": null,
+   "center": [
+    0.0,
+    3.3,
+    0.462
+   ],
+   "size": [
+    0.24,
+    0.24,
+    0.012
+   ],
+   "tris": 76
+  },
+  {
+   "piece": "Lamp_A_Red_visor",
+   "group": "paint",
+   "node": null,
+   "center": [
+    0.0,
+    3.3537,
+    0.55
+   ],
+   "size": [
+    0.2561,
+    0.1526,
+    0.17
+   ],
+   "tris": 84
   },
   {
    "piece": "Head_A_backplate",
@@ -716,22 +716,6 @@
     0.2,
     0.2,
     0.02
-   ],
-   "tris": 76
-  },
-  {
-   "piece": "Lamp_A_Red_ring",
-   "group": "dark_metal",
-   "node": null,
-   "center": [
-    0.0,
-    3.3,
-    0.462
-   ],
-   "size": [
-    0.24,
-    0.24,
-    0.012
    ],
    "tris": 76
   },
@@ -780,6 +764,22 @@
     0.2,
     0.2,
     0.02
+   ],
+   "tris": 76
+  },
+  {
+   "piece": "Lamp_A_Amber_ring",
+   "group": "dark_metal",
+   "node": null,
+   "center": [
+    0.0,
+    3.0,
+    0.462
+   ],
+   "size": [
+    0.24,
+    0.24,
+    0.012
    ],
    "tris": 76
   },

@@ -22,7 +22,7 @@
    "triangles": {
     "lod0": 92458,
     "lod1": 9914,
-    "lod2": 2768
+    "lod2": 2766
    },
    "lod_distances_m": {
     "lod0": 0,
@@ -121,7 +121,7 @@
    "triangles": {
     "lod0": 62713,
     "lod1": 10100,
-    "lod2": 1239
+    "lod2": 1242
    },
    "lod_distances_m": {
     "lod0": 0,
@@ -210,7 +210,7 @@
    "triangles": {
     "lod0": 70417,
     "lod1": 10679,
-    "lod2": 1545
+    "lod2": 1546
    },
    "lod_distances_m": {
     "lod0": 0,

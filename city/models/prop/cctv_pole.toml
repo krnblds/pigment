@@ -83,7 +83,7 @@ collision = "none"
 tris = 1526
 policy = "cell"
 proxy = false
-world_keys = ["PROP_cctv_pole"]
+world_keys = ["PROP_cctv_pole", "PROP_cctv_pole__clean"]
 visible_to_m = 150.0
 collider = "compound"
 mount = "ground"
@@ -97,9 +97,17 @@ lod = { lod0_tris = 1526, lod1_tris = 763, lod1_from_m = 51.3, visible_to_m = 25
 
 # Where the world places it (read from scenes/world/world.json; scatter rules live in the props catalog).
 [placement]
-instances = 320
+instances = 304
 source = "tools/props/scatter.py (rules: tools/props/catalog.py)"
-districts = { corporate = 12, downtown = 102, hillside = 40, midtown = 120, old_town = 29, port = 17 }
+
+[placement.districts]
+corporate = 10
+downtown = 100
+hillside = 42
+midtown = 109
+old_town = 24
+port = 11
+yoimachi = 8
 
 [placement.scatter]
 slots = ["corner", "curb", "plaza"]

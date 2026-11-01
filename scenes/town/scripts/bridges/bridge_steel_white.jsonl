@@ -115,6 +115,6 @@
 {"tool": "project_decal", "args": {"image": "assets/decals/bridges/run.png", "layer": "Salt grime", "position": [0.7483, 0, -0.3133], "normal": [0, 1, 0], "size": [0.2064, 0.4079], "tint": [0.3073818998373034, 0.2796436851665724, 0.26575867523897995]}}
 {"tool": "project_decal", "args": {"image": "assets/decals/bridges/run.png", "layer": "Salt grime", "position": [0.5952, 0, -0.6308], "normal": [0, 1, 0], "size": [0.0847, 0.905], "tint": [0.343684266237133, 0.2730872262386645, 0.28862348412408534]}}
 {"tool": "add_layer", "args": {"name": "Dust", "values": {"base_color": [0.5, 0.49, 0.46], "roughness": 0.8}, "opacity": 0.35, "channels": {"height": false}, "mask": {"generator": "grunge", "amount": 0.3, "scale": 1.2, "softness": 0.4, "seed": 209}}}
-{"tool": "render", "args": {"yaw": 0, "pitch": 89.9, "zoom": 1.0, "width": 600, "height": 600, "background": false, "path": "C:/Users/kiera/Documents/Workspaces/Vibe Projects/are-senior-graphics-engineer-who/.claude/worktrees/agent-bridges/.citycache/bridges/bridge_steel_white.png"}}
+{"tool": "render", "args": {"yaw": 0, "pitch": 89.9, "zoom": 1.0, "width": 600, "height": 600, "background": false, "path": "C:/Users/kiera/Documents/Workspaces/Vibe Projects/are-senior-graphics-engineer-who/.citycache/bridges/bridge_steel_white.png"}}
 {"tool": "export_textures", "args": {"dir": "scenes/town/textures/bridge_steel_white", "name": "bridge_steel_white", "preset": "separate"}}
 {"tool": "save_project", "args": {"path": "scenes/town/projects/bridges/bridge_steel_white.pigment"}}

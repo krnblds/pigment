@@ -127,7 +127,20 @@ collision = "none"
 tris = 1210
 policy = "cell"
 proxy = false
-world_keys = ["PROP_bus_stop"]
+world_keys = [
+  "PROP_bus_stop",
+  "PROP_bus_stop__breathe",
+  "PROP_bus_stop__defaced",
+  "PROP_bus_stop__dolls",
+  "PROP_bus_stop__dreamlink",
+  "PROP_bus_stop__hayate",
+  "PROP_bus_stop__intimate",
+  "PROP_bus_stop__matcha",
+  "PROP_bus_stop__meridian",
+  "PROP_bus_stop__platinum",
+  "PROP_bus_stop__security",
+  "PROP_bus_stop__volt",
+]
 visible_to_m = 150.0
 collider = "compound"
 mount = "ground"
@@ -140,17 +153,17 @@ lod = { lod0_tris = 1210, lod1_tris = 484, lod1_from_m = 39.8, visible_to_m = 19
 
 # Where the world places it (read from scenes/world/world.json; scatter rules live in the props catalog).
 [placement]
-instances = 61
+instances = 56
 source = "tools/props/scatter.py (rules: tools/props/catalog.py)"
 
 [placement.districts]
-corporate = 3
-downtown = 16
-hillside = 10
+corporate = 1
+downtown = 14
+hillside = 7
 midtown = 24
-old_town = 4
-port = 2
-yoimachi = 2
+old_town = 3
+port = 6
+yoimachi = 1
 
 [placement.scatter]
 slots = ["curb"]

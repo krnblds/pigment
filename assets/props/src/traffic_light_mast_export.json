@@ -1,10 +1,10 @@
 {
  "lod0": "traffic_light_mast.glb",
- "lod0_bytes": 581764,
+ "lod0_bytes": 582096,
  "lod0_tris": 4032,
  "texture": 1024,
  "lod1": "traffic_light_mast_lod1.glb",
- "lod1_bytes": 259168,
+ "lod1_bytes": 259044,
  "lod1_tris": 2023,
  "lod1_texture": 512
 }

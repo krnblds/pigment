@@ -85,9 +85,9 @@ lod = { lod0_tris = 1748, lod1_tris = 873, lod1_from_m = 20.0, visible_to_m = 78
 
 # Where the world places it (read from scenes/world/world.json; scatter rules live in the props catalog).
 [placement]
-instances = 714
+instances = 690
 source = "tools/props/scatter.py (rules: tools/props/catalog.py)"
-districts = { corporate = 97, downtown = 348, midtown = 269 }
+districts = { corporate = 70, downtown = 349, midtown = 271 }
 
 [placement.scatter]
 slots = ["rooftop"]

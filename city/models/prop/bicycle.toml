@@ -81,7 +81,7 @@ collision = "none"
 tris = 3504
 policy = "cell"
 proxy = false
-world_keys = ["PROP_bicycle"]
+world_keys = ["PROP_bicycle", "PROP_bicycle__black", "PROP_bicycle__pink", "PROP_bicycle__teal"]
 visible_to_m = 150.0
 collider = "box"
 mount = "ground"
@@ -91,16 +91,17 @@ lod = { lod0_tris = 3504, lod1_tris = 1401, lod1_from_m = 20.0, visible_to_m = 7
 
 # Where the world places it (read from scenes/world/world.json; scatter rules live in the props catalog).
 [placement]
-instances = 1465
+instances = 1563
 source = "tools/props/scatter.py (rules: tools/props/catalog.py)"
 
 [placement.districts]
-corporate = 19
-downtown = 106
-hillside = 484
-midtown = 524
-old_town = 234
-port = 98
+corporate = 21
+downtown = 134
+hillside = 515
+midtown = 427
+old_town = 263
+port = 89
+yoimachi = 114
 
 [placement.scatter]
 slots = ["frontage", "curb", "alley"]

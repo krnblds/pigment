@@ -17,6 +17,6 @@
 {"tool": "project_decal", "args": {"image": "assets/decals/bridges/run.png", "layer": "Grime runs", "position": [-0.283, 0, 0.1847], "normal": [0, 1, 0], "size": [0.0568, 0.5905], "tint": [0.3244494729751721, 0.2744411830079022, 0.28446103562282665]}}
 {"tool": "project_decal", "args": {"image": "assets/decals/bridges/run.png", "layer": "Grime runs", "position": [-0.3519, 0, 0.0772], "normal": [0, 1, 0], "size": [0.035, 0.5402], "tint": [0.27656966330085575, 0.26299119593980047, 0.2968489179153985]}}
 {"tool": "add_layer", "args": {"name": "Soot", "values": {"base_color": [0.2, 0.2, 0.2], "roughness": 0.6}, "opacity": 0.35, "channels": {"height": false}, "mask": {"generator": "grunge", "amount": 0.25, "scale": 4.0, "softness": 0.4, "seed": 507}}}
-{"tool": "render", "args": {"yaw": 0, "pitch": 89.9, "zoom": 1.0, "width": 600, "height": 600, "background": false, "path": "C:/Users/kiera/Documents/Workspaces/Vibe Projects/are-senior-graphics-engineer-who/.claude/worktrees/agent-bridges/.citycache/bridges/bridge_cable.png"}}
+{"tool": "render", "args": {"yaw": 0, "pitch": 89.9, "zoom": 1.0, "width": 600, "height": 600, "background": false, "path": "C:/Users/kiera/Documents/Workspaces/Vibe Projects/are-senior-graphics-engineer-who/.citycache/bridges/bridge_cable.png"}}
 {"tool": "export_textures", "args": {"dir": "scenes/town/textures/bridge_cable", "name": "bridge_cable", "preset": "separate"}}
 {"tool": "save_project", "args": {"path": "scenes/town/projects/bridges/bridge_cable.pigment"}}

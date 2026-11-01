@@ -48,10 +48,18 @@ mutable = ["scenes/props/textures/variants.json"]
 [pigment]
 scripts = ["scenes/props/scripts/trash_bag_pile.jsonl"]
 textures = "scenes/props/textures"
-resolution = 512
-variants = []
-decals = []
-outputs = ["scenes/props/projects/trash_bag_pile.pigment", "scenes/props/textures/trash_bag_pile"]
+resolution = 1024
+variants = ["tagged"]
+decals = [
+  "assets/decals/props/bin_burnable.png",
+  "assets/decals/props/waste_tag.png",
+  "assets/decals/story/stencil_eye_crossed.png",
+]
+outputs = [
+  "scenes/props/projects/trash_bag_pile.pigment",
+  "scenes/props/textures/trash_bag_pile",
+  "scenes/props/textures/trash_bag_pile__tagged",
+]
 patch = []
 decal_slots = {}
 
@@ -68,22 +76,29 @@ lod1_ratio = 0.0
 [game]
 category = "other"
 collision = "none"
-tris = 1360
+tris = 3640
 policy = "cell"
 proxy = false
-world_keys = ["PROP_trash_bag_pile"]
+world_keys = ["PROP_trash_bag_pile", "PROP_trash_bag_pile__tagged"]
 visible_to_m = 150.0
 collider = "box"
 mount = "ground"
 lights = []
-alpha = ["OPAQUE"]
-lod = { lod0_tris = 1360, visible_to_m = 60.0 }
+alpha = ["BLEND"]
+lod = { lod0_tris = 3640, lod1_tris = 1456, lod1_from_m = 20.0, visible_to_m = 60.0 }
 
 # Where the world places it (read from scenes/world/world.json; scatter rules live in the props catalog).
 [placement]
-instances = 953
+instances = 962
 source = "tools/props/scatter.py (rules: tools/props/catalog.py)"
-districts = { downtown = 46, hillside = 117, midtown = 379, old_town = 296, port = 115 }
+
+[placement.districts]
+downtown = 34
+hillside = 126
+midtown = 305
+old_town = 278
+port = 107
+yoimachi = 112
 
 [placement.scatter]
 slots = ["frontage", "alley", "curb"]

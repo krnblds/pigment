@@ -98,6 +98,6 @@
 {"tool": "project_decal", "args": {"image": "assets/decals/bridges/run.png", "layer": "Runoff streaks", "position": [-1.7149, 0, 0.102], "normal": [0, 1, 0], "size": [0.1646, 1.7385], "tint": [0.11987634272660991, 0.054480090993208725, 0.029114461607556062]}}
 {"tool": "project_decal", "args": {"image": "assets/decals/bridges/run.png", "layer": "Runoff streaks", "position": [-1.7669, 0, 0.5921], "normal": [0, 1, 0], "size": [0.1036, 0.9199], "tint": [0.11078323472984916, 0.048755481882853294, 0.031091186285491845]}}
 {"tool": "project_decal", "args": {"image": "assets/decals/bridges/run.png", "layer": "Runoff streaks", "position": [1.7526, 0, -0.1897], "normal": [0, 1, 0], "size": [0.2401, 1.9131], "tint": [0.10094974304011359, 0.05410821012450235, 0.031414957864815844]}}
-{"tool": "render", "args": {"yaw": 0, "pitch": 89.9, "zoom": 1.0, "width": 600, "height": 600, "background": false, "path": "C:/Users/kiera/Documents/Workspaces/Vibe Projects/are-senior-graphics-engineer-who/.claude/worktrees/agent-bridges/.citycache/bridges/bridge_steel_weather.png"}}
+{"tool": "render", "args": {"yaw": 0, "pitch": 89.9, "zoom": 1.0, "width": 600, "height": 600, "background": false, "path": "C:/Users/kiera/Documents/Workspaces/Vibe Projects/are-senior-graphics-engineer-who/.citycache/bridges/bridge_steel_weather.png"}}
 {"tool": "export_textures", "args": {"dir": "scenes/town/textures/bridge_steel_weather", "name": "bridge_steel_weather", "preset": "separate"}}
 {"tool": "save_project", "args": {"path": "scenes/town/projects/bridges/bridge_steel_weather.pigment"}}

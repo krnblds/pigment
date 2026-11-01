@@ -95,7 +95,7 @@ collision = "none"
 tris = 372
 policy = "cell"
 proxy = false
-world_keys = ["PROP_vending_machine"]
+world_keys = ["PROP_vending_machine", "PROP_vending_machine__noctis", "PROP_vending_machine__ramen"]
 visible_to_m = 150.0
 collider = "box"
 mount = "ground"
@@ -107,16 +107,17 @@ lod = { lod0_tris = 372, lod1_tris = 186, lod1_from_m = 20.0, visible_to_m = 83.
 
 # Where the world places it (read from scenes/world/world.json; scatter rules live in the props catalog).
 [placement]
-instances = 1079
+instances = 1015
 source = "tools/props/scatter.py (rules: tools/props/catalog.py)"
 
 [placement.districts]
-corporate = 5
-downtown = 175
-hillside = 119
-midtown = 572
-old_town = 145
-port = 63
+corporate = 2
+downtown = 152
+hillside = 108
+midtown = 482
+old_town = 156
+port = 59
+yoimachi = 56
 
 [placement.scatter]
 slots = ["frontage", "alley"]

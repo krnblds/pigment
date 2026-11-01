@@ -22,11 +22,11 @@
  "nodes": [],
  "pieces": [
   {
-   "piece": "bolt_0",
+   "piece": "bolt_1",
    "group": "steel",
    "node": null,
    "center": [
-    0.1018,
+    -0.1018,
     0.045,
     -0.1018
    ],
@@ -54,38 +54,6 @@
    "tris": 236
   },
   {
-   "piece": "base_plate",
-   "group": "dark_metal",
-   "node": null,
-   "center": [
-    0.0,
-    0.0125,
-    -0.0
-   ],
-   "size": [
-    0.378,
-    0.025,
-    0.378
-   ],
-   "tris": 44
-  },
-  {
-   "piece": "bolt_1",
-   "group": "steel",
-   "node": null,
-   "center": [
-    -0.1018,
-    0.045,
-    -0.1018
-   ],
-   "size": [
-    0.0208,
-    0.04,
-    0.024
-   ],
-   "tris": 20
-  },
-  {
    "piece": "crossarm",
    "group": "galv",
    "node": null,
@@ -102,6 +70,38 @@
    "tris": 44
   },
   {
+   "piece": "base_plate",
+   "group": "dark_metal",
+   "node": null,
+   "center": [
+    0.0,
+    0.0125,
+    -0.0
+   ],
+   "size": [
+    0.378,
+    0.025,
+    0.378
+   ],
+   "tris": 44
+  },
+  {
+   "piece": "cam_0_body",
+   "group": "white_plastic",
+   "node": null,
+   "center": [
+    -0.5923,
+    5.05,
+    0.0906
+   ],
+   "size": [
+    0.2326,
+    0.1756,
+    0.3341
+   ],
+   "tris": 108
+  },
+  {
    "piece": "bolt_3",
    "group": "steel",
    "node": null,
@@ -109,6 +109,22 @@
     0.1018,
     0.045,
     0.1018
+   ],
+   "size": [
+    0.0208,
+    0.04,
+    0.024
+   ],
+   "tris": 20
+  },
+  {
+   "piece": "bolt_0",
+   "group": "steel",
+   "node": null,
+   "center": [
+    0.1018,
+    0.045,
+    -0.1018
    ],
    "size": [
     0.0208,
@@ -130,22 +146,6 @@
     0.18,
     5.3,
     0.18
-   ],
-   "tris": 60
-  },
-  {
-   "piece": "arm_clamp",
-   "group": "dark_metal",
-   "node": null,
-   "center": [
-    0.0,
-    5.2,
-    -0.0
-   ],
-   "size": [
-    0.2,
-    0.16,
-    0.2
    ],
    "tris": 60
   },
@@ -182,20 +182,20 @@
    "tris": 60
   },
   {
-   "piece": "cam_0_body",
-   "group": "white_plastic",
+   "piece": "arm_clamp",
+   "group": "dark_metal",
    "node": null,
    "center": [
-    -0.5923,
-    5.05,
-    0.0906
+    0.0,
+    5.2,
+    -0.0
    ],
    "size": [
-    0.2326,
-    0.1756,
-    0.3341
+    0.2,
+    0.16,
+    0.2
    ],
-   "tris": 108
+   "tris": 60
   },
   {
    "piece": "cam_0_shield",

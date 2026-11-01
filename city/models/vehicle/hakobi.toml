@@ -116,7 +116,7 @@ variants = ["white", "silver", "dreamlink", "noctis", "tsuru", "facilities", "ra
 lights = ["Headlight_L", "Headlight_R", "Taillight_L", "Taillight_R"]
 
 [game.lod]
-triangles = { lod0 = 70417, lod1 = 10679, lod2 = 1545 }
+triangles = { lod0 = 70417, lod1 = 10679, lod2 = 1546 }
 
 # Where the world places it (read from scenes/world/world.json; scatter rules live in the props catalog).
 [placement]

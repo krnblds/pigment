@@ -1,10 +1,10 @@
 {
  "lod0": "vending_machine.glb",
- "lod0_bytes": 795036,
+ "lod0_bytes": 799700,
  "lod0_tris": 372,
  "texture": 1024,
  "lod1": "vending_machine_lod1.glb",
- "lod1_bytes": 282016,
+ "lod1_bytes": 283332,
  "lod1_tris": 186,
  "lod1_texture": 512
 }

@@ -18,7 +18,7 @@
   1.715
  ],
  "tris": 2292,
- "texels_per_m": 244.3,
+ "texels_per_m": 247.7,
  "nodes": [],
  "pieces": [
   {
@@ -326,6 +326,22 @@
    "tris": 28
   },
   {
+   "piece": "drone_motor_0",
+   "group": "dark_metal",
+   "node": null,
+   "center": [
+    0.3889,
+    7.81,
+    -0.3889
+   ],
+   "size": [
+    0.078,
+    0.06,
+    0.08
+   ],
+   "tris": 52
+  },
+  {
    "piece": "drone_cam",
    "group": "cam_eye",
    "node": null,
@@ -356,38 +372,6 @@
     0.4
    ],
    "tris": 92
-  },
-  {
-   "piece": "drone_motor_0",
-   "group": "dark_metal",
-   "node": null,
-   "center": [
-    0.3889,
-    7.81,
-    -0.3889
-   ],
-   "size": [
-    0.078,
-    0.06,
-    0.08
-   ],
-   "tris": 52
-  },
-  {
-   "piece": "drone_motor_1",
-   "group": "dark_metal",
-   "node": null,
-   "center": [
-    -0.3889,
-    7.81,
-    -0.3889
-   ],
-   "size": [
-    0.078,
-    0.06,
-    0.08
-   ],
-   "tris": 52
   },
   {
    "piece": "drone_body",
@@ -422,11 +406,27 @@
    "tris": 108
   },
   {
-   "piece": "drone_arm_1",
+   "piece": "drone_motor_1",
+   "group": "dark_metal",
+   "node": null,
+   "center": [
+    -0.3889,
+    7.81,
+    -0.3889
+   ],
+   "size": [
+    0.078,
+    0.06,
+    0.08
+   ],
+   "tris": 52
+  },
+  {
+   "piece": "drone_arm_0",
    "group": "black_plastic",
    "node": null,
    "center": [
-    -0.2475,
+    0.2475,
     7.78,
     -0.2475
    ],
@@ -438,27 +438,11 @@
    "tris": 28
   },
   {
-   "piece": "drone_led_0",
-   "group": "led",
-   "node": null,
-   "center": [
-    0.3889,
-    7.771,
-    -0.3889
-   ],
-   "size": [
-    0.024,
-    0.012,
-    0.024
-   ],
-   "tris": 28
-  },
-  {
-   "piece": "drone_arm_0",
+   "piece": "drone_arm_1",
    "group": "black_plastic",
    "node": null,
    "center": [
-    0.2475,
+    -0.2475,
     7.78,
     -0.2475
    ],
@@ -486,18 +470,18 @@
    "tris": 92
   },
   {
-   "piece": "drone_arm_2",
-   "group": "black_plastic",
+   "piece": "drone_led_0",
+   "group": "led",
    "node": null,
    "center": [
-    -0.2475,
-    7.78,
-    0.2475
+    0.3889,
+    7.771,
+    -0.3889
    ],
    "size": [
-    0.314,
-    0.0838,
-    0.314
+    0.024,
+    0.012,
+    0.024
    ],
    "tris": 28
   },
@@ -514,6 +498,22 @@
     0.024,
     0.012,
     0.024
+   ],
+   "tris": 28
+  },
+  {
+   "piece": "drone_arm_2",
+   "group": "black_plastic",
+   "node": null,
+   "center": [
+    -0.2475,
+    7.78,
+    0.2475
+   ],
+   "size": [
+    0.314,
+    0.0838,
+    0.314
    ],
    "tris": 28
   },

@@ -103,7 +103,7 @@ variants = ["cream", "mint", "cherry", "sky", "silver", "tsuru", "inspector", "r
 lights = ["Headlight_L", "Headlight_R", "Taillight_L", "Taillight_R"]
 
 [game.lod]
-triangles = { lod0 = 62713, lod1 = 10100, lod2 = 1239 }
+triangles = { lod0 = 62713, lod1 = 10100, lod2 = 1242 }
 
 # Where the world places it (read from scenes/world/world.json; scatter rules live in the props catalog).
 [placement]

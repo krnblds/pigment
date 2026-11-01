@@ -36,13 +36,12 @@ params = {}
 runner = "python"
 tool = "tools/vehicles/textures.py"
 args = ["tsubame", "--no-run"]
-# the hero was textured at 2048: the 4K body runs out of GPU memory on a shared 12 GB card (docs/agents/fleet)
-env = { FLEET_RES = "2048" }
 outputs = [
   "scenes/vehicles/tsubame/scripts/tsubame_body.jsonl",
   "scenes/vehicles/tsubame/scripts/tsubame_wheel.jsonl",
 ]
 deps = ["tools/vehicles/fleet.py"]
+env = { FLEET_RES = "2048" }
 
 # Pigment scripts run with pigment-mcp --script. patch ops are applied to the script first:
 #   {match = {tool = "add_layer", name = "Concrete"}, set = {opacity = 0.8}}
@@ -132,7 +131,7 @@ variants = ["security", "cab", "pearl", "maroon", "gunmetal", "exec", "hinode", 
 lights = ["Headlight_L", "Headlight_R", "Taillight_L", "Taillight_R"]
 
 [game.lod]
-triangles = { lod0 = 92458, lod1 = 9914, lod2 = 2768 }
+triangles = { lod0 = 92458, lod1 = 9914, lod2 = 2766 }
 
 # Where the world places it (read from scenes/world/world.json; scatter rules live in the props catalog).
 [placement]

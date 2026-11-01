@@ -18,7 +18,7 @@
   2.444
  ],
  "tris": 3224,
- "texels_per_m": 119.8,
+ "texels_per_m": 119.9,
  "nodes": [],
  "pieces": [
   {
@@ -870,6 +870,22 @@
    "tris": 32
   },
   {
+   "piece": "lock_rod_r1",
+   "group": "galv",
+   "node": null,
+   "center": [
+    6.124,
+    1.2755,
+    -0.7811
+   ],
+   "size": [
+    0.027,
+    2.271,
+    0.027
+   ],
+   "tris": 28
+  },
+  {
    "piece": "rod_guide_r1_2.05",
    "group": "galv",
    "node": null,
@@ -900,22 +916,6 @@
     0.06
    ],
    "tris": 12
-  },
-  {
-   "piece": "lock_rod_r1",
-   "group": "galv",
-   "node": null,
-   "center": [
-    6.124,
-    1.2755,
-    -0.7811
-   ],
-   "size": [
-    0.027,
-    2.271,
-    0.027
-   ],
-   "tris": 28
   },
   {
    "piece": "rod_guide_r1_0.55",
@@ -1014,6 +1014,22 @@
    "tris": 32
   },
   {
+   "piece": "hinge_pin_r_1.0",
+   "group": "galv",
+   "node": null,
+   "center": [
+    6.112,
+    1.0,
+    -1.102
+   ],
+   "size": [
+    0.0418,
+    0.11,
+    0.044
+   ],
+   "tris": 36
+  },
+  {
    "piece": "hinge_pin_r_1.6",
    "group": "galv",
    "node": null,
@@ -1028,6 +1044,22 @@
     0.044
    ],
    "tris": 36
+  },
+  {
+   "piece": "hinge_blade_r_1.0",
+   "group": "paint",
+   "node": null,
+   "center": [
+    6.1,
+    1.0,
+    -1.017
+   ],
+   "size": [
+    0.016,
+    0.07,
+    0.16
+   ],
+   "tris": 12
   },
   {
    "piece": "hinge_pin_r_0.42",
@@ -1046,38 +1078,6 @@
    "tris": 36
   },
   {
-   "piece": "hinge_pin_r_1.0",
-   "group": "galv",
-   "node": null,
-   "center": [
-    6.112,
-    1.0,
-    -1.102
-   ],
-   "size": [
-    0.0418,
-    0.11,
-    0.044
-   ],
-   "tris": 36
-  },
-  {
-   "piece": "leaf_l_bottom",
-   "group": "paint",
-   "node": null,
-   "center": [
-    6.0695,
-    0.22,
-    0.5375
-   ],
-   "size": [
-    0.045,
-    0.1,
-    1.059
-   ],
-   "tris": 12
-  },
-  {
    "piece": "retainer_r1",
    "group": "galv",
    "node": null,
@@ -1092,22 +1092,6 @@
     0.05
    ],
    "tris": 44
-  },
-  {
-   "piece": "hinge_blade_r_1.0",
-   "group": "paint",
-   "node": null,
-   "center": [
-    6.1,
-    1.0,
-    -1.017
-   ],
-   "size": [
-    0.016,
-    0.07,
-    0.16
-   ],
-   "tris": 12
   },
   {
    "piece": "hinge_blade_r_0.42",
@@ -1154,6 +1138,22 @@
     0.016,
     0.07,
     0.16
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "leaf_l_bottom",
+   "group": "paint",
+   "node": null,
+   "center": [
+    6.0695,
+    0.22,
+    0.5375
+   ],
+   "size": [
+    0.045,
+    0.1,
+    1.059
    ],
    "tris": 12
   },
@@ -1398,12 +1398,12 @@
    "tris": 12
   },
   {
-   "piece": "rod_guide_l1_1.45",
+   "piece": "rod_guide_l1_0.55",
    "group": "galv",
    "node": null,
    "center": [
     6.104,
-    1.45,
+    0.55,
     0.7811
    ],
    "size": [
@@ -1414,12 +1414,12 @@
    "tris": 12
   },
   {
-   "piece": "rod_guide_l1_0.55",
+   "piece": "rod_guide_l1_1.45",
    "group": "galv",
    "node": null,
    "center": [
     6.104,
-    0.55,
+    1.45,
     0.7811
    ],
    "size": [
@@ -1510,12 +1510,12 @@
    "tris": 32
   },
   {
-   "piece": "hinge_pin_l_1.0",
+   "piece": "hinge_pin_l_0.42",
    "group": "galv",
    "node": null,
    "center": [
     6.112,
-    1.0,
+    0.42,
     1.102
    ],
    "size": [
@@ -1526,12 +1526,12 @@
    "tris": 36
   },
   {
-   "piece": "hinge_pin_l_0.42",
+   "piece": "hinge_pin_l_1.0",
    "group": "galv",
    "node": null,
    "center": [
     6.112,
-    0.42,
+    1.0,
     1.102
    ],
    "size": [
@@ -1558,18 +1558,18 @@
    "tris": 36
   },
   {
-   "piece": "csc_plate",
-   "group": "sign",
+   "piece": "hinge_blade_l_1.0",
+   "group": "paint",
    "node": null,
    "center": [
-    6.093,
-    1.62,
-    0.55
+    6.1,
+    1.0,
+    1.017
    ],
    "size": [
-    0.006,
-    0.17,
-    0.26
+    0.016,
+    0.07,
+    0.16
    ],
    "tris": 12
   },
@@ -1588,22 +1588,6 @@
     0.05
    ],
    "tris": 44
-  },
-  {
-   "piece": "hinge_blade_l_1.0",
-   "group": "paint",
-   "node": null,
-   "center": [
-    6.1,
-    1.0,
-    1.017
-   ],
-   "size": [
-    0.016,
-    0.07,
-    0.16
-   ],
-   "tris": 12
   },
   {
    "piece": "hinge_blade_l_0.42",
@@ -1650,6 +1634,22 @@
     0.016,
     0.07,
     0.16
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "csc_plate",
+   "group": "sign",
+   "node": null,
+   "center": [
+    6.093,
+    1.62,
+    0.55
+   ],
+   "size": [
+    0.006,
+    0.17,
+    0.26
    ],
    "tris": 12
   },

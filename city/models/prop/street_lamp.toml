@@ -58,7 +58,7 @@ visible_to_m = 260.0
 
 # Where the world places it (read from scenes/world/world.json; scatter rules live in the props catalog).
 [placement]
-instances = 1164
+instances = 1150
 source = "tools/world/placement.py"
 rules = "street furniture along roads (world_config.json props)"
-districts = { roads = 1164 }
+districts = { roads = 1150 }

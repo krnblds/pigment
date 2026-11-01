@@ -155,6 +155,6 @@
 {"tool": "project_decal", "args": {"image": "assets/decals/bridges/run.png", "layer": "Efflorescence", "position": [1.8925, 0, 0.7761], "normal": [0, 1, 0], "size": [0.2439, 0.3522], "tint": [0.7251055798765657, 0.7627875277317985, 0.7016547844452593], "values": {"roughness": 0.95}}}
 {"tool": "project_decal", "args": {"image": "assets/decals/bridges/run.png", "layer": "Efflorescence", "position": [-1.89, 0, -0.4008], "normal": [0, 1, 0], "size": [0.1799, 0.3984], "tint": [0.7968000852512931, 0.7837517546514357, 0.7564350949287647], "values": {"roughness": 0.95}}}
 {"tool": "add_layer", "args": {"name": "Grime", "material": "Grime", "opacity": 0.15, "channels": {"height": false}, "mask": {"generator": "grunge", "amount": 0.3, "scale": 0.4, "softness": 0.5, "seed": 117}}}
-{"tool": "render", "args": {"yaw": 0, "pitch": 89.9, "zoom": 1.0, "width": 600, "height": 600, "background": false, "path": "C:/Users/kiera/Documents/Workspaces/Vibe Projects/are-senior-graphics-engineer-who/.claude/worktrees/agent-bridges/.citycache/bridges/bridge_concrete.png"}}
+{"tool": "render", "args": {"yaw": 0, "pitch": 89.9, "zoom": 1.0, "width": 600, "height": 600, "background": false, "path": "C:/Users/kiera/Documents/Workspaces/Vibe Projects/are-senior-graphics-engineer-who/.citycache/bridges/bridge_concrete.png"}}
 {"tool": "export_textures", "args": {"dir": "scenes/town/textures/bridge_concrete", "name": "bridge_concrete", "preset": "separate"}}
 {"tool": "save_project", "args": {"path": "scenes/town/projects/bridges/bridge_concrete.pigment"}}

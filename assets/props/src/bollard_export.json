@@ -1,10 +1,10 @@
 {
  "lod0": "bollard.glb",
- "lod0_bytes": 169208,
+ "lod0_bytes": 168904,
  "lod0_tris": 1104,
  "texture": 512,
  "lod1": "bollard_lod1.glb",
- "lod1_bytes": 77748,
+ "lod1_bytes": 77444,
  "lod1_tris": 552,
  "lod1_texture": 256
 }

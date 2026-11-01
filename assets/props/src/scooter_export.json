@@ -1,10 +1,10 @@
 {
  "lod0": "scooter.glb",
- "lod0_bytes": 159944,
+ "lod0_bytes": 158676,
  "lod0_tris": 1144,
  "texture": 512,
  "lod1": "scooter_lod1.glb",
- "lod1_bytes": 79880,
+ "lod1_bytes": 79808,
  "lod1_tris": 572,
  "lod1_texture": 256
 }

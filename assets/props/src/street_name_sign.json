@@ -70,12 +70,12 @@
    "tris": 52
   },
   {
-   "piece": "clamp_2.95",
+   "piece": "clamp_3.2",
    "group": "dark_metal",
    "node": null,
    "center": [
     0.0,
-    2.95,
+    3.2,
     -0.0
    ],
    "size": [
@@ -102,12 +102,12 @@
    "tris": 44
   },
   {
-   "piece": "clamp_3.2",
+   "piece": "clamp_2.95",
    "group": "dark_metal",
    "node": null,
    "center": [
     0.0,
-    3.2,
+    2.95,
     -0.0
    ],
    "size": [

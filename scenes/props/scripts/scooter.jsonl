@@ -1,7 +1,7 @@
 {"tool": "new_project", "args": {"mesh": "assets/props/src/scooter.glb", "resolution": 1024, "material": "Gunmetal"}}
-{"tool": "add_layer", "args": {"name": "rubber", "material": "Black rubber", "mask": {"parts": [0, 2, 3, 10, 11]}}}
+{"tool": "add_layer", "args": {"name": "rubber", "material": "Black rubber", "mask": {"parts": [0, 2, 4, 10, 11]}}}
 {"tool": "add_layer", "args": {"name": "paint", "values": {"base_color": [0.05, 0.55, 0.5], "roughness": 0.35, "metallic": 0.0}, "mask": {"parts": [1, 5, 7, 8]}}}
-{"tool": "add_layer", "args": {"name": "dark_metal", "material": "Gunmetal", "mask": {"parts": [4, 6, 16]}}}
+{"tool": "add_layer", "args": {"name": "dark_metal", "material": "Gunmetal", "mask": {"parts": [3, 6, 16]}}}
 {"tool": "add_layer", "args": {"name": "black_plastic", "values": {"base_color": [0.025, 0.025, 0.028], "roughness": 0.4, "metallic": 0.0}, "mask": {"parts": [9]}}}
 {"tool": "add_layer", "args": {"name": "sign", "values": {"base_color": [0.85, 0.85, 0.83], "roughness": 0.45, "metallic": 0.0}, "mask": {"parts": [13]}}}
 {"tool": "add_layer", "args": {"name": "sign2", "values": {"base_color": [0.85, 0.85, 0.83], "roughness": 0.45, "metallic": 0.0}, "mask": {"parts": [14]}}}
@@ -9,7 +9,7 @@
 {"tool": "add_layer", "args": {"name": "led", "values": {"base_color": [0.225, 0.2375, 0.25], "roughness": 0.3, "metallic": 0.0, "emissive": [0.9, 0.95, 1.0], "emissive_strength": 5.0}, "mask": {"parts": [15]}, "channels": {"height": false}}}
 {"tool": "add_layer", "args": {"name": "Edge wear", "material": "Steel", "mask": {"parts": [1, 5, 7, 8], "generator": "edge_wear", "amount": 0.28500000000000003, "softness": 0.12, "breakup": 0.6, "scale": 6.0}, "channels": {"height": false}}}
 {"tool": "add_layer", "args": {"name": "Scratches", "values": {"base_color": [0.5, 0.5, 0.5], "roughness": 0.35, "metallic": 0.6}, "mask": {"parts": [1, 5, 7, 8], "generator": "scratches", "amount": 0.19, "scale": 4.0}, "opacity": 0.35, "channels": {"height": false}}}
-{"tool": "add_layer", "args": {"name": "Rust", "material": "Rust", "mask": {"parts": [4, 6, 16], "generator": "edge_wear", "amount": 0.27, "softness": 0.2, "breakup": 0.8, "scale": 5.0, "effects": [{"generator": "spots", "op": "multiply", "amount": 0.56, "scale": 5.0, "softness": 0.2}]}, "opacity": 0.85, "channels": {"height": false}}}
+{"tool": "add_layer", "args": {"name": "Rust", "material": "Rust", "mask": {"parts": [3, 6, 16], "generator": "edge_wear", "amount": 0.27, "softness": 0.2, "breakup": 0.8, "scale": 5.0, "effects": [{"generator": "spots", "op": "multiply", "amount": 0.56, "scale": 5.0, "softness": 0.2}]}, "opacity": 0.85, "channels": {"height": false}}}
 {"tool": "add_layer", "args": {"name": "Grime", "material": "Grime", "mask": {"parts": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 14, 16], "generator": "dirt", "amount": 0.485, "softness": 0.25, "breakup": 0.5}, "opacity": 0.75, "channels": {"height": false}}}
 {"tool": "add_layer", "args": {"name": "Ground dirt", "material": "Grime", "mask": {"parts": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 14, 16], "generator": "gradient", "amount": 0.428377153218495, "softness": 0.12, "breakup": 0.6, "scale": 4.0, "effects": [{"generator": "grunge", "op": "multiply", "amount": 0.75, "scale": 3.0, "softness": 0.3}]}, "opacity": 0.7, "channels": {"height": false}}}
 {"tool": "add_layer", "args": {"name": "Rain streaks", "material": "Grime", "mask": {"parts": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 14, 16], "generator": "streaks", "amount": 0.2625, "scale": 3.0, "softness": 0.2}, "opacity": 0.4, "channels": {"height": false}}}

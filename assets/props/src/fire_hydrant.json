@@ -18,7 +18,7 @@
   0.395
  ],
  "tris": 1632,
- "texels_per_m": 388.4,
+ "texels_per_m": 388.2,
  "nodes": [],
  "pieces": [
   {
@@ -118,38 +118,6 @@
    "tris": 60
   },
   {
-   "piece": "outlet_cap_1",
-   "group": "steel",
-   "node": null,
-   "center": [
-    0.195,
-    0.45,
-    -0.0
-   ],
-   "size": [
-    0.03,
-    0.0904,
-    0.0904
-   ],
-   "tris": 188
-  },
-  {
-   "piece": "pumper_cap",
-   "group": "steel",
-   "node": null,
-   "center": [
-    0.0,
-    0.36,
-    0.1975
-   ],
-   "size": [
-    0.1339,
-    0.1346,
-    0.035
-   ],
-   "tris": 212
-  },
-  {
    "piece": "outlet_nut_0",
    "group": "steel",
    "node": null,
@@ -166,20 +134,20 @@
    "tris": 16
   },
   {
-   "piece": "outlet_nut_1",
+   "piece": "outlet_cap_1",
    "group": "steel",
    "node": null,
    "center": [
-    0.2225,
+    0.195,
     0.45,
-    -0.0019
+    -0.0
    ],
    "size": [
-    0.025,
-    0.038,
-    0.0362
+    0.03,
+    0.0904,
+    0.0904
    ],
-   "tris": 16
+   "tris": 188
   },
   {
    "piece": "pumper",
@@ -198,20 +166,36 @@
    "tris": 68
   },
   {
-   "piece": "flange_bolt_0",
+   "piece": "outlet_nut_1",
    "group": "steel",
    "node": null,
    "center": [
-    0.1039,
-    0.1625,
-    -0.06
+    0.2225,
+    0.45,
+    -0.0019
    ],
    "size": [
-    0.0208,
     0.025,
-    0.024
+    0.038,
+    0.0362
    ],
-   "tris": 20
+   "tris": 16
+  },
+  {
+   "piece": "pumper_cap",
+   "group": "steel",
+   "node": null,
+   "center": [
+    0.0,
+    0.36,
+    0.1975
+   ],
+   "size": [
+    0.1339,
+    0.1346,
+    0.035
+   ],
+   "tris": 212
   },
   {
    "piece": "pumper_nut",
@@ -230,13 +214,29 @@
    "tris": 16
   },
   {
-   "piece": "flange_bolt_1",
+   "piece": "flange_bolt_2",
    "group": "steel",
    "node": null,
    "center": [
-    0.0,
+    -0.1039,
     0.1625,
-    -0.12
+    -0.06
+   ],
+   "size": [
+    0.0208,
+    0.025,
+    0.024
+   ],
+   "tris": 20
+  },
+  {
+   "piece": "flange_bolt_0",
+   "group": "steel",
+   "node": null,
+   "center": [
+    0.1039,
+    0.1625,
+    -0.06
    ],
    "size": [
     0.0208,
@@ -262,13 +262,13 @@
    "tris": 20
   },
   {
-   "piece": "flange_bolt_2",
+   "piece": "flange_bolt_1",
    "group": "steel",
    "node": null,
    "center": [
-    -0.1039,
+    0.0,
     0.1625,
-    -0.06
+    -0.12
    ],
    "size": [
     0.0208,

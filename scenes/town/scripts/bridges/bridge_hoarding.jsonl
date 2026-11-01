@@ -36,6 +36,6 @@
 {"tool": "project_decal", "args": {"image": "assets/decals/bridges/run.png", "layer": "Grime", "position": [2.8053, 0, 0.5834], "normal": [0, 1, 0], "size": [0.0659, 0.7527], "tint": [0.11112065719535565, 0.12067964926721729, 0.1099739171657868]}}
 {"tool": "project_decal", "args": {"image": "assets/decals/bridges/run.png", "layer": "Grime", "position": [-1.1923, 0, 0.2111], "normal": [0, 1, 0], "size": [0.122, 1.1668], "tint": [0.11742934588018991, 0.10523511374041027, 0.08828400288293245]}}
 {"tool": "add_layer", "args": {"name": "Splash", "material": "Grime", "opacity": 0.6, "mask": {"generator": "grunge", "amount": 0.25, "scale": 1.5, "softness": 0.3, "seed": 605}}}
-{"tool": "render", "args": {"yaw": 0, "pitch": 89.9, "zoom": 1.0, "width": 600, "height": 600, "background": false, "path": "C:/Users/kiera/Documents/Workspaces/Vibe Projects/are-senior-graphics-engineer-who/.claude/worktrees/agent-bridges/.citycache/bridges/bridge_hoarding.png"}}
+{"tool": "render", "args": {"yaw": 0, "pitch": 89.9, "zoom": 1.0, "width": 600, "height": 600, "background": false, "path": "C:/Users/kiera/Documents/Workspaces/Vibe Projects/are-senior-graphics-engineer-who/.citycache/bridges/bridge_hoarding.png"}}
 {"tool": "export_textures", "args": {"dir": "scenes/town/textures/bridge_hoarding", "name": "bridge_hoarding", "preset": "separate"}}
 {"tool": "save_project", "args": {"path": "scenes/town/projects/bridges/bridge_hoarding.pigment"}}

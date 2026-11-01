@@ -18,7 +18,7 @@
   0.556
  ],
  "tris": 1144,
- "texels_per_m": 604.3,
+ "texels_per_m": 596.7,
  "nodes": [],
  "pieces": [
   {
@@ -70,22 +70,6 @@
    "tris": 284
   },
   {
-   "piece": "tyre_f",
-   "group": "rubber",
-   "node": null,
-   "center": [
-    0.4,
-    0.0995,
-    0.0105
-   ],
-   "size": [
-    0.1969,
-    0.1985,
-    0.0681
-   ],
-   "tris": 284
-  },
-  {
    "piece": "hub_r",
    "group": "dark_metal",
    "node": null,
@@ -100,6 +84,22 @@
     0.0682
    ],
    "tris": 60
+  },
+  {
+   "piece": "tyre_f",
+   "group": "rubber",
+   "node": null,
+   "center": [
+    0.4,
+    0.0995,
+    0.0105
+   ],
+   "size": [
+    0.1969,
+    0.1985,
+    0.0681
+   ],
+   "tris": 284
   },
   {
    "piece": "fender_r",
