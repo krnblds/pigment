@@ -104,10 +104,20 @@ def match_parts(parts, side):
     return out
 
 
+def _probe(lines, path):
+    """Always runs (list_parts), even when only writing scripts."""
+    global WRITE_ONLY
+    w, WRITE_ONLY = WRITE_ONLY, False
+    try:
+        return run_script(lines, path)
+    finally:
+        WRITE_ONLY = w
+
+
 def texture_script(name):
     side = json.loads((OUT / "meshes" / f"{name}.json").read_text())
     glb = (OUT / "meshes" / f"{name}.glb").relative_to(ROOT).as_posix()
-    probe = run_script([{"tool": "new_project", "args": {"mesh": glb, "resolution": 512}}, {"tool": "list_parts", "args": {}}], SCRIPTS / f"_{name}_parts.jsonl")
+    probe = _probe([{"tool": "new_project", "args": {"mesh": glb, "resolution": 512}}, {"tool": "list_parts", "args": {}}], SCRIPTS / f"_{name}_parts.jsonl")
     parts = json.loads(probe[probe.index("[list_parts] ") + 13:].split("\n[")[0])
     (SCRIPTS / f"_{name}_parts.jsonl").unlink()
     owner = match_parts(parts, side)
@@ -269,7 +279,7 @@ def sheet():
             sheet.paste(tile, (x0 + k * (tw + 4), y0))
         d.text((x0, y0 + th + 6), f"{r['name']}  ({', '.join(r['tags'][:3])})   lit | off", fill=(220, 220, 225), font=font)
     DOCS.mkdir(parents=True, exist_ok=True)
-    sheet.save(DOCS / "rooms_contact_sheet.png", optimize=True)
+    sheet.quantize(256, method=Image.Quantize.MEDIANCUT).save(DOCS / "rooms_contact_sheet.png", optimize=True)
     print("[sheet]", DOCS / "rooms_contact_sheet.png")
 
 
@@ -334,8 +344,24 @@ detect_3d/compress_to=0
 
 
 def main():
+    global WRITE_ONLY
     args = sys.argv[1:] or ["all"]
     stage, names = args[0], args[1:]
+    if stage == "scripts":          # tools/city recipe: every Pigment script, nothing run
+        WRITE_ONLY = True
+        names = names or room_names()
+        texture(names)
+        pack(names)
+        windows()
+        return
+    if stage == "finish":           # tools/city export: Cycles renders, then pack, contact sheet, game copy
+        names = names or room_names()
+        blender("render", names)
+        WRITE_ONLY = False
+        pack(names)
+        sheet()
+        sync()
+        return
     if stage in ("build", "texture", "render", "all") and not names:
         names = room_names()
     if stage in ("build", "all"):
