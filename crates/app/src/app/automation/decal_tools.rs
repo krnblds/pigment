@@ -316,3 +316,109 @@ impl Session {
         Ok(out)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn root() -> PathBuf {
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")
+    }
+
+    /// Lit pixels in an emission close-up of the east wall's street level.
+    fn glow(s: &mut Session) -> usize {
+        let img = s.render(&json!({ "view": "emission", "yaw": 90, "pitch": 0, "target": [4.0, 1.75, 0.0], "distance": 9.0, "width": 320, "height": 200 })).unwrap();
+        image::load_from_memory(&img.png).unwrap().to_luma8().pixels().filter(|p| p.0[0] > 60).count()
+    }
+
+    fn building(s: &mut Session) {
+        s.new_project(&json!({ "mesh": root().join("assets/town/building_a.glb"), "resolution": 1024, "material": "Matte black" })).unwrap();
+    }
+
+    #[test]
+    fn anchored_decal_lands_on_the_chosen_face_and_undoes() {
+        let Ok(mut s) = Session::new() else { return };
+        building(&mut s);
+        // the grey environment counts too: measure against the bare wall
+        let base = glow(&mut s);
+        let poster = root().join("assets/decals/story/poster_unplug.png");
+        // the body's right (+X) face, middle, 1.75 m up (v from the top of a 21 m face)
+        let d = s
+            .project_decal(&json!({ "image": poster, "part": 1, "face": "right", "anchor": [0.5, 1.0 - 1.75 / 21.0], "size": 1.0, "rotation": 10, "emissive_strength": 3.0 }))
+            .unwrap();
+        let c = &d["center"];
+        assert!((c[0].as_f64().unwrap() - 4.0).abs() < 0.05 && (c[1].as_f64().unwrap() - 1.75).abs() < 0.05, "{d}");
+        assert!(d["normal"][0].as_f64().unwrap() > 0.99, "{d}");
+        assert!(d["texels_across"].as_f64().unwrap() > 5.0, "{d}");
+        let lit = glow(&mut s).saturating_sub(base);
+        assert!(lit > 150, "decal glows on the wall ({lit} px)");
+        s.undo(false).unwrap();
+        assert!(glow(&mut s).saturating_sub(base) < lit / 10, "undo removes it");
+        // a world position + normal does the same; a bad face is an error, not a silent no-op
+        s.project_decal(&json!({ "image": poster, "position": [4.2, 1.5, -2.0], "normal": [1, 0, 0], "size": 0.8, "emissive_strength": 3.0 })).unwrap();
+        assert!(glow(&mut s).saturating_sub(base) > 100);
+        assert!(s.project_decal(&json!({ "image": poster, "part": 1, "face": "nowhere", "anchor": [0.5, 0.5] })).is_err());
+    }
+
+    #[test]
+    fn scatter_obeys_constraints_layers_by_overlap_order_and_undoes_in_one_step() {
+        let Ok(mut s) = Session::new() else { return };
+        building(&mut s);
+        let st = root().join("assets/decals/story");
+        // graffiti first, on top (order 1); the posters' layer (order 0) must still go under it
+        s.project_decal(&json!({ "image": st.join("graffiti_lying.png"), "position": [4.2, 1.6, 3.0], "normal": [1, 0, 0], "size": 2.0, "overlap_order": 1, "fade": 0.3, "wear_style": "grunge" }))
+            .unwrap();
+        let before = glow(&mut s);
+        let r = s
+            .scatter_decals(&json!({
+                "images": [st.join("poster_missing_aiko.png"), st.join("poster_unplug.png")],
+                "count": 5, "seed": 11, "parts": [1], "region": { "min": [3.8, 0, -5.5], "max": [4.6, 5, 5.5] },
+                "height": [0.5, 3.0], "size": [0.6, 0.8], "min_spacing": 1.0, "wear": 0.3, "fade": 0.2,
+                "overlap_order": 0, "emissive_strength": 3.0 }))
+            .unwrap();
+        assert_eq!(r["placed"], 5, "{r}");
+        for d in r["decals"].as_array().unwrap() {
+            let (c, sz) = (&d["center"], &d["size"]);
+            let (y, h) = (c[1].as_f64().unwrap(), sz[1].as_f64().unwrap());
+            assert!((c[0].as_f64().unwrap() - 4.0).abs() < 0.05, "on the east wall: {d}");
+            assert!(y - h / 2.0 >= 0.45 && y + h / 2.0 <= 3.05, "street level: {d}");
+        }
+        let layers: Vec<String> = s.app.doc.layers.iter().map(|l| l.name.clone()).collect();
+        let (p0, p1) = (layers.iter().position(|n| n == "Decals 0").unwrap(), layers.iter().position(|n| n == "Decals 1").unwrap());
+        assert!(p0 < p1, "posters below graffiti: {layers:?}");
+        let after = glow(&mut s);
+        assert!(after > before + 300, "posters glow ({before} -> {after})");
+        // one undo removes the whole scatter (the next one would remove the layer)
+        s.undo(false).unwrap();
+        let undone = glow(&mut s);
+        assert!(undone.abs_diff(before) < 40, "one undo, all five gone ({before} vs {undone})");
+        s.undo(true).unwrap();
+        assert!(glow(&mut s).abs_diff(after) < 40, "redo brings them back");
+    }
+
+    #[test]
+    fn wear_tears_and_fades_the_decal() {
+        let Ok(mut s) = Session::new() else { return };
+        building(&mut s);
+        let base = glow(&mut s);
+        let poster = root().join("assets/decals/story/poster_missing_ren.png");
+        let place = |s: &mut Session, extra: Value| {
+            let mut a = json!({ "image": poster, "position": [4.2, 1.6, 0.0], "normal": [1, 0, 0], "size": 1.4, "emissive_strength": 3.0, "paper_rim": 0 });
+            for (k, v) in extra.as_object().unwrap() {
+                a[k] = v.clone();
+            }
+            s.project_decal(&a).unwrap();
+            let n = glow(s).saturating_sub(base);
+            s.undo(false).unwrap();
+            n
+        };
+        let fresh = place(&mut s, json!({}));
+        let torn = place(&mut s, json!({ "wear": 0.6 }));
+        let grunge = place(&mut s, json!({ "wear": 0.6, "wear_style": "grunge" }));
+        assert!(fresh > 500, "{fresh}");
+        assert!(torn < fresh * 9 / 10 && torn > fresh / 5, "torn, not gone: {torn} of {fresh}");
+        assert!(grunge < fresh * 9 / 10, "grunge tears too: {grunge} of {fresh}");
+        assert_eq!(place(&mut s, json!({ "wear": 0.6 })), torn, "same seed, same tears");
+        assert!(s.project_decal(&json!({ "image": poster, "position": [4.2, 1.6, 0.0], "normal": [1, 0, 0], "wear_style": "bogus" })).is_err());
+    }
+}
