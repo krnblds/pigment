@@ -12,14 +12,14 @@ const DIR := "res://data/vehicles/"
 static var easy := true
 const EASY := {
 	"mass": 0.82,            # lighter car: quicker to turn and to stop
-	"inertia": 0.75,         # rotates more willingly
+	"inertia": 0.9,          # a touch more willing to rotate, but not twitchy
 	"torque": 1.18,          # a bit more pull
 	"mu": 1.15,              # more grip
 	"slip_angle": 1.25,      # grip peaks later, so the limit is easier to feel
 	"shape_lat": 0.9,        # and falls off more gently past it
-	"steer_rate": 1.35,      # snappier steering
-	"steer_rate_hs": 1.3,
-	"return": 1.35,          # wheel recentres faster
+	"steer_rate": 0.85,      # gentler steering: the wheel turns in more progressively
+	"steer_rate_hs": 0.75,   # and much calmer at speed
+	"return": 1.6,           # wheel recentres faster when you let go
 }
 
 
@@ -77,6 +77,7 @@ static func _easy(p: Dictionary) -> void:
 	st["rate"] = float(st.rate) * EASY.steer_rate
 	st["rate_high_speed"] = float(st.rate_high_speed) * EASY.steer_rate_hs
 	st["return_rate"] = float(st.return_rate) * EASY["return"]
+	st["lock_deg"] = float(st.lock_deg) * 0.88            # a little less lock: less over-turning
 
 
 ## What the car contract tells us about this vehicle.
