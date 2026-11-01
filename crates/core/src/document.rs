@@ -875,12 +875,16 @@ impl Document {
             }
             "Grimy concrete" => {
                 let base = self.fill_with("Concrete", "Concrete", None);
-                let mut blotch = self.fill_with("Damp patches", "Wet concrete", Some(g(Grunge).with(0.5, 2.0)));
+                // subtle on purpose: on a big model (a whole building) full-strength grime reads as soot
+                let mut blotch = self.fill_with("Damp patches", "Wet concrete", Some(g(Grunge).with(0.35, 2.0)));
                 only(&mut blotch, &[Channel::BaseColor, Channel::Roughness]);
-                let leaks = self.fill_with("Leaks", "Grime", Some(g(Streaks).with(0.45, 5.0)));
+                blotch.opacity = 0.55;
+                let mut leaks = self.fill_with("Leaks", "Grime", Some(g(Streaks).with(0.25, 5.0)));
+                leaks.opacity = 0.45;
                 let mut dirt = g(Dirt);
-                dirt.amount = 0.6;
-                let grime = self.fill_with("Grime", "Grime", Some(dirt));
+                dirt.amount = 0.35;
+                let mut grime = self.fill_with("Grime", "Grime", Some(dirt));
+                grime.opacity = 0.6;
                 vec![base, blotch, leaks, grime]
             }
             "Tech panels" => {

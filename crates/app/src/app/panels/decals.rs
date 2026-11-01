@@ -18,7 +18,7 @@ pub fn asset_file(rel: &str) -> Option<PathBuf> {
     asset_roots().into_iter().map(|r| r.join("assets").join(rel)).find(|p| p.is_file())
 }
 
-fn asset_roots() -> Vec<PathBuf> {
+pub(crate) fn asset_roots() -> Vec<PathBuf> {
     let mut roots: Vec<PathBuf> = vec![];
     if let Ok(c) = std::env::current_dir() {
         roots.extend(c.ancestors().map(Path::to_path_buf));
