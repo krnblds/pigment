@@ -63,6 +63,11 @@ impl Session {
             bridge::update_sidecar(&dir, &name, &json!({ "mesh": file })).map_err(|e| format!("{e:#}"))?;
             mesh_info = info;
         }
+        // foliage layers ride along: card glb, instance list, atlas maps, a foliage sidecar entry
+        let mut foliage = Value::Null;
+        if a.get("foliage").and_then(Value::as_bool).unwrap_or(true) && self.app.doc.layers.iter().any(|l| l.foliage().is_some_and(|f| !f.instances.is_empty())) {
+            foliage = self.export_foliage(&json!({ "dir": dir, "name": name }))?;
+        }
         let sidecar = bridge::read_sidecar(&dir);
         Ok(json!({
             "dir": dir,
@@ -72,6 +77,7 @@ impl Session {
             "files": tex["files"],
             "mesh": mesh_info,
             "status": tex["status"],
+            "foliage": foliage,
             "blender": "Pigment Bridge add-on: N-panel > Pigment > Link, or apply_pigment_material(obj, dir, name) from tools/blender_pigment.py",
         }))
     }

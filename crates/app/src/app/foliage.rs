@@ -157,6 +157,12 @@ pub struct FoliageState {
     pub hover: Option<(Vec3, Vec3)>,
     /// Time base for the wind preview.
     pub t0: Option<std::time::Instant>,
+    /// The foliage tool is active (V).
+    pub active: bool,
+    /// Where the current stroke last dabbed.
+    pub last_dab: Option<Vec3>,
+    /// Dabs so far (varies the seed).
+    pub dabs: u64,
 }
 
 impl FoliageState {
@@ -403,13 +409,6 @@ impl PigmentApp {
         MaskImage { size: self.ts.bakes.size, v }
     }
 
-    /// UV of a point on a sampler triangle.
-    pub(super) fn uv_of(&self, st: &SurfaceTri, bary: Vec3) -> [f32; 2] {
-        let tri = &self.mesh.indices[st.tri * 3..st.tri * 3 + 3];
-        let uv = |k: usize| glam::Vec2::from(self.mesh.vertices[tri[k] as usize].uv);
-        (uv(0) * bary.x + uv(1) * bary.y + uv(2) * bary.z).into()
-    }
-
     /// Paint foliage at surface points (brush dabs) on layer `i`. Returns
     /// cards added (or removed when erasing).
     pub(super) fn foliage_paint(&mut self, i: usize, hits: &[(Vec3, Vec3)], b: &FoliageBrush, extra: &dyn Fn(&SurfaceTri, Vec3, Vec3) -> f32, filter: SurfaceFilter) -> Result<usize, String> {
@@ -609,6 +608,92 @@ impl PigmentApp {
         std::fs::write(&mp, serde_json::to_string_pretty(&meta).unwrap()).map_err(|e| format!("couldn't write {}: {e}", mp.display()))?;
         files.push(mp);
         Ok(files)
+    }
+}
+
+impl PigmentApp {
+    /// One click plants: "moss", "ivy", "grass" or "leaves" on the whole
+    /// model, each into its own foliage layer. Returns the cards added.
+    pub(super) fn quick_foliage(&mut self, rs: &RenderState, kind: &str) -> Result<usize, String> {
+        self.commit_doc_changes();
+        let (lo, hi) = self.mesh.bounds();
+        let height = (hi.y - lo.y).max(0.1);
+        let ao = if self.ts.baked { Some(self.ao_image(rs)) } else { None };
+        let uvs: Vec<[f32; 2]> = self.mesh.vertices.iter().map(|v| v.uv).collect();
+        let idx = self.mesh.indices.clone();
+        let ao_max = match kind {
+            "grass" | "leaves" => 0.95,
+            _ => 1.0,
+        };
+        let accept = move |st: &SurfaceTri, bary: Vec3, _p: Vec3| -> f32 {
+            let Some(img) = &ao else { return 1.0 };
+            let t = &idx[st.tri * 3..st.tri * 3 + 3];
+            let uv = [0, 1, 2].iter().fold([0.0f32; 2], |a, &k| [a[0] + uvs[t[k] as usize][0] * bary[k], a[1] + uvs[t[k] as usize][1] * bary[k]]);
+            // crevices (low AO) are likelier
+            let v = img.at(uv);
+            if v > ao_max {
+                0.0
+            } else {
+                (1.15 - v).clamp(0.2, 1.0)
+            }
+        };
+        let (cells, facing, scale) = quick_cells(kind);
+        let name = match kind {
+            "moss" => "Moss",
+            "grass" => "Grass",
+            "leaves" => "Fallen leaves",
+            _ => "Ivy",
+        };
+        let i = self.foliage_layer(Some(name), true)?;
+        let before = self.doc.layers[i].foliage().map(|f| f.instances.len()).unwrap_or(0);
+        if kind == "ivy" {
+            // start along the bottom of the walls
+            let sampler = pigment_core::decal::SurfaceSampler::new(&self.mesh, |_, v, n| n.y.abs() < 0.3 && v.iter().any(|p| p.y < lo.y + 0.4));
+            let mut rng = pigment_core::decal::Rng::new(self.foliage.dabs + 17);
+            let mut starts: Vec<(Vec3, Vec3)> = vec![];
+            for _ in 0..400 {
+                if starts.len() >= 4 {
+                    break;
+                }
+                let Some((st, p, _)) = sampler.sample(&mut rng) else { break };
+                if p.y < lo.y + 0.4 && starts.iter().all(|s| s.0.distance(p) > 1.5) {
+                    starts.push((p, st.n));
+                }
+            }
+            if starts.is_empty() {
+                return Err("no wall meets the ground on this model".into());
+            }
+            let o = IvyOpts { length: (height * 0.5).clamp(1.0, 8.0), seed: self.foliage.dabs + 3, ..Default::default() };
+            self.foliage.dabs += 1;
+            self.foliage_ivy(i, &starts, "ivy_leaf", Some("ivy_stem"), &o, &SurfaceFilter::default())?;
+        } else {
+            let names: Vec<(String, f32)> = cells.iter().map(|c| (c.to_string(), 1.0)).collect();
+            let (cells, defs) = self.foliage_cells(i, &names)?;
+            let mut filter = SurfaceFilter { up: SurfaceFilter::facing(facing).unwrap_or((-1.0, 1.0)), ..Default::default() };
+            if kind == "grass" || kind == "leaves" {
+                // the ground and the lowest ledges
+                filter.region = Some((lo - Vec3::splat(1.0), Vec3::new(hi.x + 1.0, lo.y + height.min(1.5), hi.z + 1.0)));
+            }
+            let area = fs::surface_area(&self.mesh, &self.parts, &filter);
+            let per_m2 = match kind {
+                "moss" => 18.0,
+                "grass" => 30.0,
+                _ => 6.0,
+            };
+            let count = ((area * per_m2) as usize).clamp(50, 20000);
+            let o = ScatterOpts { cells, defs: &defs, count, seed: self.foliage.dabs + 5, filter, min_spacing: 0.0, place: PlaceOpts { scale, ..Default::default() } };
+            self.foliage.dabs += 1;
+            let existing = self.doc.layers[i].foliage().map(|f| f.instances.clone()).unwrap_or_default();
+            let got = fs::scatter(&self.mesh, &self.parts, &o, &existing, &accept);
+            self.doc.layers[i].foliage_mut().unwrap().instances.extend(got);
+        }
+        let after = self.doc.layers[i].foliage().map(|f| f.instances.len()).unwrap_or(0);
+        let label = format!("Add {name}");
+        if self.doc != self.committed {
+            let before_doc = Box::new(std::mem::replace(&mut self.committed, self.doc.clone()));
+            self.push_history(label, Edit::Doc { before: before_doc, after: Box::new(self.doc.clone()) });
+        }
+        Ok(after - before)
     }
 }
 

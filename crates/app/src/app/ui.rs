@@ -24,6 +24,8 @@ pub enum Tool {
     Fill,
     Decal,
     Pick,
+    /// Paint foliage cards onto the model (V).
+    Foliage,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -355,6 +357,8 @@ impl PigmentApp {
     pub(super) fn tool(&self) -> Tool {
         if self.part_pick {
             Tool::Pick
+        } else if self.foliage.active {
+            Tool::Foliage
         } else if self.decal_tool.is_some() {
             Tool::Decal
         } else if self.ui.fill_tool {
@@ -371,6 +375,10 @@ impl PigmentApp {
         self.ui.fill_tool = t == Tool::Fill;
         self.brush.erase = t == Tool::Erase;
         self.decal_tool = None;
+        self.foliage.active = t == Tool::Foliage;
+        if t == Tool::Foliage {
+            self.ui.prefs.layout_mut().open(PanelId::FoliageBrush);
+        }
         if t == Tool::Decal {
             if self.ui.decal.image.is_none() {
                 self.ui.decal.image = super::panels::decals::decal_images().into_iter().next();
@@ -399,6 +407,7 @@ impl PigmentApp {
                 (Tool::Fill, Icon::Bucket, "Fill part", "Click a part of the model to fill it with the chosen material.", "G"),
                 (Tool::Decal, Icon::Stamp, "Decal", "Stick an image (sign, label, graffiti) onto the model.", "D"),
                 (Tool::Pick, Icon::Target, "Parts", "Click parts to limit the selected layer to them.", "P"),
+                (Tool::Foliage, Icon::Leaf, "Foliage", "Paint moss, grass, weeds, ivy or leaves onto the model as cards. Shift erases.", "V"),
             ];
             for (t, ic, label, tip, key) in tools {
                 if simple && *t == Tool::Pick {
@@ -453,6 +462,7 @@ impl PigmentApp {
                 Tool::Fill => (Icon::Bucket, "Fill part"),
                 Tool::Decal => (Icon::Stamp, "Decal"),
                 Tool::Pick => (Icon::Target, "Pick parts"),
+                Tool::Foliage => (Icon::Leaf, "Foliage"),
             };
             ic.show(ui, icon::MD, p.accent);
             ui.label(ds::strong(name, font::BODY));
@@ -494,6 +504,13 @@ impl PigmentApp {
                 }
                 Tool::Pick => {
                     ui.label(ds::text("Click parts to add them to (or remove them from) the selected layer's mask.", font::SMALL).color(p.text_secondary));
+                }
+                Tool::Foliage => {
+                    let b = &mut self.foliage.brush;
+                    compact(ui, "Radius", &mut b.radius, 0.02..=3.0, ds::Unit::Suffix(" m", 2), true, "Brush radius on the surface, metres.");
+                    compact(ui, "Density", &mut b.density, 1.0..=400.0, ds::Unit::Suffix(" /m²", 0), true, "Cards per square metre.");
+                    ds::toggle(ui, &mut b.erase, "Erase");
+                    ui.label(ds::text(b.cells.join(", "), font::SMALL).color(p.text_secondary));
                 }
             }
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
@@ -874,6 +891,9 @@ impl PigmentApp {
         if pk && self.ui.prefs.mode == Mode::Advanced {
             self.set_tool(Tool::Pick);
         }
+        if ui.input(|i| i.key_pressed(Key::V) && !i.modifiers.command) {
+            self.set_tool(Tool::Foliage);
+        }
         if x {
             self.brush.mask_white = !self.brush.mask_white;
         }
@@ -933,6 +953,7 @@ impl PigmentApp {
             cmd("tool_erase", "Eraser", "Tools", Some("E"), Icon::Eraser),
             cmd("tool_fill", "Fill a part", "Tools", Some("G"), Icon::Bucket),
             cmd("tool_decal", "Decal tool", "Tools", Some("D"), Icon::Stamp),
+            cmd("tool_foliage", "Foliage brush", "Tools", Some("V"), Icon::Leaf),
             cmd("tool_pick", "Pick parts", "Tools", Some("P"), Icon::Target),
             cmd("add_paint", "Add paint layer", "Layers", None, Icon::PaintLayer),
             cmd("add_fill", "Add fill layer", "Layers", None, Icon::FillLayer),
@@ -983,6 +1004,7 @@ impl PigmentApp {
             "tool_erase" => self.set_tool(Tool::Erase),
             "tool_fill" => self.set_tool(Tool::Fill),
             "tool_decal" => self.set_tool(Tool::Decal),
+            "tool_foliage" => self.set_tool(Tool::Foliage),
             "tool_pick" => {
                 self.set_mode(Mode::Advanced);
                 self.set_tool(Tool::Pick);
@@ -1138,6 +1160,11 @@ impl PigmentApp {
                 }
             }
             Tool::Decal => self.decal_input(ui, rs, &response, rect, viewport_px, click, released),
+            Tool::Foliage => {
+                let hit = self.hover.and_then(|h| self.surface_at(to_px(h), viewport_px)).map(|h| (h.0, h.1));
+                let shift = ui.input(|i| i.modifiers.shift);
+                self.foliage_input(hit, down && !alt && response.hovered() || (down && self.foliage.last_dab.is_some()), shift);
+            }
             _ => {}
         }
 
@@ -1181,6 +1208,12 @@ impl PigmentApp {
             }
         }
 
+        // foliage wind preview: animate while any visible foliage sways
+        if self.doc.layers.iter().any(|l| l.visible && l.foliage().is_some_and(|f| f.wind > 0.0 && !f.instances.is_empty())) {
+            let t0 = *self.foliage.t0.get_or_insert_with(Instant::now);
+            self.viewport.foliage.time = t0.elapsed().as_secs_f32();
+            ui.ctx().request_repaint();
+        }
         self.ensure_composited(rs);
         let size = [viewport_px.x as u32, viewport_px.y as u32];
         if let Some(tex) = self.viewport.render(rs, size, &self.camera, &self.view, self.mesh_gpu.as_ref(), &self.env, &self.ts) {
@@ -1237,6 +1270,25 @@ impl PigmentApp {
                 ui.ctx().set_cursor_icon(egui::CursorIcon::PointingHand);
             }
             Tool::Decal => ui.ctx().set_cursor_icon(egui::CursorIcon::Crosshair),
+            Tool::Foliage => {
+                // the brush radius in metres, as a ring at the cursor's depth
+                let r = match self.foliage.hover {
+                    Some((pt, _)) => {
+                        let (right, _) = self.camera.basis();
+                        let size = rect.size();
+                        let vp = self.camera.view_proj(size.x / size.y.max(1.0));
+                        let a = vp.project_point3(pt);
+                        let b = vp.project_point3(pt + right * self.foliage.brush.radius);
+                        ((b.x - a.x) * size.x * 0.5).abs().max(4.0)
+                    }
+                    None => 12.0,
+                };
+                let col = if self.foliage.brush.erase { p.info } else { p.success };
+                painter.circle_stroke(h, r + 1.0, Stroke::new(1.0, p.shadow));
+                painter.circle_stroke(h, r, Stroke::new(1.5, col));
+                Icon::Leaf.paint(&painter, Rect::from_center_size(h + vec2(r * 0.72, -r * 0.72), vec2(icon::SM, icon::SM)), col);
+                ui.ctx().set_cursor_icon(egui::CursorIcon::Crosshair);
+            }
         }
     }
 
@@ -1303,6 +1355,7 @@ impl PigmentApp {
             Tool::Erase => "Left-drag to erase · E switches back to the brush",
             Tool::Fill => "Click a part of the model to fill it",
             Tool::Pick => "Click parts to add / remove them from the layer's mask",
+            Tool::Foliage => "Left-drag to paint foliage cards · Shift-drag erases · pick cards in the Foliage library",
             Tool::Decal => match self.ui.decal.mode {
                 DecalMode::Stamp => "Click the model to stick the decal there",
                 DecalMode::Box => "Drag a box over the model to project the decal",
