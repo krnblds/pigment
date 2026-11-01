@@ -1,15 +1,22 @@
 //! Pigment — paint PBR textures directly onto 3D meshes.
+//!
+//! `pigment [model or project]` opens it; `pigment --design-gallery` shows
+//! every design-system component in every state.
 
 use pigment_engine::app;
 
 fn main() -> eframe::Result {
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("warn,wgpu_hal=error,pigment=info")).init();
-    let startup_mesh = std::env::args_os().nth(1).map(std::path::PathBuf::from);
+    let args: Vec<std::ffi::OsString> = std::env::args_os().skip(1).collect();
+    let gallery = args.iter().any(|a| a == "--design-gallery");
+    let startup = args.iter().find(|a| !a.to_string_lossy().starts_with("--")).map(std::path::PathBuf::from);
+    let prefs = app::prefs::Prefs::load();
+    let size = prefs.window.map(|w| [w[0].clamp(800.0, 7680.0), w[1].clamp(500.0, 4320.0)]).unwrap_or([1440.0, 900.0]);
 
     let options = eframe::NativeOptions {
         viewport: eframe::egui::ViewportBuilder::default()
-            .with_title("Pigment")
-            .with_inner_size([1440.0, 900.0])
+            .with_title(if gallery { "Pigment design gallery" } else { "Pigment" })
+            .with_inner_size(size)
             .with_min_inner_size([800.0, 500.0])
             .with_drag_and_drop(true),
         renderer: eframe::Renderer::Wgpu,
@@ -26,6 +33,6 @@ fn main() -> eframe::Result {
     eframe::run_native(
         "Pigment",
         options,
-        Box::new(move |cc| Ok(Box::new(app::PigmentApp::new(cc, startup_mesh)?))),
+        Box::new(move |cc| Ok(Box::new(app::PigmentApp::new(cc, startup, gallery)?))),
     )
 }

@@ -34,6 +34,16 @@ mod image_fill_tests;
 #[cfg(test)]
 mod tile_tests;
 mod ui;
+pub mod design;
+pub mod dock;
+pub mod harness;
+mod jobs;
+mod panels;
+pub mod prefs;
+mod welcome;
+mod dialogs;
+#[cfg(test)]
+mod ui_tests;
 
 /// Things the quick-start guide watches for.
 #[derive(Default)]
@@ -156,19 +166,31 @@ pub struct PigmentApp {
     /// Flat tile projects: the mesh plus its copies one period away, which
     /// strokes and decals are tracked against so they wrap.
     wrap_mesh: Option<Mesh>,
+    /// Interface state (preferences, dock, tools, dialogs, jobs).
+    ui: ui::UiState,
 }
 
 impl PigmentApp {
-    pub fn new(cc: &eframe::CreationContext<'_>, startup: Option<PathBuf>) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
+    pub fn new(cc: &eframe::CreationContext<'_>, startup: Option<PathBuf>, gallery: bool) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         let rs = cc.wgpu_render_state.as_ref().ok_or("Pigment needs the wgpu renderer")?;
         let info = rs.adapter.get_info();
         log::info!("GPU: {} ({:?})", info.name, info.backend);
-        ui::apply_style(&cc.egui_ctx);
-        Ok(Self::create(rs, startup))
+        let prefs = prefs::Prefs::load();
+        design::install(&cc.egui_ctx, &prefs);
+        let mut app = Self::create_with(rs, startup, prefs);
+        app.ui.gallery = gallery.then(Default::default);
+        app.ui.async_bake = true;
+        Ok(app)
     }
 
-    /// Build the app on an existing GPU device (also used by headless tests).
+    /// Build the app on an existing GPU device (also used by headless tests
+    /// and the MCP server): default preferences, nothing remembered.
     pub fn create(rs: &RenderState, startup: Option<PathBuf>) -> Self {
+        Self::create_with(rs, startup, prefs::Prefs::default())
+    }
+
+    /// Build the app with the given preferences.
+    pub fn create_with(rs: &RenderState, startup: Option<PathBuf>, prefs: prefs::Prefs) -> Self {
         let (d, q) = (&rs.device, &rs.queue);
         let doc = Document::new_default();
         let mut app = Self {
@@ -215,13 +237,15 @@ impl PigmentApp {
             counters: Counters::default(),
             anchors: Default::default(),
             wrap_mesh: None,
+            ui: ui::UiState::new(prefs),
         };
         app.new_project(rs, Mesh::demo_crate(96), None, Document::demo());
         app.export_name = "DemoCrate".into();
+        app.ui.welcome = app.ui.prefs.show_welcome && app.ui.prefs.dir.is_some();
         if let Some(p) = startup {
+            app.ui.welcome = false;
             app.run_pending(rs, Self::pending_for_path(&p));
         }
-        app.tour_start(false);
         if let Ok(dir) = std::env::var("PIGMENT_DEBUG_DUMP") {
             app.debug_dump(rs, Path::new(&dir));
         }
@@ -323,8 +347,13 @@ impl PigmentApp {
         let Some(mg) = &self.mesh_gpu else { return };
         let t0 = Instant::now();
         self.baker.bake(&rs.device, &rs.queue, &self.mesh, mg, &mut self.ts, &self.doc.bake);
-        let _ = rs.device.poll(eframe::egui_wgpu::wgpu::PollType::Wait { submission_index: None, timeout: None });
         self.composited = None;
+        if self.ui.async_bake {
+            // the window keeps drawing while the GPU bakes; a toast tracks it
+            self.start_bake_job(rs);
+            return;
+        }
+        let _ = rs.device.poll(eframe::egui_wgpu::wgpu::PollType::Wait { submission_index: None, timeout: None });
         self.set_status(format!("Baked AO + curvature ({} directions) in {:.0} ms", self.doc.bake.ao_samples, t0.elapsed().as_secs_f64() * 1000.0), false);
     }
 
@@ -547,7 +576,7 @@ impl PigmentApp {
         if self.modified {
             self.pending = Some(p);
         } else {
-            self.run_pending(rs, p);
+            self.run_pending_ui(rs, p);
         }
     }
 

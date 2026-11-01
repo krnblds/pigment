@@ -6,6 +6,41 @@ use pigment_core::folders::MAX_FOLDER_DEPTH;
 use pigment_core::smart::{SmartMaterial, SMART_EXTENSION};
 
 impl PigmentApp {
+    pub(super) fn insert_layer(&mut self, mut l: Layer) {
+        let at = self.selected.and_then(|id| self.doc.index_of(id)).map(|i| i + 1).unwrap_or(self.doc.layers.len());
+        let id = l.id;
+        // lands next to the selection, in the same folder
+        l.parent = self.selected.and_then(|s| self.doc.layer(s)).and_then(|s| s.parent);
+        self.doc.layers.insert(at, l);
+        self.doc.normalize_folders();
+        self.select(Some(id), false);
+    }
+
+    pub(super) fn duplicate_selected(&mut self, rs: &RenderState) {
+        let Some(i) = self.selected.and_then(|id| self.doc.index_of(id)) else { return };
+        if self.doc.layers[i].is_folder() {
+            let id = self.doc.layers[i].id;
+            self.duplicate_tree(rs, id);
+            return;
+        }
+        let mut l = self.doc.layers[i].clone();
+        l.id = self.doc.mint();
+        l.name = format!("{} copy", l.name);
+        if let LayerKind::Paint { res } = &mut l.kind {
+            let new = self.doc.mint();
+            self.ts.duplicate_layer(&rs.device, &rs.queue, *res, new);
+            *res = new;
+        }
+        if let Some(m) = &mut l.mask {
+            let new = self.doc.mint();
+            self.ts.duplicate_mask(&rs.device, &rs.queue, m.res, new);
+            m.res = new;
+        }
+        let id = l.id;
+        self.doc.layers.insert(i + 1, l);
+        self.select(Some(id), false);
+    }
+
     /// A new folder above the selection (in the same folder as it).
     pub(super) fn add_folder(&mut self) {
         let n = self.doc.layers.iter().filter(|l| l.is_folder()).count() + 1;
