@@ -117,15 +117,22 @@ def windows(glass):
     near-dark "Lit windows (few)" (an evicted building)."""
     # real glass: partly see-through, refracting, glossy (reflections)
     L = [fill("Glass", None, glass, values=GLASS, channels={"height": False})]
-    bands = (("Lit windows (warm)", 0.0, 0.30, [1.0, 0.72, 0.42], 2.4),
-             ("Lit windows (cyan)", 0.30, 0.37, [0.35, 0.85, 1.0], 2.2),
-             ("Lit windows (pink)", 0.37, 0.40, [1.0, 0.3, 0.7], 2.2),
-             # the cold blue of a Meridian feed playing in an empty room
-             ("Meridian screens", 0.40, 0.45, [0.3, 0.5, 1.0], 1.8))
+    # Night windows as people actually light them: mostly warm tungsten in a
+    # few shades and brightnesses, some cool office fluorescents, and rarely
+    # the dim blue of a Meridian feed playing to an empty room. Most stay dark.
+    bands = (("Lit windows (tungsten)", 0.00, 0.14, [1.0, 0.58, 0.28], 1.5),
+             ("Lit windows (soft warm)", 0.14, 0.24, [1.0, 0.72, 0.48], 1.1),
+             ("Lit windows (dim lamp)", 0.24, 0.31, [0.95, 0.5, 0.22], 0.55),
+             ("Lit windows (fluorescent)", 0.31, 0.36, [0.86, 0.93, 1.0], 1.2),
+             ("Meridian screens", 0.36, 0.375, [0.45, 0.58, 1.0], 0.5))
     for name, a, b, col, k in bands:
         # lit windows stay solid glowing panes (opacity 1 over the glass below)
         L.append(fill(name, None, glass, values={"base_color": col, "roughness": 0.1, "metallic": 0.0, "emissive": col, "emissive_strength": k, "opacity": 1.0, "transmission": 0.0},
                       channels={"height": False}, part_subset={"from": a, "to": b, "salt": 1}, variant="lights"))
+    # curtains and clutter: break up some lit panes so they aren't flat slabs of light
+    L.append(fill("Curtains", None, glass, {"generator": "grunge", "amount": 0.45, "scale": 0.35, "softness": 0.3},
+                  values={"base_color": [0.25, 0.16, 0.1], "roughness": 0.8, "metallic": 0.0, "emissive": [1.0, 0.55, 0.3], "emissive_strength": 0.25, "opacity": 1.0, "transmission": 0.0},
+                  channels={"height": False}, part_subset={"from": 0.0, "to": 0.31, "salt": 1}, variant="lights"))
     L.append(fill("Lit windows (few)", None, glass, values={"base_color": [1.0, 0.7, 0.4], "roughness": 0.1, "metallic": 0.0, "emissive": [1.0, 0.7, 0.4], "emissive_strength": 1.6, "opacity": 1.0, "transmission": 0.0},
                   channels={"height": False}, part_subset={"from": 0.0, "to": 0.07, "salt": 2}, variant="lights_few", visible=False))
     return L

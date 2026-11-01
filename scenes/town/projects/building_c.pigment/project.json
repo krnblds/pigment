@@ -557,7 +557,7 @@
     },
     {
       "id": 15,
-      "name": "Lit windows (warm)",
+      "name": "Lit windows (tungsten)",
       "visible": true,
       "opacity": 1.0,
       "kind": {
@@ -565,8 +565,8 @@
         "values": {
           "base_color": [
             1.0,
-            0.72,
-            0.42
+            0.58,
+            0.28
           ],
           "roughness": 0.1,
           "metallic": 0.0,
@@ -577,10 +577,10 @@
           ],
           "emissive": [
             1.0,
-            0.72,
-            0.42
+            0.58,
+            0.28
           ],
-          "emissive_strength": 2.4,
+          "emissive_strength": 1.5,
           "opacity": 1.0,
           "transmission": 0.0
         }
@@ -741,23 +741,23 @@
         "group": "lights",
         "part_subset": {
           "from": 0.0,
-          "to": 0.3,
+          "to": 0.14,
           "salt": 1
         }
       }
     },
     {
       "id": 17,
-      "name": "Lit windows (cyan)",
+      "name": "Lit windows (soft warm)",
       "visible": true,
       "opacity": 1.0,
       "kind": {
         "type": "fill",
         "values": {
           "base_color": [
-            0.35,
-            0.85,
-            1.0
+            1.0,
+            0.72,
+            0.48
           ],
           "roughness": 0.1,
           "metallic": 0.0,
@@ -767,11 +767,11 @@
             0.0
           ],
           "emissive": [
-            0.35,
-            0.85,
-            1.0
+            1.0,
+            0.72,
+            0.48
           ],
-          "emissive_strength": 2.2,
+          "emissive_strength": 1.1,
           "opacity": 1.0,
           "transmission": 0.0
         }
@@ -931,24 +931,24 @@
       "variant": {
         "group": "lights",
         "part_subset": {
-          "from": 0.3,
-          "to": 0.37,
+          "from": 0.14,
+          "to": 0.24,
           "salt": 1
         }
       }
     },
     {
       "id": 19,
-      "name": "Lit windows (pink)",
+      "name": "Lit windows (dim lamp)",
       "visible": true,
       "opacity": 1.0,
       "kind": {
         "type": "fill",
         "values": {
           "base_color": [
-            1.0,
-            0.3,
-            0.7
+            0.95,
+            0.5,
+            0.22
           ],
           "roughness": 0.1,
           "metallic": 0.0,
@@ -958,11 +958,11 @@
             0.0
           ],
           "emissive": [
-            1.0,
-            0.3,
-            0.7
+            0.95,
+            0.5,
+            0.22
           ],
-          "emissive_strength": 2.2,
+          "emissive_strength": 0.55,
           "opacity": 1.0,
           "transmission": 0.0
         }
@@ -1122,23 +1122,23 @@
       "variant": {
         "group": "lights",
         "part_subset": {
-          "from": 0.37,
-          "to": 0.4,
+          "from": 0.24,
+          "to": 0.31,
           "salt": 1
         }
       }
     },
     {
       "id": 21,
-      "name": "Meridian screens",
+      "name": "Lit windows (fluorescent)",
       "visible": true,
       "opacity": 1.0,
       "kind": {
         "type": "fill",
         "values": {
           "base_color": [
-            0.3,
-            0.5,
+            0.86,
+            0.93,
             1.0
           ],
           "roughness": 0.1,
@@ -1149,11 +1149,11 @@
             0.0
           ],
           "emissive": [
-            0.3,
-            0.5,
+            0.86,
+            0.93,
             1.0
           ],
-          "emissive_strength": 1.8,
+          "emissive_strength": 1.2,
           "opacity": 1.0,
           "transmission": 0.0
         }
@@ -1313,24 +1313,24 @@
       "variant": {
         "group": "lights",
         "part_subset": {
-          "from": 0.4,
-          "to": 0.45,
+          "from": 0.31,
+          "to": 0.36,
           "salt": 1
         }
       }
     },
     {
       "id": 23,
-      "name": "Lit windows (few)",
-      "visible": false,
+      "name": "Meridian screens",
+      "visible": true,
       "opacity": 1.0,
       "kind": {
         "type": "fill",
         "values": {
           "base_color": [
-            1.0,
-            0.7,
-            0.4
+            0.45,
+            0.58,
+            1.0
           ],
           "roughness": 0.1,
           "metallic": 0.0,
@@ -1340,11 +1340,11 @@
             0.0
           ],
           "emissive": [
-            1.0,
-            0.7,
-            0.4
+            0.45,
+            0.58,
+            1.0
           ],
-          "emissive_strength": 1.6,
+          "emissive_strength": 0.5,
           "opacity": 1.0,
           "transmission": 0.0
         }
@@ -1502,6 +1502,398 @@
         ]
       },
       "variant": {
+        "group": "lights",
+        "part_subset": {
+          "from": 0.36,
+          "to": 0.375,
+          "salt": 1
+        }
+      }
+    },
+    {
+      "id": 25,
+      "name": "Curtains",
+      "visible": true,
+      "opacity": 1.0,
+      "kind": {
+        "type": "fill",
+        "values": {
+          "base_color": [
+            0.25,
+            0.16,
+            0.1
+          ],
+          "roughness": 0.8,
+          "metallic": 0.0,
+          "height": 0.0,
+          "normal": [
+            0.0,
+            0.0
+          ],
+          "emissive": [
+            1.0,
+            0.55,
+            0.3
+          ],
+          "emissive_strength": 0.25,
+          "opacity": 1.0,
+          "transmission": 0.0
+        }
+      },
+      "channels": {
+        "base_color": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "roughness": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "metallic": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "height": {
+          "enabled": false,
+          "blend": "add",
+          "opacity": 1.0
+        },
+        "normal": {
+          "enabled": false,
+          "blend": "normal_combine",
+          "opacity": 1.0
+        },
+        "emissive": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "opacity": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "transmission": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        }
+      },
+      "mask": {
+        "res": 26,
+        "generator": {
+          "kind": "grunge",
+          "amount": 0.45,
+          "softness": 0.3,
+          "noise_scale": 0.35,
+          "noise_amount": 0.0,
+          "seed": 1,
+          "ao_influence": 0.2,
+          "curvature_weight": 1.0
+        },
+        "invert": false,
+        "enabled": true,
+        "parts": [
+          4,
+          12,
+          14,
+          17,
+          18,
+          19,
+          21,
+          22,
+          23,
+          25,
+          26,
+          27,
+          29,
+          30,
+          31,
+          33,
+          34,
+          35,
+          37,
+          38,
+          39,
+          41,
+          42,
+          43,
+          45,
+          46,
+          47,
+          49,
+          50,
+          51,
+          53,
+          54,
+          55,
+          57,
+          58,
+          59,
+          61,
+          62,
+          63,
+          65,
+          66,
+          67,
+          69,
+          70,
+          71,
+          73,
+          74,
+          75,
+          77,
+          78,
+          79,
+          81,
+          82,
+          83,
+          85,
+          86,
+          87,
+          89,
+          90,
+          91,
+          93,
+          94,
+          95,
+          97,
+          98,
+          99,
+          101,
+          102,
+          103,
+          105,
+          106,
+          107,
+          109,
+          110,
+          111,
+          113,
+          114,
+          115,
+          117,
+          118,
+          119,
+          121,
+          122,
+          123,
+          125,
+          126,
+          127,
+          129,
+          130,
+          131,
+          133,
+          134,
+          135,
+          137,
+          138,
+          139,
+          141,
+          142,
+          143,
+          175,
+          177,
+          179,
+          181
+        ]
+      },
+      "variant": {
+        "group": "lights",
+        "part_subset": {
+          "from": 0.0,
+          "to": 0.31,
+          "salt": 1
+        }
+      }
+    },
+    {
+      "id": 27,
+      "name": "Lit windows (few)",
+      "visible": false,
+      "opacity": 1.0,
+      "kind": {
+        "type": "fill",
+        "values": {
+          "base_color": [
+            1.0,
+            0.7,
+            0.4
+          ],
+          "roughness": 0.1,
+          "metallic": 0.0,
+          "height": 0.0,
+          "normal": [
+            0.0,
+            0.0
+          ],
+          "emissive": [
+            1.0,
+            0.7,
+            0.4
+          ],
+          "emissive_strength": 1.6,
+          "opacity": 1.0,
+          "transmission": 0.0
+        }
+      },
+      "channels": {
+        "base_color": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "roughness": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "metallic": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "height": {
+          "enabled": false,
+          "blend": "add",
+          "opacity": 1.0
+        },
+        "normal": {
+          "enabled": false,
+          "blend": "normal_combine",
+          "opacity": 1.0
+        },
+        "emissive": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "opacity": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "transmission": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        }
+      },
+      "mask": {
+        "res": 28,
+        "invert": false,
+        "enabled": true,
+        "parts": [
+          4,
+          12,
+          14,
+          17,
+          18,
+          19,
+          21,
+          22,
+          23,
+          25,
+          26,
+          27,
+          29,
+          30,
+          31,
+          33,
+          34,
+          35,
+          37,
+          38,
+          39,
+          41,
+          42,
+          43,
+          45,
+          46,
+          47,
+          49,
+          50,
+          51,
+          53,
+          54,
+          55,
+          57,
+          58,
+          59,
+          61,
+          62,
+          63,
+          65,
+          66,
+          67,
+          69,
+          70,
+          71,
+          73,
+          74,
+          75,
+          77,
+          78,
+          79,
+          81,
+          82,
+          83,
+          85,
+          86,
+          87,
+          89,
+          90,
+          91,
+          93,
+          94,
+          95,
+          97,
+          98,
+          99,
+          101,
+          102,
+          103,
+          105,
+          106,
+          107,
+          109,
+          110,
+          111,
+          113,
+          114,
+          115,
+          117,
+          118,
+          119,
+          121,
+          122,
+          123,
+          125,
+          126,
+          127,
+          129,
+          130,
+          131,
+          133,
+          134,
+          135,
+          137,
+          138,
+          139,
+          141,
+          142,
+          143,
+          175,
+          177,
+          179,
+          181
+        ]
+      },
+      "variant": {
         "group": "lights_few",
         "part_subset": {
           "from": 0.0,
@@ -1511,7 +1903,7 @@
       }
     },
     {
-      "id": 25,
+      "id": 29,
       "name": "Sign faces",
       "visible": true,
       "opacity": 1.0,
@@ -1583,7 +1975,7 @@
         }
       },
       "mask": {
-        "res": 26,
+        "res": 30,
         "invert": false,
         "enabled": true,
         "parts": [
@@ -1593,7 +1985,7 @@
       }
     },
     {
-      "id": 27,
+      "id": 31,
       "name": "Frames",
       "visible": true,
       "opacity": 1.0,
@@ -1665,7 +2057,7 @@
         }
       },
       "mask": {
-        "res": 28,
+        "res": 32,
         "invert": false,
         "enabled": true,
         "parts": [
@@ -1711,7 +2103,7 @@
       }
     },
     {
-      "id": 29,
+      "id": 33,
       "name": "Screens",
       "visible": true,
       "opacity": 1.0,
@@ -1783,7 +2175,7 @@
         }
       },
       "mask": {
-        "res": 30,
+        "res": 34,
         "invert": false,
         "enabled": true,
         "parts": [
@@ -1793,7 +2185,7 @@
       }
     },
     {
-      "id": 31,
+      "id": 35,
       "name": "Trim",
       "visible": true,
       "opacity": 1.0,
@@ -1865,7 +2257,7 @@
         }
       },
       "mask": {
-        "res": 32,
+        "res": 36,
         "invert": false,
         "enabled": true,
         "parts": [
@@ -1888,7 +2280,7 @@
       }
     },
     {
-      "id": 33,
+      "id": 37,
       "name": "Doors",
       "visible": true,
       "opacity": 1.0,
@@ -1960,7 +2352,7 @@
         }
       },
       "mask": {
-        "res": 34,
+        "res": 38,
         "invert": false,
         "enabled": true,
         "parts": [
@@ -1971,7 +2363,7 @@
       }
     },
     {
-      "id": 35,
+      "id": 39,
       "name": "Door scuffs",
       "visible": true,
       "opacity": 1.0,
@@ -2043,7 +2435,7 @@
         }
       },
       "mask": {
-        "res": 36,
+        "res": 40,
         "generator": {
           "kind": "edge_wear",
           "amount": 0.25,
@@ -2064,7 +2456,7 @@
       }
     },
     {
-      "id": 37,
+      "id": 41,
       "name": "Rooftop metal",
       "visible": true,
       "opacity": 1.0,
@@ -2136,7 +2528,7 @@
         }
       },
       "mask": {
-        "res": 38,
+        "res": 42,
         "invert": false,
         "enabled": true,
         "parts": [
@@ -2152,7 +2544,7 @@
       }
     },
     {
-      "id": 39,
+      "id": 43,
       "name": "Rooftop rust streaks",
       "visible": true,
       "opacity": 0.6,
@@ -2224,7 +2616,7 @@
         }
       },
       "mask": {
-        "res": 40,
+        "res": 44,
         "generator": {
           "kind": "streaks",
           "amount": 0.18,
@@ -2250,7 +2642,7 @@
       }
     },
     {
-      "id": 41,
+      "id": 45,
       "name": "AC units",
       "visible": true,
       "opacity": 1.0,
@@ -2322,7 +2714,7 @@
         }
       },
       "mask": {
-        "res": 42,
+        "res": 46,
         "invert": false,
         "enabled": true,
         "parts": [
@@ -2335,7 +2727,7 @@
       }
     },
     {
-      "id": 43,
+      "id": 47,
       "name": "Grilles",
       "visible": true,
       "opacity": 1.0,
@@ -2407,7 +2799,7 @@
         }
       },
       "mask": {
-        "res": 44,
+        "res": 48,
         "invert": false,
         "enabled": true,
         "parts": [
@@ -2420,7 +2812,7 @@
       }
     },
     {
-      "id": 45,
+      "id": 49,
       "name": "Grille holes",
       "visible": true,
       "opacity": 1.0,
@@ -2492,7 +2884,7 @@
         }
       },
       "mask": {
-        "res": 46,
+        "res": 50,
         "invert": false,
         "enabled": true,
         "parts": [
@@ -2505,7 +2897,7 @@
       }
     },
     {
-      "id": 47,
+      "id": 51,
       "name": "Grille holes (bars)",
       "visible": true,
       "opacity": 1.0,
@@ -2577,7 +2969,7 @@
         }
       },
       "mask": {
-        "res": 48,
+        "res": 52,
         "generator": {
           "kind": "panel_lines",
           "amount": 0.3,
@@ -2600,7 +2992,7 @@
       }
     },
     {
-      "id": 49,
+      "id": 53,
       "name": "LED strips (cyan)",
       "visible": true,
       "opacity": 1.0,
@@ -2672,7 +3064,7 @@
         }
       },
       "mask": {
-        "res": 50,
+        "res": 54,
         "invert": false,
         "enabled": true,
         "parts": [
@@ -2685,7 +3077,7 @@
       }
     },
     {
-      "id": 51,
+      "id": 55,
       "name": "LED strips (pink)",
       "visible": true,
       "opacity": 1.0,
@@ -2757,7 +3149,7 @@
         }
       },
       "mask": {
-        "res": 52,
+        "res": 56,
         "invert": false,
         "enabled": true,
         "parts": [
@@ -2769,7 +3161,7 @@
       }
     },
     {
-      "id": 53,
+      "id": 57,
       "name": "Damp patches",
       "visible": true,
       "opacity": 0.5,
@@ -2841,7 +3233,7 @@
         }
       },
       "mask": {
-        "res": 54,
+        "res": 58,
         "generator": {
           "kind": "grunge",
           "amount": 0.45,
@@ -2871,7 +3263,7 @@
       }
     },
     {
-      "id": 55,
+      "id": 59,
       "name": "Rain streaks",
       "visible": true,
       "opacity": 0.5,
@@ -2943,7 +3335,7 @@
         }
       },
       "mask": {
-        "res": 56,
+        "res": 60,
         "generator": {
           "kind": "streaks",
           "amount": 0.3,
@@ -2973,7 +3365,7 @@
       }
     },
     {
-      "id": 57,
+      "id": 61,
       "name": "Leaks",
       "visible": true,
       "opacity": 0.75,
@@ -3045,7 +3437,7 @@
         }
       },
       "mask": {
-        "res": 58,
+        "res": 62,
         "generator": {
           "kind": "leaks",
           "amount": 0.55,
@@ -3075,7 +3467,7 @@
       }
     },
     {
-      "id": 59,
+      "id": 63,
       "name": "Ledge moss",
       "visible": true,
       "opacity": 0.85,
@@ -3147,7 +3539,7 @@
         }
       },
       "mask": {
-        "res": 60,
+        "res": 64,
         "generator": {
           "kind": "moss",
           "amount": 0.4,
@@ -3200,7 +3592,7 @@
       }
     },
     {
-      "id": 61,
+      "id": 65,
       "name": "Rain water",
       "visible": true,
       "opacity": 0.8,
@@ -3272,7 +3664,7 @@
         }
       },
       "mask": {
-        "res": 62,
+        "res": 66,
         "generator": {
           "kind": "puddles",
           "amount": 0.35,
@@ -3325,7 +3717,7 @@
       }
     },
     {
-      "id": 63,
+      "id": 67,
       "name": "Street grime",
       "visible": true,
       "opacity": 0.8,
@@ -3397,7 +3789,7 @@
         }
       },
       "mask": {
-        "res": 64,
+        "res": 68,
         "generator": {
           "kind": "dirt",
           "amount": 0.5,
@@ -3480,13 +3872,13 @@
       }
     },
     {
-      "id": 65,
+      "id": 69,
       "name": "Story decals",
       "visible": true,
       "opacity": 1.0,
       "kind": {
         "type": "paint",
-        "res": 66
+        "res": 70
       },
       "channels": {
         "base_color": {
@@ -4078,7 +4470,7 @@
     "ao_distance": 0.12
   },
   "export_preset": "unreal",
-  "next_id": 68,
+  "next_id": 72,
   "variants": {
     "seed": 0,
     "defs": [
