@@ -1,0 +1,965 @@
+{
+  "format": 1,
+  "resolution": 2048,
+  "mesh": "mesh/mesh.obj",
+  "layers": [
+    {
+      "id": 4,
+      "name": "Base",
+      "visible": true,
+      "opacity": 1.0,
+      "kind": {
+        "type": "fill",
+        "values": {
+          "base_color": [
+            0.21,
+            0.2,
+            0.19
+          ],
+          "roughness": 0.85,
+          "metallic": 0.0,
+          "height": 0.0,
+          "normal": [
+            0.0,
+            0.0
+          ],
+          "emissive": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "emissive_strength": 0.0,
+          "opacity": 1.0,
+          "transmission": 0.0,
+          "coat": 0.0,
+          "coat_roughness": 0.03,
+          "flake": 0.0
+        }
+      },
+      "channels": {
+        "base_color": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "roughness": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "metallic": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "height": {
+          "enabled": false,
+          "blend": "add",
+          "opacity": 1.0
+        },
+        "normal": {
+          "enabled": false,
+          "blend": "normal_combine",
+          "opacity": 1.0
+        },
+        "emissive": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "opacity": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "transmission": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat_roughness": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "flake": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        }
+      }
+    },
+    {
+      "id": 7,
+      "name": "Strata",
+      "visible": true,
+      "opacity": 0.8,
+      "kind": {
+        "type": "fill",
+        "values": {
+          "base_color": [
+            0.29,
+            0.27,
+            0.25
+          ],
+          "roughness": 0.35,
+          "metallic": 0.0,
+          "height": 0.35,
+          "normal": [
+            0.0,
+            0.0
+          ],
+          "emissive": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "emissive_strength": 0.0,
+          "opacity": 1.0,
+          "transmission": 0.0,
+          "coat": 0.0,
+          "coat_roughness": 0.03,
+          "flake": 0.0
+        }
+      },
+      "channels": {
+        "base_color": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "roughness": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "metallic": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "height": {
+          "enabled": true,
+          "blend": "add",
+          "opacity": 1.0
+        },
+        "normal": {
+          "enabled": false,
+          "blend": "normal_combine",
+          "opacity": 1.0
+        },
+        "emissive": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "opacity": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "transmission": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat_roughness": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "flake": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        }
+      },
+      "mask": {
+        "res": 8,
+        "generator": {
+          "kind": "grunge",
+          "amount": 0.5,
+          "softness": 0.2,
+          "noise_scale": 0.6,
+          "noise_amount": 0.0,
+          "seed": 3,
+          "ao_influence": 0.2,
+          "curvature_weight": 1.0
+        },
+        "invert": false,
+        "enabled": true
+      }
+    },
+    {
+      "id": 9,
+      "name": "Boulders",
+      "visible": true,
+      "opacity": 1.0,
+      "kind": {
+        "type": "fill",
+        "values": {
+          "base_color": [
+            0.33,
+            0.32,
+            0.3
+          ],
+          "roughness": 0.35,
+          "metallic": 0.0,
+          "height": 0.8,
+          "normal": [
+            0.0,
+            0.0
+          ],
+          "emissive": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "emissive_strength": 0.0,
+          "opacity": 1.0,
+          "transmission": 0.0,
+          "coat": 0.0,
+          "coat_roughness": 0.03,
+          "flake": 0.0
+        }
+      },
+      "channels": {
+        "base_color": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "roughness": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "metallic": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "height": {
+          "enabled": true,
+          "blend": "add",
+          "opacity": 1.0
+        },
+        "normal": {
+          "enabled": false,
+          "blend": "normal_combine",
+          "opacity": 1.0
+        },
+        "emissive": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "opacity": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "transmission": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat_roughness": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "flake": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        }
+      },
+      "mask": {
+        "res": 10,
+        "generator": {
+          "kind": "grunge",
+          "amount": 0.42,
+          "softness": 0.12,
+          "noise_scale": 1.1,
+          "noise_amount": 0.0,
+          "seed": 5,
+          "ao_influence": 0.2,
+          "curvature_weight": 1.0
+        },
+        "invert": false,
+        "enabled": true
+      }
+    },
+    {
+      "id": 11,
+      "name": "Ledges",
+      "visible": true,
+      "opacity": 0.8,
+      "kind": {
+        "type": "fill",
+        "values": {
+          "base_color": [
+            0.25,
+            0.24,
+            0.22
+          ],
+          "roughness": 0.35,
+          "metallic": 0.0,
+          "height": 0.5,
+          "normal": [
+            0.0,
+            0.0
+          ],
+          "emissive": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "emissive_strength": 0.0,
+          "opacity": 1.0,
+          "transmission": 0.0,
+          "coat": 0.0,
+          "coat_roughness": 0.03,
+          "flake": 0.0
+        }
+      },
+      "channels": {
+        "base_color": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "roughness": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "metallic": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "height": {
+          "enabled": true,
+          "blend": "add",
+          "opacity": 1.0
+        },
+        "normal": {
+          "enabled": false,
+          "blend": "normal_combine",
+          "opacity": 1.0
+        },
+        "emissive": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "opacity": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "transmission": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat_roughness": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "flake": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        }
+      },
+      "mask": {
+        "res": 12,
+        "generator": {
+          "kind": "grunge",
+          "amount": 0.35,
+          "softness": 0.06,
+          "noise_scale": 2.6,
+          "noise_amount": 0.0,
+          "seed": 6,
+          "ao_influence": 0.2,
+          "curvature_weight": 1.0
+        },
+        "invert": false,
+        "enabled": true
+      }
+    },
+    {
+      "id": 13,
+      "name": "Fissures",
+      "visible": true,
+      "opacity": 1.0,
+      "kind": {
+        "type": "fill",
+        "values": {
+          "base_color": [
+            0.06,
+            0.055,
+            0.05
+          ],
+          "roughness": 0.35,
+          "metallic": 0.0,
+          "height": -1.0,
+          "normal": [
+            0.0,
+            0.0
+          ],
+          "emissive": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "emissive_strength": 0.0,
+          "opacity": 1.0,
+          "transmission": 0.0,
+          "coat": 0.0,
+          "coat_roughness": 0.03,
+          "flake": 0.0
+        }
+      },
+      "channels": {
+        "base_color": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "roughness": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "metallic": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "height": {
+          "enabled": true,
+          "blend": "add",
+          "opacity": 1.0
+        },
+        "normal": {
+          "enabled": false,
+          "blend": "normal_combine",
+          "opacity": 1.0
+        },
+        "emissive": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "opacity": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "transmission": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat_roughness": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "flake": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        }
+      },
+      "mask": {
+        "res": 14,
+        "generator": {
+          "kind": "scratches",
+          "amount": 0.14,
+          "softness": 0.03,
+          "noise_scale": 0.8,
+          "noise_amount": 0.0,
+          "seed": 7,
+          "ao_influence": 0.0,
+          "curvature_weight": 1.0
+        },
+        "invert": false,
+        "enabled": true
+      }
+    },
+    {
+      "id": 15,
+      "name": "Grain",
+      "visible": true,
+      "opacity": 0.5,
+      "kind": {
+        "type": "fill",
+        "values": {
+          "base_color": [
+            0.4,
+            0.38,
+            0.35
+          ],
+          "roughness": 0.35,
+          "metallic": 0.0,
+          "height": 0.15,
+          "normal": [
+            0.0,
+            0.0
+          ],
+          "emissive": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "emissive_strength": 0.0,
+          "opacity": 1.0,
+          "transmission": 0.0,
+          "coat": 0.0,
+          "coat_roughness": 0.03,
+          "flake": 0.0
+        }
+      },
+      "channels": {
+        "base_color": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "roughness": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "metallic": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "height": {
+          "enabled": true,
+          "blend": "add",
+          "opacity": 1.0
+        },
+        "normal": {
+          "enabled": false,
+          "blend": "normal_combine",
+          "opacity": 1.0
+        },
+        "emissive": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "opacity": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "transmission": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat_roughness": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "flake": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        }
+      },
+      "mask": {
+        "res": 16,
+        "generator": {
+          "kind": "spots",
+          "amount": 0.25,
+          "softness": 0.05,
+          "noise_scale": 80.0,
+          "noise_amount": 0.2,
+          "seed": 9,
+          "ao_influence": 0.3,
+          "curvature_weight": 1.0
+        },
+        "invert": false,
+        "enabled": true
+      }
+    },
+    {
+      "id": 17,
+      "name": "Lichen",
+      "visible": true,
+      "opacity": 0.55,
+      "kind": {
+        "type": "fill",
+        "values": {
+          "base_color": [
+            0.32,
+            0.33,
+            0.2
+          ],
+          "roughness": 0.95,
+          "metallic": 0.0,
+          "height": 0.0,
+          "normal": [
+            0.0,
+            0.0
+          ],
+          "emissive": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "emissive_strength": 0.0,
+          "opacity": 1.0,
+          "transmission": 0.0,
+          "coat": 0.0,
+          "coat_roughness": 0.03,
+          "flake": 0.0
+        }
+      },
+      "channels": {
+        "base_color": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "roughness": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "metallic": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "height": {
+          "enabled": false,
+          "blend": "add",
+          "opacity": 1.0
+        },
+        "normal": {
+          "enabled": false,
+          "blend": "normal_combine",
+          "opacity": 1.0
+        },
+        "emissive": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "opacity": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "transmission": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat_roughness": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "flake": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        }
+      },
+      "mask": {
+        "res": 18,
+        "generator": {
+          "kind": "spots",
+          "amount": 0.18,
+          "softness": 0.2,
+          "noise_scale": 6.0,
+          "noise_amount": 0.2,
+          "seed": 11,
+          "ao_influence": 0.3,
+          "curvature_weight": 1.0
+        },
+        "invert": false,
+        "enabled": true
+      }
+    },
+    {
+      "id": 19,
+      "name": "Moss in cracks",
+      "visible": true,
+      "opacity": 0.7,
+      "kind": {
+        "type": "fill",
+        "values": {
+          "base_color": [
+            0.08,
+            0.12,
+            0.05
+          ],
+          "roughness": 0.95,
+          "metallic": 0.0,
+          "height": 0.0,
+          "normal": [
+            0.0,
+            0.0
+          ],
+          "emissive": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "emissive_strength": 0.0,
+          "opacity": 1.0,
+          "transmission": 0.0,
+          "coat": 0.0,
+          "coat_roughness": 0.03,
+          "flake": 0.0
+        }
+      },
+      "channels": {
+        "base_color": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "roughness": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "metallic": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "height": {
+          "enabled": false,
+          "blend": "add",
+          "opacity": 1.0
+        },
+        "normal": {
+          "enabled": false,
+          "blend": "normal_combine",
+          "opacity": 1.0
+        },
+        "emissive": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "opacity": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "transmission": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat_roughness": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "flake": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        }
+      },
+      "mask": {
+        "res": 20,
+        "generator": {
+          "kind": "moss",
+          "amount": 0.25,
+          "softness": 0.1,
+          "noise_scale": 1.5,
+          "noise_amount": 0.8,
+          "seed": 13,
+          "ao_influence": 0.8,
+          "curvature_weight": 1.0
+        },
+        "invert": false,
+        "enabled": true
+      }
+    },
+    {
+      "id": 21,
+      "name": "Wet",
+      "visible": true,
+      "opacity": 0.35,
+      "kind": {
+        "type": "fill",
+        "values": {
+          "base_color": [
+            0.1,
+            0.1,
+            0.1
+          ],
+          "roughness": 0.3,
+          "metallic": 0.0,
+          "height": 0.0,
+          "normal": [
+            0.0,
+            0.0
+          ],
+          "emissive": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "emissive_strength": 0.0,
+          "opacity": 1.0,
+          "transmission": 0.0,
+          "coat": 0.0,
+          "coat_roughness": 0.03,
+          "flake": 0.0
+        }
+      },
+      "channels": {
+        "base_color": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "roughness": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "metallic": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "height": {
+          "enabled": false,
+          "blend": "add",
+          "opacity": 1.0
+        },
+        "normal": {
+          "enabled": false,
+          "blend": "normal_combine",
+          "opacity": 1.0
+        },
+        "emissive": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "opacity": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "transmission": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "coat_roughness": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "flake": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        }
+      },
+      "mask": {
+        "res": 22,
+        "generator": {
+          "kind": "puddles",
+          "amount": 0.2,
+          "softness": 0.2,
+          "noise_scale": 0.8,
+          "noise_amount": 0.6,
+          "seed": 15,
+          "ao_influence": 0.5,
+          "curvature_weight": 1.0
+        },
+        "invert": false,
+        "enabled": true
+      }
+    }
+  ],
+  "bake": {
+    "ao_samples": 128,
+    "curvature_radius": 0.05,
+    "curvature_strength": 1.0,
+    "ao_distance": 0.3
+  },
+  "export_preset": "separate",
+  "next_id": 23,
+  "tile": {
+    "size_m": [
+      4.0,
+      4.0
+    ],
+    "wrap": [
+      true,
+      true
+    ],
+    "kind": "tile"
+  }
+}

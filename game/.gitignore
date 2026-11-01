@@ -14,3 +14,5 @@ assets/props/
 # the fleet's glTF variant extension, copied in by tools/godot/sync_vehicles.py
 addons/fleet_variants/vehicle_variants.gd
 addons/fleet_variants/vehicle_variants.gd.uid
+# open world export (tools/world/world_driver.py --stages ...,export)
+assets/world/

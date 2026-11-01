@@ -1,0 +1,11 @@
+{"tool": "new_project", "args": {"tile": {"size_m": [4, 4], "name": "sand"}, "resolution": 2048, "material": "Concrete"}}
+{"tool": "delete_layer", "args": {"layer": "Paint"}}
+{"tool": "update_layer", "args": {"layer": "Base", "values": {"base_color": [0.42, 0.37, 0.28], "roughness": 0.95}}}
+{"tool": "add_layer", "args": {"name": "Ripples", "values": {"base_color": [0.48, 0.43, 0.33], "height": 0.4}, "opacity": 0.8, "mask": {"generator": "stripes", "amount": 0.45, "scale": 6.0, "softness": 0.45, "seed": 41}}}
+{"tool": "add_layer", "args": {"name": "Tone", "values": {"base_color": [0.34, 0.3, 0.23]}, "opacity": 0.6, "mask": {"generator": "grunge", "amount": 0.45, "scale": 0.6, "softness": 0.35, "seed": 43}}}
+{"tool": "add_layer", "args": {"name": "Grains", "values": {"base_color": [0.55, 0.5, 0.42], "height": 0.1}, "opacity": 0.5, "mask": {"generator": "spots", "amount": 0.3, "scale": 150.0, "softness": 0.05, "seed": 45}}}
+{"tool": "add_layer", "args": {"name": "Shells and debris", "values": {"base_color": [0.6, 0.58, 0.55], "height": 0.4}, "mask": {"generator": "spots", "amount": 0.015, "scale": 20.0, "softness": 0.05, "seed": 47}}}
+{"tool": "add_layer", "args": {"name": "Wet sand", "values": {"base_color": [0.2, 0.17, 0.13], "roughness": 0.35}, "opacity": 0.5, "channels": {"height": false}, "mask": {"generator": "grunge", "amount": 0.3, "scale": 0.4, "softness": 0.4, "seed": 49}}}
+{"tool": "render", "args": {"yaw": 0, "pitch": 89.9, "zoom": 1.0, "width": 700, "height": 700, "background": false, "path": "C:/Users/kiera/AppData/Local/Temp/pig/world_sand.png"}}
+{"tool": "export_textures", "args": {"dir": "scenes/town/textures/world/sand", "name": "sand", "preset": "separate"}}
+{"tool": "save_project", "args": {"path": "scenes/town/projects/world/sand.pigment"}}

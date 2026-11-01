@@ -20,3 +20,11 @@ scenes/vehicles/*/textures/
 scenes/vehicles/*/projects/
 assets/vehicles/*/src/*.glb
 assets/vehicles/*/src/*.blend
+
+# tools/world outputs (regenerate: tools/world/world_driver.py)
+scenes/world/heightfield.f32
+scenes/world/*.npy
+scenes/world/*.blend
+scenes/world/export/
+scenes/world/map.png
+scenes/world/verify.json

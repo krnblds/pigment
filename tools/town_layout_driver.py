@@ -327,4 +327,5 @@ def main():
         print("saved", path)
 
 
-main()
+if __name__ == "__main__":     # tools/world loads this file for import_kit()
+    main()
