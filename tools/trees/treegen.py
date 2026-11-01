@@ -373,7 +373,7 @@ def _grow_shrub(sk, P, rng):
         a = rng.uniform(0, 2 * math.pi)
         d = _norm(np.array([math.cos(a) * 0.5, math.sin(a) * 0.5 * sy / sx, 1.0]))
         start = np.array([rng.uniform(-0.3, 0.3) * sx, rng.uniform(-0.3, 0.3) * sy, -0.05])
-        pts, rad = _grow_branch(rng, start, d, sz * 0.75, P["trunk_radius"], 0.004, 0.15, 0, 20, 0.0, 1, ground=False)
+        pts, rad = _grow_branch(rng, start, d, sz * 0.45, P["trunk_radius"], 0.004, 0.15, 0, 12, 0.0, 1, ground=False)
         b = Branch(0, pts, rad, parent=sk.trunk, phase=float(rng.random()), flex0=0.4)
         sk.branches.append(b)
     Lf = P["leaves"]
@@ -396,12 +396,12 @@ def _grow_shrub(sk, P, rng):
             pos = q
         else:
             v = _norm(rng.normal(size=3))
-            v[2] = abs(v[2]) * 0.9 + 0.1
+            v[2] = max(v[2], -0.75)
             v = _norm(v)
             inner = rng.random() < 0.2
             rad = np.array([sx / 2, sy / 2, sz * 0.55]) * (rng.uniform(0.45, 0.7) if inner else rng.uniform(0.85, 1.0))
             pos = c + v * rad
-            pos[2] = max(pos[2], 0.08)
+            pos[2] = max(pos[2], 0.1 + 0.05 * rng.random())
             nrm = _norm(v / np.array([sx, sy, sz]) + rng.normal(0, 0.3, 3))
         u = _norm(np.cross(nrm, rng.normal(size=3)))
         sc = 1.0 + rng.normal(0, Lf["size_var"])

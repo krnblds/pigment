@@ -192,7 +192,7 @@ def sheet(keys, night, lod, samples, tile_w, tile_h, outdir):
                              ((0.5 * R, 2.5, H * 0.5), 1200, (0.45, 0.75, 1.0)),
                              ((R * 2.5, -R * 2.0, H * 0.4), 9000, (1.0, 0.25, 0.65))):
                 li = bpy.data.lights.new("L", "POINT")
-                li.energy = e * max(1.0, H / 10) ** 1.5
+                li.energy = e * max(1.0, H / 10) ** 1.5 * min(1.0, H / 6.0) ** 1.5
                 li.color = c
                 li.shadow_soft_size = 0.3
                 lo = bpy.data.objects.new("L", li)

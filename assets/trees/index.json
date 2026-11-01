@@ -1436,8 +1436,8 @@
     "impostor_normal": "impostors/atlas_normal.png"
    },
    "tris": {
-    "lod0": 488,
-    "lod0_bark": 188,
+    "lod0": 416,
+    "lod0_bark": 116,
     "lod0_leaf": 300,
     "lod1": 110,
     "lod2": 8
@@ -1447,8 +1447,8 @@
     "lod2": 55.0,
     "far": 140.0
    },
-   "height": 1.21,
-   "crown_radius": 0.93,
+   "height": 1.27,
+   "crown_radius": 0.91,
    "collider": {
     "type": "box",
     "size": [
@@ -1464,12 +1464,12 @@
    },
    "impostor": {
     "cell": 29,
-    "size_v": 1.939,
-    "size_t": 1.939,
-    "height": 1.208,
+    "size_v": 1.895,
+    "size_t": 1.895,
+    "height": 1.27,
     "center": [
-     -0.023,
-     -0.005
+     0.057,
+     0.013
     ]
    }
   },
@@ -1488,8 +1488,8 @@
     "impostor_normal": "impostors/atlas_normal.png"
    },
    "tris": {
-    "lod0": 488,
-    "lod0_bark": 188,
+    "lod0": 416,
+    "lod0_bark": 116,
     "lod0_leaf": 300,
     "lod1": 110,
     "lod2": 8
@@ -1499,8 +1499,8 @@
     "lod2": 55.0,
     "far": 140.0
    },
-   "height": 1.21,
-   "crown_radius": 0.93,
+   "height": 1.27,
+   "crown_radius": 0.91,
    "collider": {
     "type": "box",
     "size": [
@@ -1516,12 +1516,12 @@
    },
    "impostor": {
     "cell": 30,
-    "size_v": 1.939,
-    "size_t": 1.939,
-    "height": 1.208,
+    "size_v": 1.895,
+    "size_t": 1.895,
+    "height": 1.27,
     "center": [
-     -0.023,
-     -0.005
+     0.057,
+     0.013
     ]
    }
   },
@@ -1540,8 +1540,8 @@
     "impostor_normal": "impostors/atlas_normal.png"
    },
    "tris": {
-    "lod0": 488,
-    "lod0_bark": 188,
+    "lod0": 416,
+    "lod0_bark": 116,
     "lod0_leaf": 300,
     "lod1": 110,
     "lod2": 8
@@ -1551,8 +1551,8 @@
     "lod2": 55.0,
     "far": 140.0
    },
-   "height": 1.18,
-   "crown_radius": 0.92,
+   "height": 1.17,
+   "crown_radius": 0.96,
    "collider": {
     "type": "box",
     "size": [
@@ -1568,12 +1568,12 @@
    },
    "impostor": {
     "cell": 31,
-    "size_v": 1.914,
-    "size_t": 1.914,
-    "height": 1.179,
+    "size_v": 1.988,
+    "size_t": 1.988,
+    "height": 1.169,
     "center": [
-     -0.0,
-     0.005
+     0.016,
+     0.04
     ]
    }
   },
@@ -1592,8 +1592,8 @@
     "impostor_normal": "impostors/atlas_normal.png"
    },
    "tris": {
-    "lod0": 488,
-    "lod0_bark": 188,
+    "lod0": 416,
+    "lod0_bark": 116,
     "lod0_leaf": 300,
     "lod1": 110,
     "lod2": 8
@@ -1603,8 +1603,8 @@
     "lod2": 55.0,
     "far": 140.0
    },
-   "height": 1.18,
-   "crown_radius": 0.92,
+   "height": 1.17,
+   "crown_radius": 0.96,
    "collider": {
     "type": "box",
     "size": [
@@ -1620,12 +1620,12 @@
    },
    "impostor": {
     "cell": 32,
-    "size_v": 1.914,
-    "size_t": 1.914,
-    "height": 1.179,
+    "size_v": 1.988,
+    "size_t": 1.988,
+    "height": 1.169,
     "center": [
-     -0.0,
-     0.005
+     0.016,
+     0.04
     ]
    }
   },
@@ -1644,8 +1644,8 @@
     "impostor_normal": "impostors/atlas_normal.png"
    },
    "tris": {
-    "lod0": 438,
-    "lod0_bark": 98,
+    "lod0": 408,
+    "lod0_bark": 68,
     "lod0_leaf": 340,
     "lod1": 130,
     "lod2": 8
@@ -1656,7 +1656,7 @@
     "far": 140.0
    },
    "height": 0.82,
-   "crown_radius": 1.17,
+   "crown_radius": 1.15,
    "collider": {
     "type": "box",
     "size": [
@@ -1672,12 +1672,12 @@
    },
    "impostor": {
     "cell": 33,
-    "size_v": 2.428,
-    "size_t": 2.428,
-    "height": 0.816,
+    "size_v": 2.395,
+    "size_t": 2.395,
+    "height": 0.819,
     "center": [
-     -0.014,
-     -0.005
+     0.008,
+     -0.0
     ]
    }
   },
@@ -1696,8 +1696,8 @@
     "impostor_normal": "impostors/atlas_normal.png"
    },
    "tris": {
-    "lod0": 320,
-    "lod0_bark": 80,
+    "lod0": 296,
+    "lod0_bark": 56,
     "lod0_leaf": 240,
     "lod1": 98,
     "lod2": 8
@@ -1707,8 +1707,8 @@
     "lod2": 55.0,
     "far": 140.0
    },
-   "height": 0.64,
-   "crown_radius": 0.93,
+   "height": 0.7,
+   "crown_radius": 0.92,
    "collider": {
     "type": "box",
     "size": [
@@ -1724,12 +1724,12 @@
    },
    "impostor": {
     "cell": 34,
-    "size_v": 1.933,
-    "size_t": 1.933,
-    "height": 0.639,
+    "size_v": 1.924,
+    "size_t": 1.924,
+    "height": 0.696,
     "center": [
-     -0.015,
-     0.009
+     0.012,
+     0.052
     ]
    }
   },
@@ -1748,8 +1748,8 @@
     "impostor_normal": "impostors/atlas_normal.png"
    },
    "tris": {
-    "lod0": 300,
-    "lod0_bark": 80,
+    "lod0": 276,
+    "lod0_bark": 56,
     "lod0_leaf": 220,
     "lod1": 90,
     "lod2": 8
@@ -1759,8 +1759,8 @@
     "lod2": 55.0,
     "far": 140.0
    },
-   "height": 0.73,
-   "crown_radius": 0.97,
+   "height": 0.66,
+   "crown_radius": 0.92,
    "collider": {
     "type": "box",
     "size": [
@@ -1776,12 +1776,12 @@
    },
    "impostor": {
     "cell": 35,
-    "size_v": 2.02,
-    "size_t": 2.02,
-    "height": 0.726,
+    "size_v": 1.906,
+    "size_t": 1.906,
+    "height": 0.656,
     "center": [
-     -0.032,
-     -0.022
+     0.039,
+     0.017
     ]
    }
   },
@@ -1842,9 +1842,9 @@
   },
   "impostor": {
    "name": "TreeImpostor_<key>",
-   "albedo": "impostors/<key>_albedo.png (rgb albedo x occlusion, a = cut-out)",
-   "normal": "impostors/<key>_normal.png (object-space normal, Blender z up, encoded 0..1)",
-   "layout": "4 cells across: views at azimuth 0, 60, 120 deg, then top"
+   "albedo": "impostors/atlas_albedo.png (rgb albedo x occlusion, a = cut-out)",
+   "normal": "impostors/atlas_normal.png (object-space normal, Blender z up, encoded 0..1)",
+   "layout": "per variant a 4-view strip (azimuth 0, 60, 120 deg, then top) at index variants.<key>.impostor.cell; the LOD2 glb UVs span the strip"
   }
  },
  "attributes": {
