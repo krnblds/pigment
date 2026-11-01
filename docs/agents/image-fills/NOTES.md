@@ -64,7 +64,7 @@ world space.
   - errors for a missing file, a paint layer and an unknown projection;
   - save/open keeps the fill, and `null` removes it.
 - `image_normals_agree_with_image_height`: for UV (rotated 30°) and triplanar, the final normals from a tile's normal map correlate (> 0.5, x and y) with the normals Pigment derives from the same tile's height map. This checks the frame and sign conventions.
-- `cargo test --release`: all green.
+- `cargo test --release -- --test-threads=1`: all green (core 67, app 30). With ten agents sharing the 12 GB GPU, the parallel default sometimes fails GPU tests with `wgpu error: Out of Memory`. That is environmental: the same tests pass when run serially.
 
 ## Known limits
 
