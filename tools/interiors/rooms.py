@@ -153,7 +153,8 @@ class Room:
             top = self.H
             self.cyl((c[0], c[1], (c[2] + top) / 2 + r), 0.006, top - c[2] - r, BLACK, seg=6)
         if shade:
-            self.cyl((c[0], c[1], c[2] + r * 0.6), shade[0], shade[1], shade[2], seg=20, r2=shade[0] * 0.35)
+            # the shade sits above the bulb (a closed solid: the light must not be inside it)
+            self.cyl((c[0], c[1], c[2] + r + 0.01 + shade[1] / 2), shade[0], shade[1], shade[2], seg=20, r2=shade[0] * 0.35)
         self.lamps.append({"kind": "ball", "c": list(c), "s": [r, r, r], "color": list(color), "strength": 30.0, "state": state})
         self.lights.append({"type": "POINT", "loc": list(c), "rot": [0, 0, 0], "color": list(color), "power": power, "size": [r * 2, 0], "state": state})
 

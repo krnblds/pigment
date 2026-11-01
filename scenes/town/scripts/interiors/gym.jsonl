@@ -1,0 +1,26 @@
+{"tool": "new_project", "args": {"mesh": "scenes/town/textures/interiors/meshes/gym.glb", "resolution": 2048, "material": "White plastic"}}
+{"tool": "bake", "args": {"ao_distance": 0.25, "curvature_radius": 0.005, "curvature_strength": 0.7}}
+{"tool": "delete_layer", "args": {"layer": "Paint"}}
+{"tool": "add_layer", "args": {"name": "Role 0", "mask": {"parts": [5, 9, 11, 15, 24, 28, 31, 32, 33, 34, 36, 38, 39, 40]}, "values": {"base_color": [0.02, 0.02, 0.022], "roughness": 0.5, "metallic": 0.0}}}
+{"tool": "add_layer", "args": {"name": "Role 1", "mask": {"parts": [6, 12, 25]}, "values": {"base_color": [0.05, 0.05, 0.05], "roughness": 0.9, "metallic": 0.0}}}
+{"tool": "add_layer", "args": {"name": "Role 2", "mask": {"parts": [22, 23]}, "values": {"base_color": [0.08, 0.07, 0.07], "roughness": 0.8, "metallic": 0.0}}}
+{"tool": "add_layer", "args": {"name": "Role 3", "mask": {"parts": [0]}, "values": {"base_color": [0.08, 0.08, 0.09], "roughness": 0.85, "metallic": 0.0}}}
+{"tool": "add_layer", "args": {"name": "Role 3 weave", "mask": {"parts": [0], "generator": "spots", "amount": 0.35, "scale": 120.0, "softness": 0.3, "seed": 336}, "values": {"base_color": [0.048, 0.048, 0.054]}, "opacity": 0.5, "channels": {"height": false}}}
+{"tool": "add_layer", "args": {"name": "Role 4", "mask": {"parts": [17, 18, 19, 20, 21]}, "values": {"base_color": [0.12, 0.12, 0.14], "roughness": 0.95, "metallic": 0.0}}}
+{"tool": "add_layer", "args": {"name": "Role 4 weave", "mask": {"parts": [17, 18, 19, 20, 21], "generator": "spots", "amount": 0.35, "scale": 120.0, "softness": 0.3, "seed": 337}, "values": {"base_color": [0.072, 0.072, 0.084]}, "opacity": 0.5, "channels": {"height": false}}}
+{"tool": "add_layer", "args": {"name": "Glow 5", "mask": {"parts": [41]}, "values": {"base_color": [0.2, 1.0, 0.6], "roughness": 0.3, "metallic": 0.0, "emissive": [0.2, 1.0, 0.6], "emissive_strength": 6.0}}}
+{"tool": "add_layer", "args": {"name": "Role 6", "mask": {"parts": [1]}, "values": {"base_color": [0.25, 0.25, 0.27], "roughness": 0.7, "metallic": 0.0}}}
+{"tool": "add_layer", "args": {"name": "Role 7", "mask": {"parts": [3, 4]}, "values": {"base_color": [0.3, 0.32, 0.34], "roughness": 0.6, "metallic": 0.0}}}
+{"tool": "add_layer", "args": {"name": "Glow 8", "mask": {"parts": [10, 16, 29]}, "values": {"base_color": [0.3, 1.0, 0.7], "roughness": 0.3, "metallic": 0.0, "emissive": [0.3, 1.0, 0.7], "emissive_strength": 4.0}}}
+{"tool": "add_layer", "args": {"name": "Role 9", "mask": {"parts": [7, 8, 13, 14, 26, 27, 30, 35, 37, 42]}, "values": {"base_color": [0.55, 0.56, 0.58], "roughness": 0.35, "metallic": 0.9}}}
+{"tool": "add_layer", "args": {"name": "Role 10", "mask": {"parts": [2]}, "values": {"base_color": [0.75, 0.78, 0.8], "roughness": 0.03, "metallic": 1.0}}}
+{"tool": "add_layer", "args": {"name": "Wall scuffs", "mask": {"parts": [2, 3, 4], "generator": "gradient", "amount": 0.12, "softness": 0.4, "breakup": 0.7, "seed": 333}, "values": {"base_color": [0.1, 0.09, 0.08], "roughness": 0.9}, "opacity": 0.45, "channels": {"height": false, "metallic": false, "emissive": false}}}
+{"tool": "add_layer", "args": {"name": "Wall stains", "mask": {"parts": [2, 3, 4], "generator": "leaks", "amount": 0.35, "scale": 2.0, "breakup": 0.6, "drip_length": 2.0, "softness": 0.15, "seed": 334}, "values": {"base_color": [0.12, 0.1, 0.08], "roughness": 0.9}, "opacity": 0.35, "channels": {"height": false, "metallic": false, "emissive": false}}}
+{"tool": "add_layer", "args": {"name": "Floor wear", "mask": {"parts": [0], "generator": "grunge", "amount": 0.4, "scale": 1.5, "softness": 0.35, "seed": 335}, "values": {"base_color": [0.06, 0.055, 0.05], "roughness": 0.95}, "opacity": 0.5, "channels": {"height": false, "metallic": false, "emissive": false}}}
+{"tool": "add_layer", "args": {"name": "Edge wear", "mask": {"parts": [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42], "generator": "edge_wear", "amount": 0.25, "scale": 20.0, "breakup": 0.7, "softness": 0.05, "seed": 336}, "values": {"base_color": [0.6, 0.6, 0.6], "roughness": 0.3, "metallic": 0.6}, "opacity": 0.6, "channels": {"height": false, "emissive": false}}}
+{"tool": "add_layer", "args": {"name": "Grime", "material": "Grime", "mask": {"generator": "dirt", "amount": 0.45, "softness": 0.25, "breakup": 0.5, "seed": 337}, "opacity": 0.6, "channels": {"emissive": false, "metallic": false}}}
+{"tool": "add_layer", "args": {"kind": "paint", "name": "Decals"}}
+{"tool": "project_decal", "args": {"image": "assets/decals/story/billboard_score.png", "layer": "Decals", "position": [-1.998, 1.8, -2.8], "normal": [1, 0, 0], "size": [1.2, 0.65], "emissive_strength": 1.5}}
+{"tool": "export_textures", "args": {"dir": "scenes/town/textures/interiors/gym", "name": "gym", "preset": "separate"}}
+{"tool": "send_to_blender", "args": {"dir": "scenes/town/textures/interiors/gym", "name": "gym", "mesh": false}}
+{"tool": "save_project", "args": {"path": "scenes/town/textures/interiors/projects/gym.pigment"}}

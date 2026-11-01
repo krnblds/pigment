@@ -1,0 +1,34 @@
+{"tool": "new_project", "args": {"mesh": "scenes/town/textures/interiors/meshes/neon_bedroom.glb", "resolution": 2048, "material": "White plastic"}}
+{"tool": "bake", "args": {"ao_distance": 0.25, "curvature_radius": 0.005, "curvature_strength": 0.7}}
+{"tool": "delete_layer", "args": {"layer": "Paint"}}
+{"tool": "add_layer", "args": {"name": "Role 0", "mask": {"parts": [15]}, "values": {"base_color": [0.02, 0.02, 0.022], "roughness": 0.5, "metallic": 0.0}}}
+{"tool": "add_layer", "args": {"name": "Glow 1", "mask": {"parts": [16]}, "values": {"base_color": [0.02, 0.02, 0.03], "roughness": 0.3, "metallic": 0.0, "emissive": [0.02, 0.02, 0.03], "emissive_strength": 0.0}}}
+{"tool": "add_layer", "args": {"name": "Role 2", "mask": {"parts": [9]}, "values": {"base_color": [0.1, 0.05, 0.15], "roughness": 0.95, "metallic": 0.0}}}
+{"tool": "add_layer", "args": {"name": "Role 2 weave", "mask": {"parts": [9], "generator": "spots", "amount": 0.35, "scale": 120.0, "softness": 0.3, "seed": 1273}, "values": {"base_color": [0.06, 0.03, 0.09]}, "opacity": 0.5, "channels": {"height": false}}}
+{"tool": "add_layer", "args": {"name": "Role 3", "mask": {"parts": [8]}, "values": {"base_color": [0.1, 0.1, 0.1], "roughness": 0.95, "metallic": 0.0}}}
+{"tool": "add_layer", "args": {"name": "Role 3 weave", "mask": {"parts": [8], "generator": "spots", "amount": 0.35, "scale": 120.0, "softness": 0.3, "seed": 1274}, "values": {"base_color": [0.06, 0.06, 0.06]}, "opacity": 0.5, "channels": {"height": false}}}
+{"tool": "add_layer", "args": {"name": "Role 4", "mask": {"parts": [5, 11]}, "values": {"base_color": [0.12, 0.07, 0.04], "roughness": 0.45, "metallic": 0.0}}}
+{"tool": "add_layer", "args": {"name": "Role 4 grain", "mask": {"parts": [5, 11], "generator": "stripes", "amount": 0.45, "scale": 18.0, "softness": 0.6, "breakup": 0.8, "seed": 1275}, "values": {"base_color": [0.072, 0.042, 0.024], "roughness": 0.55}, "opacity": 0.5, "channels": {"height": false}}}
+{"tool": "add_layer", "args": {"name": "Role 5", "mask": {"parts": [2, 3, 4]}, "values": {"base_color": [0.12, 0.08, 0.16], "roughness": 0.8, "metallic": 0.0}}}
+{"tool": "add_layer", "args": {"name": "Role 6", "mask": {"parts": [1]}, "values": {"base_color": [0.15, 0.12, 0.18], "roughness": 0.7, "metallic": 0.0}}}
+{"tool": "add_layer", "args": {"name": "Role 7", "mask": {"parts": [0]}, "values": {"base_color": [0.32, 0.2, 0.11], "roughness": 0.55, "metallic": 0.0}}}
+{"tool": "add_layer", "args": {"name": "Role 7 grain", "mask": {"parts": [0], "generator": "stripes", "amount": 0.45, "scale": 18.0, "softness": 0.6, "breakup": 0.8, "seed": 1278}, "values": {"base_color": [0.192, 0.12, 0.066], "roughness": 0.65}, "opacity": 0.5, "channels": {"height": false}}}
+{"tool": "add_layer", "args": {"name": "Role 8", "mask": {"parts": [6]}, "values": {"base_color": [0.35, 0.1, 0.4], "roughness": 0.95, "metallic": 0.0}}}
+{"tool": "add_layer", "args": {"name": "Role 8 weave", "mask": {"parts": [6], "generator": "spots", "amount": 0.35, "scale": 120.0, "softness": 0.3, "seed": 1279}, "values": {"base_color": [0.21, 0.06, 0.24]}, "opacity": 0.5, "channels": {"height": false}}}
+{"tool": "add_layer", "args": {"name": "Glow 9", "mask": {"parts": [10]}, "values": {"base_color": [0.6, 0.2, 1.0], "roughness": 0.3, "metallic": 0.0, "emissive": [0.6, 0.2, 1.0], "emissive_strength": 6.0}}}
+{"tool": "add_layer", "args": {"name": "Role 10", "mask": {"parts": [12, 13, 14]}, "values": {"base_color": [0.6, 0.6, 0.6], "roughness": 0.95, "metallic": 0.0}}}
+{"tool": "add_layer", "args": {"name": "Role 10 weave", "mask": {"parts": [12, 13, 14], "generator": "spots", "amount": 0.35, "scale": 120.0, "softness": 0.3, "seed": 1281}, "values": {"base_color": [0.36, 0.36, 0.36]}, "opacity": 0.5, "channels": {"height": false}}}
+{"tool": "add_layer", "args": {"name": "Role 11", "mask": {"parts": [7]}, "values": {"base_color": [0.75, 0.75, 0.73], "roughness": 0.45, "metallic": 0.0}}}
+{"tool": "add_layer", "args": {"name": "Wall scuffs", "mask": {"parts": [2, 3, 4], "generator": "gradient", "amount": 0.12, "softness": 0.4, "breakup": 0.7, "seed": 1271}, "values": {"base_color": [0.1, 0.09, 0.08], "roughness": 0.9}, "opacity": 0.45, "channels": {"height": false, "metallic": false, "emissive": false}}}
+{"tool": "add_layer", "args": {"name": "Wall stains", "mask": {"parts": [2, 3, 4], "generator": "leaks", "amount": 0.35, "scale": 2.0, "breakup": 0.6, "drip_length": 2.0, "softness": 0.15, "seed": 1272}, "values": {"base_color": [0.12, 0.1, 0.08], "roughness": 0.9}, "opacity": 0.35, "channels": {"height": false, "metallic": false, "emissive": false}}}
+{"tool": "add_layer", "args": {"name": "Floor wear", "mask": {"parts": [0], "generator": "grunge", "amount": 0.4, "scale": 1.5, "softness": 0.35, "seed": 1273}, "values": {"base_color": [0.06, 0.055, 0.05], "roughness": 0.95}, "opacity": 0.5, "channels": {"height": false, "metallic": false, "emissive": false}}}
+{"tool": "add_layer", "args": {"name": "Edge wear", "mask": {"parts": [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16], "generator": "edge_wear", "amount": 0.25, "scale": 20.0, "breakup": 0.7, "softness": 0.05, "seed": 1274}, "values": {"base_color": [0.6, 0.6, 0.6], "roughness": 0.3, "metallic": 0.6}, "opacity": 0.6, "channels": {"height": false, "emissive": false}}}
+{"tool": "add_layer", "args": {"name": "Grime", "material": "Grime", "mask": {"generator": "dirt", "amount": 0.45, "softness": 0.25, "breakup": 0.5, "seed": 1275}, "opacity": 0.6, "channels": {"emissive": false, "metallic": false}}}
+{"tool": "add_layer", "args": {"kind": "paint", "name": "Decals"}}
+{"tool": "project_decal", "args": {"image": "assets/decals/neon_dennou.png", "layer": "Decals", "position": [0.5, 1.8, -3.997], "normal": [0, 0, 1], "size": [1.4, 0.6], "emissive_strength": 7.0}}
+{"tool": "project_decal", "args": {"image": "assets/decals/poster_yume.png", "layer": "Decals", "position": [1.998, 1.6, -2.4], "normal": [-1, 0, 0], "size": [0.5, 0.7]}}
+{"tool": "project_decal", "args": {"image": "assets/decals/story/graffiti_not_data.png", "layer": "Decals", "position": [-1.998, 1.7, -2.5], "normal": [1, 0, 0], "size": [0.9, 0.55]}}
+{"tool": "project_decal", "args": {"image": "assets/decals/props/holo_noctis.png", "layer": "Decals", "position": [1.9179999828338623, 1.399999976158142, -1.2000000476837158], "normal": [-1.0, 0.0, -0.0], "size": [0.9, 0.5], "emissive_strength": 4.0}}
+{"tool": "export_textures", "args": {"dir": "scenes/town/textures/interiors/neon_bedroom", "name": "neon_bedroom", "preset": "separate"}}
+{"tool": "send_to_blender", "args": {"dir": "scenes/town/textures/interiors/neon_bedroom", "name": "neon_bedroom", "mesh": false}}
+{"tool": "save_project", "args": {"path": "scenes/town/textures/interiors/projects/neon_bedroom.pigment"}}
