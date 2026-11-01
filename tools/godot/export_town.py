@@ -242,7 +242,28 @@ def describe_material(mat, images_out):
 
 
 # ------------------------------------------------------------------ export one mesh
+def wet_bias_colors(me):
+    """tools/town_roads.py writes a POINT float attribute 'wet_bias' (gutters, sag points collect water).
+    glTF drops custom attributes Godot can read, so it goes out as the vertex colour, R = 1 - wet_bias
+    (a mesh without colours reads as dry; game/scripts/road_surface.gdshader). True when written."""
+    a = me.attributes.get("wet_bias")
+    if a is None or a.domain != "POINT" or a.data_type != "FLOAT":
+        return False
+    name = "WetBiasCol"
+    col = me.color_attributes.get(name) or me.color_attributes.new(name, "FLOAT_COLOR", "POINT")
+    w = [0.0] * len(a.data)
+    a.data.foreach_get("value", w)
+    rgba = []
+    for v in w:
+        rgba += (1.0 - v, 1.0, 1.0, 1.0)
+    col.data.foreach_set("color", rgba)
+    me.color_attributes.active_color = col
+    me.color_attributes.render_color_index = me.color_attributes.active_color_index
+    return True
+
+
 def export_mesh(me, path):
+    has_wet = wet_bias_colors(me)
     tmp = bpy.data.objects.new("_export_tmp", me)
     bpy.context.scene.collection.objects.link(tmp)
     for o in list(bpy.context.selected_objects):
@@ -252,6 +273,14 @@ def export_mesh(me, path):
     kw = dict(filepath=path, use_selection=True, export_format="GLB", export_yup=True,
               export_apply=False, export_texcoords=True, export_normals=True,
               export_materials="EXPORT", export_cameras=False, export_lights=False)
+    if has_wet:
+        for extra in ({"export_vertex_color": "ACTIVE"}, {"export_colors": True}):
+            try:
+                bpy.ops.export_scene.gltf.get_rna_type().properties[next(iter(extra))]
+                kw.update(extra)
+                break
+            except KeyError:
+                continue
     try:
         bpy.ops.export_scene.gltf(export_image_format="NONE", **kw)
     except TypeError:

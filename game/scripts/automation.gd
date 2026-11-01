@@ -315,8 +315,16 @@ func _bench_spots(dir: String) -> void:
 	out["settled_ms"] = await _settle()      # engine start to steady frames: the load time a player sees
 	var cam = main.cam
 	cam.manual = true
+	if main.args.has("clean"):          # comparison shots: no HUD, no rain streaks (the roads stay wet)
+		main.hud.visible = false
+		main.rain.visible = false
 	if w != null:
+		var only := String(main.args.get("spots", ""))
+		var cams := []
 		for spot in _spots(w):
+			if only != "" and not (spot.name in only.split(",")):
+				continue
+			cams.append(_blender_cam(spot))
 			cam.fov = float(spot.get("fov", 62.0))
 			cam.global_position = spot.eye
 			cam.look_at(spot.at, Vector3.UP)
@@ -325,6 +333,17 @@ func _bench_spots(dir: String) -> void:
 			await _wait(4.0)                                   # stream in, fog / GI settle
 			out[spot.name] = await _measure_for(secs)
 			await _shot(dir, "spot_" + spot.name)
+		# the same views for Cycles (tools/world/world_render.py --cams <dir>/cams.json)
+		var cf := FileAccess.open(dir.path_join("cams.json"), FileAccess.WRITE)
+		cf.store_string(JSON.stringify(cams, "  "))
+		cf.close()
+	if main.args.has("no-drive"):
+		var f0 := FileAccess.open(dir.path_join("spots.json"), FileAccess.WRITE)
+		f0.store_string(JSON.stringify(out, "  "))
+		f0.close()
+		print("SPOTS ", JSON.stringify(out))
+		_quit()
+		return
 	cam.manual = false
 	cam.snap()
 	main.ap_speed = 17.0
@@ -340,6 +359,15 @@ func _bench_spots(dir: String) -> void:
 
 static func _g(p: Array) -> Vector3:          # world.json (Blender) -> Godot
 	return Vector3(p[0], p[2], -p[1])
+
+
+static func _b(v: Vector3) -> Array:          # Godot -> Blender
+	return [snappedf(v.x, 0.001), snappedf(-v.z, 0.001), snappedf(v.y, 0.001)]
+
+
+## A spot as a Blender camera: Godot's fov is vertical, so is the camera's sensor fit.
+static func _blender_cam(spot: Dictionary) -> Dictionary:
+	return {"name": spot.name, "loc": _b(spot.eye), "target": _b(spot.at), "fov_y": float(spot.get("fov", 62.0))}
 
 
 static func _spots(w: Dictionary) -> Array:
@@ -406,6 +434,60 @@ static func _spots(w: Dictionary) -> Array:
 			var eye := _g(j.pos) + Vector3.UP * 3.0
 			spots.append({"name": "lookout", "eye": eye, "at": city, "fov": 40.0})
 			break
+	spots.append_array(_road_spots(w, dc))
+	return spots
+
+
+## Road-look spots (docs/agents/roadlook): street level on the avenue, a signalised junction with its
+## zebra crossings, a curb / gutter / sidewalk close-up and a low view over the wet asphalt.
+static func _road_spots(w: Dictionary, dc: Vector2) -> Array:
+	var spots := []
+	var roads := {}
+	for r in w.roads:
+		roads[r.id] = r
+	# the four-way junction nearest downtown whose arms are all curb streets / avenues
+	var best := INF
+	var jn = null
+	for j in w.junctions:
+		if j.kind != "X":
+			continue
+		var ok := true
+		for a in j.arms:
+			var rr = roads.get(a.road)
+			if rr == null or rr.get("side", "curb") != "curb":
+				ok = false
+		var d := Vector2(j.pos[0], j.pos[1]).distance_to(dc)
+		if ok and d < best:
+			best = d
+			jn = j
+	if jn != null:
+		var c := _g(jn.pos)
+		var a: Dictionary = jn.arms[0]
+		var ad := Vector3(a.dir[0], 0.0, -a.dir[1]).normalized()      # outward along the arm
+		var side := Vector3.UP.cross(ad).normalized()
+		var eye: Vector3 = c + ad * (float(a.length) + 14.0) + side * 1.8 + Vector3.UP * 1.7
+		spots.append({"name": "junction", "eye": eye, "at": c + Vector3.UP * 0.5})
+		# curb close-up: standing on the arm's sidewalk edge, looking along the curb into the junction
+		var hw := float(a.half_width)
+		var ce: Vector3 = c + ad * (float(a.length) + 6.0) + side * (hw + 1.2) + Vector3.UP * 1.25
+		spots.append({"name": "curb", "eye": ce, "at": c + ad * (float(a.length) - 4.0) + side * (hw - 0.6), "fov": 55.0})
+	# wet asphalt: low over the avenue nearest downtown, looking down it at the neon
+	var bst := INF
+	var av := {}
+	for r in w.roads:
+		if r["class"] != "avenue":
+			continue
+		var pts: Array = r.points
+		for i in range(2, pts.size() - 2):
+			var d := Vector2(pts[i][0], pts[i][1]).distance_to(dc + Vector2(60, 40))
+			if d < bst:
+				bst = d
+				av = {"p": _g(pts[i]), "t": (_g(pts[i + 1]) - _g(pts[i - 1])).normalized()}
+	if av:
+		var t: Vector3 = av.t
+		var side := Vector3.UP.cross(t).normalized()
+		var eye: Vector3 = av.p + Vector3.UP * 0.9 - side * 2.0
+		spots.append({"name": "wet", "eye": eye, "at": eye + t * 40.0 - Vector3.UP * 1.6})
 	return spots
 
 
