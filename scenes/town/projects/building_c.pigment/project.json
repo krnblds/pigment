@@ -28,7 +28,9 @@
             0.0,
             0.0
           ],
-          "emissive_strength": 0.0
+          "emissive_strength": 0.0,
+          "opacity": 1.0,
+          "transmission": 0.0
         }
       },
       "channels": {
@@ -61,24 +63,34 @@
           "enabled": false,
           "blend": "normal",
           "opacity": 1.0
+        },
+        "opacity": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "transmission": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
         }
       }
     },
     {
       "id": 7,
-      "name": "Gunmetal cladding",
+      "name": "Steel cladding",
       "visible": true,
       "opacity": 1.0,
       "kind": {
         "type": "fill",
         "values": {
           "base_color": [
-            0.22,
-            0.23,
-            0.25
+            0.2,
+            0.21,
+            0.23
           ],
-          "roughness": 0.4,
-          "metallic": 1.0,
+          "roughness": 0.5,
+          "metallic": 0.7,
           "height": 0.0,
           "normal": [
             0.0,
@@ -89,7 +101,9 @@
             0.0,
             0.0
           ],
-          "emissive_strength": 0.0
+          "emissive_strength": 0.0,
+          "opacity": 1.0,
+          "transmission": 0.0
         }
       },
       "channels": {
@@ -119,6 +133,16 @@
           "opacity": 1.0
         },
         "emissive": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "opacity": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "transmission": {
           "enabled": false,
           "blend": "normal",
           "opacity": 1.0
@@ -169,7 +193,9 @@
             0.0,
             0.0
           ],
-          "emissive_strength": 0.0
+          "emissive_strength": 0.0,
+          "opacity": 1.0,
+          "transmission": 0.0
         }
       },
       "channels": {
@@ -199,6 +225,16 @@
           "opacity": 1.0
         },
         "emissive": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "opacity": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "transmission": {
           "enabled": false,
           "blend": "normal",
           "opacity": 1.0
@@ -259,7 +295,9 @@
             0.0,
             0.0
           ],
-          "emissive_strength": 0.0
+          "emissive_strength": 0.0,
+          "opacity": 1.0,
+          "transmission": 0.0
         }
       },
       "channels": {
@@ -289,6 +327,16 @@
           "opacity": 1.0
         },
         "emissive": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "opacity": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "transmission": {
           "enabled": false,
           "blend": "normal",
           "opacity": 1.0
@@ -326,18 +374,18 @@
     },
     {
       "id": 13,
-      "name": "Dark glass",
+      "name": "Glass",
       "visible": true,
       "opacity": 1.0,
       "kind": {
         "type": "fill",
         "values": {
           "base_color": [
-            0.02,
-            0.025,
-            0.03
+            0.6,
+            0.7,
+            0.75
           ],
-          "roughness": 0.04,
+          "roughness": 0.03,
           "metallic": 0.0,
           "height": 0.0,
           "normal": [
@@ -349,7 +397,9 @@
             0.0,
             0.0
           ],
-          "emissive_strength": 0.0
+          "emissive_strength": 0.0,
+          "opacity": 0.3,
+          "transmission": 1.0
         }
       },
       "channels": {
@@ -380,6 +430,16 @@
         },
         "emissive": {
           "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "opacity": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "transmission": {
+          "enabled": true,
           "blend": "normal",
           "opacity": 1.0
         }
@@ -522,7 +582,9 @@
             0.72,
             0.42
           ],
-          "emissive_strength": 2.4
+          "emissive_strength": 2.4,
+          "opacity": 1.0,
+          "transmission": 0.0
         }
       },
       "channels": {
@@ -555,6 +617,16 @@
           "enabled": true,
           "blend": "normal",
           "opacity": 1.0
+        },
+        "opacity": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "transmission": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
         }
       },
       "mask": {
@@ -583,11 +655,8 @@
           81,
           83,
           86,
-          87,
           89,
           91,
-          93,
-          94,
           97,
           99,
           105,
@@ -626,7 +695,9 @@
             0.85,
             1.0
           ],
-          "emissive_strength": 2.2
+          "emissive_strength": 2.2,
+          "opacity": 1.0,
+          "transmission": 0.0
         }
       },
       "channels": {
@@ -659,6 +730,16 @@
           "enabled": true,
           "blend": "normal",
           "opacity": 1.0
+        },
+        "opacity": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "transmission": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
         }
       },
       "mask": {
@@ -667,15 +748,13 @@
         "enabled": true,
         "parts": [
           23,
-          29,
           38,
-          59,
-          70,
-          78,
+          87,
+          93,
+          94,
           95,
           106,
           111,
-          123,
           138
         ]
       }
@@ -705,7 +784,9 @@
             0.3,
             0.7
           ],
-          "emissive_strength": 2.2
+          "emissive_strength": 2.2,
+          "opacity": 1.0,
+          "transmission": 0.0
         }
       },
       "channels": {
@@ -738,6 +819,16 @@
           "enabled": true,
           "blend": "normal",
           "opacity": 1.0
+        },
+        "opacity": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "transmission": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
         }
       },
       "mask": {
@@ -745,13 +836,9 @@
         "invert": false,
         "enabled": true,
         "parts": [
-          39,
-          45,
-          53,
-          58,
-          63,
-          115,
-          127
+          29,
+          70,
+          78
         ]
       }
     },
@@ -780,7 +867,9 @@
             0.0,
             0.0
           ],
-          "emissive_strength": 0.0
+          "emissive_strength": 0.0,
+          "opacity": 1.0,
+          "transmission": 0.0
         }
       },
       "channels": {
@@ -810,6 +899,16 @@
           "opacity": 1.0
         },
         "emissive": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "opacity": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "transmission": {
           "enabled": false,
           "blend": "normal",
           "opacity": 1.0
@@ -863,6 +962,88 @@
     },
     {
       "id": 23,
+      "name": "Screens",
+      "visible": true,
+      "opacity": 1.0,
+      "kind": {
+        "type": "fill",
+        "values": {
+          "base_color": [
+            0.012,
+            0.012,
+            0.015
+          ],
+          "roughness": 0.08,
+          "metallic": 0.0,
+          "height": 0.0,
+          "normal": [
+            0.0,
+            0.0
+          ],
+          "emissive": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "emissive_strength": 0.0,
+          "opacity": 1.0,
+          "transmission": 0.0
+        }
+      },
+      "channels": {
+        "base_color": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "roughness": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "metallic": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "height": {
+          "enabled": false,
+          "blend": "add",
+          "opacity": 1.0
+        },
+        "normal": {
+          "enabled": false,
+          "blend": "normal_combine",
+          "opacity": 1.0
+        },
+        "emissive": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "opacity": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "transmission": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        }
+      },
+      "mask": {
+        "res": 24,
+        "invert": false,
+        "enabled": true,
+        "parts": [
+          0,
+          168
+        ]
+      }
+    },
+    {
+      "id": 25,
       "name": "Trim",
       "visible": true,
       "opacity": 1.0,
@@ -886,7 +1067,9 @@
             0.0,
             0.0
           ],
-          "emissive_strength": 0.0
+          "emissive_strength": 0.0,
+          "opacity": 1.0,
+          "transmission": 0.0
         }
       },
       "channels": {
@@ -919,33 +1102,32 @@
           "enabled": false,
           "blend": "normal",
           "opacity": 1.0
+        },
+        "opacity": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "transmission": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
         }
       },
       "mask": {
-        "res": 24,
+        "res": 26,
         "invert": false,
         "enabled": true,
         "parts": [
-          5,
-          6,
           7,
           9,
           10,
-          15,
           146,
           149,
           152,
           155,
           158,
           187,
-          188,
-          189,
-          190,
-          191,
-          192,
-          193,
-          194,
-          195,
           196,
           197,
           198,
@@ -956,10 +1138,274 @@
       }
     },
     {
-      "id": 25,
-      "name": "Trim rust",
+      "id": 27,
+      "name": "Doors",
       "visible": true,
       "opacity": 1.0,
+      "kind": {
+        "type": "fill",
+        "values": {
+          "base_color": [
+            0.11,
+            0.12,
+            0.13
+          ],
+          "roughness": 0.45,
+          "metallic": 0.6,
+          "height": 0.0,
+          "normal": [
+            0.0,
+            0.0
+          ],
+          "emissive": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "emissive_strength": 0.0,
+          "opacity": 1.0,
+          "transmission": 0.0
+        }
+      },
+      "channels": {
+        "base_color": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "roughness": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "metallic": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "height": {
+          "enabled": false,
+          "blend": "add",
+          "opacity": 1.0
+        },
+        "normal": {
+          "enabled": false,
+          "blend": "normal_combine",
+          "opacity": 1.0
+        },
+        "emissive": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "opacity": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "transmission": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        }
+      },
+      "mask": {
+        "res": 28,
+        "invert": false,
+        "enabled": true,
+        "parts": [
+          5,
+          6,
+          15
+        ]
+      }
+    },
+    {
+      "id": 29,
+      "name": "Door scuffs",
+      "visible": true,
+      "opacity": 1.0,
+      "kind": {
+        "type": "fill",
+        "values": {
+          "base_color": [
+            0.56,
+            0.57,
+            0.58
+          ],
+          "roughness": 0.3,
+          "metallic": 1.0,
+          "height": 0.0,
+          "normal": [
+            0.0,
+            0.0
+          ],
+          "emissive": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "emissive_strength": 0.0,
+          "opacity": 1.0,
+          "transmission": 0.0
+        }
+      },
+      "channels": {
+        "base_color": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "roughness": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "metallic": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "height": {
+          "enabled": false,
+          "blend": "add",
+          "opacity": 1.0
+        },
+        "normal": {
+          "enabled": false,
+          "blend": "normal_combine",
+          "opacity": 1.0
+        },
+        "emissive": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "opacity": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "transmission": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        }
+      },
+      "mask": {
+        "res": 30,
+        "generator": {
+          "kind": "edge_wear",
+          "amount": 0.25,
+          "softness": 0.05,
+          "noise_scale": 20.0,
+          "noise_amount": 0.7,
+          "seed": 1,
+          "ao_influence": 0.5,
+          "curvature_weight": 1.0
+        },
+        "invert": false,
+        "enabled": true,
+        "parts": [
+          5,
+          6,
+          15
+        ]
+      }
+    },
+    {
+      "id": 31,
+      "name": "Rooftop metal",
+      "visible": true,
+      "opacity": 1.0,
+      "kind": {
+        "type": "fill",
+        "values": {
+          "base_color": [
+            0.32,
+            0.33,
+            0.34
+          ],
+          "roughness": 0.55,
+          "metallic": 0.8,
+          "height": 0.0,
+          "normal": [
+            0.0,
+            0.0
+          ],
+          "emissive": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "emissive_strength": 0.0,
+          "opacity": 1.0,
+          "transmission": 0.0
+        }
+      },
+      "channels": {
+        "base_color": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "roughness": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "metallic": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "height": {
+          "enabled": false,
+          "blend": "add",
+          "opacity": 1.0
+        },
+        "normal": {
+          "enabled": false,
+          "blend": "normal_combine",
+          "opacity": 1.0
+        },
+        "emissive": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "opacity": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "transmission": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        }
+      },
+      "mask": {
+        "res": 32,
+        "invert": false,
+        "enabled": true,
+        "parts": [
+          188,
+          189,
+          190,
+          191,
+          192,
+          193,
+          194,
+          195
+        ]
+      }
+    },
+    {
+      "id": 33,
+      "name": "Rooftop rust streaks",
+      "visible": true,
+      "opacity": 0.6,
       "kind": {
         "type": "fill",
         "values": {
@@ -980,7 +1426,9 @@
             0.0,
             0.0
           ],
-          "emissive_strength": 0.0
+          "emissive_strength": 0.0,
+          "opacity": 1.0,
+          "transmission": 0.0
         }
       },
       "channels": {
@@ -1013,35 +1461,33 @@
           "enabled": false,
           "blend": "normal",
           "opacity": 1.0
+        },
+        "opacity": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "transmission": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
         }
       },
       "mask": {
-        "res": 26,
+        "res": 34,
         "generator": {
-          "kind": "spots",
-          "amount": 0.3,
-          "softness": 0.06,
-          "noise_scale": 4.0,
+          "kind": "streaks",
+          "amount": 0.18,
+          "softness": 0.2,
+          "noise_scale": 3.0,
           "noise_amount": 0.2,
           "seed": 1,
-          "ao_influence": 0.3,
+          "ao_influence": 0.4,
           "curvature_weight": 1.0
         },
         "invert": false,
         "enabled": true,
         "parts": [
-          5,
-          6,
-          7,
-          9,
-          10,
-          15,
-          146,
-          149,
-          152,
-          155,
-          158,
-          187,
           188,
           189,
           190,
@@ -1049,18 +1495,12 @@
           192,
           193,
           194,
-          195,
-          196,
-          197,
-          198,
-          199,
-          200,
-          201
+          195
         ]
       }
     },
     {
-      "id": 27,
+      "id": 35,
       "name": "AC units",
       "visible": true,
       "opacity": 1.0,
@@ -1084,7 +1524,9 @@
             0.0,
             0.0
           ],
-          "emissive_strength": 0.0
+          "emissive_strength": 0.0,
+          "opacity": 1.0,
+          "transmission": 0.0
         }
       },
       "channels": {
@@ -1117,10 +1559,20 @@
           "enabled": false,
           "blend": "normal",
           "opacity": 1.0
+        },
+        "opacity": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "transmission": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
         }
       },
       "mask": {
-        "res": 28,
+        "res": 36,
         "invert": false,
         "enabled": true,
         "parts": [
@@ -1133,7 +1585,7 @@
       }
     },
     {
-      "id": 29,
+      "id": 37,
       "name": "Grilles",
       "visible": true,
       "opacity": 1.0,
@@ -1157,7 +1609,9 @@
             0.0,
             0.0
           ],
-          "emissive_strength": 0.0
+          "emissive_strength": 0.0,
+          "opacity": 1.0,
+          "transmission": 0.0
         }
       },
       "channels": {
@@ -1190,10 +1644,20 @@
           "enabled": false,
           "blend": "normal",
           "opacity": 1.0
+        },
+        "opacity": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "transmission": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
         }
       },
       "mask": {
-        "res": 30,
+        "res": 38,
         "invert": false,
         "enabled": true,
         "parts": [
@@ -1206,7 +1670,187 @@
       }
     },
     {
-      "id": 31,
+      "id": 39,
+      "name": "Grille holes",
+      "visible": true,
+      "opacity": 1.0,
+      "kind": {
+        "type": "fill",
+        "values": {
+          "base_color": [
+            0.8,
+            0.8,
+            0.8
+          ],
+          "roughness": 0.5,
+          "metallic": 0.0,
+          "height": 0.0,
+          "normal": [
+            0.0,
+            0.0
+          ],
+          "emissive": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "emissive_strength": 0.0,
+          "opacity": 0.0,
+          "transmission": 0.0
+        }
+      },
+      "channels": {
+        "base_color": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "roughness": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "metallic": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "height": {
+          "enabled": false,
+          "blend": "add",
+          "opacity": 1.0
+        },
+        "normal": {
+          "enabled": false,
+          "blend": "normal_combine",
+          "opacity": 1.0
+        },
+        "emissive": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "opacity": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "transmission": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        }
+      },
+      "mask": {
+        "res": 40,
+        "invert": false,
+        "enabled": true,
+        "parts": [
+          145,
+          148,
+          151,
+          154,
+          157
+        ]
+      }
+    },
+    {
+      "id": 41,
+      "name": "Grille holes (bars)",
+      "visible": true,
+      "opacity": 1.0,
+      "kind": {
+        "type": "fill",
+        "values": {
+          "base_color": [
+            0.85,
+            0.85,
+            0.83
+          ],
+          "roughness": 0.35,
+          "metallic": 0.0,
+          "height": 0.0,
+          "normal": [
+            0.0,
+            0.0
+          ],
+          "emissive": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "emissive_strength": 0.0,
+          "opacity": 1.0,
+          "transmission": 0.0
+        }
+      },
+      "channels": {
+        "base_color": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "roughness": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "metallic": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "height": {
+          "enabled": false,
+          "blend": "add",
+          "opacity": 1.0
+        },
+        "normal": {
+          "enabled": false,
+          "blend": "normal_combine",
+          "opacity": 1.0
+        },
+        "emissive": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "opacity": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "transmission": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        }
+      },
+      "mask": {
+        "res": 42,
+        "generator": {
+          "kind": "panel_lines",
+          "amount": 0.3,
+          "softness": 0.02,
+          "noise_scale": 30.0,
+          "noise_amount": 0.0,
+          "seed": 1,
+          "ao_influence": 0.0,
+          "curvature_weight": 1.0
+        },
+        "invert": false,
+        "enabled": true,
+        "parts": [
+          145,
+          148,
+          151,
+          154,
+          157
+        ]
+      }
+    },
+    {
+      "id": 43,
       "name": "LED strips (cyan)",
       "visible": true,
       "opacity": 1.0,
@@ -1230,7 +1874,9 @@
             0.9,
             1.0
           ],
-          "emissive_strength": 5.0
+          "emissive_strength": 5.0,
+          "opacity": 1.0,
+          "transmission": 0.0
         }
       },
       "channels": {
@@ -1263,10 +1909,20 @@
           "enabled": true,
           "blend": "normal",
           "opacity": 1.0
+        },
+        "opacity": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "transmission": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
         }
       },
       "mask": {
-        "res": 32,
+        "res": 44,
         "invert": false,
         "enabled": true,
         "parts": [
@@ -1279,7 +1935,7 @@
       }
     },
     {
-      "id": 33,
+      "id": 45,
       "name": "LED strips (pink)",
       "visible": true,
       "opacity": 1.0,
@@ -1303,7 +1959,9 @@
             0.12,
             0.6
           ],
-          "emissive_strength": 5.0
+          "emissive_strength": 5.0,
+          "opacity": 1.0,
+          "transmission": 0.0
         }
       },
       "channels": {
@@ -1336,10 +1994,20 @@
           "enabled": true,
           "blend": "normal",
           "opacity": 1.0
+        },
+        "opacity": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "transmission": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
         }
       },
       "mask": {
-        "res": 34,
+        "res": 46,
         "invert": false,
         "enabled": true,
         "parts": [
@@ -1351,7 +2019,7 @@
       }
     },
     {
-      "id": 35,
+      "id": 47,
       "name": "Damp patches",
       "visible": true,
       "opacity": 0.5,
@@ -1375,7 +2043,9 @@
             0.0,
             0.0
           ],
-          "emissive_strength": 0.0
+          "emissive_strength": 0.0,
+          "opacity": 1.0,
+          "transmission": 0.0
         }
       },
       "channels": {
@@ -1408,10 +2078,20 @@
           "enabled": false,
           "blend": "normal",
           "opacity": 1.0
+        },
+        "opacity": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "transmission": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
         }
       },
       "mask": {
-        "res": 36,
+        "res": 48,
         "generator": {
           "kind": "grunge",
           "amount": 0.45,
@@ -1441,7 +2121,7 @@
       }
     },
     {
-      "id": 37,
+      "id": 49,
       "name": "Rain streaks",
       "visible": true,
       "opacity": 0.5,
@@ -1465,7 +2145,9 @@
             0.0,
             0.0
           ],
-          "emissive_strength": 0.0
+          "emissive_strength": 0.0,
+          "opacity": 1.0,
+          "transmission": 0.0
         }
       },
       "channels": {
@@ -1498,10 +2180,20 @@
           "enabled": false,
           "blend": "normal",
           "opacity": 1.0
+        },
+        "opacity": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "transmission": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
         }
       },
       "mask": {
-        "res": 38,
+        "res": 50,
         "generator": {
           "kind": "streaks",
           "amount": 0.3,
@@ -1531,7 +2223,7 @@
       }
     },
     {
-      "id": 39,
+      "id": 51,
       "name": "Street grime",
       "visible": true,
       "opacity": 0.8,
@@ -1555,7 +2247,9 @@
             0.0,
             0.0
           ],
-          "emissive_strength": 0.0
+          "emissive_strength": 0.0,
+          "opacity": 1.0,
+          "transmission": 0.0
         }
       },
       "channels": {
@@ -1588,10 +2282,20 @@
           "enabled": false,
           "blend": "normal",
           "opacity": 1.0
+        },
+        "opacity": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "transmission": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
         }
       },
       "mask": {
-        "res": 40,
+        "res": 52,
         "generator": {
           "kind": "dirt",
           "amount": 0.5,
@@ -1660,17 +2364,27 @@
           "enabled": true,
           "blend": "normal",
           "opacity": 1.0
+        },
+        "opacity": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "transmission": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
         }
       }
     },
     {
-      "id": 41,
+      "id": 53,
       "name": "Signs",
       "visible": true,
       "opacity": 1.0,
       "kind": {
         "type": "paint",
-        "res": 42
+        "res": 54
       },
       "channels": {
         "base_color": {
@@ -1702,6 +2416,16 @@
           "enabled": true,
           "blend": "normal",
           "opacity": 1.0
+        },
+        "opacity": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "transmission": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
         }
       }
     }
@@ -1713,5 +2437,5 @@
     "ao_distance": 0.12
   },
   "export_preset": "separate",
-  "next_id": 43
+  "next_id": 55
 }
