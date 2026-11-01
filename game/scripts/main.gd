@@ -129,6 +129,10 @@ func _ready() -> void:
 		var vt := preload("res://scripts/vehicle/vehicle_tests.gd").new()
 		vt.main = self
 		add_child(vt)
+	elif args.has("road-clear-test"):
+		var rc := preload("res://scripts/road_clear_test.gd").new()
+		rc.main = self
+		add_child(rc)
 	elif args.has("foliage-demo"):
 		var fd := preload("res://scripts/foliage_demo.gd").new()
 		fd.name = "FoliageDemo"

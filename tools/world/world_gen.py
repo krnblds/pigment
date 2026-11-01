@@ -246,8 +246,20 @@ def contours(F, level, x0, cell):
     return lines
 
 
+def _road_gaps(net, pad=2.5):
+    """(xy points, clearance radius) along every road, for cutting sea walls where roads pass."""
+    pts, rad = [], []
+    for e in net.alive_edges():
+        half = net.classes[e.cls]["half"] + pad
+        for p in e.pts2d:
+            pts.append((p.x, p.y))
+            rad.append(half)
+    return np.array(pts), np.array(rad)
+
+
 def sea_walls(cfg, hf, masks, net, log):
     step = 4
+    RP, RR = _road_gaps(net)
     F = hf.H[::step, ::step]
     c = hf.cell * step
     U = TR.blur(masks["urban_flat"][::step, ::step], 30.0 / c)
@@ -263,6 +275,16 @@ def sea_walls(cfg, hf, masks, net, log):
         idx = np.nonzero(urb)[0]
         if len(idx) < 4:
             continue
+        # never across a road: drop wall points within a road's half width (+ pad)
+        if len(RP):
+            keep = np.ones(len(idx), bool)
+            for k, i in enumerate(idx):
+                d = np.hypot(RP[:, 0] - P[i, 0], RP[:, 1] - P[i, 1])
+                if np.any(d < RR + c):
+                    keep[k] = False
+            idx = idx[keep]
+            if len(idx) < 4:
+                continue
         for r in np.split(idx, np.nonzero(np.diff(idx) > 1)[0] + 1):
             if len(r) < 5:
                 continue

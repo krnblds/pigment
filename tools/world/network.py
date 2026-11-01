@@ -533,6 +533,8 @@ class Network:
                     req[mid] = np.maximum(req[mid], clr)
             elif wet.any():
                 req[wet] = np.maximum(req[wet], 3.0)
+            # never below the sea: roads keep at least 1 m of freeboard (bridge landings included)
+            req = np.maximum(req, self.cfg.get("sea_level", 0.0) + 1.0)
             for s0, s1, z in (extra_req or {}).get(e.id, []):
                 m = (s >= s0) & (s <= s1)
                 req[m] = np.maximum(req[m], z)

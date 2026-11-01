@@ -156,7 +156,10 @@ def build(world, out, root, town, load_tool, region=None, log=print, trees=True,
     wme.from_pydata([(-S, -S, 0), (S, -S, 0), (S, S, 0), (-S, S, 0)], [], [(0, 1, 2, 3)])
     wme.materials.append(WM.water_material())
     put(C["Water"], "Water", wme, (0, 0, world["sea_level"]))
-    fme = WM.terrain_chunk("SeaFloor", H, T["origin"][0], T["cell_m"], 0, 0, n - 1, 32)
+    # the coarse sea floor is only for under the water: clamped below the sea, so its 32-cell
+    # triangles can never rise through land, roads or bridge approaches near the shore
+    Hsea = np.minimum(H, world["sea_level"] - 1.5)
+    fme = WM.terrain_chunk("SeaFloor", Hsea, T["origin"][0], T["cell_m"], 0, 0, n - 1, 32)
     fme.materials.append(tmat)
     put(C["Water"], "SeaFloor", fme, (0, 0, -0.5))
 

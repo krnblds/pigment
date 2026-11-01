@@ -70,13 +70,16 @@ def main():
     elif region:
         region = [float(v) for v in str(region).split(",")]
     built = None
-    if any(s in stages for s in ("build", "verify", "render", "save", "export")):
+    if any(s in stages for s in ("build", "verify", "render", "save", "export", "obstacles")):
         import world_build
         built = world_build.build(world, out, ROOT, town, load_tool, region=region, log=log,
                                   trees=not opt("--no-trees"), lights=not opt("--no-lights"))
     if "verify" in stages:
         import world_verify
         world_verify.verify(world, built, out, log)
+    if "obstacles" in stages:
+        import world_obstacles
+        world_obstacles.scan(world, built, out, log)
     if "render" in stages:
         import world_render
         world_render.render(world, built, ROOT, opt, log)
