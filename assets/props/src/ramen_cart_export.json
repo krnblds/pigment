@@ -1,0 +1,10 @@
+{
+ "lod0": "ramen_cart.glb",
+ "lod0_bytes": 538620,
+ "lod0_tris": 3708,
+ "texture": 1024,
+ "lod1": "ramen_cart_lod1.glb",
+ "lod1_bytes": 221200,
+ "lod1_tris": 1668,
+ "lod1_texture": 512
+}

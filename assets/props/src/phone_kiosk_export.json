@@ -1,0 +1,10 @@
+{
+ "lod0": "phone_kiosk.glb",
+ "lod0_bytes": 151560,
+ "lod0_tris": 704,
+ "texture": 512,
+ "lod1": "phone_kiosk_lod1.glb",
+ "lod1_bytes": 69120,
+ "lod1_tris": 352,
+ "lod1_texture": 256
+}

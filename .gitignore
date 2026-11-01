@@ -8,3 +8,5 @@ assets/town/generated/
 *.blend1
 scenes/car/textures/
 scenes/props/textures/
+docs/agents/props/tiles/
+scenes/props/projects/

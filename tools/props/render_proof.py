@@ -133,6 +133,11 @@ def lineup():
         objs = import_glb(p)
         hide_colliders(objs)
         meshes = [o for o in objs if o.type == "MESH" and not o.name.startswith("Collider")]
+        if name == "puddle_decal":        # three alternative nodes share the origin: spread them out
+            for k, o in enumerate(sorted(meshes, key=lambda o: o.name)):
+                o.location.x += (k - 1) * 3.2
+                o.visible_shadow = False
+            bpy.context.view_layer.update()
         pts = [o.matrix_world @ Vector(c) for o in meshes for c in o.bound_box]
         lo = Vector((min(v.x for v in pts), min(v.y for v in pts), min(v.z for v in pts)))
         hi = Vector((max(v.x for v in pts), max(v.y for v in pts), max(v.z for v in pts)))
