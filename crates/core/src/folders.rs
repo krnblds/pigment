@@ -77,6 +77,7 @@ impl Document {
             mask: None,
             parent: None,
             variant: Default::default(),
+            image: None,
         }
     }
 

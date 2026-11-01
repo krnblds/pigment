@@ -171,6 +171,8 @@ impl Session {
             "blend_modes": ["normal", "multiply", "screen", "overlay", "add", "subtract", "darken", "lighten", "replace", "combine"],
             "export_presets": export::presets().iter().map(|p| json!({ "id": p.id, "label": p.label })).collect::<Vec<_>>(),
             "views": ViewMode::ALL.iter().map(|m| m.label()).collect::<Vec<_>>(),
+            "tile_sets": pigment_core::image_fill::list_tile_sets(Path::new("assets/tiles")).iter().map(|n| format!("assets/tiles/{n}")).collect::<Vec<_>>(),
+            "image_projections": ["uv", "triplanar"],
         })
     }
 
@@ -193,6 +195,9 @@ impl Session {
                     self.folder_fields(l, &mut o);
                     if let LayerKind::Fill { values } = &l.kind {
                         o["material"] = json!(material_presets().into_iter().find(|(_, v)| v == values).map(|(n, _)| n).unwrap_or("custom"));
+                    }
+                    if let Some(img) = &l.image {
+                        o["image"] = serde_json::to_value(img).unwrap_or(Value::Null);
                     }
                     if let Some(m) = &l.mask {
                         o["mask"] = json!({
@@ -369,6 +374,9 @@ impl Session {
                 let c = channel(k)?;
                 app.doc.layers[i].channels.get_mut(c).blend = blend_mode(m.as_str().unwrap_or("normal"))?;
             }
+        }
+        if let Some(img) = a.get("image") {
+            configure_image(app, i, img)?;
         }
         match a.get("mask") {
             None => {}
@@ -1145,6 +1153,101 @@ impl Session {
 }
 
 use image::ImageEncoder;
+
+fn f2(v: &Value, k: &str) -> Res<Option<[f32; 2]>> {
+    match v.get(k) {
+        None => Ok(None),
+        Some(Value::Number(n)) => {
+            let x = n.as_f64().unwrap_or(1.0) as f32;
+            Ok(Some([x, x]))
+        }
+        Some(Value::Array(a)) if a.len() == 2 => Ok(Some([a[0].as_f64().unwrap_or(0.0) as f32, a[1].as_f64().unwrap_or(0.0) as f32])),
+        Some(_) => Err(format!("`{k}` must be a number or [x, y]")),
+    }
+}
+
+/// The `image` argument of add_layer / update_layer: tiling images for a fill
+/// layer. A string is a tile set folder; an object edits the current settings
+/// (only the given fields change); null removes the image fill.
+fn configure_image(app: &mut PigmentApp, i: usize, m: &Value) -> Res<()> {
+    use pigment_core::image_fill::ImageFill;
+    if m.is_null() {
+        app.doc.layers[i].image = None;
+        return Ok(());
+    }
+    if app.doc.layers[i].is_paint() {
+        return Err("`image` applies to fill layers".into());
+    }
+    let bases = app.image_bases();
+    let mut fill = app.doc.layers[i].image.clone().unwrap_or_default();
+    let set = match m {
+        Value::String(d) => Some(d.as_str()),
+        Value::Object(_) => s(m, "tile_set"),
+        _ => return Err("`image` must be a tile set folder, an object or null".into()),
+    };
+    if let Some(dir) = set {
+        fill.images = ImageFill::from_tile_set(dir, &bases)?;
+    }
+    if m.is_object() {
+        for c in ImageChannel::ALL {
+            match m.get(c.id()) {
+                None => {}
+                Some(Value::Null) => *fill.images.get_mut(c) = None,
+                Some(Value::String(p)) => *fill.images.get_mut(c) = Some(p.clone()),
+                Some(_) => return Err(format!("`image.{}` must be a path or null", c.id())),
+            }
+        }
+        if let Some(p) = s(m, "projection") {
+            fill.projection = Projection::from_id(p).ok_or_else(|| format!("unknown projection `{p}` (uv, triplanar)"))?;
+        }
+        if let Some(t) = f2(m, "tiling")? {
+            fill.tiling = t;
+        }
+        if let Some(o) = f2(m, "offset")? {
+            fill.offset = o;
+        }
+        if let Some(x) = f(m, "rotation") {
+            fill.rotation = x;
+        }
+        if let Some(x) = f(m, "tile_size") {
+            if x <= 0.0 {
+                return Err("`tile_size` must be > 0 (metres per repeat)".into());
+            }
+            fill.tile_size = x;
+        }
+        if let Some(x) = f(m, "blend_sharpness").or_else(|| f(m, "sharpness")) {
+            fill.blend_sharpness = x.clamp(0.1, 64.0);
+        }
+        if let Some(c) = m.get("tint").and_then(Value::as_array) {
+            for (k, x) in c.iter().take(3).enumerate() {
+                fill.tint[k] = x.as_f64().unwrap_or(1.0).max(0.0) as f32;
+            }
+        }
+        if let Some(r) = f2(m, "roughness_range")? {
+            fill.roughness_range = r.map(|x| x.clamp(0.0, 1.0));
+        }
+        if let Some(x) = f(m, "height_scale") {
+            fill.height_scale = x;
+        }
+        if let Some(x) = f(m, "normal_strength") {
+            fill.normal_strength = x;
+        }
+    }
+    if fill.images.is_empty() {
+        return Err("an image fill needs at least one image (tile_set, base_color, roughness, height or normal)".into());
+    }
+    let missing = fill.missing(&bases);
+    if !missing.is_empty() {
+        return Err(format!("image not found: {}", missing.join(", ")));
+    }
+    let l = &mut app.doc.layers[i];
+    for (c, _) in fill.images.iter() {
+        l.channels.get_mut(c.channel()).enabled = true;
+    }
+    l.image = Some(fill);
+    app.ts.tiles.retry_missing();
+    Ok(())
+}
 
 fn apply_generator_fields(g: &mut Generator, m: &Value) {
     if let Some(x) = f(m, "amount") {

@@ -9,7 +9,7 @@ use eframe::egui_wgpu::wgpu;
 use glam::{Vec2, Vec3};
 use pigment_core::blend::{normal_from_tilt, srgb_to_linear};
 use pigment_core::folders::{folder_blend, Step};
-use pigment_core::{Channel, Document, Layer, LayerKind, ResId};
+use pigment_core::{Channel, Document, ImageChannel, Layer, LayerKind, Projection, ResId};
 use std::collections::{HashMap, HashSet};
 use wgpu::util::DeviceExt;
 
@@ -75,6 +75,16 @@ struct LayerParams {
     pbits: [u32; 8],
     /// x = part selection on
     misc: [u32; 4],
+    /// image fill: channel bits (1 colour, 2 roughness, 4 height, 8 normal), projection (0 uv, 1 triplanar)
+    img: [u32; 4],
+    /// tiling u, v, offset u, v
+    img_xf: [f32; 4],
+    /// cos(rotation), sin(rotation), 1 / tile size (m), blend sharpness
+    img_xf2: [f32; 4],
+    /// linear tint rgb, height scale
+    img_tint: [f32; 4],
+    /// roughness range lo, hi, normal strength
+    img_amt: [f32; 4],
 }
 
 fn layer_params(l: &Layer, variant_seed: u32) -> LayerParams {
@@ -108,7 +118,13 @@ fn layer_params(l: &Layer, variant_seed: u32) -> LayerParams {
         gc2: [0.0; 4],
         pbits: [0; 8],
         misc: [0; 4],
+        img: [0; 4],
+        img_xf: [0.0; 4],
+        img_xf2: [0.0; 4],
+        img_tint: [0.0; 4],
+        img_amt: [0.0; 4],
     };
+    image_fill_params(l, &mut p);
     if let LayerKind::Fill { values } = &l.kind {
         p.flags[0] = 1;
         let c = values.base_color.map(srgb_to_linear);
@@ -160,6 +176,31 @@ fn folder_params(l: &Layer, variant_seed: u32) -> LayerParams {
     p
 }
 
+/// Image fill uniforms. Channel bits are set for every image the layer
+/// names; `composite` clears the ones that aren't loaded.
+fn image_fill_params(l: &Layer, p: &mut LayerParams) {
+    let (LayerKind::Fill { .. }, Some(f)) = (&l.kind, &l.image) else { return };
+    for (c, _) in f.images.iter() {
+        p.img[0] |= image_bit(c);
+    }
+    p.img[1] = (f.projection == Projection::Triplanar) as u32;
+    let (s, c) = f.rotation.to_radians().sin_cos();
+    p.img_xf = [f.tiling[0], f.tiling[1], f.offset[0], f.offset[1]];
+    p.img_xf2 = [c, s, 1.0 / f.tile_size.max(1e-4), f.blend_sharpness.max(0.01)];
+    let t = f.tint.map(srgb_to_linear);
+    p.img_tint = [t[0], t[1], t[2], f.height_scale];
+    p.img_amt = [f.roughness_range[0], f.roughness_range[1], f.normal_strength, 0.0];
+}
+
+fn image_bit(c: ImageChannel) -> u32 {
+    match c {
+        ImageChannel::BaseColor => 1,
+        ImageChannel::Roughness => 2,
+        ImageChannel::Height => 4,
+        ImageChannel::Normal => 8,
+    }
+}
+
 struct AccSet {
     t: [Tex; 4],
     bg: wgpu::BindGroup,
@@ -194,6 +235,8 @@ pub struct TexSet {
     p: Pipes,
     mipgen: MipGen,
     center_radius: [f32; 4],
+    /// Tiling images used by image fills.
+    pub tiles: super::tile_images::TileImages,
 }
 
 struct Pipes {
@@ -224,7 +267,18 @@ impl Pipes {
         let layer_bgl = gpu::bgl(
             device,
             "layer",
-            &[gpu::ntex(0), gpu::ntex(1), gpu::ntex(2), gpu::ntex(3), gpu::ntex(4), gpu::ntex(5), gpu::ntex(6), gpu::uniform_entry(7, true)],
+            // channel slots are filterable: fill layers bind image-fill textures there (sampled at binding 8)
+            &[
+                gpu::ftex(0),
+                gpu::ftex(1),
+                gpu::ftex(2),
+                gpu::ftex(3),
+                gpu::ftex(4),
+                gpu::ftex(5),
+                gpu::ntex(6),
+                gpu::uniform_entry(7, true),
+                gpu::sampler_entry(8, wgpu::SamplerBindingType::Filtering),
+            ],
         );
         let full_layout = gpu::layout(device, "composite", &[&shared_bgl, &acc_bgl, &layer_bgl]);
         let folder_src = [common, include_str!("../shaders/composite.wgsl"), include_str!("../shaders/folder.wgsl")].concat();
@@ -362,6 +416,7 @@ impl TexSet {
             p,
             mipgen: MipGen::new(device),
             center_radius: [0.0, 0.0, 0.0, 1.0],
+            tiles: super::tile_images::TileImages::new(device),
         };
         // neutral bakes until the first real bake: AO 1, curvature 0.5
         let mut enc = device.create_command_encoder(&Default::default());
@@ -377,6 +432,7 @@ impl TexSet {
     /// Create pixel storage for any paint layers / masks the document has but
     /// the GPU doesn't (new layers start transparent, new masks with `fill`).
     pub fn ensure_resources(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, doc: &Document) {
+        self.tiles.ensure(device, queue, doc);
         let mut enc = device.create_command_encoder(&Default::default());
         for l in &doc.layers {
             if let Some(r) = l.paint_res() {
@@ -536,6 +592,14 @@ impl TexSet {
         let mut params = vec![0u8; (LAYER_UNIFORM_STRIDE as usize) * passes.len().max(1)];
         for (i, (l, folder)) in passes.iter().enumerate() {
             let mut p = if *folder { folder_params(l, doc.variants.seed) } else { layer_params(l, doc.variants.seed) };
+            // image channels whose texture isn't loaded fall back to the flat value
+            if let Some(f) = &l.image {
+                for (c, path) in f.images.iter() {
+                    if self.tiles.get(path, c).is_none() {
+                        p.img[0] &= !image_bit(c);
+                    }
+                }
+            }
             // a mask flagged in the doc but without pixels yet acts as "no mask"
             if l.mask.as_ref().is_some_and(|m| !self.masks.contains_key(&m.res)) {
                 p.flags[1] = 0;
@@ -567,12 +631,21 @@ impl TexSet {
                 let lt = l.paint_res().and_then(|r| self.layers.get(&r)).unwrap_or(&self.dummy_layer);
                 let mask = l.mask.as_ref().and_then(|m| self.masks.get(&m.res)).unwrap_or(&self.dummy_mask);
                 let mut res: Vec<wgpu::BindingResource> = lt.ch.iter().map(|t| wgpu::BindingResource::TextureView(&t.view)).collect();
+                // image fills: the tiling images take the channel slots
+                if let (LayerKind::Fill { .. }, Some(f)) = (&l.kind, &l.image) {
+                    for (c, path) in f.images.iter() {
+                        if let Some(t) = self.tiles.get(path, c) {
+                            res[c.channel().index()] = wgpu::BindingResource::TextureView(&t.view);
+                        }
+                    }
+                }
                 res.push(wgpu::BindingResource::TextureView(&mask.view));
                 res.push(wgpu::BindingResource::Buffer(wgpu::BufferBinding {
                     buffer: &self.layer_buf,
                     offset: 0,
                     size: wgpu::BufferSize::new(std::mem::size_of::<LayerParams>() as u64),
                 }));
+                res.push(wgpu::BindingResource::Sampler(&self.tiles.sampler));
                 gpu::bind_group(device, "layer", &self.p.layer_bgl, &res)
             })
             .collect();

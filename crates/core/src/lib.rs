@@ -10,6 +10,7 @@ pub mod document;
 pub mod envmath;
 pub mod export;
 pub mod folders;
+pub mod image_fill;
 pub mod mesh;
 pub mod project;
 pub mod smart;
@@ -20,4 +21,5 @@ pub mod variants;
 
 pub use camera::OrbitCamera;
 pub use document::*;
+pub use image_fill::{ImageChannel, ImageFill, Projection};
 pub use mesh::{Mesh, Vertex};

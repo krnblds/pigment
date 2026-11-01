@@ -898,6 +898,7 @@ impl PigmentApp {
     }
 
     fn layer_tab(&mut self, ui: &mut egui::Ui, i: usize) {
+        let image_bases = self.image_bases();
         let mut save_smart = false;
         let seed = &mut self.doc.variants.seed;
         let l = &mut self.doc.layers[i];
@@ -933,6 +934,8 @@ impl PigmentApp {
                     ui.add_space(4.0);
                     material_grid(ui, "fill values", values, None);
                 });
+                section(ui, "Image fill");
+                card(ui, CARD, |ui| image_fill_editor(ui, &mut l.image, &mut l.channels, &image_bases));
             }
             LayerKind::Paint { .. } => {
                 card(ui, CARD, |ui| {
@@ -1427,5 +1430,122 @@ impl PigmentApp {
             });
             self.show_export = open;
         }
+    }
+}
+
+// ------------------------------------------------------------------ image fills
+
+/// Tiling images for a fill layer: tile set picker, projection, transform and
+/// one image per channel.
+fn image_fill_editor(ui: &mut egui::Ui, image: &mut Option<ImageFill>, channels: &mut Channels<ChannelSettings>, bases: &[PathBuf]) {
+    use pigment_core::image_fill::{list_tile_sets, ImageChannel};
+    let mut pick: Option<String> = None;
+    ui.horizontal(|ui| {
+        let text = if image.is_some() { "Change tile set" } else { "Use a tile set..." };
+        egui::ComboBox::from_id_salt("tile set").width(160.0).selected_text(text).show_ui(ui, |ui| {
+            for s in list_tile_sets(Path::new("assets/tiles")) {
+                if ui.selectable_label(false, &s).clicked() {
+                    pick = Some(format!("assets/tiles/{s}"));
+                }
+            }
+            if ui.button("Browse folder...").clicked() {
+                if let Some(d) = rfd::FileDialog::new().set_title("Tile set folder (base_color, roughness, height, normal)").pick_folder() {
+                    pick = Some(d.to_string_lossy().to_string());
+                }
+            }
+        });
+        if image.is_some() && ui.button("Remove").on_hover_text("Back to flat values").clicked() {
+            *image = None;
+        }
+    });
+    if let Some(dir) = pick {
+        match ImageFill::from_tile_set(&dir, bases) {
+            Ok(imgs) => {
+                let f = image.get_or_insert_with(ImageFill::default);
+                f.images = imgs;
+                for (c, _) in f.images.iter() {
+                    channels.get_mut(c.channel()).enabled = true;
+                }
+            }
+            Err(e) => log::warn!("{e}"),
+        }
+    }
+    let Some(f) = image else {
+        ui.label(RichText::new("Drive base colour, roughness, height and normal from tiling images (brick, concrete...) instead of the flat values above.").size(11.5).color(MUTED));
+        return;
+    };
+    ui.horizontal(|ui| {
+        ui.label("Projection");
+        ui.selectable_value(&mut f.projection, Projection::Uv, "UV");
+        ui.selectable_value(&mut f.projection, Projection::Triplanar, "Triplanar").on_hover_text("World-space box projection: ignores UVs, sized in metres");
+    });
+    egui::Grid::new("image fill").num_columns(2).spacing([8.0, 6.0]).show(ui, |ui| {
+        match f.projection {
+            Projection::Uv => {
+                ui.label("Tiling");
+                ui.horizontal(|ui| {
+                    ui.add(egui::DragValue::new(&mut f.tiling[0]).speed(0.05).range(0.01..=512.0).prefix("u "));
+                    ui.add(egui::DragValue::new(&mut f.tiling[1]).speed(0.05).range(0.01..=512.0).prefix("v "));
+                });
+                ui.end_row();
+            }
+            Projection::Triplanar => {
+                ui.label("Tile size");
+                ui.add(egui::DragValue::new(&mut f.tile_size).speed(0.01).range(0.01..=100.0).suffix(" m"));
+                ui.end_row();
+                ui.label("Blend sharpness");
+                ui.add(egui::Slider::new(&mut f.blend_sharpness, 1.0..=16.0));
+                ui.end_row();
+            }
+        }
+        ui.label("Offset");
+        ui.horizontal(|ui| {
+            ui.add(egui::DragValue::new(&mut f.offset[0]).speed(0.01).prefix("u "));
+            ui.add(egui::DragValue::new(&mut f.offset[1]).speed(0.01).prefix("v "));
+        });
+        ui.end_row();
+        ui.label("Rotation");
+        ui.add(egui::Slider::new(&mut f.rotation, -180.0..=180.0).suffix("°"));
+        ui.end_row();
+        ui.label("Tint");
+        srgb_edit(ui, &mut f.tint);
+        ui.end_row();
+        ui.label("Roughness range");
+        ui.horizontal(|ui| {
+            ui.add(egui::DragValue::new(&mut f.roughness_range[0]).speed(0.01).range(0.0..=1.0));
+            ui.add(egui::DragValue::new(&mut f.roughness_range[1]).speed(0.01).range(0.0..=1.0));
+        });
+        ui.end_row();
+        ui.label("Height scale");
+        ui.add(egui::DragValue::new(&mut f.height_scale).speed(0.01).range(-4.0..=4.0));
+        ui.end_row();
+        ui.label("Normal strength");
+        ui.add(egui::Slider::new(&mut f.normal_strength, 0.0..=3.0));
+        ui.end_row();
+    });
+    ui.add_space(4.0);
+    egui::Grid::new("image fill channels").num_columns(3).spacing([6.0, 4.0]).show(ui, |ui| {
+        for c in ImageChannel::ALL {
+            ui.label(c.label());
+            let slot = f.images.get_mut(c);
+            let name = slot.as_deref().map(|p| Path::new(p).iter().rev().take(2).collect::<Vec<_>>().into_iter().rev().map(|s| s.to_string_lossy()).collect::<Vec<_>>().join("/"));
+            ui.label(RichText::new(name.clone().unwrap_or_else(|| "flat value".into())).color(if name.is_some() { Color32::WHITE } else { MUTED })).on_hover_text(slot.clone().unwrap_or_default());
+            ui.horizontal(|ui| {
+                if ui.small_button("...").on_hover_text("Choose image").clicked() {
+                    if let Some(p) = rfd::FileDialog::new().add_filter("Images", &["png", "jpg", "jpeg", "exr", "hdr"]).pick_file() {
+                        *slot = Some(p.to_string_lossy().to_string());
+                        channels.get_mut(c.channel()).enabled = true;
+                    }
+                }
+                if slot.is_some() && ui.small_button("x").on_hover_text("Use the flat value").clicked() {
+                    *slot = None;
+                }
+            });
+            ui.end_row();
+        }
+    });
+    let missing = f.missing(bases);
+    if !missing.is_empty() {
+        ui.label(RichText::new(format!("Not found: {}", missing.join(", "))).size(11.5).color(WARN));
     }
 }

@@ -438,6 +438,9 @@ pub struct Layer {
     /// Variant group tag, random part subset and recorded decals.
     #[serde(default, skip_serializing_if = "crate::variants::LayerVariant::is_empty")]
     pub variant: crate::variants::LayerVariant,
+    /// Fill layers only: channels from tiling images instead of flat values.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub image: Option<crate::image_fill::ImageFill>,
 }
 
 impl Layer {
@@ -755,6 +758,7 @@ impl Document {
             mask: None,
             parent: None,
             variant: Default::default(),
+            image: None,
         }
     }
 
@@ -772,6 +776,7 @@ impl Document {
             mask: None,
             parent: None,
             variant: Default::default(),
+            image: None,
         }
     }
 
