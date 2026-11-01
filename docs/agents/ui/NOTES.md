@@ -111,7 +111,7 @@ layer's parts, axis gizmo, per-tool hint chip, simplified view chips in Simple m
 
 ## Tests
 
-`cargo test --release -- --test-threads=2`: all green (79 app lib tests incl. GPU, 107 core,
+`cargo test --release -- --test-threads=2`: all green (80 app lib tests incl. GPU, 107 core,
 MCP / schema tests). New:
 
 - `ui_tests::welcome_sample_material_export`: welcome → click the crate sample → Rusty
