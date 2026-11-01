@@ -206,6 +206,11 @@ def build(world, out, root, town, load_tool, region=None, log=print, trees=True,
     exts = {"building_a": (-4.39, 4.39, -6.62, 5.17), "building_b": (-8.39, 8.39, -6.39, 6.17), "building_c": (-7.39, 7.39, -9.25, 7.12)}
     n_inst = 0
     var_mesh = {}
+    TB = None
+    if os.path.isfile(os.path.join(root, "assets", "trees", "index.json")):
+        import sys as _sys
+        _sys.path.insert(0, os.path.join(root, "tools", "trees"))
+        import tree_blender as TB
     for i in world["instances"]:
         x, y, z = i["pos"]
         if not inside(x, y, 10):
@@ -213,7 +218,9 @@ def build(world, out, root, town, load_tool, region=None, log=print, trees=True,
         a = i["asset"]
         if a.startswith("tree") and not trees:
             continue
-        if a in K:
+        if a.startswith("tree_") and TB is not None and a in TB.load_index(root)["variants"]:
+            data = TB.kit_mesh(root, a)          # tree kit (tools/trees): LOD0, named by its key
+        elif a in K:
             data = K[a].data
         elif os.path.isfile(os.path.join(props_dir, a + ".glb")):
             data = import_prop(props_dir, a)
@@ -248,7 +255,7 @@ def build(world, out, root, town, load_tool, region=None, log=print, trees=True,
         o = put(dcoll[d], a, data, (x, y, z), i["rot"], i.get("scale"))
         if v and vm is None and v in colours:
             o.color = (*colours[v], 1.0)
-        if a.startswith(("tree", "container", "warehouse", "crane")) and not v:
+        if a.startswith(("tree", "container", "warehouse", "crane")) and not v and not (TB is not None and a in TB.load_index(root)["variants"]):
             o.color = (0.4, 0.4, 0.4, 1)
         dep = i.get("footing")
         if dep:
@@ -591,7 +598,7 @@ def snap_instances(world, built, H, T, region, log):
             if h[0] is not None and h[0].z > g:
                 g = h[0].z
         return g
-    kinds = ("prop", "lamp", "pole", "signal", "mast", "tree")
+    kinds = ("prop", "lamp", "pole", "signal", "mast", "tree", "shrub")
     moved = dropped = 0
     stacks = {}
     keep = []
@@ -610,6 +617,9 @@ def snap_instances(world, built, H, T, region, log):
             continue
         g = ground(x, y, z)
         dz = g - z
+        if k == "shrub" and i.get("slot") == "planter":     # tree kit shrubs ride on their planter's soil
+            off = 0.93 * (i.get("scale") or [1, 1, 1])[2]
+            dz = ground(x, y, z - off) - (z - off)
         if k == "tree":
             dz = min(dz, 0.0) if dz < -0.05 else 0.0         # never hang in the air
             dz = g - 0.2 - z if g - 0.2 < z else 0.0

@@ -16,3 +16,5 @@ addons/fleet_variants/vehicle_variants.gd
 addons/fleet_variants/vehicle_variants.gd.uid
 # open world export (tools/world/world_driver.py --stages ...,export)
 assets/world/
+# tree kit, copied in by tools/trees/sync_godot.py (source of truth: assets/trees)
+assets/trees/

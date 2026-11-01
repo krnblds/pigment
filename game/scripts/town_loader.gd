@@ -70,6 +70,8 @@ var _arrays_mats := {}         ## mesh key -> material name per surface
 var _hf: PackedFloat32Array
 var _hf_meta := {}
 var _proxy_mat: ShaderMaterial
+var _trees: RefCounted                    ## tree_kit.gd (tools/trees): kit trees get their own LOD path
+const TreeKit := preload("res://scripts/tree_kit.gd")
 
 
 func load_town(wet := 1.0, map := "town") -> bool:
@@ -96,11 +98,13 @@ func load_town(wet := 1.0, map := "town") -> bool:
 	_lights_root.name = "Lights"
 	add_child(_lights_root)
 	_load_heightfield(map)
+	_trees = TreeKit.new()
+	_trees.set_wet(wet)
 	var groups := _group_instances()
 	for g in groups:
-		g["pol"] = _policy(layout.meshes[g.mesh], g.xf.size())
+		g["pol"] = "tree" if _trees.has(g.mesh) else _policy(layout.meshes[g.mesh], g.xf.size())
 	# scenes only for what is drawn as itself; merged / collision meshes come as arrays (_load_arrays)
-	_preload_meshes(groups.filter(func(g): return g.pol != "merge" and not _headless))
+	_preload_meshes(groups.filter(func(g): return g.pol != "merge" and g.pol != "tree" and not _headless))
 	stats["mesh_load_ms"] = Time.get_ticks_msec() - t0
 	_build_groups(groups)
 	_index_lights()
@@ -238,6 +242,8 @@ var road_materials: Array[ShaderMaterial] = []
 func set_road_rain(v: float) -> void:
 	for m in road_materials:
 		m.set_shader_parameter("rain", v)
+	if _trees:
+		_trees.set_wet(v)
 
 
 func _road_tex(tile: String, map: String) -> Texture2D:
@@ -516,6 +522,9 @@ func _build_groups(groups: Array) -> void:
 			akeys[g.mesh] = true
 	_load_arrays(akeys)
 	for g in groups:
+		if g.pol == "tree":
+			_build_trees(g.mesh, g.xf)
+			continue
 		var info: Dictionary = layout.meshes[g.mesh]
 		var cat: String = info.get("cat", "other")
 		var vis_end: float = VIS_END.get(cat, 0.0)
@@ -607,6 +616,46 @@ func _build_groups(groups: Array) -> void:
 	_run_merges(merge_jobs.values())
 	_arrays_cache.clear()
 	_arrays_mats.clear()
+
+
+## Kit trees (tree_kit.gd): LOD0 / LOD1 MultiMeshes in streamed CELL cells, impostors per REGION
+## (always there, up to the far distance); the shaders pick the LOD per instance. Trunk capsules.
+func _build_trees(key: String, xfs: Array) -> void:
+	for x in xfs:
+		var c: Array = _trees.collider(key, x)
+		if not c.is_empty():
+			_col_cell(_key(x.origin, COL_CELL)).shapes.append(["cap", c[0], c[1], c[2]])
+	stats["trees"] = int(stats.get("trees", 0)) + xfs.size()
+	if _headless:
+		return
+	var bands: Array = _trees.bands(key)
+	for lod in _trees.lod_count(key):
+		var mesh: Mesh = _trees.mesh(key, lod)
+		if mesh == null:
+			continue
+		var size := CELL if lod < 2 else REGION
+		var by := {}
+		for x in xfs:
+			var k := _key(x.origin, size)
+			if not by.has(k):
+				by[k] = []
+			by[k].append(x)
+		var end: float = bands[lod][1] + TreeKit.FADE
+		for k in by:
+			var nm := "%s_l%d_%d_%d" % [key, lod, k.x, k.y]
+			if lod == 2:
+				var mmi := _new_mmi(nm, mesh, _mm_buffer(by[k]), by[k].size())
+				_dress(mmi, end + REGION * 0.71, false)
+				_visuals.add_child(mmi)
+				stats.multimesh += 1
+				continue
+			var e := {"name": nm, "mesh": mesh, "buf": _mm_buffer(by[k]), "n": by[k].size(),
+				"vis": end + CELL * 0.71, "shadows": _trees.lod_count(key) > 1, "region": null}
+			var uk := Vector3i(k.x, k.y, 0)
+			if not _cells.has(uk):
+				_cells[uk] = {"center": _center(k, CELL), "r": 0.0, "entries": []}
+			_cells[uk].entries.append(e)
+			_cells[uk].r = maxf(_cells[uk].r, e.vis + CELL * 0.75)
 
 
 func _build_proxies(proxies: Dictionary) -> void:
@@ -1047,6 +1096,11 @@ func _make_collision(item: Dictionary) -> Node:
 						var b := BoxShape3D.new()
 						b.size = s[1]
 						cs.shape = b
+					elif s[0] == "cap":       # tree trunks (tree_kit.gd)
+						var cp := CapsuleShape3D.new()
+						cp.radius = s[3]
+						cp.height = s[1]
+						cs.shape = cp
 					else:
 						var c := CylinderShape3D.new()
 						c.radius = 0.22
@@ -1321,6 +1375,10 @@ func _physics_process(_dt: float) -> void:
 
 
 func _process(delta: float) -> void:
+	if _trees and not _headless:
+		var tc := get_viewport().get_camera_3d()
+		if tc:
+			_trees.update(tc.global_position)
 	if not streaming or layout.is_empty():
 		return
 	_check_teleport()

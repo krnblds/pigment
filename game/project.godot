@@ -47,3 +47,14 @@ mesh_lod/lod_change/threshold_pixels=2.0
 [editor_plugins]
 
 enabled=PackedStringArray("res://addons/fleet_variants/plugin.cfg")
+
+[shader_globals]
+
+tree_cam={
+"type": "vec3",
+"value": Vector3(0, 0, 0)
+}
+tree_wind={
+"type": "vec4",
+"value": Vector4(0.8, 0.6, 0.5, 1)
+}

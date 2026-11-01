@@ -354,6 +354,52 @@ def impostor_mesh(key, Sv, St, Hh, cx=0.0, cy=0.0):
     return me
 
 
+# ------------------------------------------------------------------ tree grate
+def grate_mesh():
+    """Cast-iron tree grate for the avenue pits: 1.3 m square frame, a trunk ring, concentric
+    rings and radial bars (real geometry, about 600 triangles; flush with the sidewalk)."""
+    import bmesh
+    from mathutils import Matrix
+    bm = bmesh.new()
+
+    def box(cx, cy, sx, sy, h=0.035, rz=0.0):
+        r = bmesh.ops.create_cube(bm, size=1.0)
+        m = Matrix.Translation((cx, cy, h / 2 - 0.01)) @ Matrix.Rotation(rz, 4, "Z") @ Matrix.Diagonal((sx, sy, h, 1.0))
+        bmesh.ops.transform(bm, matrix=m, verts=r["verts"])
+    S, f = 1.3, 0.07
+    box(0, S / 2 - f / 2, S, f); box(0, -S / 2 + f / 2, S, f)
+    box(S / 2 - f / 2, 0, f, S); box(-S / 2 + f / 2, 0, f, S)
+    for r_, n in ((0.24, 20), (0.36, 28), (0.47, 36), (0.57, 44)):
+        for k in range(n):
+            a = 2 * math.pi * (k + 0.5) / n
+            box(math.cos(a) * r_, math.sin(a) * r_, 2 * math.pi * r_ / n * 1.05, 0.03, rz=a + math.pi / 2)
+    for k in range(16):
+        a = 2 * math.pi * k / 16
+        L = 0.62 - 0.22
+        rr = 0.22 + L / 2
+        box(math.cos(a) * rr, math.sin(a) * rr, L, 0.03, rz=a)
+    for (cx, cy) in ((1, 1), (1, -1), (-1, 1), (-1, -1)):       # corner fill bars
+        for k in range(3):
+            d = 0.5 + 0.045 * k
+            box(cx * d, cy * d, 0.16 - 0.04 * k, 0.025, rz=math.atan2(cy, cx) + math.pi / 2)
+    me = bpy.data.meshes.new("tree_grate")
+    bm.to_mesh(me)
+    bm.free()
+    uv = me.uv_layers.new(name="UVMap")
+    for poly in me.polygons:
+        for li in poly.loop_indices:
+            co = me.vertices[me.loops[li].vertex_index].co
+            uv.data[li].uv = (co.x + 0.65, co.y + 0.65 + co.z)
+    m = bpy.data.materials.get("TreeGrate") or bpy.data.materials.new("TreeGrate")
+    m.use_nodes = True
+    b = next(n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+    b.inputs["Base Color"].default_value = (0.05, 0.045, 0.04, 1)
+    b.inputs["Metallic"].default_value = 0.8
+    b.inputs["Roughness"].default_value = 0.55
+    me.materials.append(m)
+    return me
+
+
 # ------------------------------------------------------------------ main
 def main():
     t0 = time.time()
@@ -401,6 +447,15 @@ def main():
             "collider": sk.collider,
         }
         print(f"{key}: LOD0 {s0['total']} LOD1 {s1['total']} h {Hh:.1f} r {R:.1f}  ({time.time() - t1:.1f} s)", flush=True)
+    if not want or "tree_grate" in want or "grate" in want:
+        gm = grate_mesh()
+        export_glb(gm, os.path.join(OUT, "tree_grate.glb"))
+        idx["variants"]["tree_grate"] = {
+            "species": "grate", "kind": "grate", "variant": 0, "look": None, "planter": False, "title": "Cast-iron tree grate (1.3 m)",
+            "bark": None, "files": {"lod0": "tree_grate.glb"}, "lods": 1,
+            "tris": {"lod0": sum(len(p.vertices) - 2 for p in gm.polygons)}, "lod_m": {"lod1": 90.0, "lod2": 90.0, "far": 90.0},
+            "height": 0.035, "crown_radius": 0.92, "collider": {"type": "none"},
+            "material": {"name": "TreeGrate", "color": [0.05, 0.045, 0.04], "metallic": 0.8, "roughness": 0.55}}
     idx.update({
         "version": 1,
         "generator": "tools/trees (treegen.py + build_trees.py), textures tools/trees/tree_textures.py (Pigment)",
