@@ -34,11 +34,14 @@ fn tools() -> Value {
         "width": { "type": "integer" }, "height": { "type": "integer" }
     });
     let mut add_props = layer_fields.clone();
-    add_props["kind"] = json!({ "type": "string", "enum": ["fill", "paint"] });
-    add_props["index"] = json!({ "type": "integer", "description": "stack position (0 = bottom); default: below the top paint layer" });
+    add_props["kind"] = json!({ "type": "string", "enum": ["fill", "paint", "folder"], "description": "folder = a group with its own opacity, blend, mask and visibility; its mask multiplies its children's" });
+    add_props["index"] = json!({ "type": "integer", "description": "stack position (0 = bottom); default: below the top paint layer. With `parent`: position among the folder's children (default: top)" });
+    add_props["parent"] = json!({ "description": "folder to put the new layer in (name, \"Folder/Sub\" path or index); null/omitted = top level" });
     let mut upd_props = layer_fields;
-    upd_props["layer"] = json!({ "description": "layer name or index (0 = bottom)" });
-    upd_props["move_to"] = json!({ "type": "integer" });
+    upd_props["layer"] = json!({ "description": "layer name, \"Folder/Layer\" path, or index (0 = bottom)" });
+    upd_props["move_to"] = json!({ "type": "integer", "description": "new position: flat index at the top level, or the position among the siblings inside a folder" });
+    upd_props["parent"] = json!({ "description": "move into this folder (name/path/index, on top unless move_to), or null to move out to the top level (just above the folder it was in)" });
+    upd_props["collapsed"] = json!({ "type": "boolean", "description": "folders: collapse in the layer panel" });
     let mut paint_props = camera.clone();
     for (k, v) in [
         ("points", json!({ "type": "array", "items": { "type": "array", "items": { "type": "number" } }, "description": "stroke path in viewport coords 0..1, [[x,y],...], y down" })),
@@ -66,11 +69,17 @@ fn tools() -> Value {
         t("open_project", "Open a .pigment project folder.", json!({ "path": { "type": "string" } }), &["path"]),
         t("save_project", "Save the project folder (git-friendly).", json!({ "path": { "type": "string" } }), &[]),
         t("list_library", "Material presets, smart materials, generators, blend modes, export presets, views.", json!({}), &[]),
-        t("list_layers", "The layer stack, bottom to top.", json!({}), &[]),
+        t("list_layers", "The layer stack, bottom to top. With folders each entry also has id, depth, parent (index of its folder), path; `tree: true` nests folder contents under `layers`.",
+          json!({ "tree": { "type": "boolean" } }), &[]),
         t("add_smart_material", "Add a multi-layer smart material (e.g. 'Rusty steel', 'Hazard stripes', 'Tech panels', 'Worn olive drab metal').", json!({ "name": { "type": "string" } }), &["name"]),
         t("add_layer", "Add a fill or paint layer, optionally with a material and a generator mask.", add_props, &[]),
         t("update_layer", "Change a layer: material, values, opacity, visibility, channels, blend modes, mask/generator, position.", upd_props, &["layer"]),
-        t("delete_layer", "Remove a layer.", json!({ "layer": {} }), &["layer"]),
+        t("delete_layer", "Remove a layer (a folder goes with its contents).", json!({ "layer": {} }), &["layer"]),
+        t("save_smart_material", "Save a folder (or fill layer) as a reusable .pigsmart smart material. Part-agnostic: generator masks, fills, blend modes and opacities are kept; part selections and painted pixels are dropped (see `warnings`).",
+          json!({ "layer": { "description": "folder name, path or index" }, "path": { "type": "string", "description": "file to write (.pigsmart added if no extension)" }, "name": { "type": "string" } }), &["layer", "path"]),
+        t("apply_smart_material", "Instance a .pigsmart smart material into this project as a folder (below the top paint layer, or inside `parent`). `parts` limits the whole material to those mesh parts through the folder's mask.",
+          json!({ "path": { "type": "string" }, "parts": { "type": "array", "items": { "type": "integer" } }, "parent": { "description": "folder to put it in" },
+                  "name": { "type": "string" }, "opacity": { "type": "number" }, "visible": { "type": "boolean" }, "blend": { "type": "object" }, "channels": { "type": "object" } }), &["path"]),
         t("list_parts", "The mesh's parts (connected pieces: body, glass panes, buttons...) with id, triangle count, centre and size. Use ids in a mask's `parts`.", json!({}), &[]),
         t("pick_parts", "Which parts are under viewport points [[x,y],...] (0..1) for a camera view (yaw/pitch/zoom). Render the same view first to choose points.",
           json!({ "points": { "type": "array" }, "yaw": { "type": "number" }, "pitch": { "type": "number" }, "zoom": { "type": "number" }, "width": { "type": "integer" }, "height": { "type": "integer" } }), &["points"]),
@@ -105,7 +114,9 @@ fn call(session: &mut Option<Session>, name: &str, args: &Value) -> Result<Vec<V
         "open_project" => text(s.open_project(args)?),
         "save_project" => text(s.save_project(args)?),
         "list_library" => text(s.library()),
-        "list_layers" => text(s.layers()),
+        "list_layers" => text(s.list_layers(args)),
+        "save_smart_material" => text(s.save_smart_material(args)?),
+        "apply_smart_material" => text(s.apply_smart_material(args)?),
         "list_parts" => text(s.list_parts()),
         "pick_parts" => text(s.pick_parts(args)?),
         "add_smart_material" => text(s.add_smart_material(args)?),

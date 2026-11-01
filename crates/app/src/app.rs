@@ -25,6 +25,7 @@ use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 pub mod automation;
+mod folders_ui;
 mod tour;
 mod ui;
 
@@ -592,6 +593,18 @@ impl PigmentApp {
         }
         self.commit_doc_changes();
         let res = self.doc.mint();
+        if self.doc.layers[i].is_folder() {
+            // a folder starts fully shown: painting hides parts of it
+            self.ts.new_mask(&rs.device, &rs.queue, res, true);
+            self.doc.layers[i].mask = Some(Mask::new(res));
+            self.paint_mask = true;
+            self.brush.mask_white = false;
+            self.brush.erase = false;
+            self.commit_doc_changes();
+            let name = self.doc.layers[i].name.clone();
+            self.set_status(format!("Added a white mask to folder {name}: painting hides it"), false);
+            return;
+        }
         self.ts.new_mask(&rs.device, &rs.queue, res, false);
         self.doc.layers[i].mask = Some(Mask { res, generator: None, invert: false, enabled: true, parts: Vec::new(), effects: Vec::new() });
         self.paint_mask = true;
