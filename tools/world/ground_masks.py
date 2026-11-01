@@ -226,6 +226,18 @@ def ground_spots(w, H, T, M):
                     v = float(rough[j, i]) + 0.004 * (h(ax, ay) - z)       # rather looking up at it
                     if best is None or v > best[0]:
                         best = (v, [x, y, z + 2.4], [ax, ay, h(ax, ay) + 2.0])
+    # from the summit lookout, down over the mountainside (tile repetition would show here)
+    plaza = next((j for j in w.get("junctions", []) if j.get("kind") == "plaza"), None)
+    if plaza:
+        px, py, pz = plaza["pos"][0], plaza["pos"][1], plaza["pos"][2]
+        bestd = None
+        for a in np.linspace(0, 2 * math.pi, 48, endpoint=False):
+            tx, ty = px + math.cos(a) * 260, py + math.sin(a) * 260
+            drop = pz - h(tx, ty)
+            if bestd is None or drop > bestd[0]:
+                bestd = (drop, [tx, ty, h(tx, ty)])
+        spots.append({"name": "ground_lookout", "eye": [round(px, 2), round(py, 2), round(pz + 4.0, 2)],
+                      "at": [round(float(c), 2) for c in bestd[1]], "fov": 60.0})
     if best:
         spots.append({"name": "ground_mountain", "eye": [round(float(c), 2) for c in best[1]], "at": [round(float(c), 2) for c in best[2]], "fov": 55.0})
     return spots
