@@ -1,5 +1,10 @@
 ; Engine configuration file.
-; Godot 4.7, Forward+.  Town assets in assets/town/ are generated (see docs/agents/godot/NOTES.md).
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
 
 config_version=5
 
@@ -14,32 +19,27 @@ config/features=PackedStringArray("4.7", "Forward Plus")
 
 window/size/viewport_width=1920
 window/size/viewport_height=1080
-window/size/mode=0
-window/vsync/vsync_mode=1
 
 [importer_defaults]
 
 texture={
 "compress/mode": 2,
-"mipmaps/generate": true,
-"detect_3d/compress_to": 0
+"detect_3d/compress_to": 0,
+"mipmaps/generate": true
 }
 
 [physics]
 
-3d/physics_engine="Jolt Physics"
 common/physics_ticks_per_second=120
-common/physics_interpolation=true
 common/max_physics_steps_per_frame=12
+3d/physics_engine="Jolt Physics"
+common/physics_interpolation=true
 
 [rendering]
 
-renderer/rendering_method="forward_plus"
-anti_aliasing/quality/use_taa=true
-anti_aliasing/quality/use_debanding=true
-lights_and_shadows/directional_shadow/size=2048
-lights_and_shadows/positional_shadow/atlas_size=4096
-environment/volumetric_fog/volume_size=96
-environment/volumetric_fog/volume_depth=64
 textures/vram_compression/import_s3tc_bptc=true
+lights_and_shadows/directional_shadow/size=2048
+anti_aliasing/quality/use_debanding=true
+environment/volumetric_fog/volume_size=96
+anti_aliasing/quality/use_taa=true
 mesh_lod/lod_change/threshold_pixels=2.0

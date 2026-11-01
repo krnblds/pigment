@@ -87,9 +87,9 @@ func _setup_input() -> void:
 	var keys := {
 		"accelerate": [KEY_W, KEY_UP], "brake": [KEY_S, KEY_DOWN], "steer_left": [KEY_A, KEY_LEFT],
 		"steer_right": [KEY_D, KEY_RIGHT], "handbrake": [KEY_SPACE], "reset": [KEY_R], "camera": [KEY_C],
-		"toggle_rain": [KEY_F], "toggle_gi": [KEY_G], "toggle_stats": [KEY_F3], "quit": [KEY_ESCAPE],
+		"toggle_rain": [KEY_F], "lightbar": [KEY_L], "toggle_gi": [KEY_G], "toggle_stats": [KEY_F3], "quit": [KEY_ESCAPE],
 	}
-	var pads := {"handbrake": [JOY_BUTTON_A], "reset": [JOY_BUTTON_Y], "camera": [JOY_BUTTON_RIGHT_SHOULDER],
+	var pads := {"handbrake": [JOY_BUTTON_A], "lightbar": [JOY_BUTTON_X], "reset": [JOY_BUTTON_Y], "camera": [JOY_BUTTON_RIGHT_SHOULDER],
 		"toggle_stats": [JOY_BUTTON_BACK]}
 	var axes := {"accelerate": [JOY_AXIS_TRIGGER_RIGHT, 1.0], "brake": [JOY_AXIS_TRIGGER_LEFT, 1.0],
 		"steer_left": [JOY_AXIS_LEFT_X, -1.0], "steer_right": [JOY_AXIS_LEFT_X, 1.0]}
@@ -116,6 +116,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		reset_car()
 	elif event.is_action_pressed("camera"):
 		cam.cycle()
+	elif event.is_action_pressed("lightbar"):
+		car.toggle_lightbar()
 	elif event.is_action_pressed("toggle_rain"):
 		rain.emitting = not rain.emitting
 		rain.visible = rain.emitting
