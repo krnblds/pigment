@@ -17,10 +17,11 @@ Blender, Unreal, Unity and Godot. Every feature is also an MCP tool.
 [![Blender](https://img.shields.io/badge/Blender-5.2%20add--on-e87d0d?logo=blender&logoColor=white)](tools/blender_addon/pigment_bridge)
 [![Godot](https://img.shields.io/badge/Godot-4.7-478cbf?logo=godotengine&logoColor=white)](game)
 
-![Pigment's Advanced mode on a town building, and a strip of game assets textured in Pigment](docs/readme/hero.png)
+![Pigment painting a Hoshikawa Security cruiser, above all 47 car liveries made in Pigment](docs/readme/hero_cars.png)
 
-*Above: Pigment's Advanced mode on a building from the game, lit by the night-rain sky. Below it,
-16 of the assets an AI agent textured through Pigment's MCP server for a cyberpunk driving game.*
+*Pigment's Advanced mode on the Kanzaki Tsubame-4 security cruiser: clearcoat paint, decals, edge wear and grime
+built from layers and generators. Below it, all 6 vehicles and 47 liveries, every one painted in Pigment
+(rendered in Blender).*
 
 </div>
 
@@ -176,6 +177,8 @@ Real examples: [`scenes/town/scripts/`](scenes/town/scripts) and [`scenes/cyberp
 Pigment was pushed by using it, through MCP, to texture a whole open-world city. The city is a 4×4 km night
 bay with islands, bridges and a mountain road, run by the Hoshikawa corporation and the MERIDIAN AI. The world,
 its assets and a drivable Godot 4.7 game are in this repo:
+
+![A town building in Pigment, and 16 more assets from the game](docs/readme/hero.png)
 
 - **[`game/`](game)**: the Godot project. Open `game/project.godot` and press **F5**. It has wet neon streets,
   traffic, a security cruiser with a light bar, and a simulated car with easy handling (`--sim` for full simulation).

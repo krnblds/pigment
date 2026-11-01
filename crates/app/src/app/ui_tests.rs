@@ -503,13 +503,15 @@ fn readme_hero() {
     *h.app.ui.prefs.layout_mut() = DockLayout::texturing();
     settle(&mut h);
     thumbs_done(&mut h);                       // material swatches render under studio light first
-    h.app.set_lighting(&rs, "night_rain");
+    let env = |k: &str, d: f32| std::env::var(k).ok().and_then(|v| v.parse().ok()).unwrap_or(d);
+    let light = std::env::var("PIGMENT_HERO_LIGHT").unwrap_or_else(|_| "night_rain".into());
+    h.app.set_lighting(&rs, &light);
     settle(&mut h);
     let (c, r) = h.app.mesh.bounding_sphere();
     h.app.camera.frame(c, r);
-    h.app.camera.yaw = 0.55;
-    h.app.camera.pitch = 0.12;
-    h.app.camera.distance *= 0.78;
+    h.app.camera.yaw = env("PIGMENT_HERO_YAW", 0.55);
+    h.app.camera.pitch = env("PIGMENT_HERO_PITCH", 0.12);
+    h.app.camera.distance *= env("PIGMENT_HERO_ZOOM", 0.78);
     if let Some(i) = h.app.doc.layers.iter().position(|l| l.mask.as_ref().is_some_and(|m| m.generator.is_some())) {
         let id = h.app.doc.layers[i].id;
         h.app.select(Some(id), false);
