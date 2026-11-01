@@ -533,6 +533,8 @@ def save_preview(sc, path, exposure, width=1600):
     s.file_format = "PNG"
     s.color_mode = "RGB"
     s.compression = 95
+    s.color_depth = "8"
+    sc.render.dither_intensity = 0.3      # light: keeps the PNG small, still breaks banding
     sc.view_settings.view_transform = "AgX"
     try:
         sc.view_settings.look = "AgX - Punchy"

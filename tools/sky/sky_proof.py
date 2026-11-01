@@ -2,10 +2,10 @@
 
     blender -b --factory-startup scenes/town/cyberpunk_town.blend --python tools/sky/sky_proof.py -- \
         [--skies old,night_rain,dusk,predawn,night_moon] [--shots street,drone,aerial] \
-        [--samples 96] [--res 1280x720] [--out docs/agents/sky]
+        [--samples 96] [--res 1280x720] [--out docs/agents/sky/renders] [--sheet docs/agents/sky]
 
 Writes <out>/town_<shot>_<sky>.png (a caption is stamped into each) and, with
---sheet, <out>/town_<shot>_compare.png: every sky for a shot in one column.
+--sheet DIR, DIR/town_<shot>_old_vs_new.png and DIR/town_presets.png.
 The town textures are git-ignored: make them first (python tools/town_textures.py,
 python tools/road_textures.py --run) or link scenes/town/textures to a checkout
 that has them; without them the town renders untextured.
@@ -113,38 +113,47 @@ def main():
             bpy.ops.render.render(write_still=True)
             print("wrote", path)
     if opt("--sheet"):
-        sheet(out, shots, skies)
+        sheets(out, shots, skies, os.path.join(ROOT, opt("--sheet")))
 
 
-def sheet(out, shots, skies, width=1280):
-    """Stack the renders of each shot vertically (old on top) into one PNG."""
+def grid(paths, cols, tile_w, out_path):
+    """Lay PNGs out in a grid (row-major, first at the top left) with thin gaps."""
     import numpy as np
-    for shot in shots:
-        tiles = []
-        for sky in skies:
-            p = os.path.join(out, f"town_{shot}_{sky}.png")
-            if not os.path.isfile(p):
-                continue
-            im = bpy.data.images.load(p)
-            if im.size[0] != width:
-                im.scale(width, int(im.size[1] * width / im.size[0]))
-            a = np.array(im.pixels[:], dtype=np.float32).reshape(im.size[1], im.size[0], 4)
-            tiles.append(a)
-            bpy.data.images.remove(im)
-        if not tiles:
-            continue
-        gap = np.ones((6, width, 4), np.float32)
-        gap[..., :3] = 0.05
-        rows = []
-        for t in reversed(tiles):          # Blender images are bottom-up
-            rows += [t, gap]
-        full = np.concatenate(rows[:-1], axis=0)
-        img = bpy.data.images.new(f"sheet_{shot}", width, full.shape[0])
-        img.pixels = full.ravel()
-        img.filepath_raw = os.path.join(out, f"town_{shot}_compare.png")
-        img.file_format = "PNG"
-        img.save()
-        print("wrote", img.filepath_raw)
+    tiles = []
+    for p in paths:
+        im = bpy.data.images.load(p)
+        th = int(im.size[1] * tile_w / im.size[0])
+        im.scale(tile_w, th)
+        tiles.append(np.array(im.pixels[:], dtype=np.float32).reshape(th, tile_w, 4)[::-1])   # top-down
+        bpy.data.images.remove(im)
+    g = 6
+    th = tiles[0].shape[0]
+    rows = (len(tiles) + cols - 1) // cols
+    full = np.zeros((rows * th + (rows - 1) * g, cols * tile_w + (cols - 1) * g, 4), np.float32)
+    full[..., :3] = 0.05
+    full[..., 3] = 1.0
+    for k, t in enumerate(tiles):
+        r, c = divmod(k, cols)
+        full[r * (th + g):r * (th + g) + th, c * (tile_w + g):c * (tile_w + g) + tile_w] = t
+    img = bpy.data.images.new(os.path.basename(out_path), full.shape[1], full.shape[0])
+    img.pixels = full[::-1].ravel()
+    img.filepath_raw = out_path
+    img.file_format = "PNG"
+    img.save()
+    print("wrote", out_path)
 
+
+def sheets(out, shots, skies, dest):
+    """<dest>/town_<shot>_old_vs_new.png (old above night_rain) and <dest>/town_presets.png
+    (every new sky: one row each, the shots side by side)."""
+    os.makedirs(dest, exist_ok=True)
+    f = lambda shot, sky: os.path.join(out, f"town_{shot}_{sky}.png")
+    if "old" in skies and "night_rain" in skies:
+        for shot in shots:
+            grid([f(shot, "old"), f(shot, "night_rain")], 1, 960, os.path.join(dest, f"town_{shot}_old_vs_new.png"))
+    new = [s for s in skies if s != "old"]
+    if new:
+        two = [s for s in shots if s in ("street", "drone")] or shots[:2]
+        grid([f(shot, sky) for sky in new for shot in two], len(two), 640, os.path.join(dest, "town_presets.png"))
 
 main()
