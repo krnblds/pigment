@@ -130,6 +130,34 @@ impl Placement {
         hit
     }
 
+    /// Size of the decal in UV space (0..1 units) on the surface under its
+    /// centre: times the texture resolution, how many texels it gets across.
+    /// None if no triangle lies under the centre.
+    pub fn uv_size(&self, mesh: &Mesh) -> Option<Vec2> {
+        let mut best: Option<(f32, Vec2)> = None;
+        for tri in mesh.indices.chunks_exact(3) {
+            let v = [0, 1, 2].map(|k| &mesh.vertices[tri[k] as usize]);
+            let p = v.map(|v| Vec3::from(v.position));
+            let n = (p[1] - p[0]).cross(p[2] - p[0]).normalize_or_zero();
+            let d = (self.center - p[0]).dot(n).abs();
+            if d > self.depth || n.dot(self.normal).abs() < 0.3 || best.is_some_and(|(bd, _)| d >= bd) {
+                continue;
+            }
+            if barycentric(self.center, p[0], p[1], p[2]).min_element() < -1e-4 {
+                continue;
+            }
+            let uv = v.map(|v| Vec2::from(v.uv));
+            let map = |q: Vec3| {
+                let w = barycentric(q, p[0], p[1], p[2]);
+                uv[0] * w.x + uv[1] * w.y + uv[2] * w.z
+            };
+            let (r, u) = (self.right * self.size.x * 0.5, self.up * self.size.y * 0.5);
+            let size = Vec2::new(map(self.center + r).distance(map(self.center - r)), map(self.center + u).distance(map(self.center - u)));
+            best = Some((d, size));
+        }
+        best.map(|(_, s)| s)
+    }
+
     fn aabb(&self) -> (Vec3, Vec3) {
         let e = (self.right * self.size.x * 0.5).abs() + (self.up * self.size.y * 0.5).abs() + (self.normal * self.depth).abs();
         (self.center - e, self.center + e)
@@ -508,6 +536,9 @@ mod tests {
         let [x, y, _, _] = t.texel_bounds(1024).unwrap();
         // centre u = 0.25, v = 1 - 1.5 / 6 = 0.75
         assert!((x as f32 / 1024.0 - 0.25).abs() < 0.1 && (y as f32 / 1024.0 - 0.75).abs() < 0.15, "{x} {y}");
+        // 4 m of wall = 0.5 UV, 6 m = 1.0 UV
+        let s = p.uv_size(&m).unwrap();
+        assert!((s.x - 0.5 * 0.5 / 4.0).abs() < 1e-4 && (s.y - 0.7 / 6.0).abs() < 1e-4, "{s:?}");
     }
 
     #[test]

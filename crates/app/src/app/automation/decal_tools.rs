@@ -193,6 +193,24 @@ impl Session {
         }
     }
 
+    /// Add how many texels the smallest decal gets across, and a warning
+    /// when the mesh's UVs give it too few to read.
+    fn texel_report(&self, pls: &[Placement], out: &mut Value) {
+        let res = self.app.ts.res as f32;
+        let min = pls.iter().filter_map(|p| p.uv_size(&self.app.mesh)).map(|s| s.min_element() * res).fold(f32::MAX, f32::min);
+        if min == f32::MAX {
+            return;
+        }
+        out["texels_across"] = json!(min.round());
+        if min < 96.0 {
+            out["warning"] = json!(format!(
+                "only ~{} texels across the decal at {}px: the mesh's UVs give this surface little texture space, so fine print will blur (use a higher resolution, larger decals or a mesh with denser UVs)",
+                min.round(),
+                res
+            ));
+        }
+    }
+
     /// `project_decal` with `anchor` or `position`: one decal at an exact spot.
     pub fn place_decal(&mut self, a: &Value) -> Res<Value> {
         let image = PathBuf::from(req(a, "image")?);
@@ -209,7 +227,9 @@ impl Session {
         if n == 0 {
             return Err("the decal touches no surface (check anchor / position and normal)".into());
         }
-        Ok(json!({ "decal": image, "on": self.app.doc.layers[i].name, "center": center.to_array(), "normal": placement.normal.to_array(), "size": size.to_array() }))
+        let mut out = json!({ "decal": image, "on": self.app.doc.layers[i].name, "center": center.to_array(), "normal": placement.normal.to_array(), "size": size.to_array() });
+        self.texel_report(&[placement], &mut out);
+        Ok(out)
     }
 
     /// Scatter images over a set of parts / a region, with height, size,
@@ -290,6 +310,9 @@ impl Session {
             .iter()
             .map(|d| json!({ "image": d.image, "center": d.placement.center.to_array(), "normal": d.placement.normal.to_array(), "size": d.placement.size.to_array(), "wear": d.look.tear, "fade": d.look.fade }))
             .collect();
-        Ok(json!({ "placed": n, "requested": p.count, "on": self.app.doc.layers[i].name, "decals": list }))
+        let mut out = json!({ "placed": n, "requested": p.count, "on": self.app.doc.layers[i].name, "decals": list });
+        let pls: Vec<Placement> = decals.iter().map(|d| d.placement).collect();
+        self.texel_report(&pls, &mut out);
+        Ok(out)
     }
 }
