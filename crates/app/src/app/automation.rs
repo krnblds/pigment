@@ -12,6 +12,7 @@ use serde_json::{json, Value};
 type Res<T> = Result<T, String>;
 
 mod decal_tools;
+mod foliage_tools;
 mod sheet_tools;
 
 /// A GPU device without a window.
@@ -127,6 +128,9 @@ impl Session {
     // ------------------------------------------------------------------ projects
 
     pub fn new_project(&mut self, a: &Value) -> Res<Value> {
+        if a.get("foliage_atlas").is_some_and(|t| !t.is_null()) {
+            return self.new_foliage_atlas(a);
+        }
         if a.get("tile").is_some_and(|t| !t.is_null()) {
             return self.new_sheet_project(a);
         }
@@ -194,6 +198,7 @@ impl Session {
             "views": ViewMode::ALL.iter().map(|m| m.label()).collect::<Vec<_>>(),
             "tile_sets": pigment_core::image_fill::list_tile_sets(Path::new("assets/tiles")).iter().map(|n| format!("assets/tiles/{n}")).collect::<Vec<_>>(),
             "image_projections": ["uv", "triplanar"],
+            "foliage": self.foliage_library(),
         })
     }
 
@@ -597,7 +602,11 @@ impl Session {
 
     pub fn add_layer(&mut self, a: &Value) -> Res<Value> {
         let kind = s(a, "kind").unwrap_or("fill");
-        let name = s(a, "name").unwrap_or(if kind == "paint" { "Paint" } else { "Fill" }).to_string();
+        let name = s(a, "name").unwrap_or(match kind {
+            "paint" => "Paint",
+            "foliage" => "Foliage",
+            _ => "Fill",
+        }).to_string();
         let parent = match a.get("parent") {
             None | Some(Value::Null) => None,
             Some(r) => Some(self.find_folder(r)?),
@@ -606,7 +615,8 @@ impl Session {
             "paint" => self.app.doc.new_paint_layer(&name),
             "fill" => self.app.doc.fill_with(&name, s(a, "material").unwrap_or("White plastic"), None),
             "folder" => self.app.doc.new_folder(if s(a, "name").is_some() { &name } else { "Folder" }),
-            _ => return Err("`kind` must be \"fill\", \"paint\" or \"folder\"".into()),
+            "foliage" => self.app.doc.new_foliage_layer(&name),
+            _ => return Err("`kind` must be \"fill\", \"paint\", \"folder\" or \"foliage\"".into()),
         };
         if let Some(p) = parent {
             // inside a folder: `index` is the position among its children
@@ -1307,6 +1317,19 @@ impl Session {
             .collect();
         let mut files = files;
         files.extend(self.export_sheet_extras(&dir)?);
+        // foliage atlas: translucency / thickness / engine extras + <name>_foliage.json
+        if self.app.doc.layers.iter().any(|l| matches!(l.generated, Some(Generated::FoliageCells { .. }))) {
+            let color = crate::render::gpu::readback(&self.rs.device, &self.rs.queue, &self.app.ts.material[0]);
+            let targets = [preset];
+            let name = self.app.export_name.clone();
+            for p in self.app.export_foliage_atlas_extras(&dir, &name, &color, &targets)? {
+                files.push(p.to_string_lossy().to_string());
+            }
+            let base = |suffix: &str| format!("{name}_{suffix}.png");
+            let _ = pigment_core::bridge::update_sidecar(&dir, &name, &json!({ "foliage_atlas": {
+                "base_color_alpha": base("BaseColorAlpha"), "translucency": base("Translucency"), "thickness": base("Thickness"),
+                "alpha_clip": 0.5, "two_sided": true, "foliage_json": format!("{name}_foliage.json") } }));
+        }
         Ok(json!({ "status": msg, "files": files, "emissive_scale": scale, "compression": compression.id(),
                    "timing_ms": { "gpu_finish": wait_ms, "read_back": read_ms, "encode": encode_ms, "total": total_ms } }))
     }

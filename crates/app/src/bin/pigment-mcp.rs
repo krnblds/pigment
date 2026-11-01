@@ -16,6 +16,8 @@
 //! validate every line against the tool schemas, no GPU). Per-step timings
 //! and a summary go to stderr; tool output stays on stdout.
 
+#![recursion_limit = "512"]
+
 use base64::Engine;
 use pigment_engine::app::automation::Session;
 use serde_json::{json, Value};
@@ -91,7 +93,7 @@ fn tools() -> Value {
     let mut add_props = layer_fields.clone();
     let layer_ref = |d: &str| json!({ "type": ["string", "integer"], "description": d });
     let folder_ref = |d: &str| json!({ "type": ["string", "integer", "null"], "description": d });
-    add_props["kind"] = json!({ "type": "string", "enum": ["fill", "paint", "folder"], "description": "folder = a group with its own opacity, blend, mask and visibility; its mask multiplies its children's" });
+    add_props["kind"] = json!({ "type": "string", "enum": ["fill", "paint", "folder", "foliage"], "description": "folder = a group with its own opacity, blend, mask and visibility; its mask multiplies its children's. foliage = cards on the model (see scatter_foliage / paint_foliage / grow_ivy)" });
     add_props["index"] = json!({ "type": "integer", "minimum": 0, "description": "stack position (0 = bottom); default: below the top paint layer. With `parent`: position among the folder's children (default: top)" });
     add_props["parent"] = folder_ref("folder to put the new layer in (name, \"Folder/Sub\" path or index); null/omitted = top level");
     let mut upd_props = layer_fields;
@@ -205,6 +207,14 @@ fn tools() -> Value {
                                 "width_m": { "type": "number", "description": "trim: sheet width (same as size_m)" },
                                 "folders": { "type": "boolean", "description": "trim / atlas: add a folder masked to each strip / cell (default true)" },
                                 "name": { "type": "string", "description": "export name (default: TileWxHm / TrimSheet / DecalAtlas)" }
+                            } },
+                  "foliage_atlas": { "type": "object", "additionalProperties": false,
+                            "description": "a foliage card atlas instead of a mesh: cells (leaf, twig, needle spray, blossom, grass tuft, ivy sprig, moss) drawn by the leaf generators into a generated layer, one folder per cell for extra layers. export_textures also writes Translucency / Thickness (+ backlight for godot, SubsurfaceColor for unreal) and <name>_foliage.json for foliage layers",
+                            "properties": {
+                                "cells": { "type": "array", "items": { "type": "object", "properties": foliage_cell_props(), "additionalProperties": false } },
+                                "padding_px": { "type": "integer", "minimum": 0, "description": "texels between cells (default 16)" },
+                                "folders": { "type": "boolean", "description": "a folder masked to each cell (default true)" },
+                                "name": { "type": "string", "description": "export name (default FoliageAtlas)" }
                             } } }), &[]),
         t("open_project", "Open a .pigment project folder.", json!({ "path": { "type": "string" } }), &["path"]),
         t("save_project", "Save the project folder (git-friendly).", json!({ "path": { "type": "string" } }), &[]),
@@ -263,6 +273,54 @@ fn tools() -> Value {
         t("render_turntable", "Render `frames` views evenly around the model (at `pitch`) as one labelled contact-sheet PNG: see the whole asset in one call. Takes the same lighting / bloom / view args as render.", sheet_props, &[]),
         t("export_lighting", "Write a built-in lighting preset as an equirectangular .hdr (e.g. to light a Blender world exactly like Pigment's viewport).",
           json!({ "lighting": { "type": "string", "enum": ["studio", "night", "overcast", "night_rain", "night_moon", "dusk", "predawn"] }, "path": { "type": "string" }, "width": { "type": "integer", "description": "default 2048" } }), &["path"]),
+        t("add_foliage_cell", "Foliage atlas projects: add a cell (leaf, twig, needle spray, blossom, grass tuft, ivy sprig, moss...) drawn by the leaf generators. The atlas is repacked: fills and folders stay, painted pixels are cleared. Returns the new layout.",
+          foliage_cell_props(), &["name"]),
+        t("update_foliage_cell", "Foliage atlas projects: change a cell's generator parameters (shape, arrangement, venation, serration, colours, autumn, dry edges, holes, bites, translucency...) or its preset; only that cell is redrawn (a new size_m repacks the atlas). One undo step.",
+          { let mut p = foliage_cell_props(); p["cell"] = json!({ "type": ["string", "integer"], "description": "cell name or index" }); p["rename"] = json!({ "type": "string" }); p }, &["cell"]),
+        t("add_bark", "Seamless tile projects: a generated bark layer (tiles on both axes) with colour, height (-> normal) and roughness. Styles: fissured (oak, old pine), plated (Japanese black pine), lenticels (smooth cherry with horizontal lenticels), peeling (birch / crape myrtle). Call again with the same name to change it.",
+          json!({ "style": { "type": "string", "enum": ["fissured", "plated", "lenticels", "peeling", "smooth", "cherry", "pine", "oak", "birch"] },
+                  "scale": { "type": "number", "description": "features per metre across" }, "stretch": { "type": "number", "description": "elongation along the trunk (v)" },
+                  "depth": { "type": "number", "description": "0..1 relief" }, "roughness_variation": { "type": "number" },
+                  "color": { "type": "array", "items": { "type": "number" } }, "crack_color": { "type": "array", "items": { "type": "number" } }, "accent_color": { "type": "array", "items": { "type": "number" } },
+                  "roughness": { "type": "number" }, "lichen": { "type": "number", "description": "0..1 lichen specks" }, "seed": { "type": "integer", "minimum": 0 },
+                  "name": { "type": "string", "description": "layer name (default `Bark (generated)`)" } }), &[]),
+        t("scatter_foliage", "Scatter foliage cards over the model into a foliage layer: moss tufts in crevices, grass on the ground, weeds on roofs, fallen leaves, ivy leaves on walls. Choose `cells`, `count` or `density` (cards per m2), surfaces by normal (`facing`), `parts` / `region`, a `mask` (a layer such as Moss or Puddles, or an inline generator) and/or `ao` (crevices), `scale`, `align`, `min_spacing`, `seed`. Cards render in the viewport (alpha-tested, back-lit) and export with export_foliage. One undo step.",
+          { let mut p = foliage_place_props();
+            p["cells"] = json!({ "type": ["array", "string"], "items": { "type": ["string", "object"] }, "description": "cell names (or {cell, weight}) from the layer's atlas, e.g. [\"moss\", \"moss_patch\"]" });
+            p["count"] = json!({ "type": "integer", "minimum": 0 }); p["density"] = json!({ "type": "number", "description": "cards per m2 of the allowed surface (instead of count)" });
+            p["min_spacing"] = json!({ "type": "number", "description": "metres between card bases (also from existing cards)" });
+            p["rotation_jitter"] = json!({ "type": "number", "description": "flat / wall cards: +- degrees around the normal (default 180)" });
+            p["mount"] = json!({ "type": "string", "enum": ["upright", "flat", "wall", "hanging"], "description": "override the cells' mount" });
+            p }, &[]),
+        t("paint_foliage", "Paint foliage with a brush: a camera stroke (`points` in 0..1 + yaw / pitch / zoom / target / distance, like paint_stroke) or `world_points`; each dab scatters cards within `radius` metres at `density` per m2, spaced so scrubbing fills gaps instead of piling up. `erase: true` removes cards (optionally only `cells`). One undo step.",
+          { let mut p = foliage_place_props();
+            for (k, v) in camera.as_object().unwrap() { p[k] = v.clone(); }
+            p["points"] = json!({ "type": "array", "items": { "type": "array", "items": { "type": "number" } }, "description": "stroke in viewport coords 0..1, y down" });
+            p["world_points"] = json!({ "type": "array", "items": { "type": "array", "items": { "type": "number" } }, "description": "stroke as world points [[x, y, z], ...] (snapped to the surface)" });
+            p["cells"] = json!({ "type": ["array", "string"], "items": { "type": ["string", "object"] }, "description": "cell names to paint (picked at random)" });
+            p["radius"] = json!({ "type": "number", "description": "brush radius in metres (default 0.3)" });
+            p["density"] = json!({ "type": "number", "description": "cards per m2 (default 40)" });
+            p["erase"] = json!({ "type": "boolean" });
+            p }, &[]),
+        t("grow_ivy", "Grow ivy along the surface from start points: a growth walk that climbs (up_bias), wanders, wraps round corners and branches, laying stem cards and leaf cards (ivy_leaf / ivy_stem from the builtin atlas, or `leaf` / `stem` cells). Start with `start` world points or a camera stroke `points`. One undo step.",
+          { let mut p = foliage_place_props();
+            for (k, v) in camera.as_object().unwrap() { p[k] = v.clone(); }
+            p["start"] = json!({ "type": "array", "items": { "type": "array", "items": { "type": "number" } }, "description": "world start points [[x, y, z], ...] (snapped to the surface)" });
+            p["points"] = json!({ "type": "array", "items": { "type": "array", "items": { "type": "number" } }, "description": "or start points from a camera view, 0..1" });
+            p["length"] = json!({ "type": "number", "description": "metres of main strand per start (default 2.5)" });
+            p["branching"] = json!({ "type": "number", "description": "side branches per metre (default 1.2)" });
+            p["max_strands"] = json!({ "type": "integer", "minimum": 1 });
+            p["step"] = json!({ "type": "number", "description": "walk step, metres (default 0.04)" });
+            p["up_bias"] = json!({ "type": "number", "description": "pull upwards 0..1 (default 0.7)" });
+            p["wander"] = json!({ "type": "number", "description": "random wander 0..1 (default 0.35)" });
+            p["leaf_spacing"] = json!({ "type": "number", "description": "metres between leaves (default 0.06)" });
+            p["leaf_scale"] = json!({ "type": ["number", "array"], "items": { "type": "number" } });
+            p["stem_width"] = json!({ "type": "number", "description": "metres (default 0.012)" });
+            p["leaf"] = json!({ "type": "string", "description": "leaf cell (default ivy_leaf)" });
+            p["stem"] = json!({ "type": ["string", "null"], "description": "stem cell (default ivy_stem, null = no stems)" });
+            p }, &[]),
+        t("export_foliage", "Export the foliage layers: <name>_foliage.glb (every card as geometry, atlas UVs), <name>_foliage_instances.json (per cell: UV rect, card mesh, Godot Transform3D list for a MultiMesh), the atlas maps (BaseColorAlpha, Normal_OpenGL, Roughness, Translucency, Thickness) and a material.json entry (kind foliage: alpha clip, two-sided, translucency) for the Blender add-on. send_to_blender includes it.",
+          json!({ "dir": { "type": "string" }, "name": { "type": "string", "description": "file prefix (default: mesh name)" }, "layer": { "type": ["string", "integer"], "description": "only this foliage layer (default: every visible one)" } }), &["dir"]),
         t("export_textures", "Export PNG texture maps. Presets: unreal, unity, godot, separate (glTF/Blender: BaseColor, Roughness, Metallic, AO, Normal_OpenGL, Height, Emissive, plus Opacity / Transmission when the material has any). unreal/unity/godot put opacity in the base colour's alpha (RGBA) when it isn't solid.",
           json!({ "dir": { "type": "string" }, "preset": { "type": "string", "enum": pigment_core::export::presets().iter().map(|p| p.id).collect::<Vec<_>>(), "description": "default separate" }, "name": { "type": "string", "description": "file name prefix (default: the mesh name)" },
                   "compression": { "type": "string", "enum": ["none", "fastest", "fast", "balanced", "best"], "description": "PNG compression effort (default fast). fastest/none write quickest but bigger files; maps are encoded in parallel either way" } }), &["dir"]),
@@ -323,6 +381,89 @@ fn mask_schema() -> Value {
         "items": { "type": "object", "properties": effect, "required": ["generator"], "additionalProperties": false } });
     json!({ "type": ["string", "object", "null"], "properties": gen_fields, "additionalProperties": false,
             "description": "\"white\" | \"black\" (painted mask) | null (remove the mask) | {generator, amount, ..., invert, parts, effects}" })
+}
+
+/// Foliage cell fields: leaf generator parameters plus the cell's name,
+/// preset, card size, mount and card mesh.
+fn foliage_cell_props() -> Value {
+    use pigment_core::foliage as fol;
+    let n = |d: &str| json!({ "type": "number", "description": d });
+    let i = |d: &str| json!({ "type": "integer", "minimum": 0, "description": d });
+    let rgb = |d: &str| json!({ "type": "array", "items": { "type": "number" }, "maxItems": 3, "description": d });
+    json!({
+        "name": { "type": "string", "description": "cell name (unique in the atlas)" },
+        "preset": { "type": "string", "enum": fol::PRESETS, "description": "start from a preset (Japanese pagoda tree, maple, ginkgo, cherry blossom, black pine, grass, ivy, moss, weeds, fern, hanging vine, fallen leaves...); other fields override it" },
+        "size_m": { "type": ["number", "array"], "items": { "type": "number" }, "description": "card size in metres [width, height] (default from the preset)" },
+        "mount": { "type": "string", "enum": ["upright", "flat", "wall", "hanging"], "description": "how the foliage brush sets this card on a surface" },
+        "mesh": { "type": "string", "enum": ["quad", "cross", "star"], "description": "card geometry per instance (cross = 2 crossed quads for tufts)" },
+        "shape": { "type": "string", "enum": fol::LeafShape::ALL.map(|s| s.id()), "description": "leaf outline (aliases: maple = palmate, fan = ginkgo, heart = cordate, blade = grass)" },
+        "arrangement": { "type": "string", "enum": fol::Arrangement::ALL.map(|s| s.id()), "description": "single leaf; twig (alternating on a stem); compound (pinnate leaflets, pagoda tree / fern); tuft (grass); spray (needle fascicles); cluster (blossoms); rosette; clump (moss cushion); scatter (fallen leaves / moss patch); trailing (hanging)" },
+        "count": i("leaves / compound leaves / fascicles / flowers / blades"),
+        "aspect": n("leaf width / length (0 = shape default)"),
+        "lobes": i("lobes (palmate, ivy), leaflet pairs (compound), needles per fascicle (spray), petals (cluster)"),
+        "lobe_depth": n("0..1 how deep the lobes are cut (ginkgo: the centre notch)"),
+        "spread": n("degrees the lobes / blades / needles fan over (0 = default)"),
+        "serration": n("0..1 edge tooth depth"),
+        "teeth": i("teeth per side (per lobe for lobed leaves)"),
+        "venation": n("0..1 vein strength in colour and height (midrib + secondary veins)"),
+        "veins": i("secondary veins per side (ginkgo: radiating veins)"),
+        "vein_angle": n("degrees between secondary veins and the midrib"),
+        "color": rgb("leaf base colour, sRGB 0..1"),
+        "tip_color": rgb("colour towards the tip / rim"),
+        "tip_amount": n("0..1 base -> tip gradient strength"),
+        "vein_color": rgb("vein colour"),
+        "hue_jitter": n("0..1 per-leaf hue variation"),
+        "value_jitter": n("0..1 per-leaf brightness variation"),
+        "autumn": n("0..1 green -> yellow -> autumn_color"),
+        "autumn_jitter": n("per-leaf +- variation of autumn"),
+        "autumn_color": rgb("full-autumn colour (maple red, ginkgo gold)"),
+        "dry_edges": n("0..1 width of a dry brown rim"),
+        "dry_color": rgb("dry rim colour"),
+        "holes": n("0..1 holes eaten through the blade"),
+        "bites": n("0..1 chance per leaf of insect bites out of the edge"),
+        "translucency": n("0..1 light passing through (back-lit glow; exported as the Translucency / backlight / subsurface map)"),
+        "translucency_color": { "type": ["array", "null"], "items": { "type": "number" }, "maxItems": 3, "description": "colour of the light coming through (default: derived from the leaf colour)" },
+        "roughness": n("0..1"),
+        "stem_color": rgb("stems, petioles, twigs"),
+        "stem_width": n("stem width relative to the leaf length (0 = no stem)"),
+        "bend": n("-1..1 sideways bend of blades / needles"),
+        "wave": n("0..1 waviness of the main stem"),
+        "leaf_size": n("leaf length relative to the twig / cell (0 = default)"),
+        "stamens": { "type": "boolean", "description": "blossoms: stamens in the flower centre" },
+        "seed": i("random seed")
+    })
+}
+
+/// Mask for foliage scatter: a layer (name / index) whose mask is read, or
+/// an inline generator mask.
+fn foliage_mask_schema() -> Value {
+    let full = mask_schema();
+    let mut props = full["properties"].clone();
+    let o = props.as_object_mut().unwrap();
+    o.remove("effects");
+    o.remove("parts_where");
+    json!({ "type": ["string", "integer", "object", "null"], "properties": props, "additionalProperties": false,
+            "description": "where foliage may go: a layer name / index (its mask: generator, painted pixels and parts, e.g. the Moss or Puddles layer) or an inline generator mask {generator: \"moss\", amount, scale, ...}. Cards are kept with probability rising around `mask_threshold`" })
+}
+
+/// Placement / surface fields shared by the foliage tools.
+fn foliage_place_props() -> Value {
+    json!({
+        "layer": { "type": ["string", "integer"], "description": "foliage layer (created on top as `Foliage` / the given name if missing)" },
+        "atlas": { "type": "string", "description": "card source for the layer: \"builtin\" (default library: moss, moss_patch, grass, weed, ivy_leaf, ivy_stem, ivy, maple_leaf, ginkgo_leaf, cherry_petals, fallen_leaves, fern, hanging_vine, weed_rosette) or a foliage atlas export's <name>_foliage.json" },
+        "wind": { "type": "number", "description": "0..1 wind sway in the viewport preview" },
+        "facing": { "type": "string", "enum": ["up", "walls", "down", "any"], "description": "surfaces by normal: up (ground, ledges, roofs), walls, down (ceilings, undersides), any" },
+        "min_up": { "type": "number", "description": "lowest surface normal y allowed (-1..1, overrides facing)" },
+        "max_up": { "type": "number", "description": "highest surface normal y allowed" },
+        "parts": { "type": "array", "items": { "type": "integer", "minimum": 0 }, "description": "only these mesh parts" },
+        "region": { "type": "object", "additionalProperties": false, "description": "world box", "properties": { "min": { "type": "array", "items": { "type": "number" } }, "max": { "type": "array", "items": { "type": "number" } } } },
+        "mask": foliage_mask_schema(),
+        "mask_threshold": { "type": "number", "description": "mask value around which cards appear (default 0.5)" },
+        "ao": { "type": ["number", "array"], "items": { "type": "number" }, "description": "[min, max] baked AO allowed: e.g. [0, 0.7] = crevices and corners only" },
+        "scale": { "type": ["number", "array"], "items": { "type": "number" }, "description": "card scale range [min, max] (x the cell's size_m)" },
+        "align": { "type": "number", "description": "upright cards: 0 = along the surface normal, 1 = straight up (gravity); default 0.6" },
+        "seed": { "type": "integer", "minimum": 0 }
+    })
 }
 
 /// Filters / sorting / paging shared by list_parts and pick_parts `shape`.
@@ -463,6 +604,13 @@ fn call(session: &mut Option<Session>, name: &str, args: &Value) -> Result<Vec<V
         "export_variants" => text(s.export_variants(args)?),
         "send_to_blender" => text(s.send_to_blender(args)?),
         "export_mesh" => text(s.export_mesh(args)?),
+        "add_foliage_cell" => text(s.add_foliage_cell(args)?),
+        "update_foliage_cell" => text(s.update_foliage_cell(args)?),
+        "add_bark" => text(s.add_bark(args)?),
+        "scatter_foliage" => text(s.scatter_foliage(args)?),
+        "paint_foliage" => text(s.paint_foliage(args)?),
+        "grow_ivy" => text(s.grow_ivy(args)?),
+        "export_foliage" => text(s.export_foliage(args)?),
         "undo" => text(s.undo(false)?),
         "redo" => text(s.undo(true)?),
         "render" => {
