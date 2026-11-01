@@ -82,7 +82,7 @@ func setup(m: Node3D, opts := {}) -> bool:
 	target = mini(target, max_count)
 	graph = LaneGraph.new()
 	var wpath := String(opts.get("world", ""))
-	if wpath == "":
+	if wpath == "" and not opts.get("town_only", false):
 		for p in WORLD_PATHS:
 			if FileAccess.file_exists(p):
 				wpath = p

@@ -90,6 +90,8 @@ func _ready() -> void:
 			topts["world"] = String(args.world)
 		elif map_name == "world" and FileAccess.file_exists("res://assets/world/world.json"):
 			topts["world"] = "res://assets/world/world.json"
+		elif map_name == "town":
+			topts["town_only"] = true          # don't pick up the open world's lane graph
 		if not traffic.setup(self, topts):
 			traffic.queue_free()
 			traffic = null
