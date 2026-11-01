@@ -98,16 +98,80 @@ def m_vending_machine(P: Prop):
 
 # ------------------------------------------------------------------ clutter
 
+def sack(P: Prop, name, group, base, r, h, lean=(0.0, 0.0), squash=1.0, seed=0, ni=18, nj=12):
+    """A tied rubbish bag: slumped, flat-bottomed sack with lumps from what's inside, pleats
+    gathered into the neck, the neck twisted shut and two tie ears.  base = (x, y, z) of the
+    bottom centre; lean shifts the top (metres); squash < 1 flattens bags lower in a pile."""
+    import random
+    from mathutils import Vector
+    rnd = random.Random(seed)
+    bm = P.bm
+    lumps = [(rnd.randint(1, 3), rnd.uniform(0, math.tau), rnd.uniform(0.03, 0.08), rnd.uniform(1.5, 3.5), rnd.uniform(0, math.tau)) for _ in range(4)]
+    ph = rnd.uniform(0, math.tau)
+    hb = h * squash
+    rows = []
+    for j in range(nj + 1):
+        t = j / nj * 0.9
+        if t < 0.3:
+            prof = 0.72 + 0.33 * math.sin(t / 0.3 * math.pi / 2)
+        else:
+            prof = 1.05 * math.sqrt(max(0.0, 1 - ((t - 0.3) / 0.68) ** 2)) + 0.08
+        prof /= (squash ** 0.35)
+        pleat = max(0.0, min(1.0, (t - 0.5) / 0.35))
+        z = hb * (t if t > 0.02 else 0.0)
+        row = []
+        for i in range(ni):
+            a = math.tau * i / ni
+            d = 1.0 + sum(amp * math.sin(k * a + p0) * math.sin(f * t * math.pi + p1) for k, p0, amp, f, p1 in lumps)
+            d += 0.09 * pleat * math.sin(9 * a + ph)
+            rr = r * prof * d
+            sh = (t / 0.9) ** 1.5
+            row.append(bm.verts.new((base[0] + rr * math.cos(a) + lean[0] * sh, base[1] + rr * math.sin(a) * 0.93 + lean[1] * sh, base[2] + z)))
+        rows.append(row)
+    # twisted neck to the knot
+    top = Vector((base[0] + lean[0], base[1] + lean[1], base[2] + hb * 0.9))
+    for k, (f, dz) in enumerate(((0.45, 0.02), (0.24, 0.045), (0.17, 0.07), (0.21, 0.09))):
+        row = []
+        rr = rows[-1]
+        cx = sum((v.co for v in rr), Vector()) / len(rr)
+        for i in range(ni):
+            a = math.tau * i / ni + 0.5 * (k + 1)
+            row.append(bm.verts.new((cx.x + r * 0.42 * f * math.cos(a), cx.y + r * 0.42 * f * math.sin(a), top.z + dz)))
+        rows.append(row)
+    for a_, b_ in zip(rows, rows[1:]):
+        for i in range(ni):
+            k = (i + 1) % ni
+            bm.faces.new((a_[i], a_[k], b_[k], b_[i]))
+    bm.faces.new(list(reversed(rows[0])))
+    bm.faces.new(rows[-1])
+    P._end(0, name, group)
+    # tie ears
+    knot = sum((v.co for v in rows[-1]), Vector()) / ni
+    for e, sgn in enumerate((-1, 1)):
+        ang = rnd.uniform(-0.6, 0.6) + (0 if sgn > 0 else math.pi)
+        dvec = Vector((math.cos(ang), math.sin(ang), 0))
+        pts = [knot + dvec * 0.01, knot + dvec * 0.04 + Vector((0, 0, 0.022)), knot + dvec * 0.075 + Vector((0, 0, 0.008)), knot + dvec * 0.095 + Vector((0, 0, -0.025))]
+        P.ribbon(f"{name}_ear{e}", group, [tuple(p) for p in pts], [0.025, 0.042, 0.036, 0.016], (-dvec.y, dvec.x, 0.3), fold=0.4, thickness=0.004, cols=2)
+
+
 @model
 def m_trash_bag_pile(P: Prop):
-    bags = [((-0.25, 0.05, 0), 0.32, (1.0, 0.9, 0.85), "bag", 3),
-            ((0.25, 0.1, 0), 0.3, (0.95, 1.0, 0.8), "bag_blue", 7),
-            ((0.0, -0.22, 0), 0.26, (1.1, 0.9, 0.75), "bag", 11),
-            ((0.02, 0.06, 0.38), 0.24, (1.0, 0.95, 0.8), "bag", 19)]
-    for i, (c, r, sc, grp, seed) in enumerate(bags):
-        z = c[2] + r * sc[2] * 0.82
-        P.blob(f"bag_{i}", grp, r, loc=(c[0], c[1], z), scale=sc, subdiv=3, noise=0.12, seed=seed, flat_bottom=-r * 0.82)
-        P.blob(f"knot_{i}", grp, 0.06, loc=(c[0] + 0.02, c[1], z + r * sc[2] * 0.92), scale=(1, 0.8, 1.4), subdiv=1, noise=0.25, seed=seed + 1)
+    # five tied bags slumped against each other, a burnable-day sticker and a MERIDIAN waste tag on
+    # them, a crushed can, a takeaway cup and a flattened box under the pile (same footprint and collider)
+    bags = [((-0.24, 0.08, 0.0), 0.3, 0.62, (0.04, 0.05), 0.85, "bag", 3),
+            ((0.26, 0.12, 0.0), 0.28, 0.58, (-0.06, 0.03), 0.9, "bag_blue", 7),
+            ((0.02, -0.2, 0.0), 0.25, 0.52, (0.02, -0.04), 0.95, "bag", 11),
+            ((0.03, 0.1, 0.24), 0.21, 0.42, (0.05, -0.02), 1.0, "bag_white", 19),
+            ((-0.42, -0.22, 0.0), 0.17, 0.36, (0.06, 0.02), 1.0, "bag", 23)]
+    for i, (c, r, h, lean, sq, grp, seed) in enumerate(bags):
+        sack(P, f"bag_{i}", grp, c, r, h, lean, sq, seed)
+    P.box("sticker_burnable", "sign", (0.1, 0.002, 0.07), loc=(0.02, -0.455, 0.25), rot=(-8, 0, 0), uv_boost=4.0)
+    P.box("waste_tag", "sign2", (0.08, 0.002, 0.11), loc=(0.29, -0.155, 0.27), rot=(-12, 0, 18), uv_boost=4.0)
+    P.box("flat_box", "cardboard", (0.62, 0.42, 0.012), loc=(0.15, -0.05, 0.0), rot=(0, 0, 12), base=True)
+    P.cyl("can", "steel", 0.033, 0.075, loc=(0.47, -0.24, 0.033), rot=(90, 0, 35), segs=10, r2=0.029)
+    P.cyl("cup", "white_plastic", 0.042, 0.12, loc=(-0.62, 0.16, 0.042), rot=(0, 90, 20), segs=12, r2=0.032)
+    P.cyl("cup_lid", "dark_plastic", 0.046, 0.012, loc=(-0.62 + 0.12 * math.cos(math.radians(20)), 0.16 + 0.12 * math.sin(math.radians(20)), 0.042),
+          rot=(0, 90, 20), segs=12)
     P.collider = [("box", (0, -0.02, 0.36), (1.15, 0.85, 0.72))]
 
 

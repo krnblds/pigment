@@ -189,10 +189,24 @@ def m_street_name_sign(P: Prop):
 @model
 def m_bollard(P: Prop):
     k = P.param("height", 0.96) / 0.96          # smart-model parameter (city/models/prop/bollard.toml)
-    P.lathe("body", "paint", [(0.0, 0.0), (0.105, 0.0), (0.105, 0.86 * k), (0.095, 0.91 * k), (0.065, 0.945 * k), (0.0, 0.96 * k)], segs=24)
-    P.lathe("reflect_band", "reflector", [(0.108, 0.70 * k), (0.108, 0.76 * k)], segs=24)
-    P.lathe("led_ring", "led", [(0.109, 0.80 * k), (0.109, 0.815 * k)], segs=24)
-    P.cyl("base_ring", "dark_metal", 0.13, 0.03, loc=(0, 0, 0), segs=24)
+    # removable security bollard: cast collar set in the paving with four bolts, cast foot,
+    # steel post with two turned grooves, retro-reflective band, LED ring in a recessed throat,
+    # domed cap with a MERIDIAN sensor eye and a key lock (same height, collider and light)
+    P.lathe("collar", "iron", [(0.0, 0.0 * k), (0.175, 0.0 * k), (0.175, 0.008 * k), (0.16, 0.016 * k), (0.0, 0.016 * k)], segs=16)
+    for j in range(4):
+        a = math.radians(45 + 90 * j)
+        P.cyl(f"collar_bolt_{j}", "iron", 0.012, 0.01, loc=(math.cos(a) * 0.145, math.sin(a) * 0.145, 0.014 * k), segs=6)
+    P.lathe("foot", "paint2", [(0.0, 0.016 * k), (0.135, 0.016 * k), (0.135, 0.04 * k), (0.118, 0.07 * k), (0.108, 0.13 * k), (0.0, 0.13 * k)], segs=16)
+    P.lathe("body", "paint", [(0.0, 0.12 * k), (0.105, 0.12 * k), (0.105, 0.3 * k), (0.1, 0.305 * k), (0.1, 0.315 * k), (0.105, 0.32 * k), (0.105, 0.6 * k),
+                              (0.1, 0.605 * k), (0.1, 0.615 * k), (0.105, 0.62 * k), (0.105, 0.79 * k), (0.0, 0.79 * k)], segs=16)
+    P.lathe("reflect_band", "reflector", [(0.108, 0.70 * k), (0.108, 0.76 * k)], segs=16)
+    P.lathe("throat", "dark_metal", [(0.0, 0.785 * k), (0.094, 0.785 * k), (0.094, 0.845 * k), (0.0, 0.845 * k)], segs=16)
+    P.lathe("led_ring", "led", [(0.098, 0.8 * k), (0.098, 0.83 * k)], segs=16)
+    P.lathe("cap", "paint", [(0.0, 0.84 * k), (0.108, 0.84 * k), (0.108, 0.87 * k), (0.1, 0.9 * k), (0.08, 0.93 * k), (0.05, 0.952 * k), (0.0, 0.96 * k)], segs=16)
+    P.cyl("sensor", "cam_eye", 0.014, 0.012, loc=(0.0, -0.088, 0.915 * k), rot=(-55, 0, 0), segs=12)
+    P.cyl("sensor_ring", "dark_metal", 0.021, 0.01, loc=(0.0, -0.085, 0.913 * k), rot=(-55, 0, 0), segs=12)
+    P.cyl("key_lock", "dark_metal", 0.016, 0.012, loc=(0.0, -0.101, 0.22 * k), rot=(90, 0, 0), segs=10)
+    P.box("id_plate", "sign", (0.06, 0.003, 0.09), loc=(0.0, -0.106, 0.45 * k), uv_boost=4.0)
     P.collider = [("cyl", (0, 0), 0.11, 0.96 * k)]
     P.light("Light_Ring", (0, -0.12, 0.81 * k), color=(0.1, 0.9, 1.0), energy=0.4, range=1.5)
 

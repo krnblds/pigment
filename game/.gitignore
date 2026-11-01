@@ -18,3 +18,5 @@ addons/fleet_variants/vehicle_variants.gd.uid
 assets/world/
 # hot-swap event queue (tools/city live link, game/scripts/live_link.gd)
 assets/.live/
+# tree kit, copied in by tools/trees/sync_godot.py (source of truth: assets/trees)
+assets/trees/

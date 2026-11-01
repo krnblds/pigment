@@ -1,0 +1,10 @@
+{
+ "lod0": "light_mast.glb",
+ "lod0_bytes": 687036,
+ "lod0_tris": 2968,
+ "texture": 1024,
+ "lod1": "light_mast_lod1.glb",
+ "lod1_bytes": 229684,
+ "lod1_tris": 1038,
+ "lod1_texture": 512
+}

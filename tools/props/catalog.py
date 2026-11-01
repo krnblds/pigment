@@ -87,8 +87,8 @@ PROPS = {
                      clearance=0.4, facing="road", yaw_jitter=0)),
     "bollard": dict(
         category="street_furniture", title="Steel bollard with LED ring",
-        desc="0.95 m domed steel bollard, retro-reflective band and a cyan LED ring.",
-        res=512, embed=512, lod1=None,
+        desc="0.96 m removable steel bollard: cast collar and foot, turned grooves, key lock, ID plate, retro-reflective band, cyan LED ring in a recessed throat, domed cap with a MERIDIAN sensor eye.",
+        res=1024, embed=512, lod1=0.5,
         scatter=dict(slots=["curb", "corner"], density=dens(2.5, downtown=5.0, luxury=5.0, commercial=3.0, slum=0.5, industrial=1.5),
                      offset=-0.35, spacing=1.6, clearance=0.25, facing="road", yaw_jitter=0, along=[0.3, 4.0], cluster=[2, 5], cluster_radius=1.6, cluster_line=True)),
     "guard_rail": dict(
@@ -193,8 +193,8 @@ PROPS = {
     # ------------------------------------------------------------------ clutter
     "trash_bag_pile": dict(
         category="clutter", title="Trash bag pile",
-        desc="Four tied bin bags (black and blue).",
-        res=512, embed=512, lod1=None,
+        desc="Five tied bin bags (black, blue, translucent white) slumped together, a burnable-day sticker and a MERIDIAN waste tag, a can, a cup and a flattened box.",
+        res=1024, embed=512, lod1=0.4,
         scatter=dict(slots=["frontage", "alley", "curb"], density=dens(2.0, slum=8.0, market=6.0, industrial=3.0, luxury=0.0, downtown=0.5),
                      offset=0.4, spacing=4.0, clearance=0.8, facing="random", yaw_jitter=180)),
     "trash_bin": dict(
@@ -274,6 +274,27 @@ PROPS = {
         res=1024, embed=1024, lod1=None,
         scatter=dict(slots=["road", "plaza"], density=dens(0.25, slum=0.6, industrial=0.5, market=0.4, luxury=0.1), spacing=6.0, clearance=0.0,
                      facing="random", yaw_jitter=180, decal=True)),
+    # ------------------------------------------------------------------ port (world kit: placed by tools/world/placement.py, never scattered)
+    "container": dict(
+        category="port", title="ISO 40' dry container",
+        desc="12.19 x 2.44 x 2.59 m steel box: trapezoidal corrugated sides, roof and front wall, corner castings, rails, cross members, "
+             "ribbed doors with four lock rods, cams, handles and hinges, CSC plate. Long axis X, doors at +X (glTF). Stacks at 2.6 m. "
+             "Variants are the yard colours (rust, blue, white, green, orange, grey, teal), each with its own line's livery.",
+        res=2048, embed=1024, lod1=0.3,
+        scatter=dict(slots=[], density=dens(0.0), spacing=13.0, clearance=0.0, facing="along", yaw_jitter=0)),
+    "crane_sts": dict(
+        category="port", title="Ship-to-shore gantry crane",
+        desc="Quay crane: travel bogies on two rails 18 m apart (y = -+9 m, glTF z), four tapered legs, portal and tie beams, twin box girders "
+             "with walkways and handrails, a boom reaching 64 m over the water (-z in glTF = +y Blender), A-frame with fore / back stays, "
+             "machinery house with banners, trolley, glazed operator cab, ropes, headblock and spreader, stairs, cable reel.",
+        res=2048, embed=2048, lod1=0.35,
+        scatter=dict(slots=[], density=dens(0.0), spacing=40.0, clearance=0.0, facing="along", yaw_jitter=0)),
+    "light_mast": dict(
+        category="port", title="Yard high-mast light (30 m)",
+        desc="Three-section galvanised high mast on a concrete plinth: base plate, anchor bolts, gussets, hazard sleeve, access door, "
+             "mast plate, cabinet and conduit; lowering ring with eight floods, cap, lightning rod and aviation light.",
+        res=1024, embed=1024, lod1=0.35,
+        scatter=dict(slots=[], density=dens(0.0), spacing=40.0, clearance=0.0, facing="random", yaw_jitter=0)),
     # ------------------------------------------------------------------ nature-lite
     "planter": dict(
         category="nature", title="Concrete planter with shrubs",

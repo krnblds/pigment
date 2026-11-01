@@ -31,3 +31,8 @@ scenes/world/verify.json
 
 # city build cache: stamps, content-addressed objects, logs (tools/city)
 .citycache/
+# tree kit (tools/trees): stencils, Pigment textures / projects and build scratch are regenerated
+scenes/trees/stencils/
+scenes/trees/textures/
+scenes/trees/projects/
+scenes/trees/impostors/

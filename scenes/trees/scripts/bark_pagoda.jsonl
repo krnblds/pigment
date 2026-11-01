@@ -1,0 +1,17 @@
+{"tool": "new_project", "args": {"tile": {"size_m": [0.8, 1.2], "name": "bark_pagoda"}, "resolution": 1024}}
+{"tool": "delete_layer", "args": {"layer": "Paint"}}
+{"tool": "update_layer", "args": {"layer": "Base", "values": {"base_color": [0.34, 0.31, 0.27], "roughness": 0.88, "metallic": 0.0}, "image": {"base_color": "scenes/trees/stencils/bark_pagoda_color.png", "projection": "uv", "tiling": 1, "tint": [1.0, 1.0, 1.0]}}}
+{"tool": "add_layer", "args": {"name": "Relief", "image": {"height": "scenes/trees/stencils/bark_pagoda_height.png", "projection": "uv", "tiling": 1, "height_scale": 1.0}, "channels": {"base_color": false, "roughness": false, "metallic": false, "height": true}}}
+{"tool": "add_layer", "args": {"name": "Tint", "values": {"base_color": [0.34, 0.31, 0.27]}, "opacity": 1.0, "blend": {"base_color": "multiply"}, "channels": {"base_color": true, "roughness": false, "metallic": false, "height": false}}}
+{"tool": "add_layer", "args": {"name": "Furrows", "values": {"base_color": [0.08, 0.065, 0.055], "roughness": 0.97}, "mask": "black", "channels": {"base_color": true, "roughness": true, "metallic": false, "height": false}}}
+{"tool": "project_decal", "args": {"image": "scenes/trees/stencils/bark_pagoda_cavity.png", "layer": "Furrows", "mask": true, "mask_value": "white", "part": 0, "fit": "fill", "margin": 0.0}}
+{"tool": "add_layer", "args": {"name": "Ridges", "values": {"base_color": [0.5, 0.48, 0.44], "roughness": 0.92}, "opacity": 0.7, "mask": "black", "channels": {"base_color": true, "roughness": true, "metallic": false, "height": false}}}
+{"tool": "project_decal", "args": {"image": "scenes/trees/stencils/bark_pagoda_ridge.png", "layer": "Ridges", "mask": true, "mask_value": "white", "part": 0, "fit": "fill", "margin": 0.0}}
+{"tool": "add_layer", "args": {"name": "Tone", "values": {"base_color": [0.238, 0.217, 0.189]}, "opacity": 0.35, "channels": {"base_color": true, "roughness": false, "metallic": false, "height": false}, "mask": {"generator": "grunge", "amount": 0.45, "scale": 1.5, "softness": 0.4, "seed": 11}}}
+{"tool": "add_layer", "args": {"name": "Lichen", "values": {"base_color": [0.5, 0.55, 0.45], "roughness": 0.95, "height": 0.08}, "opacity": 0.45, "mask": {"generator": "spots", "amount": 0.154, "scale": 24.0, "softness": 0.15, "seed": 21}}}
+{"tool": "add_layer", "args": {"name": "Moss", "values": {"base_color": [0.12, 0.2, 0.06], "roughness": 0.98, "height": 0.12}, "opacity": 0.8, "mask": {"generator": "moss", "amount": 0.12, "scale": 3.0, "breakup": 0.8, "seed": 31}}}
+{"tool": "add_layer", "args": {"name": "Rain streaks", "material": "Grime", "opacity": 0.3, "channels": {"height": false, "metallic": false}, "mask": {"generator": "streaks", "amount": 0.35, "scale": 2.0, "softness": 0.3, "seed": 41}}}
+{"tool": "add_layer", "args": {"name": "City soot", "values": {"base_color": [0.06, 0.06, 0.06], "roughness": 0.9}, "opacity": 0.18, "channels": {"base_color": true, "roughness": true, "metallic": false, "height": false}, "mask": {"generator": "grunge", "amount": 0.4, "scale": 3.5, "softness": 0.35, "seed": 51}}}
+{"tool": "render", "args": {"yaw": 0, "pitch": 89.9, "zoom": 1.0, "width": 600, "height": 600, "background": false, "path": "target/trees/bark_pagoda_render.png"}}
+{"tool": "export_textures", "args": {"dir": "scenes/trees/textures/bark_pagoda", "name": "bark_pagoda", "preset": "separate"}}
+{"tool": "save_project", "args": {"path": "scenes/trees/projects/bark_pagoda.pigment"}}

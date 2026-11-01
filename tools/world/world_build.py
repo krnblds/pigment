@@ -11,6 +11,7 @@ Everything is pieces, never one giant mesh:
     World_<district>  instances (kit meshes, towers, port kit, props) by district
     World_Lights      lamps, alley lights, masts, aviation lights
 """
+import json
 import math
 import os
 import random
@@ -205,6 +206,11 @@ def build(world, out, root, town, load_tool, region=None, log=print, trees=True,
     exts = {"building_a": (-4.39, 4.39, -6.62, 5.17), "building_b": (-8.39, 8.39, -6.39, 6.17), "building_c": (-7.39, 7.39, -9.25, 7.12)}
     n_inst = 0
     var_mesh = {}
+    TB = None
+    if os.path.isfile(os.path.join(root, "assets", "trees", "index.json")):
+        import sys as _sys
+        _sys.path.insert(0, os.path.join(root, "tools", "trees"))
+        import tree_blender as TB
     for i in world["instances"]:
         x, y, z = i["pos"]
         if not inside(x, y, 10):
@@ -212,7 +218,9 @@ def build(world, out, root, town, load_tool, region=None, log=print, trees=True,
         a = i["asset"]
         if a.startswith("tree") and not trees:
             continue
-        if a in K:
+        if a.startswith("tree_") and TB is not None and a in TB.load_index(root)["variants"]:
+            data = TB.kit_mesh(root, a)          # tree kit (tools/trees): LOD0, named by its key
+        elif a in K:
             data = K[a].data
         elif os.path.isfile(os.path.join(props_dir, a + ".glb")):
             data = import_prop(props_dir, a)
@@ -234,6 +242,8 @@ def build(world, out, root, town, load_tool, region=None, log=print, trees=True,
                 vm = var_mats[mname]
             elif a.startswith(("tower_", "landmark_")) and ("facade_" + v) in KM:
                 vm = KM["facade_" + v]
+            elif data.name.startswith("PROP_"):
+                vm = prop_variant_material(props_dir, a, v, data, var_mats)
         if vm is not None:
             key = (data.name, vm.name)
             if key not in var_mesh:
@@ -245,7 +255,7 @@ def build(world, out, root, town, load_tool, region=None, log=print, trees=True,
         o = put(dcoll[d], a, data, (x, y, z), i["rot"], i.get("scale"))
         if v and vm is None and v in colours:
             o.color = (*colours[v], 1.0)
-        if a.startswith(("tree", "container", "warehouse", "crane")) and not v:
+        if a.startswith(("tree", "container", "warehouse", "crane")) and not v and not (TB is not None and a in TB.load_index(root)["variants"]):
             o.color = (0.4, 0.4, 0.4, 1)
         dep = i.get("footing")
         if dep:
@@ -335,6 +345,36 @@ def import_prop(props_dir, name):
         if o is not None:
             bpy.data.objects.remove(o)
     return me
+
+
+def prop_variant_material(props_dir, name, variant, me, cache):
+    """A props-kit variant (assets/props/index.json `variants`: albedo / emission swaps) as a copy
+    of the prop's material, e.g. the port containers' yard colours and the cranes' paints. None
+    when the prop has no such variant (the default look is used)."""
+    mname = f"PROP_{name}__{variant}"
+    if mname in cache:
+        return cache[mname]
+    idx = cache.get("_props_index")
+    if idx is None:
+        ip = os.path.join(props_dir, "index.json")
+        idx = cache["_props_index"] = json.load(open(ip, encoding="utf8")).get("props", {}) if os.path.isfile(ip) else {}
+    var = next((x for x in idx.get(name, {}).get("variants", []) if x.get("name") == variant and x.get("albedo")), None)
+    if var is None or not me.materials or me.materials[0] is None or not me.materials[0].use_nodes:
+        cache[mname] = None
+        return None
+    m = me.materials[0].copy()
+    m.name = mname
+    for n in m.node_tree.nodes:
+        if n.type != "TEX_IMAGE" or n.image is None:
+            continue
+        sock = {l.to_socket.name for l in n.outputs["Color"].links}
+        key = "albedo" if "Base Color" in sock else "emission" if any("Emission" in x for x in sock) else None
+        if key and var.get(key):
+            n.image = bpy.data.images.load(os.path.join(props_dir, var[key]), check_existing=True)
+            if key == "emission":
+                n.image.colorspace_settings.name = "sRGB"
+    cache[mname] = m
+    return m
 
 
 def sea_wall(w, H, T, mat):
@@ -558,7 +598,7 @@ def snap_instances(world, built, H, T, region, log):
             if h[0] is not None and h[0].z > g:
                 g = h[0].z
         return g
-    kinds = ("prop", "lamp", "pole", "signal", "mast", "tree")
+    kinds = ("prop", "lamp", "pole", "signal", "mast", "tree", "shrub")
     moved = dropped = 0
     stacks = {}
     keep = []
@@ -577,6 +617,9 @@ def snap_instances(world, built, H, T, region, log):
             continue
         g = ground(x, y, z)
         dz = g - z
+        if k == "shrub" and i.get("slot") == "planter":     # tree kit shrubs ride on their planter's soil
+            off = 0.93 * (i.get("scale") or [1, 1, 1])[2]
+            dz = ground(x, y, z - off) - (z - off)
         if k == "tree":
             dz = min(dz, 0.0) if dz < -0.05 else 0.0         # never hang in the air
             dz = g - 0.2 - z if g - 0.2 < z else 0.0

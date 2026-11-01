@@ -1,0 +1,1958 @@
+{
+ "variants": {
+  "tree_zelkova_a": {
+   "species": "zelkova",
+   "variant": 0,
+   "look": null,
+   "planter": false,
+   "title": "Japanese zelkova (Zelkova serrata, keyaki)",
+   "bark": "zelkova",
+   "files": {
+    "lod0": "tree_zelkova_a.glb",
+    "lod1": "tree_zelkova_a_lod1.glb",
+    "lod2": "tree_zelkova_a_lod2.glb",
+    "impostor_albedo": "impostors/atlas_albedo.png",
+    "impostor_normal": "impostors/atlas_normal.png"
+   },
+   "tris": {
+    "lod0": 4106,
+    "lod0_bark": 1806,
+    "lod0_leaf": 2300,
+    "lod1": 888,
+    "lod2": 8
+   },
+   "lod_m": {
+    "lod1": 38.0,
+    "lod2": 110.0,
+    "far": 650.0
+   },
+   "height": 12.43,
+   "crown_radius": 6.78,
+   "collider": {
+    "type": "capsule",
+    "radius": 0.271,
+    "height": 2.57,
+    "center": [
+     0.0,
+     0.0,
+     1.28
+    ]
+   },
+   "impostor": {
+    "cell": 4,
+    "size_v": 14.112,
+    "size_t": 14.112,
+    "height": 12.429,
+    "center": [
+     -0.673,
+     -0.032
+    ]
+   }
+  },
+  "tree_pine_a": {
+   "species": "pine",
+   "variant": 0,
+   "look": null,
+   "planter": false,
+   "title": "Japanese black pine (Pinus thunbergii, kuromatsu)",
+   "bark": "pine",
+   "files": {
+    "lod0": "tree_pine_a.glb",
+    "lod1": "tree_pine_a_lod1.glb",
+    "lod2": "tree_pine_a_lod2.glb",
+    "impostor_albedo": "impostors/atlas_albedo.png",
+    "impostor_normal": "impostors/atlas_normal.png"
+   },
+   "tris": {
+    "lod0": 4768,
+    "lod0_bark": 2568,
+    "lod0_leaf": 2200,
+    "lod1": 750,
+    "lod2": 8
+   },
+   "lod_m": {
+    "lod1": 38.0,
+    "lod2": 110.0,
+    "far": 650.0
+   },
+   "height": 11.72,
+   "crown_radius": 5.13,
+   "collider": {
+    "type": "capsule",
+    "radius": 0.205,
+    "height": 3.82,
+    "center": [
+     0.0,
+     0.0,
+     1.91
+    ]
+   },
+   "impostor": {
+    "cell": 18,
+    "size_v": 12.188,
+    "size_t": 10.663,
+    "height": 11.719,
+    "center": [
+     -3.097,
+     -2.318
+    ]
+   }
+  },
+  "tree_pagoda_a": {
+   "species": "pagoda",
+   "variant": 0,
+   "look": null,
+   "planter": false,
+   "title": "Japanese pagoda tree (Styphnolobium japonicum, 'Japanese acacia')",
+   "bark": "pagoda",
+   "files": {
+    "lod0": "tree_pagoda_a.glb",
+    "lod1": "tree_pagoda_a_lod1.glb",
+    "lod2": "tree_pagoda_a_lod2.glb",
+    "impostor_albedo": "impostors/atlas_albedo.png",
+    "impostor_normal": "impostors/atlas_normal.png"
+   },
+   "tris": {
+    "lod0": 4046,
+    "lod0_bark": 1746,
+    "lod0_leaf": 2300,
+    "lod1": 570,
+    "lod2": 8
+   },
+   "lod_m": {
+    "lod1": 38.0,
+    "lod2": 110.0,
+    "far": 650.0
+   },
+   "height": 14.08,
+   "crown_radius": 7.05,
+   "collider": {
+    "type": "capsule",
+    "radius": 0.173,
+    "height": 3.25,
+    "center": [
+     0.0,
+     0.0,
+     1.62
+    ]
+   },
+   "impostor": {
+    "cell": 0,
+    "size_v": 14.657,
+    "size_t": 14.657,
+    "height": 14.08,
+    "center": [
+     -1.565,
+     -0.839
+    ]
+   }
+  },
+  "tree_pagoda_b": {
+   "species": "pagoda",
+   "variant": 1,
+   "look": null,
+   "planter": false,
+   "title": "Japanese pagoda tree (Styphnolobium japonicum, 'Japanese acacia')",
+   "bark": "pagoda",
+   "files": {
+    "lod0": "tree_pagoda_b.glb",
+    "lod1": "tree_pagoda_b_lod1.glb",
+    "lod2": "tree_pagoda_b_lod2.glb",
+    "impostor_albedo": "impostors/atlas_albedo.png",
+    "impostor_normal": "impostors/atlas_normal.png"
+   },
+   "tris": {
+    "lod0": 5066,
+    "lod0_bark": 2766,
+    "lod0_leaf": 2300,
+    "lod1": 820,
+    "lod2": 8
+   },
+   "lod_m": {
+    "lod1": 38.0,
+    "lod2": 110.0,
+    "far": 650.0
+   },
+   "height": 14.94,
+   "crown_radius": 9.76,
+   "collider": {
+    "type": "capsule",
+    "radius": 0.205,
+    "height": 3.82,
+    "center": [
+     0.0,
+     0.0,
+     1.91
+    ]
+   },
+   "impostor": {
+    "cell": 1,
+    "size_v": 20.305,
+    "size_t": 20.305,
+    "height": 14.941,
+    "center": [
+     -1.252,
+     -2.334
+    ]
+   }
+  },
+  "tree_pagoda_c": {
+   "species": "pagoda",
+   "variant": 2,
+   "look": null,
+   "planter": false,
+   "title": "Japanese pagoda tree (Styphnolobium japonicum, 'Japanese acacia')",
+   "bark": "pagoda",
+   "files": {
+    "lod0": "tree_pagoda_c.glb",
+    "lod1": "tree_pagoda_c_lod1.glb",
+    "lod2": "tree_pagoda_c_lod2.glb",
+    "impostor_albedo": "impostors/atlas_albedo.png",
+    "impostor_normal": "impostors/atlas_normal.png"
+   },
+   "tris": {
+    "lod0": 4934,
+    "lod0_bark": 2634,
+    "lod0_leaf": 2300,
+    "lod1": 818,
+    "lod2": 8
+   },
+   "lod_m": {
+    "lod1": 38.0,
+    "lod2": 110.0,
+    "far": 650.0
+   },
+   "height": 12.99,
+   "crown_radius": 8.88,
+   "collider": {
+    "type": "capsule",
+    "radius": 0.182,
+    "height": 3.38,
+    "center": [
+     0.0,
+     0.0,
+     1.69
+    ]
+   },
+   "impostor": {
+    "cell": 2,
+    "size_v": 18.469,
+    "size_t": 18.469,
+    "height": 12.99,
+    "center": [
+     2.97,
+     -0.06
+    ]
+   }
+  },
+  "tree_pagoda_d": {
+   "species": "pagoda",
+   "variant": 3,
+   "look": null,
+   "planter": false,
+   "title": "Japanese pagoda tree (Styphnolobium japonicum, 'Japanese acacia')",
+   "bark": "pagoda",
+   "files": {
+    "lod0": "tree_pagoda_d.glb",
+    "lod1": "tree_pagoda_d_lod1.glb",
+    "lod2": "tree_pagoda_d_lod2.glb",
+    "impostor_albedo": "impostors/atlas_albedo.png",
+    "impostor_normal": "impostors/atlas_normal.png"
+   },
+   "tris": {
+    "lod0": 4142,
+    "lod0_bark": 1842,
+    "lod0_leaf": 2300,
+    "lod1": 594,
+    "lod2": 8
+   },
+   "lod_m": {
+    "lod1": 38.0,
+    "lod2": 110.0,
+    "far": 650.0
+   },
+   "height": 14.37,
+   "crown_radius": 10.37,
+   "collider": {
+    "type": "capsule",
+    "radius": 0.187,
+    "height": 3.5,
+    "center": [
+     0.0,
+     0.0,
+     1.75
+    ]
+   },
+   "impostor": {
+    "cell": 3,
+    "size_v": 21.574,
+    "size_t": 21.574,
+    "height": 14.37,
+    "center": [
+     0.531,
+     -1.545
+    ]
+   }
+  },
+  "tree_zelkova_b": {
+   "species": "zelkova",
+   "variant": 1,
+   "look": null,
+   "planter": false,
+   "title": "Japanese zelkova (Zelkova serrata, keyaki)",
+   "bark": "zelkova",
+   "files": {
+    "lod0": "tree_zelkova_b.glb",
+    "lod1": "tree_zelkova_b_lod1.glb",
+    "lod2": "tree_zelkova_b_lod2.glb",
+    "impostor_albedo": "impostors/atlas_albedo.png",
+    "impostor_normal": "impostors/atlas_normal.png"
+   },
+   "tris": {
+    "lod0": 4572,
+    "lod0_bark": 2272,
+    "lod0_leaf": 2300,
+    "lod1": 1068,
+    "lod2": 8
+   },
+   "lod_m": {
+    "lod1": 38.0,
+    "lod2": 110.0,
+    "far": 650.0
+   },
+   "height": 13.0,
+   "crown_radius": 9.76,
+   "collider": {
+    "type": "capsule",
+    "radius": 0.294,
+    "height": 2.82,
+    "center": [
+     0.0,
+     0.0,
+     1.41
+    ]
+   },
+   "impostor": {
+    "cell": 5,
+    "size_v": 20.3,
+    "size_t": 20.3,
+    "height": 12.996,
+    "center": [
+     -0.581,
+     -1.472
+    ]
+   }
+  },
+  "tree_zelkova_c": {
+   "species": "zelkova",
+   "variant": 2,
+   "look": null,
+   "planter": false,
+   "title": "Japanese zelkova (Zelkova serrata, keyaki)",
+   "bark": "zelkova",
+   "files": {
+    "lod0": "tree_zelkova_c.glb",
+    "lod1": "tree_zelkova_c_lod1.glb",
+    "lod2": "tree_zelkova_c_lod2.glb",
+    "impostor_albedo": "impostors/atlas_albedo.png",
+    "impostor_normal": "impostors/atlas_normal.png"
+   },
+   "tris": {
+    "lod0": 4188,
+    "lod0_bark": 1888,
+    "lod0_leaf": 2300,
+    "lod1": 924,
+    "lod2": 8
+   },
+   "lod_m": {
+    "lod1": 38.0,
+    "lod2": 110.0,
+    "far": 650.0
+   },
+   "height": 14.35,
+   "crown_radius": 9.26,
+   "collider": {
+    "type": "capsule",
+    "radius": 0.292,
+    "height": 2.81,
+    "center": [
+     0.0,
+     0.0,
+     1.4
+    ]
+   },
+   "impostor": {
+    "cell": 6,
+    "size_v": 19.269,
+    "size_t": 19.269,
+    "height": 14.35,
+    "center": [
+     1.728,
+     0.609
+    ]
+   }
+  },
+  "tree_zelkova_d": {
+   "species": "zelkova",
+   "variant": 3,
+   "look": null,
+   "planter": false,
+   "title": "Japanese zelkova (Zelkova serrata, keyaki)",
+   "bark": "zelkova",
+   "files": {
+    "lod0": "tree_zelkova_d.glb",
+    "lod1": "tree_zelkova_d_lod1.glb",
+    "lod2": "tree_zelkova_d_lod2.glb",
+    "impostor_albedo": "impostors/atlas_albedo.png",
+    "impostor_normal": "impostors/atlas_normal.png"
+   },
+   "tris": {
+    "lod0": 4442,
+    "lod0_bark": 2142,
+    "lod0_leaf": 2300,
+    "lod1": 1030,
+    "lod2": 8
+   },
+   "lod_m": {
+    "lod1": 38.0,
+    "lod2": 110.0,
+    "far": 650.0
+   },
+   "height": 14.8,
+   "crown_radius": 9.03,
+   "collider": {
+    "type": "capsule",
+    "radius": 0.307,
+    "height": 2.96,
+    "center": [
+     0.0,
+     0.0,
+     1.48
+    ]
+   },
+   "impostor": {
+    "cell": 7,
+    "size_v": 18.778,
+    "size_t": 18.778,
+    "height": 14.801,
+    "center": [
+     -1.64,
+     0.961
+    ]
+   }
+  },
+  "tree_ginkgo_a": {
+   "species": "ginkgo",
+   "variant": 0,
+   "look": null,
+   "planter": false,
+   "title": "Ginkgo (Ginkgo biloba, icho)",
+   "bark": "ginkgo",
+   "files": {
+    "lod0": "tree_ginkgo_a.glb",
+    "lod1": "tree_ginkgo_a_lod1.glb",
+    "lod2": "tree_ginkgo_a_lod2.glb",
+    "impostor_albedo": "impostors/atlas_albedo.png",
+    "impostor_normal": "impostors/atlas_normal.png"
+   },
+   "tris": {
+    "lod0": 3568,
+    "lod0_bark": 1468,
+    "lod0_leaf": 2100,
+    "lod1": 754,
+    "lod2": 8
+   },
+   "lod_m": {
+    "lod1": 38.0,
+    "lod2": 110.0,
+    "far": 650.0
+   },
+   "height": 14.64,
+   "crown_radius": 5.46,
+   "collider": {
+    "type": "capsule",
+    "radius": 0.218,
+    "height": 2.56,
+    "center": [
+     0.0,
+     0.0,
+     1.28
+    ]
+   },
+   "impostor": {
+    "cell": 8,
+    "size_v": 15.23,
+    "size_t": 11.353,
+    "height": 14.644,
+    "center": [
+     -0.463,
+     -0.599
+    ]
+   }
+  },
+  "tree_ginkgo_a_gold": {
+   "species": "ginkgo",
+   "variant": 0,
+   "look": "gold",
+   "planter": false,
+   "title": "Ginkgo (Ginkgo biloba, icho)",
+   "bark": "ginkgo",
+   "files": {
+    "lod0": "tree_ginkgo_a_gold.glb",
+    "lod1": "tree_ginkgo_a_gold_lod1.glb",
+    "lod2": "tree_ginkgo_a_gold_lod2.glb",
+    "impostor_albedo": "impostors/atlas_albedo.png",
+    "impostor_normal": "impostors/atlas_normal.png"
+   },
+   "tris": {
+    "lod0": 3568,
+    "lod0_bark": 1468,
+    "lod0_leaf": 2100,
+    "lod1": 754,
+    "lod2": 8
+   },
+   "lod_m": {
+    "lod1": 38.0,
+    "lod2": 110.0,
+    "far": 650.0
+   },
+   "height": 14.64,
+   "crown_radius": 5.46,
+   "collider": {
+    "type": "capsule",
+    "radius": 0.218,
+    "height": 2.56,
+    "center": [
+     0.0,
+     0.0,
+     1.28
+    ]
+   },
+   "impostor": {
+    "cell": 9,
+    "size_v": 15.23,
+    "size_t": 11.353,
+    "height": 14.644,
+    "center": [
+     -0.463,
+     -0.599
+    ]
+   }
+  },
+  "tree_ginkgo_b": {
+   "species": "ginkgo",
+   "variant": 1,
+   "look": null,
+   "planter": false,
+   "title": "Ginkgo (Ginkgo biloba, icho)",
+   "bark": "ginkgo",
+   "files": {
+    "lod0": "tree_ginkgo_b.glb",
+    "lod1": "tree_ginkgo_b_lod1.glb",
+    "lod2": "tree_ginkgo_b_lod2.glb",
+    "impostor_albedo": "impostors/atlas_albedo.png",
+    "impostor_normal": "impostors/atlas_normal.png"
+   },
+   "tris": {
+    "lod0": 3570,
+    "lod0_bark": 1470,
+    "lod0_leaf": 2100,
+    "lod1": 696,
+    "lod2": 8
+   },
+   "lod_m": {
+    "lod1": 38.0,
+    "lod2": 110.0,
+    "far": 650.0
+   },
+   "height": 16.38,
+   "crown_radius": 5.21,
+   "collider": {
+    "type": "capsule",
+    "radius": 0.268,
+    "height": 3.14,
+    "center": [
+     0.0,
+     0.0,
+     1.57
+    ]
+   },
+   "impostor": {
+    "cell": 10,
+    "size_v": 17.032,
+    "size_t": 10.831,
+    "height": 16.377,
+    "center": [
+     -4.64,
+     0.628
+    ]
+   }
+  },
+  "tree_ginkgo_b_gold": {
+   "species": "ginkgo",
+   "variant": 1,
+   "look": "gold",
+   "planter": false,
+   "title": "Ginkgo (Ginkgo biloba, icho)",
+   "bark": "ginkgo",
+   "files": {
+    "lod0": "tree_ginkgo_b_gold.glb",
+    "lod1": "tree_ginkgo_b_gold_lod1.glb",
+    "lod2": "tree_ginkgo_b_gold_lod2.glb",
+    "impostor_albedo": "impostors/atlas_albedo.png",
+    "impostor_normal": "impostors/atlas_normal.png"
+   },
+   "tris": {
+    "lod0": 3570,
+    "lod0_bark": 1470,
+    "lod0_leaf": 2100,
+    "lod1": 696,
+    "lod2": 8
+   },
+   "lod_m": {
+    "lod1": 38.0,
+    "lod2": 110.0,
+    "far": 650.0
+   },
+   "height": 16.38,
+   "crown_radius": 5.21,
+   "collider": {
+    "type": "capsule",
+    "radius": 0.268,
+    "height": 3.14,
+    "center": [
+     0.0,
+     0.0,
+     1.57
+    ]
+   },
+   "impostor": {
+    "cell": 11,
+    "size_v": 17.032,
+    "size_t": 10.831,
+    "height": 16.377,
+    "center": [
+     -4.64,
+     0.628
+    ]
+   }
+  },
+  "tree_ginkgo_c": {
+   "species": "ginkgo",
+   "variant": 2,
+   "look": null,
+   "planter": false,
+   "title": "Ginkgo (Ginkgo biloba, icho)",
+   "bark": "ginkgo",
+   "files": {
+    "lod0": "tree_ginkgo_c.glb",
+    "lod1": "tree_ginkgo_c_lod1.glb",
+    "lod2": "tree_ginkgo_c_lod2.glb",
+    "impostor_albedo": "impostors/atlas_albedo.png",
+    "impostor_normal": "impostors/atlas_normal.png"
+   },
+   "tris": {
+    "lod0": 3430,
+    "lod0_bark": 1330,
+    "lod0_leaf": 2100,
+    "lod1": 714,
+    "lod2": 8
+   },
+   "lod_m": {
+    "lod1": 38.0,
+    "lod2": 110.0,
+    "far": 650.0
+   },
+   "height": 12.34,
+   "crown_radius": 4.35,
+   "collider": {
+    "type": "capsule",
+    "radius": 0.205,
+    "height": 2.41,
+    "center": [
+     0.0,
+     0.0,
+     1.21
+    ]
+   },
+   "impostor": {
+    "cell": 12,
+    "size_v": 12.835,
+    "size_t": 9.056,
+    "height": 12.341,
+    "center": [
+     0.821,
+     1.996
+    ]
+   }
+  },
+  "tree_cherry_a": {
+   "species": "cherry",
+   "variant": 0,
+   "look": null,
+   "planter": false,
+   "title": "Cherry (Prunus x yedoensis, Somei-yoshino)",
+   "bark": "cherry",
+   "files": {
+    "lod0": "tree_cherry_a.glb",
+    "lod1": "tree_cherry_a_lod1.glb",
+    "lod2": "tree_cherry_a_lod2.glb",
+    "impostor_albedo": "impostors/atlas_albedo.png",
+    "impostor_normal": "impostors/atlas_normal.png"
+   },
+   "tris": {
+    "lod0": 4176,
+    "lod0_bark": 1876,
+    "lod0_leaf": 2300,
+    "lod1": 768,
+    "lod2": 8
+   },
+   "lod_m": {
+    "lod1": 38.0,
+    "lod2": 110.0,
+    "far": 650.0
+   },
+   "height": 8.64,
+   "crown_radius": 7.23,
+   "collider": {
+    "type": "capsule",
+    "radius": 0.133,
+    "height": 2.12,
+    "center": [
+     0.0,
+     0.0,
+     1.06
+    ]
+   },
+   "impostor": {
+    "cell": 13,
+    "size_v": 15.037,
+    "size_t": 15.037,
+    "height": 8.635,
+    "center": [
+     -0.917,
+     -1.395
+    ]
+   }
+  },
+  "tree_cherry_a_green": {
+   "species": "cherry",
+   "variant": 0,
+   "look": "green",
+   "planter": false,
+   "title": "Cherry (Prunus x yedoensis, Somei-yoshino)",
+   "bark": "cherry",
+   "files": {
+    "lod0": "tree_cherry_a_green.glb",
+    "lod1": "tree_cherry_a_green_lod1.glb",
+    "lod2": "tree_cherry_a_green_lod2.glb",
+    "impostor_albedo": "impostors/atlas_albedo.png",
+    "impostor_normal": "impostors/atlas_normal.png"
+   },
+   "tris": {
+    "lod0": 4176,
+    "lod0_bark": 1876,
+    "lod0_leaf": 2300,
+    "lod1": 768,
+    "lod2": 8
+   },
+   "lod_m": {
+    "lod1": 38.0,
+    "lod2": 110.0,
+    "far": 650.0
+   },
+   "height": 8.64,
+   "crown_radius": 7.23,
+   "collider": {
+    "type": "capsule",
+    "radius": 0.133,
+    "height": 2.12,
+    "center": [
+     0.0,
+     0.0,
+     1.06
+    ]
+   },
+   "impostor": {
+    "cell": 14,
+    "size_v": 15.037,
+    "size_t": 15.037,
+    "height": 8.635,
+    "center": [
+     -0.917,
+     -1.395
+    ]
+   }
+  },
+  "tree_cherry_b": {
+   "species": "cherry",
+   "variant": 1,
+   "look": null,
+   "planter": false,
+   "title": "Cherry (Prunus x yedoensis, Somei-yoshino)",
+   "bark": "cherry",
+   "files": {
+    "lod0": "tree_cherry_b.glb",
+    "lod1": "tree_cherry_b_lod1.glb",
+    "lod2": "tree_cherry_b_lod2.glb",
+    "impostor_albedo": "impostors/atlas_albedo.png",
+    "impostor_normal": "impostors/atlas_normal.png"
+   },
+   "tris": {
+    "lod0": 4120,
+    "lod0_bark": 1820,
+    "lod0_leaf": 2300,
+    "lod1": 728,
+    "lod2": 8
+   },
+   "lod_m": {
+    "lod1": 38.0,
+    "lod2": 110.0,
+    "far": 650.0
+   },
+   "height": 8.47,
+   "crown_radius": 8.63,
+   "collider": {
+    "type": "capsule",
+    "radius": 0.136,
+    "height": 2.21,
+    "center": [
+     0.0,
+     0.0,
+     1.11
+    ]
+   },
+   "impostor": {
+    "cell": 15,
+    "size_v": 17.959,
+    "size_t": 17.959,
+    "height": 8.467,
+    "center": [
+     1.239,
+     1.566
+    ]
+   }
+  },
+  "tree_cherry_b_green": {
+   "species": "cherry",
+   "variant": 1,
+   "look": "green",
+   "planter": false,
+   "title": "Cherry (Prunus x yedoensis, Somei-yoshino)",
+   "bark": "cherry",
+   "files": {
+    "lod0": "tree_cherry_b_green.glb",
+    "lod1": "tree_cherry_b_green_lod1.glb",
+    "lod2": "tree_cherry_b_green_lod2.glb",
+    "impostor_albedo": "impostors/atlas_albedo.png",
+    "impostor_normal": "impostors/atlas_normal.png"
+   },
+   "tris": {
+    "lod0": 4120,
+    "lod0_bark": 1820,
+    "lod0_leaf": 2300,
+    "lod1": 728,
+    "lod2": 8
+   },
+   "lod_m": {
+    "lod1": 38.0,
+    "lod2": 110.0,
+    "far": 650.0
+   },
+   "height": 8.47,
+   "crown_radius": 8.63,
+   "collider": {
+    "type": "capsule",
+    "radius": 0.136,
+    "height": 2.21,
+    "center": [
+     0.0,
+     0.0,
+     1.11
+    ]
+   },
+   "impostor": {
+    "cell": 16,
+    "size_v": 17.959,
+    "size_t": 17.959,
+    "height": 8.467,
+    "center": [
+     1.239,
+     1.566
+    ]
+   }
+  },
+  "tree_cherry_c": {
+   "species": "cherry",
+   "variant": 2,
+   "look": null,
+   "planter": false,
+   "title": "Cherry (Prunus x yedoensis, Somei-yoshino)",
+   "bark": "cherry",
+   "files": {
+    "lod0": "tree_cherry_c.glb",
+    "lod1": "tree_cherry_c_lod1.glb",
+    "lod2": "tree_cherry_c_lod2.glb",
+    "impostor_albedo": "impostors/atlas_albedo.png",
+    "impostor_normal": "impostors/atlas_normal.png"
+   },
+   "tris": {
+    "lod0": 4128,
+    "lod0_bark": 1828,
+    "lod0_leaf": 2300,
+    "lod1": 738,
+    "lod2": 8
+   },
+   "lod_m": {
+    "lod1": 38.0,
+    "lod2": 110.0,
+    "far": 650.0
+   },
+   "height": 8.18,
+   "crown_radius": 8.02,
+   "collider": {
+    "type": "capsule",
+    "radius": 0.139,
+    "height": 2.22,
+    "center": [
+     0.0,
+     0.0,
+     1.11
+    ]
+   },
+   "impostor": {
+    "cell": 17,
+    "size_v": 16.678,
+    "size_t": 16.678,
+    "height": 8.181,
+    "center": [
+     1.929,
+     -0.492
+    ]
+   }
+  },
+  "tree_pine_b": {
+   "species": "pine",
+   "variant": 1,
+   "look": null,
+   "planter": false,
+   "title": "Japanese black pine (Pinus thunbergii, kuromatsu)",
+   "bark": "pine",
+   "files": {
+    "lod0": "tree_pine_b.glb",
+    "lod1": "tree_pine_b_lod1.glb",
+    "lod2": "tree_pine_b_lod2.glb",
+    "impostor_albedo": "impostors/atlas_albedo.png",
+    "impostor_normal": "impostors/atlas_normal.png"
+   },
+   "tris": {
+    "lod0": 4918,
+    "lod0_bark": 2718,
+    "lod0_leaf": 2200,
+    "lod1": 808,
+    "lod2": 8
+   },
+   "lod_m": {
+    "lod1": 38.0,
+    "lod2": 110.0,
+    "far": 650.0
+   },
+   "height": 11.88,
+   "crown_radius": 6.12,
+   "collider": {
+    "type": "capsule",
+    "radius": 0.219,
+    "height": 4.07,
+    "center": [
+     0.0,
+     0.0,
+     2.03
+    ]
+   },
+   "impostor": {
+    "cell": 19,
+    "size_v": 12.729,
+    "size_t": 12.729,
+    "height": 11.883,
+    "center": [
+     -4.03,
+     -0.755
+    ]
+   }
+  },
+  "tree_pine_c": {
+   "species": "pine",
+   "variant": 2,
+   "look": null,
+   "planter": false,
+   "title": "Japanese black pine (Pinus thunbergii, kuromatsu)",
+   "bark": "pine",
+   "files": {
+    "lod0": "tree_pine_c.glb",
+    "lod1": "tree_pine_c_lod1.glb",
+    "lod2": "tree_pine_c_lod2.glb",
+    "impostor_albedo": "impostors/atlas_albedo.png",
+    "impostor_normal": "impostors/atlas_normal.png"
+   },
+   "tris": {
+    "lod0": 4888,
+    "lod0_bark": 2688,
+    "lod0_leaf": 2200,
+    "lod1": 594,
+    "lod2": 8
+   },
+   "lod_m": {
+    "lod1": 38.0,
+    "lod2": 110.0,
+    "far": 650.0
+   },
+   "height": 11.67,
+   "crown_radius": 4.17,
+   "collider": {
+    "type": "capsule",
+    "radius": 0.169,
+    "height": 3.15,
+    "center": [
+     0.0,
+     0.0,
+     1.58
+    ]
+   },
+   "impostor": {
+    "cell": 20,
+    "size_v": 12.138,
+    "size_t": 8.668,
+    "height": 11.671,
+    "center": [
+     1.689,
+     -1.266
+    ]
+   }
+  },
+  "tree_pine_d": {
+   "species": "pine",
+   "variant": 3,
+   "look": null,
+   "planter": false,
+   "title": "Japanese black pine (Pinus thunbergii, kuromatsu)",
+   "bark": "pine",
+   "files": {
+    "lod0": "tree_pine_d.glb",
+    "lod1": "tree_pine_d_lod1.glb",
+    "lod2": "tree_pine_d_lod2.glb",
+    "impostor_albedo": "impostors/atlas_albedo.png",
+    "impostor_normal": "impostors/atlas_normal.png"
+   },
+   "tris": {
+    "lod0": 4270,
+    "lod0_bark": 2070,
+    "lod0_leaf": 2200,
+    "lod1": 530,
+    "lod2": 8
+   },
+   "lod_m": {
+    "lod1": 38.0,
+    "lod2": 110.0,
+    "far": 650.0
+   },
+   "height": 10.16,
+   "crown_radius": 4.19,
+   "collider": {
+    "type": "capsule",
+    "radius": 0.162,
+    "height": 3.03,
+    "center": [
+     0.0,
+     0.0,
+     1.51
+    ]
+   },
+   "impostor": {
+    "cell": 21,
+    "size_v": 10.562,
+    "size_t": 8.706,
+    "height": 10.156,
+    "center": [
+     -2.147,
+     0.739
+    ]
+   }
+  },
+  "tree_cedar_a": {
+   "species": "cedar",
+   "variant": 0,
+   "look": null,
+   "planter": false,
+   "title": "Japanese cedar (Cryptomeria japonica, sugi)",
+   "bark": "cedar",
+   "files": {
+    "lod0": "tree_cedar_a.glb",
+    "lod1": "tree_cedar_a_lod1.glb",
+    "lod2": "tree_cedar_a_lod2.glb",
+    "impostor_albedo": "impostors/atlas_albedo.png",
+    "impostor_normal": "impostors/atlas_normal.png"
+   },
+   "tris": {
+    "lod0": 4754,
+    "lod0_bark": 2154,
+    "lod0_leaf": 2600,
+    "lod1": 580,
+    "lod2": 8
+   },
+   "lod_m": {
+    "lod1": 30.0,
+    "lod2": 85.0,
+    "far": 900.0
+   },
+   "height": 25.92,
+   "crown_radius": 6.76,
+   "collider": {
+    "type": "capsule",
+    "radius": 0.54,
+    "height": 6.0,
+    "center": [
+     0.0,
+     0.0,
+     3.0
+    ]
+   },
+   "impostor": {
+    "cell": 22,
+    "size_v": 26.957,
+    "size_t": 14.068,
+    "height": 25.92,
+    "center": [
+     -0.254,
+     -0.992
+    ]
+   }
+  },
+  "tree_cedar_b": {
+   "species": "cedar",
+   "variant": 1,
+   "look": null,
+   "planter": false,
+   "title": "Japanese cedar (Cryptomeria japonica, sugi)",
+   "bark": "cedar",
+   "files": {
+    "lod0": "tree_cedar_b.glb",
+    "lod1": "tree_cedar_b_lod1.glb",
+    "lod2": "tree_cedar_b_lod2.glb",
+    "impostor_albedo": "impostors/atlas_albedo.png",
+    "impostor_normal": "impostors/atlas_normal.png"
+   },
+   "tris": {
+    "lod0": 4772,
+    "lod0_bark": 2172,
+    "lod0_leaf": 2600,
+    "lod1": 590,
+    "lod2": 8
+   },
+   "lod_m": {
+    "lod1": 30.0,
+    "lod2": 85.0,
+    "far": 900.0
+   },
+   "height": 27.35,
+   "crown_radius": 6.88,
+   "collider": {
+    "type": "capsule",
+    "radius": 0.58,
+    "height": 6.0,
+    "center": [
+     0.0,
+     0.0,
+     3.0
+    ]
+   },
+   "impostor": {
+    "cell": 23,
+    "size_v": 28.446,
+    "size_t": 14.311,
+    "height": 27.352,
+    "center": [
+     -0.304,
+     -0.255
+    ]
+   }
+  },
+  "tree_cedar_c": {
+   "species": "cedar",
+   "variant": 2,
+   "look": null,
+   "planter": false,
+   "title": "Japanese cedar (Cryptomeria japonica, sugi)",
+   "bark": "cedar",
+   "files": {
+    "lod0": "tree_cedar_c.glb",
+    "lod1": "tree_cedar_c_lod1.glb",
+    "lod2": "tree_cedar_c_lod2.glb",
+    "impostor_albedo": "impostors/atlas_albedo.png",
+    "impostor_normal": "impostors/atlas_normal.png"
+   },
+   "tris": {
+    "lod0": 4724,
+    "lod0_bark": 2124,
+    "lod0_leaf": 2600,
+    "lod1": 580,
+    "lod2": 8
+   },
+   "lod_m": {
+    "lod1": 30.0,
+    "lod2": 85.0,
+    "far": 900.0
+   },
+   "height": 25.85,
+   "crown_radius": 6.49,
+   "collider": {
+    "type": "capsule",
+    "radius": 0.531,
+    "height": 6.0,
+    "center": [
+     0.0,
+     0.0,
+     3.0
+    ]
+   },
+   "impostor": {
+    "cell": 24,
+    "size_v": 26.885,
+    "size_t": 13.493,
+    "height": 25.851,
+    "center": [
+     0.631,
+     0.262
+    ]
+   }
+  },
+  "tree_cedar_d": {
+   "species": "cedar",
+   "variant": 3,
+   "look": null,
+   "planter": false,
+   "title": "Japanese cedar (Cryptomeria japonica, sugi)",
+   "bark": "cedar",
+   "files": {
+    "lod0": "tree_cedar_d.glb",
+    "lod1": "tree_cedar_d_lod1.glb",
+    "lod2": "tree_cedar_d_lod2.glb",
+    "impostor_albedo": "impostors/atlas_albedo.png",
+    "impostor_normal": "impostors/atlas_normal.png"
+   },
+   "tris": {
+    "lod0": 4676,
+    "lod0_bark": 2076,
+    "lod0_leaf": 2600,
+    "lod1": 580,
+    "lod2": 8
+   },
+   "lod_m": {
+    "lod1": 30.0,
+    "lod2": 85.0,
+    "far": 900.0
+   },
+   "height": 25.44,
+   "crown_radius": 6.45,
+   "collider": {
+    "type": "capsule",
+    "radius": 0.521,
+    "height": 6.0,
+    "center": [
+     0.0,
+     0.0,
+     3.0
+    ]
+   },
+   "impostor": {
+    "cell": 25,
+    "size_v": 26.461,
+    "size_t": 13.423,
+    "height": 25.444,
+    "center": [
+     0.334,
+     0.536
+    ]
+   }
+  },
+  "tree_palm_a": {
+   "species": "palm",
+   "variant": 0,
+   "look": null,
+   "planter": false,
+   "title": "Canary Island date palm (Phoenix canariensis)",
+   "bark": "palm",
+   "files": {
+    "lod0": "tree_palm_a.glb",
+    "lod1": "tree_palm_a_lod1.glb",
+    "lod2": "tree_palm_a_lod2.glb",
+    "impostor_albedo": "impostors/atlas_albedo.png",
+    "impostor_normal": "impostors/atlas_normal.png"
+   },
+   "tris": {
+    "lod0": 3300,
+    "lod0_bark": 2268,
+    "lod0_leaf": 1032,
+    "lod1": 478,
+    "lod2": 8
+   },
+   "lod_m": {
+    "lod1": 45.0,
+    "lod2": 130.0,
+    "far": 650.0
+   },
+   "height": 12.34,
+   "crown_radius": 4.67,
+   "collider": {
+    "type": "capsule",
+    "radius": 0.298,
+    "height": 6.0,
+    "center": [
+     0.0,
+     0.0,
+     3.0
+    ]
+   },
+   "impostor": {
+    "cell": 26,
+    "size_v": 12.834,
+    "size_t": 9.712,
+    "height": 12.34,
+    "center": [
+     1.814,
+     0.353
+    ]
+   }
+  },
+  "tree_palm_b": {
+   "species": "palm",
+   "variant": 1,
+   "look": null,
+   "planter": false,
+   "title": "Canary Island date palm (Phoenix canariensis)",
+   "bark": "palm",
+   "files": {
+    "lod0": "tree_palm_b.glb",
+    "lod1": "tree_palm_b_lod1.glb",
+    "lod2": "tree_palm_b_lod2.glb",
+    "impostor_albedo": "impostors/atlas_albedo.png",
+    "impostor_normal": "impostors/atlas_normal.png"
+   },
+   "tris": {
+    "lod0": 3792,
+    "lod0_bark": 2556,
+    "lod0_leaf": 1236,
+    "lod1": 532,
+    "lod2": 8
+   },
+   "lod_m": {
+    "lod1": 45.0,
+    "lod2": 130.0,
+    "far": 650.0
+   },
+   "height": 12.33,
+   "crown_radius": 4.6,
+   "collider": {
+    "type": "capsule",
+    "radius": 0.288,
+    "height": 6.0,
+    "center": [
+     0.0,
+     0.0,
+     3.0
+    ]
+   },
+   "impostor": {
+    "cell": 27,
+    "size_v": 12.825,
+    "size_t": 9.562,
+    "height": 12.331,
+    "center": [
+     0.291,
+     -1.023
+    ]
+   }
+  },
+  "tree_palm_c": {
+   "species": "palm",
+   "variant": 2,
+   "look": null,
+   "planter": false,
+   "title": "Canary Island date palm (Phoenix canariensis)",
+   "bark": "palm",
+   "files": {
+    "lod0": "tree_palm_c.glb",
+    "lod1": "tree_palm_c_lod1.glb",
+    "lod2": "tree_palm_c_lod2.glb",
+    "impostor_albedo": "impostors/atlas_albedo.png",
+    "impostor_normal": "impostors/atlas_normal.png"
+   },
+   "tris": {
+    "lod0": 3446,
+    "lod0_bark": 2346,
+    "lod0_leaf": 1100,
+    "lod1": 496,
+    "lod2": 8
+   },
+   "lod_m": {
+    "lod1": 45.0,
+    "lod2": 130.0,
+    "far": 650.0
+   },
+   "height": 12.1,
+   "crown_radius": 4.31,
+   "collider": {
+    "type": "capsule",
+    "radius": 0.296,
+    "height": 6.0,
+    "center": [
+     0.0,
+     0.0,
+     3.0
+    ]
+   },
+   "impostor": {
+    "cell": 28,
+    "size_v": 12.587,
+    "size_t": 8.972,
+    "height": 12.102,
+    "center": [
+     -1.85,
+     1.384
+    ]
+   }
+  },
+  "tree_azalea_a": {
+   "species": "azalea",
+   "variant": 0,
+   "look": null,
+   "planter": false,
+   "title": "Azalea (Rhododendron, tsutsuji)",
+   "bark": "cherry",
+   "files": {
+    "lod0": "tree_azalea_a.glb",
+    "lod1": "tree_azalea_a_lod1.glb",
+    "lod2": "tree_azalea_a_lod2.glb",
+    "impostor_albedo": "impostors/atlas_albedo.png",
+    "impostor_normal": "impostors/atlas_normal.png"
+   },
+   "tris": {
+    "lod0": 416,
+    "lod0_bark": 116,
+    "lod0_leaf": 300,
+    "lod1": 110,
+    "lod2": 8
+   },
+   "lod_m": {
+    "lod1": 18.0,
+    "lod2": 55.0,
+    "far": 140.0
+   },
+   "height": 1.27,
+   "crown_radius": 0.91,
+   "collider": {
+    "type": "box",
+    "size": [
+     1.4,
+     1.2,
+     1.0
+    ],
+    "center": [
+     0.0,
+     0.0,
+     0.5
+    ]
+   },
+   "impostor": {
+    "cell": 29,
+    "size_v": 1.895,
+    "size_t": 1.895,
+    "height": 1.27,
+    "center": [
+     0.057,
+     0.013
+    ]
+   }
+  },
+  "tree_azalea_a_bloom": {
+   "species": "azalea",
+   "variant": 0,
+   "look": "bloom",
+   "planter": false,
+   "title": "Azalea (Rhododendron, tsutsuji)",
+   "bark": "cherry",
+   "files": {
+    "lod0": "tree_azalea_a_bloom.glb",
+    "lod1": "tree_azalea_a_bloom_lod1.glb",
+    "lod2": "tree_azalea_a_bloom_lod2.glb",
+    "impostor_albedo": "impostors/atlas_albedo.png",
+    "impostor_normal": "impostors/atlas_normal.png"
+   },
+   "tris": {
+    "lod0": 416,
+    "lod0_bark": 116,
+    "lod0_leaf": 300,
+    "lod1": 110,
+    "lod2": 8
+   },
+   "lod_m": {
+    "lod1": 18.0,
+    "lod2": 55.0,
+    "far": 140.0
+   },
+   "height": 1.27,
+   "crown_radius": 0.91,
+   "collider": {
+    "type": "box",
+    "size": [
+     1.4,
+     1.2,
+     1.0
+    ],
+    "center": [
+     0.0,
+     0.0,
+     0.5
+    ]
+   },
+   "impostor": {
+    "cell": 30,
+    "size_v": 1.895,
+    "size_t": 1.895,
+    "height": 1.27,
+    "center": [
+     0.057,
+     0.013
+    ]
+   }
+  },
+  "tree_azalea_b": {
+   "species": "azalea",
+   "variant": 1,
+   "look": null,
+   "planter": false,
+   "title": "Azalea (Rhododendron, tsutsuji)",
+   "bark": "cherry",
+   "files": {
+    "lod0": "tree_azalea_b.glb",
+    "lod1": "tree_azalea_b_lod1.glb",
+    "lod2": "tree_azalea_b_lod2.glb",
+    "impostor_albedo": "impostors/atlas_albedo.png",
+    "impostor_normal": "impostors/atlas_normal.png"
+   },
+   "tris": {
+    "lod0": 416,
+    "lod0_bark": 116,
+    "lod0_leaf": 300,
+    "lod1": 110,
+    "lod2": 8
+   },
+   "lod_m": {
+    "lod1": 18.0,
+    "lod2": 55.0,
+    "far": 140.0
+   },
+   "height": 1.17,
+   "crown_radius": 0.96,
+   "collider": {
+    "type": "box",
+    "size": [
+     1.4,
+     1.2,
+     1.0
+    ],
+    "center": [
+     0.0,
+     0.0,
+     0.5
+    ]
+   },
+   "impostor": {
+    "cell": 31,
+    "size_v": 1.988,
+    "size_t": 1.988,
+    "height": 1.169,
+    "center": [
+     0.016,
+     0.04
+    ]
+   }
+  },
+  "tree_azalea_b_bloom": {
+   "species": "azalea",
+   "variant": 1,
+   "look": "bloom",
+   "planter": false,
+   "title": "Azalea (Rhododendron, tsutsuji)",
+   "bark": "cherry",
+   "files": {
+    "lod0": "tree_azalea_b_bloom.glb",
+    "lod1": "tree_azalea_b_bloom_lod1.glb",
+    "lod2": "tree_azalea_b_bloom_lod2.glb",
+    "impostor_albedo": "impostors/atlas_albedo.png",
+    "impostor_normal": "impostors/atlas_normal.png"
+   },
+   "tris": {
+    "lod0": 416,
+    "lod0_bark": 116,
+    "lod0_leaf": 300,
+    "lod1": 110,
+    "lod2": 8
+   },
+   "lod_m": {
+    "lod1": 18.0,
+    "lod2": 55.0,
+    "far": 140.0
+   },
+   "height": 1.17,
+   "crown_radius": 0.96,
+   "collider": {
+    "type": "box",
+    "size": [
+     1.4,
+     1.2,
+     1.0
+    ],
+    "center": [
+     0.0,
+     0.0,
+     0.5
+    ]
+   },
+   "impostor": {
+    "cell": 32,
+    "size_v": 1.988,
+    "size_t": 1.988,
+    "height": 1.169,
+    "center": [
+     0.016,
+     0.04
+    ]
+   }
+  },
+  "tree_box_a": {
+   "species": "box",
+   "variant": 0,
+   "look": null,
+   "planter": false,
+   "title": "Box hedge (Buxus / Ilex crenata)",
+   "bark": "cherry",
+   "files": {
+    "lod0": "tree_box_a.glb",
+    "lod1": "tree_box_a_lod1.glb",
+    "lod2": "tree_box_a_lod2.glb",
+    "impostor_albedo": "impostors/atlas_albedo.png",
+    "impostor_normal": "impostors/atlas_normal.png"
+   },
+   "tris": {
+    "lod0": 408,
+    "lod0_bark": 68,
+    "lod0_leaf": 340,
+    "lod1": 130,
+    "lod2": 8
+   },
+   "lod_m": {
+    "lod1": 18.0,
+    "lod2": 55.0,
+    "far": 140.0
+   },
+   "height": 0.82,
+   "crown_radius": 1.15,
+   "collider": {
+    "type": "box",
+    "size": [
+     1.9,
+     0.6,
+     0.6
+    ],
+    "center": [
+     0.0,
+     0.0,
+     0.3
+    ]
+   },
+   "impostor": {
+    "cell": 33,
+    "size_v": 2.395,
+    "size_t": 2.395,
+    "height": 0.819,
+    "center": [
+     0.008,
+     -0.0
+    ]
+   }
+  },
+  "tree_planter_box": {
+   "species": "box",
+   "variant": 0,
+   "look": null,
+   "planter": true,
+   "title": "Box hedge (Buxus / Ilex crenata)",
+   "bark": "cherry",
+   "files": {
+    "lod0": "tree_planter_box.glb",
+    "lod1": "tree_planter_box_lod1.glb",
+    "lod2": "tree_planter_box_lod2.glb",
+    "impostor_albedo": "impostors/atlas_albedo.png",
+    "impostor_normal": "impostors/atlas_normal.png"
+   },
+   "tris": {
+    "lod0": 296,
+    "lod0_bark": 56,
+    "lod0_leaf": 240,
+    "lod1": 98,
+    "lod2": 8
+   },
+   "lod_m": {
+    "lod1": 18.0,
+    "lod2": 55.0,
+    "far": 140.0
+   },
+   "height": 0.7,
+   "crown_radius": 0.92,
+   "collider": {
+    "type": "box",
+    "size": [
+     1.42,
+     0.44,
+     0.42
+    ],
+    "center": [
+     0.0,
+     0.0,
+     0.21
+    ]
+   },
+   "impostor": {
+    "cell": 34,
+    "size_v": 1.924,
+    "size_t": 1.924,
+    "height": 0.696,
+    "center": [
+     0.012,
+     0.052
+    ]
+   }
+  },
+  "tree_planter_azalea": {
+   "species": "azalea",
+   "variant": 0,
+   "look": "bloom",
+   "planter": true,
+   "title": "Azalea (Rhododendron, tsutsuji)",
+   "bark": "cherry",
+   "files": {
+    "lod0": "tree_planter_azalea.glb",
+    "lod1": "tree_planter_azalea_lod1.glb",
+    "lod2": "tree_planter_azalea_lod2.glb",
+    "impostor_albedo": "impostors/atlas_albedo.png",
+    "impostor_normal": "impostors/atlas_normal.png"
+   },
+   "tris": {
+    "lod0": 276,
+    "lod0_bark": 56,
+    "lod0_leaf": 220,
+    "lod1": 90,
+    "lod2": 8
+   },
+   "lod_m": {
+    "lod1": 18.0,
+    "lod2": 55.0,
+    "far": 140.0
+   },
+   "height": 0.66,
+   "crown_radius": 0.92,
+   "collider": {
+    "type": "box",
+    "size": [
+     1.42,
+     0.46,
+     0.5
+    ],
+    "center": [
+     0.0,
+     0.0,
+     0.25
+    ]
+   },
+   "impostor": {
+    "cell": 35,
+    "size_v": 1.906,
+    "size_t": 1.906,
+    "height": 0.656,
+    "center": [
+     0.039,
+     0.017
+    ]
+   }
+  },
+  "tree_grate": {
+   "species": "grate",
+   "kind": "grate",
+   "variant": 0,
+   "look": null,
+   "planter": false,
+   "title": "Cast-iron tree grate (1.3 m)",
+   "bark": null,
+   "files": {
+    "lod0": "tree_grate.glb"
+   },
+   "lods": 1,
+   "tris": {
+    "lod0": 1920
+   },
+   "lod_m": {
+    "lod1": 90.0,
+    "lod2": 90.0,
+    "far": 90.0
+   },
+   "height": 0.035,
+   "crown_radius": 0.92,
+   "collider": {
+    "type": "none"
+   },
+   "material": {
+    "name": "TreeGrate",
+    "color": [
+     0.05,
+     0.045,
+     0.04
+    ],
+    "metallic": 0.8,
+    "roughness": 0.55
+   }
+  }
+ },
+ "version": 1,
+ "generator": "tools/trees (treegen.py + build_trees.py), textures tools/trees/tree_textures.py (Pigment)",
+ "coords": "glTF: y up, the root at the origin (the trunk goes 0.35 m below 0 into the ground)",
+ "materials": {
+  "bark": {
+   "name": "TreeBark_<species>",
+   "albedo": "textures/bark_<species>_albedo.jpg",
+   "normal": "textures/bark_<species>_normal.jpg",
+   "roughness": "textures/bark_<species>_rough.jpg",
+   "uv": "tiling: 1 UV unit = the species' bark tile (BARK in species.py)"
+  },
+  "leaves": {
+   "name": "TreeLeaves",
+   "albedo": "textures/leaves_albedo.png (alpha = cut-out)",
+   "normal": "textures/leaves_normal.jpg",
+   "mask": "textures/leaves_mask.jpg (R roughness, G translucency)",
+   "alpha_scissor": 0.42
+  },
+  "impostor": {
+   "name": "TreeImpostor_<key>",
+   "albedo": "impostors/atlas_albedo.png (rgb albedo x occlusion, a = cut-out)",
+   "normal": "impostors/atlas_normal.png (object-space normal, Blender z up, encoded 0..1)",
+   "layout": "per variant a 4-view strip (azimuth 0, 60, 120 deg, then top) at index variants.<key>.impostor.cell; the LOD2 glb UVs span the strip"
+  }
+ },
+ "attributes": {
+  "COLOR_0.r": "branch flex",
+  "COLOR_0.g": "phase",
+  "COLOR_0.b": "leaf flutter (0 stem .. 1 tip)",
+  "COLOR_0.a": "crown occlusion",
+  "TEXCOORD_1.x": "height / tree height",
+  "TEXCOORD_1.y": "0 bark, 1 leaf card, 2 impostor"
+ },
+ "lods": {
+  "default": {
+   "lod1": 38.0,
+   "lod2": 110.0,
+   "far": 650.0
+  },
+  "cedar": {
+   "lod1": 30.0,
+   "lod2": 85.0,
+   "far": 900.0
+  },
+  "palm": {
+   "lod1": 45.0,
+   "lod2": 130.0,
+   "far": 650.0
+  },
+  "shrub": {
+   "lod1": 18.0,
+   "lod2": 55.0,
+   "far": 140.0
+  }
+ },
+ "species": {
+  "pagoda": {
+   "title": "Japanese pagoda tree (Styphnolobium japonicum, 'Japanese acacia')",
+   "role": "avenue / park: a broad rounded crown on a short trunk",
+   "bark": "pagoda",
+   "variants": 4,
+   "looks": []
+  },
+  "zelkova": {
+   "title": "Japanese zelkova (Zelkova serrata, keyaki)",
+   "role": "the Tokyo avenue tree: a vase of upright leaders on a short trunk",
+   "bark": "zelkova",
+   "variants": 4,
+   "looks": []
+  },
+  "ginkgo": {
+   "title": "Ginkgo (Ginkgo biloba, icho)",
+   "role": "avenue tree: a tall upright, slightly irregular crown; golden in autumn",
+   "bark": "ginkgo",
+   "variants": 3,
+   "looks": [
+    "gold"
+   ]
+  },
+  "cherry": {
+   "title": "Cherry (Prunus x yedoensis, Somei-yoshino)",
+   "role": "parks and temple grounds: low, wide, arching scaffolds",
+   "bark": "cherry",
+   "variants": 3,
+   "looks": [
+    "green"
+   ]
+  },
+  "pine": {
+   "title": "Japanese black pine (Pinus thunbergii, kuromatsu)",
+   "role": "shore, mountain road and lookout: a leaning, windswept trunk with cloud pads",
+   "bark": "pine",
+   "variants": 4,
+   "looks": []
+  },
+  "cedar": {
+   "title": "Japanese cedar (Cryptomeria japonica, sugi)",
+   "role": "mountain forest: tall straight trunk, narrow conical crown",
+   "bark": "cedar",
+   "variants": 4,
+   "looks": []
+  },
+  "palm": {
+   "title": "Canary Island date palm (Phoenix canariensis)",
+   "role": "the corporate island: a ringed trunk and a crown of arching pinnate fronds",
+   "bark": "palm",
+   "variants": 3,
+   "looks": []
+  },
+  "azalea": {
+   "title": "Azalea (Rhododendron, tsutsuji)",
+   "role": "planters, park borders: dense clipped mounds, magenta in bloom",
+   "bark": "cherry",
+   "variants": 2,
+   "looks": [
+    "bloom"
+   ]
+  },
+  "box": {
+   "title": "Box hedge (Buxus / Ilex crenata)",
+   "role": "clipped hedges and planters",
+   "bark": "cherry",
+   "variants": 1,
+   "looks": []
+  }
+ },
+ "impostor_atlas": {
+  "albedo": "impostors/atlas_albedo.png",
+  "normal": "impostors/atlas_normal.png",
+  "cols": 4,
+  "rows": 16,
+  "strip": "4 views (azimuth 0, 60, 120 deg, top) of 1024 / 4 px; rows top-down in the image"
+ }
+}
