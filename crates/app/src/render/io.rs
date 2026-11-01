@@ -19,7 +19,9 @@ fn unorm16(v: f32) -> u16 {
 
 pub fn read_layer(device: &wgpu::Device, queue: &wgpu::Queue, ts: &TexSet, res: ResId) -> Option<LayerPixels> {
     let l = ts.layers.get(&res)?;
-    let rb = |i: usize| gpu::readback(device, queue, &l.ch[i]);
+    // all six channels in one GPU round trip
+    let mut chs: Vec<Option<Vec<u8>>> = gpu::readback_many(device, queue, &l.ch.each_ref()).into_iter().map(Some).collect();
+    let mut rb = |i: usize| chs[i].take().expect("each channel is read once");
     let h = rb(3);
     let height: Vec<u16> = f16_bytes_to_f32(&h)
         .enumerate()

@@ -1317,6 +1317,13 @@ impl PigmentApp {
                     ui.label("Size");
                     ui.label(format!("{0} × {0} px", self.ts.res));
                     ui.end_row();
+                    ui.label("PNG compression");
+                    egui::ComboBox::from_id_salt("png compression").selected_text(self.export_compression.id()).show_ui(ui, |ui| {
+                        for c in export::Compression::ALL {
+                            ui.selectable_value(&mut self.export_compression, c, c.id());
+                        }
+                    });
+                    ui.end_row();
                 });
                 ui.add_space(4.0);
                 card(ui, CARD, |ui| {

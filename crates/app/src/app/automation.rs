@@ -1026,8 +1026,16 @@ fn apply_generator_fields(g: &mut Generator, m: &Value) {
 mod tests {
     use super::*;
 
+    /// Sessions allocate a full 2K texture set on creation; running them all
+    /// at once can exhaust VRAM on a shared GPU, so they take turns.
+    fn gpu_lock() -> std::sync::MutexGuard<'static, ()> {
+        static L: std::sync::Mutex<()> = std::sync::Mutex::new(());
+        L.lock().unwrap_or_else(|e| e.into_inner())
+    }
+
     #[test]
     fn scripted_session_builds_a_material_and_exports() {
+        let _gpu = gpu_lock();
         let Ok(mut s) = Session::new() else { return };
         let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
         let mesh = root.join("assets/ammo_box.glb");
@@ -1053,6 +1061,7 @@ mod tests {
 
     #[test]
     fn neon_glows_in_material_export_and_brush() {
+        let _gpu = gpu_lock();
         let Ok(mut s) = Session::new() else { return };
         let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
         s.new_project(&json!({ "mesh": root.join("assets/neon_tubes.glb"), "resolution": 512, "material": "Neon pink" })).unwrap();
@@ -1090,6 +1099,7 @@ mod tests {
     /// used to smear corner curvature across the flat side panel.
     #[test]
     fn flat_panels_stay_flat_next_to_sliver_triangles() {
+        let _gpu = gpu_lock();
         let Ok(mut s) = Session::new() else { return };
         let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
         s.new_project(&json!({ "mesh": root.join("assets/vending_machine.glb"), "resolution": 1024 })).unwrap();
@@ -1107,6 +1117,7 @@ mod tests {
 
     #[test]
     fn part_masks_limit_a_layer_to_the_picked_pieces() {
+        let _gpu = gpu_lock();
         let Ok(mut s) = Session::new() else { return };
         let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
         s.new_project(&json!({ "mesh": root.join("assets/ammo_box.glb"), "resolution": 512, "material": "Matte black" })).unwrap();
@@ -1131,6 +1142,7 @@ mod tests {
 
     #[test]
     fn part_queries_project_info_and_named_errors() {
+        let _gpu = gpu_lock();
         let Ok(mut s) = Session::new() else { return };
         let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
         s.new_project(&json!({ "mesh": root.join("assets/ammo_box.glb"), "resolution": 512 })).unwrap();
