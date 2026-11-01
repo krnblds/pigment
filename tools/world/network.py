@@ -418,7 +418,10 @@ class Network:
         T = self.T
         for n in self.alive_nodes():
             if n.kind == "plaza":
-                n.J = Plaza(n, self, self.plaza_radius)
+                e, k = n.ends[0]
+                n.geom = {"plaza": {"angle": self.arm_angle(e, k), "R": self.plaza_radius, "half": self.classes["street"]["half"]}}
+                n.J = Plaza(f"Lookout{n.id}", (n.pos.x, n.pos.y), n.z, n.geom["plaza"]["angle"], self.plaza_radius, n.geom["plaza"]["half"])
+                n.arm_of = {(e.id, k): 0}
                 continue
             if n.kind == "transition":
                 continue
@@ -428,8 +431,9 @@ class Network:
                 arms.append(self.arm_angle(e, k))
                 halves.append(self.classes[self.end_class(e, k)]["half"])
             wide = max(halves) > 6
-            n.J = T["Junction"](f"J{n.id}", (n.pos.x, n.pos.y), n.z, arms, r_concave=9.0 if wide else 7.0,
-                                r_convex=4.0, halves=halves, min_arm=12.0)
+            n.geom = {"arms_deg": arms, "halves": halves, "r_concave": 9.0 if wide else 7.0, "r_convex": 4.0, "min_arm": 12.0}
+            n.J = T["Junction"](f"J{n.id}", (n.pos.x, n.pos.y), n.z, arms, r_concave=n.geom["r_concave"],
+                                r_convex=n.geom["r_convex"], halves=halves, min_arm=n.geom["min_arm"])
             n.arm_of = {(e.id, k): i for i, (e, k) in enumerate(n.ends)}
 
     def end_class(self, e, k):
@@ -727,19 +731,16 @@ class Plaza:
     interface as blender_town.Junction (pos, z, dirs, L, half, corners,
     corner_line) so town_roads.build_junction() builds it."""
 
-    def __init__(self, node, net, R):
-        e, k = node.ends[0]
-        a = net.arm_angle(e, k)
-        self.name = f"Lookout{node.id}"
-        self.pos = node.pos.copy()
-        self.z = node.z
-        self.arms = [a]
-        self.dirs = [Vector((math.cos(math.radians(a)), math.sin(math.radians(a))))]
+    def __init__(self, name, pos, z, angle, R, half):
+        self.name = name
+        self.pos = Vector((pos[0], pos[1]))
+        self.z = z
+        self.arms = [angle]
+        self.dirs = [Vector((math.cos(math.radians(angle)), math.sin(math.radians(angle))))]
         self.R = R
-        self.half = [net.classes["street"]["half"]]
+        self.half = [half]
         self.L = [R + 8.0]
         self.corners = [{"ia": 0, "ib": 0, "theta": 360.0}]
-        node.arm_of = {(e.id, k): 0}
 
     def corner_line(self, c, d):
         a = self.dirs[0]

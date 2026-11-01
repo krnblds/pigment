@@ -138,6 +138,27 @@ COLLIDE = [  # (name prefix, category, collision)
     ("WallRailings", "rail", "none"),
     ("RailPosts", "rail", "none"),
     ("Fence", "fence", "box"),
+    # open world (tools/world/world_export.py)
+    ("Terrain_", "terrain", "trimesh"),
+    ("SeaFloor", "terrain", "none"),
+    ("Water", "water", "none"),
+    ("Decals_", "decal", "none"),
+    ("JDecals_", "decal", "none"),
+    ("Girder_", "bridge", "trimesh"),
+    ("Bridge_", "bridge", "trimesh"),
+    ("SeaWall", "wall", "trimesh"),
+    ("LookoutRail", "rail", "none"),
+    ("tower_", "building", "box"),
+    ("landmark_", "building", "box"),
+    ("warehouse_", "building", "box"),
+    ("container", "container", "box"),
+    ("crane_sts", "crane", "trimesh"),
+    ("light_mast", "pole", "cyl"),
+    ("signal_pole", "signal", "cyl"),
+    ("tree_", "tree", "cyl"),
+    ("overhead_sign", "sign", "none"),
+    ("street_lamp", "lamp", "cyl"),
+    ("power_pole", "pole", "cyl"),
 ]
 
 
@@ -246,7 +267,34 @@ def main():
     info = town["build"](root=ROOT)
     print(f"built in {time.time() - t0:.0f} s")
     coll = bpy.data.collections[town["COLL"]]
+    # road centre lines and spawn
+    roads = []
+    try:
+        for path in info.get("runs", []):
+            pts = [gpos(p) for p in path.xyz[::4]]
+            pts.append(gpos(path.xyz[-1]))
+            roads.append(pts)
+    except Exception as e:      # the roads rework may change info["runs"]
+        print("no road centre lines:", e)
+    juncs = [{"name": n, "pos": gpos(j["pos"])} for n, j in info.get("junctions", {}).items()]
+    spawn = None
+    try:
+        r = info["runs"][1]
+        p, t = r.at(r.length - 70)
+        spawn = {"pos": gpos(p), "dir": gpos((t.x, t.y, 0.0))}
+    except Exception:
+        if roads:
+            spawn = {"pos": roads[0][len(roads[0]) // 2], "dir": [1, 0, 0]}
+    export_layout(coll, OUT, roads, juncs, spawn, {"buildings": info.get("buildings")}, t0)
+    if not opt("--no-textures"):
+        pack(OUT)
 
+
+def export_layout(coll, OUT, roads, juncs, spawn, stats, t0=None, name="town_layout.json"):
+    """Write every object of `coll` (and its children) as mesh glbs + instances
+    into OUT/meshes and OUT/<name>. Shared mesh data -> one glb. Also used
+    by tools/world/world_export.py for the open world."""
+    t0 = t0 or time.time()
     os.makedirs(os.path.join(OUT, "meshes"), exist_ok=True)
     images_out = os.path.join(OUT, "images")
     dg = bpy.context.evaluated_depsgraph_get()
@@ -325,39 +373,22 @@ def main():
             inst["remap"] = remap
         instances.append(inst)
 
-    # road centre lines and spawn
-    roads = []
-    try:
-        for path in info.get("runs", []):
-            pts = [gpos(p) for p in path.xyz[::4]]
-            pts.append(gpos(path.xyz[-1]))
-            roads.append(pts)
-    except Exception as e:      # the roads rework may change info["runs"]
-        print("no road centre lines:", e)
-    juncs = [{"name": n, "pos": gpos(j["pos"])} for n, j in info.get("junctions", {}).items()]
-    spawn = None
-    try:
-        r = info["runs"][1]
-        p, t = r.at(r.length - 70)
-        spawn = {"pos": gpos(p), "dir": gpos((t.x, t.y, 0.0))}
-    except Exception:
-        if roads:
-            spawn = {"pos": roads[0][len(roads[0]) // 2], "dir": [1, 0, 0]}
-
     layout = {"version": 1, "coords": "godot (x, y up, z = -blender y)", "generated": time.strftime("%Y-%m-%d %H:%M"),
               "meshes": meshes, "materials": materials, "instances": instances, "lights": lights,
               "roads": roads, "junctions": juncs, "spawn": spawn,
-              "stats": {"buildings": info.get("buildings"), "instances": len(instances), "meshes": len(meshes),
-                        "lights": len(lights)}}
-    with open(os.path.join(OUT, "town_layout.json"), "w", encoding="utf-8") as f:
+              "stats": dict(stats, instances=len(instances), meshes=len(meshes), lights=len(lights))}
+    with open(os.path.join(OUT, name), "w", encoding="utf-8") as f:
         json.dump(layout, f, separators=(",", ":"))
     for me in tmp_meshes:
         bpy.data.meshes.remove(me)
     tri_total = sum(m["tris"] * sum(1 for i in instances if i["mesh"] == k) for k, m in meshes.items())
     print(f"EXPORT meshes {len(meshes)} instances {len(instances)} lights {len(lights)} materials {len(materials)} "
           f"roads {len(roads)} tris {tri_total} -> {OUT}  ({time.time() - t0:.0f} s)")
+    return layout
 
-    if not opt("--no-textures"):
+
+def pack(OUT):
+    if True:
         py = shutil.which("python") or shutil.which("py")
         packer = os.path.join(HERE, "pack_textures.py")
         if py:
@@ -367,4 +398,5 @@ def main():
             print("no system python: run  python tools/godot/pack_textures.py")
 
 
-main()
+if __name__ == "__main__":     # tools/world/world_export.py loads this file for export_layout()
+    main()

@@ -436,7 +436,7 @@ def lane_graph(cfg, net):
     for e in net.alive_edges():
         cc = net.classes[e.cls]
         L = e.path.length
-        s = np.linspace(0, L, max(2, int(L / 4.0) + 1))
+        s = adaptive_stations(e.path)
         pos, t = e.path.at_many(s)
         lanes = []
         for k, ln in enumerate(cc["lanes"]):
@@ -456,6 +456,24 @@ def lane_graph(cfg, net):
             "deck": [int(b) for b in deck],
         })
     return roads
+
+
+def adaptive_stations(path, max_step=8.0, fine=0.5, max_turn=0.75, max_dslope=0.004):
+    """Centreline samples for world.json: dense on curves and grade changes
+    (chord error under ~2 cm), up to max_step apart on straights."""
+    L = path.length
+    n = max(2, int(math.ceil(L / fine)) + 1)
+    s = np.linspace(0.0, L, n)
+    pos, t = path.at_many(s)
+    head = np.unwrap(np.arctan2(t[:, 1], t[:, 0]))
+    slope = np.gradient(pos[:, 2], s) if n > 2 else np.zeros(n)
+    keep = [0]
+    for i in range(1, n - 1):
+        k = keep[-1]
+        if s[i + 1] - s[k] > max_step or abs(head[i + 1] - head[k]) > math.radians(max_turn) or abs(slope[i + 1] - slope[k]) > max_dslope:
+            keep.append(i)
+    keep.append(n - 1)
+    return s[keep]
 
 
 def arm_index(node, e, k):
@@ -484,7 +502,7 @@ def junctions_json(cfg, net):
         arms.sort(key=lambda a: a["index"])
         signal = nd.kind == "junction" and len(arms) >= 3 and any(a["half_width"] > 6 for a in arms)
         jj = {"id": f"n{nd.id}", "kind": nd.kind if nd.kind != "junction" else {2: "L", 3: "T", 4: "X"}.get(len(arms), "multi"),
-              "pos": [round(nd.pos.x, 2), round(nd.pos.y, 2), round(nd.z + ROAD_Z, 2)], "arms": arms, "roads": ends,
+              "pos": [round(nd.pos.x, 2), round(nd.pos.y, 2), round(nd.z + ROAD_Z, 2)], "z": nd.z, "geom": nd.geom, "arms": arms, "roads": ends,
               "signalised": signal, "connections": junction_connections(net, nd)}
         if signal:
             for a in arms:
@@ -655,6 +673,12 @@ def generate(cfg, town, out_dir, log=print):
     roads = lane_graph(cfg, net)
     juncs, signals = junctions_json(cfg, net)
     place = PL.place_all(cfg, hf, net, masks, bridges, walls, log)
+    for sg in signals:           # signal poles are instances too (mast over the approach lanes)
+        d = Vector(sg["facing"]) * -1.0
+        nrm = Vector((-d.y, d.x))
+        place["instances"].append({"asset": "signal_pole_long" if sg["mast"] > 7.0 else "signal_pole", "variant": None,
+                                   "pos": sg["pos"], "rot": round(math.atan2(nrm.y, nrm.x) % (2 * math.pi), 5), "scale": [1, 1, 1],
+                                   "district": "roads", "kind": "signal", "signal": sg["id"]})
     # outputs
     os.makedirs(out_dir, exist_ok=True)
     hpath = os.path.join(out_dir, "heightfield.f32")
