@@ -1275,6 +1275,7 @@ def build(root=None, export_junctions=False, quick=False):
         b = put(K[kind].data, (cn_.x, cn_.y, base), rz, name=kind)
         mats = variants.get(kind)
         if mats:
+            mats = mats + list(K[kind].data.materials[:1])     # the kit look stays in the mix
             b.material_slots[0].link = "OBJECT"
             b.material_slots[0].material = rng.choice(mats)
         depth = base - lowz + 0.8
