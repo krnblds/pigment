@@ -88,6 +88,7 @@ fn tools() -> Value {
         "target": { "type": "array", "items": { "type": "number" }, "maxItems": 3, "description": "orbit centre [x, y, z] in world metres (default: the model's centre); combine with zoom or distance for close-ups" },
         "distance": { "type": "number", "minimum": 0, "description": "camera distance from the target in metres (overrides zoom's framing)" }
     });
+    ground_layer_fields(&mut layer_fields);
     let mut add_props = layer_fields.clone();
     let layer_ref = |d: &str| json!({ "type": ["string", "integer"], "description": d });
     let folder_ref = |d: &str| json!({ "type": ["string", "integer", "null"], "description": d });
@@ -299,6 +300,9 @@ fn mask_schema() -> Value {
     let mut gens: Vec<&str> = pigment_core::GeneratorKind::ALL.iter().map(|g| g.id()).collect();
     // aliases GeneratorKind::from_id accepts (bricks / square / hex also pick the tile variant)
     gens.extend(["drips", "leak", "wetness", "wet", "puddle", "grime_accumulation", "lichen", "bricks", "brick", "tile", "square", "hex", "windows", "window_lights"]);
+    // ground generator aliases (cobbles, pebbles, leaves, grass ... also pick a variant)
+    gens.extend(["ridged", "cliff"]);
+    gens.extend(pigment_core::ground::GROUND_ALIASES.iter().map(|a| a.0));
     let mut gen_fields = json!({
         "generator": { "type": "string", "enum": gens, "description": "procedural mask" },
         "amount": { "type": "number" }, "softness": { "type": "number" }, "scale": { "type": "number" }, "breakup": { "type": "number" },
@@ -312,6 +316,7 @@ fn mask_schema() -> Value {
         "cell_size": { "type": "number", "description": "window_grid: cell (storey) height in metres (= scale)" },
         "fill": { "type": "number", "description": "window_grid: lit fraction 0..1 (= amount)" }
     });
+    ground_gen_fields(&mut gen_fields);
     let mut effect = gen_fields.clone();
     effect["op"] = json!({ "type": "string", "enum": ["multiply", "add", "subtract", "max", "min"], "description": "how it combines with the mask so far (default multiply)" });
     gen_fields["invert"] = json!({ "type": "boolean" });
@@ -323,6 +328,65 @@ fn mask_schema() -> Value {
         "items": { "type": "object", "properties": effect, "required": ["generator"], "additionalProperties": false } });
     json!({ "type": ["string", "object", "null"], "properties": gen_fields, "additionalProperties": false,
             "description": "\"white\" | \"black\" (painted mask) | null (remove the mask) | {generator, amount, ..., invert, parts, effects}" })
+}
+
+/// Named parameters of the ground generators (docs/agents/ground/NOTES.md).
+fn ground_gen_fields(g: &mut Value) {
+    let n = |d: &str| json!({ "type": "number", "description": d });
+    g["variant"] = json!({ "type": ["string", "integer"], "description": "tiles: bricks | square | hex; cells: dome | f2 | edges | value | plates; scatter: pebble | flake | leaf | twig | shell; rock: height | cracks | ledges; blades: height | tips | clumps; ripples: height | crests (or the index)" });
+    let fields = [
+        ("warp", "cells / rock: domain warp (= breakup)"),
+        ("randomness", "cells: point jitter 0 (grid) .. 1 (= ao_influence)"),
+        ("edge_width", "cells: edge / bevel width in metres (= curvature_weight)"),
+        ("bevel", "cells: alias of edge_width"),
+        ("stretch", "cells: cells per metre along x relative to z (extra[0])"),
+        ("height_variation", "cells / scatter: random height per cell / instance 0..1"),
+        ("edge_noise", "cells: roughens the cell borders (extra[2])"),
+        ("density", "scatter / blades: chance per slot 0..1 (= amount)"),
+        ("size_variation", "scatter: 0 all the same .. 1 (= breakup)"),
+        ("elongation", "scatter: long axis / short axis, 1 round .. 12 needles (= ao_influence)"),
+        ("size", "scatter: radius as a fraction of a cell (= curvature_weight)"),
+        ("radius", "scatter: alias of size"),
+        ("per_cell", "scatter: instances per cell 1..8 (extra[0])"),
+        ("align", "scatter: 0 random rotation .. 1 all along x (extra[1])"),
+        ("irregularity", "scatter: irregular outlines (extra[2]); ripples: curving crests (= breakup)"),
+        ("strata", "rock: strata ledges strength 0..1 (= ao_influence)"),
+        ("cracks", "rock: block-joint crack depth 0..2 (= curvature_weight)"),
+        ("bands", "rock: strata bands per metre along the surface's v (extra[0])"),
+        ("streaks", "rock: downhill erosion streaks (extra[1])"),
+        ("crack_scale", "rock: crack cells per metre (extra[2])"),
+        ("clumping", "blades: clump contrast 0..1 (= breakup)"),
+        ("lean", "blades: 0 upright .. 1 lying flat (= ao_influence)"),
+        ("length", "blades: blade length in metres (= curvature_weight)"),
+        ("width", "blades: blade half width at the root in metres (extra[0])"),
+        ("swirl", "blades: how much neighbouring blades lean the same way (extra[1])"),
+        ("asymmetry", "ripples: gentle windward / steep lee side 0..1 (= ao_influence)"),
+        ("defects", "ripples: forking, ending, fading crests 0..1 (= curvature_weight)"),
+        ("angle", "ripples: crest direction in degrees from x (extra[0])"),
+        ("sharpness", "ripples: crest sharpness 0..1 (extra[1])"),
+    ];
+    for (k, d) in fields {
+        g[k] = n(d);
+    }
+    g["extra"] = json!({ "type": "array", "items": { "type": "number" }, "maxItems": 4, "description": "ground generators: the raw shape parameters (see the named args)" });
+}
+
+/// Fill-layer ground options: height profile, height blend, per-instance jitter.
+fn ground_layer_fields(l: &mut Value) {
+    l["height_profile"] = json!({ "type": "boolean", "description": "fill layers: the height follows the mask generator's shape (a dome per pebble, a blade's rise, the ripple profile) instead of a flat plateau; turns the height channel on" });
+    l["height_blend"] = json!({ "type": ["object", "string", "null"], "additionalProperties": false,
+        "description": "fill layers: show only where this layer's level (its height + offset) is above the stack (\"above\": sand between pebbles, water in ruts) or below it (\"below\": moss on the tops). A string sets the mode; null removes.",
+        "properties": {
+            "mode": { "type": "string", "enum": ["above", "below", "lows", "tops"] },
+            "contrast": { "type": "number", "description": "transition width in height units (default 0.05)" },
+            "offset": { "type": "number", "description": "added to the layer's level (height units)" } } });
+    l["jitter"] = json!({ "type": ["object", "number", "null"], "additionalProperties": false,
+        "description": "fill layers: per-instance variation keyed by the mask generator's instance (each pebble, cell, blade, rock block). A number = value range; null removes.",
+        "properties": {
+            "value": { "type": "number", "description": "brightness +/- (0.2 = x0.8 .. x1.2)" },
+            "hue": { "type": "number", "description": "hue rotation +/- in turns (0.03 = +/- 11 degrees)" },
+            "saturation": { "type": "number", "description": "saturation +/-" },
+            "roughness": { "type": "number", "description": "roughness +/-" } } });
 }
 
 /// Filters / sorting / paging shared by list_parts and pick_parts `shape`.

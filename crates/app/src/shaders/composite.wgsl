@@ -71,6 +71,11 @@ struct LayerParams {
     coat_fill: vec4<f32>,     // fill coat, coat roughness, flake
     coat_blend: vec4<u32>,    // coat, coat roughness, flake
     coat_opacity: vec4<f32>,  // coat, coat roughness, flake (layer x channel x enabled)
+    gen3: vec4<f32>,          // ground generators: Generator::extra of the main generator
+    gb3: vec4<f32>,           // ... of mask effect b
+    gc3: vec4<f32>,           // ... of mask effect c
+    ground: vec4<f32>,        // height blend mode (0 off, 1 above, 2 below), contrast, offset; w = height follows the generator profile
+    jit: vec4<f32>,           // per-instance jitter: value, hue, saturation, roughness
 };
 @group(2) @binding(7) var<uniform> lp: LayerParams;
 // Image fills bind their tiling images in the channel slots above
@@ -180,7 +185,8 @@ fn ridged(p: vec3<f32>) -> f32 {
     return 1.0 - abs(fbm(p) * 2.0 - 1.0);
 }
 
-fn gen_eval(t: vec2<i32>, kind: u32, gp: vec4<f32>, gp2: vec4<f32>) -> f32 {
+fn gen_eval(t: vec2<i32>, kind: u32, gp: vec4<f32>, gp2: vec4<f32>, gp3: vec4<f32>) -> f32 {
+    if (kind >= 15u) { return gen_ground(t, kind, gp, gp2, gp3); }  // gen_ground.wgsl
     if (kind >= 10u) { return gen_weather(t, kind, gp, gp2); }  // gen_weather.wgsl
     let bk = textureLoad(bakes, t, 0);
     let ao = bk.r;
@@ -276,9 +282,14 @@ fn combine(op: u32, a: f32, b: f32) -> f32 {
 
 // The main generator, then up to two more combined in order.
 fn generator(t: vec2<i32>) -> f32 {
-    var g = gen_eval(t, lp.flags.z, lp.gen, lp.gen2);
-    if (lp.eff.x != 0u) { g = combine(lp.eff.y, g, gen_eval(t, lp.eff.x, lp.gb, lp.gb2)); }
-    if (lp.eff.z != 0u) { g = combine(lp.eff.w, g, gen_eval(t, lp.eff.z, lp.gc, lp.gc2)); }
+    g_prof = -1.0;
+    g_inst = 0.5;
+    var g = gen_eval(t, lp.flags.z, lp.gen, lp.gen2, lp.gen3);
+    // the main generator's shape and instance id (gen_ground.wgsl side channels)
+    l_prof = select(g, g_prof, g_prof >= 0.0);
+    l_inst = g_inst;
+    if (lp.eff.x != 0u) { g = combine(lp.eff.y, g, gen_eval(t, lp.eff.x, lp.gb, lp.gb2, lp.gb3)); }
+    if (lp.eff.z != 0u) { g = combine(lp.eff.w, g, gen_eval(t, lp.eff.z, lp.gc, lp.gc2, lp.gc3)); }
     return g;
 }
 
@@ -469,6 +480,23 @@ fn fs_layer(f: FullOut) -> Acc {
             mask *= part_selected(src_texel(t));
         }
         if (lp.flags.w == 1u) { mask = 1.0 - mask; }
+    }
+
+    // ground options (gen_ground.wgsl): the fill's height follows the
+    // generator's shape, per-instance colour / roughness jitter, and the
+    // height blend (show only where the layer's level is above / below the stack)
+    if (lp.flags.x == 1u && lp.flags.z != 0u && lp.flags.y == 1u) {
+        if (lp.ground.w > 0.5) { h.x *= clamp(l_prof, 0.0, 1.0); }
+        if (any(lp.jit != vec4<f32>(0.0))) {
+            c = vec4<f32>(gn_jitter_rgb(c.rgb, l_inst, lp.jit), c.a);
+            r.x = clamp(r.x + (fract(l_inst * 31.7 + 0.71) - 0.5) * 2.0 * lp.jit.w, 0.0, 1.0);
+        }
+    }
+    if (lp.flags.x == 1u && lp.ground.x > 0.5) {
+        let level = lp.ground.z + select(0.0, h.x, lp.opacity.w > 0.0);
+        let d = select(dr.z - level, level - dr.z, lp.ground.x < 1.5);
+        let hc = max(lp.ground.y, 1e-4);
+        mask *= smoothstep(-hc, hc, d);
     }
 
     // Replace ignores the layer's own coverage.

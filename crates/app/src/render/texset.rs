@@ -103,6 +103,14 @@ struct LayerParams {
     coat_blend: [u32; 4],
     /// layer x channel opacity: coat, coat roughness, flake
     coat_opacity: [f32; 4],
+    /// ground generators: Generator::extra of the main generator, effect b, effect c
+    gp3: [f32; 4],
+    gb3: [f32; 4],
+    gc3: [f32; 4],
+    /// height blend mode (0 off, 1 above, 2 below), contrast, offset; w = height profile on
+    ground: [f32; 4],
+    /// per-instance jitter: value, hue, saturation, roughness
+    jit: [f32; 4],
 }
 
 fn layer_params(l: &Layer, variant_seed: u32) -> LayerParams {
@@ -148,7 +156,13 @@ fn layer_params(l: &Layer, variant_seed: u32) -> LayerParams {
         coat_fill: [0.0, 0.03, 0.0, 0.0],
         coat_blend: [bcw, bcr, bfk, 0],
         coat_opacity: [ocw, ocr, ofk, 0.0],
+        gp3: [0.0; 4],
+        gb3: [0.0; 4],
+        gc3: [0.0; 4],
+        ground: [0.0; 4],
+        jit: [0.0; 4],
     };
+    ground_params(l, &mut p);
     image_fill_params(l, &mut p);
     if let LayerKind::Fill { values } = &l.kind {
         p.flags[0] = 1;
@@ -169,6 +183,7 @@ fn layer_params(l: &Layer, variant_seed: u32) -> LayerParams {
             p.flags[2] = g.gpu_id();
             p.gp = [g.amount, g.softness, g.noise_scale, g.noise_amount];
             p.gp2 = [vseed(g.seed) as f32, g.ao_influence, g.curvature_weight, g.variant as f32];
+            p.gp3 = g.extra;
             for (k, e) in m.effects.iter().take(pigment_core::MAX_MASK_EFFECTS).enumerate() {
                 let g = &e.generator;
                 let a = [g.amount, g.softness, g.noise_scale, g.noise_amount];
@@ -177,8 +192,10 @@ fn layer_params(l: &Layer, variant_seed: u32) -> LayerParams {
                 p.eff[2 * k + 1] = e.op.gpu_id();
                 if k == 0 {
                     (p.gb, p.gb2) = (a, b);
+                    p.gb3 = g.extra;
                 } else {
                     (p.gc, p.gc2) = (a, b);
+                    p.gc3 = g.extra;
                 }
             }
         }
@@ -189,6 +206,23 @@ fn layer_params(l: &Layer, variant_seed: u32) -> LayerParams {
         }
     }
     p
+}
+
+/// The ground options of a fill layer (`pigment_core::ground`): height
+/// blend, height profile, per-instance jitter.
+fn ground_params(l: &Layer, p: &mut LayerParams) {
+    if !matches!(l.kind, LayerKind::Fill { .. }) {
+        return;
+    }
+    if let Some(hb) = &l.height_blend {
+        p.ground[0] = hb.mode.gpu_id();
+        p.ground[1] = hb.contrast.max(0.0);
+        p.ground[2] = hb.offset;
+    }
+    p.ground[3] = if l.height_profile { 1.0 } else { 0.0 };
+    if let Some(j) = &l.jitter {
+        p.jit = [j.value, j.hue, j.saturation, j.roughness];
+    }
 }
 
 /// Params for a folder pass: the folder's mask and opacity, with blend modes
@@ -307,7 +341,7 @@ struct Pipes {
 impl Pipes {
     fn new(device: &wgpu::Device) -> Self {
         let common = include_str!("../shaders/common.wgsl");
-        let comp = gpu::shader(device, "composite.wgsl", &[common, include_str!("../shaders/composite.wgsl"), include_str!("../shaders/gen_weather.wgsl")].concat());
+        let comp = gpu::shader(device, "composite.wgsl", &[common, include_str!("../shaders/composite.wgsl"), include_str!("../shaders/gen_weather.wgsl"), include_str!("../shaders/gen_ground.wgsl")].concat());
         let ts = gpu::shader(device, "texspace.wgsl", &[common, include_str!("../shaders/texspace.wgsl")].concat());
         let shared_bgl = gpu::bgl(device, "shared", &[gpu::ntex(0), gpu::ntex(1), gpu::utex(2), gpu::uniform_entry(3, false), gpu::ntex(4), gpu::utex(5)]);
         let acc_bgl = gpu::bgl(device, "acc", &[gpu::ntex(0), gpu::ntex(1), gpu::ntex(2), gpu::ntex(3)]);
@@ -337,7 +371,7 @@ impl Pipes {
             ],
         );
         let full_layout = gpu::layout(device, "composite", &[&shared_bgl, &acc_bgl, &layer_bgl]);
-        let folder_src = [common, include_str!("../shaders/composite.wgsl"), include_str!("../shaders/gen_weather.wgsl"), include_str!("../shaders/folder.wgsl")].concat();
+        let folder_src = [common, include_str!("../shaders/composite.wgsl"), include_str!("../shaders/gen_weather.wgsl"), include_str!("../shaders/gen_ground.wgsl"), include_str!("../shaders/folder.wgsl")].concat();
         let folder_mod = gpu::shader(device, "folder.wgsl", &folder_src);
         // folder passes use the mask, params and (for part masks) the part bitsets
         let folder_bgl = gpu::bgl(device, "folder", &[gpu::ntex(6), gpu::uniform_entry(7, true), gpu::storage_entry(11)]);

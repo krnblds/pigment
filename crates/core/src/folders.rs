@@ -78,6 +78,9 @@ impl Document {
             parent: None,
             variant: Default::default(),
             image: None,
+            height_blend: None,
+            jitter: None,
+            height_profile: false,
         }
     }
 
