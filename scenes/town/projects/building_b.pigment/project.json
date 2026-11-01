@@ -5342,6 +5342,7 @@
             "group": "story",
             "enabled": false,
             "args": {
+              "emissive_strength": 3.0,
               "fade": 0.1,
               "image": "assets/decals/ads/window_now_hiring.png",
               "material": "White plastic",
@@ -5372,6 +5373,7 @@
             "group": "story",
             "enabled": false,
             "args": {
+              "emissive_strength": 3.0,
               "fade": 0.1,
               "image": "assets/decals/ads/window_hearts.png",
               "material": "White plastic",
@@ -5542,6 +5544,7 @@
             "group": "story",
             "enabled": false,
             "args": {
+              "emissive_strength": 3.0,
               "fade": 0.1,
               "image": "assets/decals/ads/window_members_only.png",
               "material": "White plastic",
@@ -5572,6 +5575,7 @@
             "group": "story",
             "enabled": false,
             "args": {
+              "emissive_strength": 3.0,
               "fade": 0.1,
               "image": "assets/decals/ads/window_hotel_rates.png",
               "material": "White plastic",

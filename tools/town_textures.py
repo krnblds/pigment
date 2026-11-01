@@ -325,7 +325,9 @@ def look(kind, image):
     if kind == "blade" and image.startswith("banner"):                 # full-colour lit banner on a blade face
         return dict(emissive_strength=1.8, material="White plastic")
     if kind == "window":                                               # cut vinyl lettering on shop glass
-        return dict(material="White plastic", opacity=0.95, fade=0.1, wear_scale=6.0, values={"opacity": 1.0, "transmission": 0.0})
+        # backlit by the shop behind it: the letters replace the lit pane's glow (else they vanish in it)
+        return dict(material="White plastic", opacity=0.95, fade=0.1, wear_scale=6.0, emissive_strength=3.0,
+                    values={"opacity": 1.0, "transmission": 0.0})
     if kind == "billboard":                                            # backlit corporate ads
         return dict(emissive_strength=1.6, material="White plastic")
     if kind == "logo":
