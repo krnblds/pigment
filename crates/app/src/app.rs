@@ -825,7 +825,13 @@ impl PigmentApp {
         self.brush.size * 0.5 * self.ppp
     }
 
+    /// Where image fills' relative paths are looked up (each and its parents).
+    pub(super) fn image_bases(&self) -> Vec<PathBuf> {
+        self.project_dir.iter().cloned().chain(self.mesh_source.as_ref().and_then(|m| m.parent()).map(Path::to_path_buf)).collect()
+    }
+
     fn ensure_composited(&mut self, rs: &RenderState) {
+        self.ts.tiles.bases = self.image_bases();
         self.ts.ensure_resources(&rs.device, &rs.queue, &self.doc);
         if self.composited.as_ref() != Some(&self.doc) {
             self.ts.composite(&rs.device, &rs.queue, &self.doc, None);

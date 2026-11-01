@@ -15,7 +15,7 @@ use std::io::{BufRead, Write};
 const PROTOCOL: &str = "2025-06-18";
 
 fn tools() -> Value {
-    let layer_fields = json!({
+    let mut layer_fields = json!({
         "name": { "type": "string" },
         "material": { "type": "string", "description": "Material preset name (see list_library)" },
         "values": { "type": "object", "description": "Override fill values", "properties": {
@@ -26,6 +26,24 @@ fn tools() -> Value {
         "channels": { "type": "object", "description": "e.g. {\"height\": false, \"roughness\": true}" },
         "blend": { "type": "object", "description": "per channel, e.g. {\"base_color\": \"multiply\", \"height\": \"add\"}" },
         "mask": { "description": "\"white\" | \"black\" | null (remove) | {generator: edge_wear|dirt|grunge|streaks|stripes|spots|scratches|panel_lines|gradient, amount, softness, scale, breakup, seed, ao_influence, curvature_weight, invert, parts: [part ids from list_parts / pick_parts: limit the layer to those mesh pieces], effects: [{generator, op: multiply|add|subtract|max|min, amount, scale, breakup, ...}] (max 2)}" }
+    });
+    layer_fields["image"] = json!({
+        "description": "Fill layers: channels from tiling images instead of flat values. A string is a tile set folder (e.g. \"assets/tiles/brick\", see list_library tile_sets); null removes it; an object changes only the fields given. Images: sRGB base colour (x tint), grey roughness (remapped to roughness_range), grey height (0.5 = flat, height = (v - 0.5) * height_scale), OpenGL tangent normal.",
+        "properties": {
+            "tile_set": { "type": "string", "description": "folder with base_color/roughness/height/normal .png (sets all four)" },
+            "base_color": { "type": ["string", "null"], "description": "image path (relative paths resolve from the project/mesh folder and its parents, then the working dir); null = flat value" },
+            "roughness": { "type": ["string", "null"] }, "height": { "type": ["string", "null"] }, "normal": { "type": ["string", "null"] },
+            "projection": { "type": "string", "enum": ["uv", "triplanar"], "description": "uv: repeats over the UV square; triplanar: world-space box projection, ignores UVs" },
+            "tiling": { "description": "uv: repeats across UV 0..1, number or [u, v] (default 1)" },
+            "tile_size": { "type": "number", "description": "triplanar: metres per repeat (default 1)" },
+            "blend_sharpness": { "type": "number", "description": "triplanar: corner blend, 1 soft .. 16 hard (default 4)" },
+            "offset": { "description": "shift in tiles, [u, v]" },
+            "rotation": { "type": "number", "description": "degrees" },
+            "tint": { "type": "array", "items": { "type": "number" }, "description": "multiplies base colour, sRGB 0..1" },
+            "roughness_range": { "type": "array", "items": { "type": "number" }, "description": "[lo, hi] (default [0, 1])" },
+            "height_scale": { "type": "number", "description": "default 1" },
+            "normal_strength": { "type": "number", "description": "default 1, 0 = flat" }
+        }
     });
     let camera = json!({
         "yaw": { "type": "number", "description": "degrees around the model (default 35)" },
@@ -68,8 +86,8 @@ fn tools() -> Value {
         t("list_library", "Material presets, smart materials, generators, blend modes, export presets, views.", json!({}), &[]),
         t("list_layers", "The layer stack, bottom to top.", json!({}), &[]),
         t("add_smart_material", "Add a multi-layer smart material (e.g. 'Rusty steel', 'Hazard stripes', 'Tech panels', 'Worn olive drab metal').", json!({ "name": { "type": "string" } }), &["name"]),
-        t("add_layer", "Add a fill or paint layer, optionally with a material and a generator mask.", add_props, &[]),
-        t("update_layer", "Change a layer: material, values, opacity, visibility, channels, blend modes, mask/generator, position.", upd_props, &["layer"]),
+        t("add_layer", "Add a fill or paint layer, optionally with a material, tiling images (`image`: brick, concrete... UV or triplanar) and a generator mask.", add_props, &[]),
+        t("update_layer", "Change a layer: material, values, image fill, opacity, visibility, channels, blend modes, mask/generator, position.", upd_props, &["layer"]),
         t("delete_layer", "Remove a layer.", json!({ "layer": {} }), &["layer"]),
         t("list_parts", "The mesh's parts (connected pieces: body, glass panes, buttons...) with id, triangle count, centre and size. Use ids in a mask's `parts`.", json!({}), &[]),
         t("pick_parts", "Which parts are under viewport points [[x,y],...] (0..1) for a camera view (yaw/pitch/zoom). Render the same view first to choose points.",
