@@ -165,6 +165,28 @@ def main():
             if fn.endswith(".png"):
                 write_import(os.path.join(img_dir, fn))
     print(f"textures: {len(done)} folders -> {tex_root}")
+    no_mesh_lods(layout)
+
+
+# Godot's automatic mesh LODs simplify the terrain (and long road / junction / bridge meshes)
+# without knowing about the road cuts, so a coarse hillside pokes up through the carriageway.
+# These are already split into chunks, so they keep full detail; other meshes keep auto LOD.
+NO_LOD_CATS = {"terrain", "road", "junction", "bridge", "decal", "wall", "stairs", "seawall", "water"}
+
+
+def no_mesh_lods(layout):
+    n = 0
+    for key, m in layout.get("meshes", {}).items():
+        if m.get("cat") not in NO_LOD_CATS:
+            continue
+        imp = os.path.join(OUT, m["file"] + ".import")
+        if not os.path.isfile(imp):
+            continue
+        txt = open(imp, encoding="utf-8").read()
+        if "meshes/generate_lods=true" in txt:
+            open(imp, "w", encoding="utf-8").write(txt.replace("meshes/generate_lods=true", "meshes/generate_lods=false"))
+            n += 1
+    print(f"mesh LODs off for {n} terrain / road / bridge meshes (re-import to apply)")
 
 
 main()

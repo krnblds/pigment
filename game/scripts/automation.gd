@@ -387,6 +387,18 @@ static func _spots(w: Dictionary) -> Array:
 						deck = _g(r.points[i])
 		var eye := deck + Vector3.UP * 4.0
 		spots.append({"name": "bridge", "eye": eye, "at": city})
+	# mountain road: two points along the switchbacks, looking up the road (checks the road cut)
+	for r in w.roads:
+		if r["class"] != "mountain":
+			continue
+		var pts: Array = r.points
+		for k in [0.3, 0.65]:
+			var i := clampi(int(pts.size() * k), 1, pts.size() - 2)
+			var p := _g(pts[i])
+			var t := (_g(pts[i + 1]) - _g(pts[i - 1])).normalized()
+			var eye := p + Vector3.UP * 2.4 - t * 6.0
+			spots.append({"name": "mountain_road_%d" % int(k * 100), "eye": eye, "at": p + t * 40.0 + Vector3.UP * 1.0})
+		break
 	# mountain lookout: the summit plaza, looking at the skyline
 	for j in w.junctions:
 		if j.kind == "plaza":
