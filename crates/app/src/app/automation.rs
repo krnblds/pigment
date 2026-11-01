@@ -1257,6 +1257,20 @@ impl Session {
         let mut out = Vec::new();
         let mut next_id = doc0.next_id;
         let mut result = Ok(());
+        // Previews are deterministic: they start from the default look (studio,
+        // bloom on, exposure 0) plus only the lighting/bloom/exposure args given
+        // in `preview`, never what the last `render` left behind. The session's
+        // look (environment, view settings, camera, size) is restored after.
+        let saved_look = match &preview {
+            Some(p) => {
+                let env = self.preview_env(p)?;
+                let old_env = std::mem::replace(&mut self.app.env, env);
+                let old_view = self.app.view.clone();
+                self.app.view = crate::render::viewport::ViewSettings { emission: old_view.emission, ..Default::default() };
+                Some((old_env, old_view, self.app.camera.clone(), self.size))
+            }
+            None => None,
+        };
         for v in &defs {
             let folder = dir.join(pattern.replace("{name}", &name).replace("{variant}", &v.name));
             let r = self.export_one(&doc0, v, &preset, &folder, &name, preview.as_ref());
@@ -1278,10 +1292,30 @@ impl Session {
         self.app.doc.next_id = next_id;
         self.app.committed.next_id = self.app.committed.next_id.max(next_id);
         (self.app.export_dir, self.app.export_name) = saved;
+        if let Some((env, view, camera, size)) = saved_look {
+            self.app.env = env;
+            self.app.view = view;
+            self.app.camera = camera;
+            self.size = size;
+        }
         self.app.composited = None;
         self.app.ensure_composited(&self.rs);
         result?;
         Ok(json!({ "dir": dir, "variants": out }))
+    }
+
+    /// The environment for `export_variants` previews: `hdri`, else the
+    /// `lighting` preset, else studio.
+    fn preview_env(&self, p: &Value) -> Res<Environment> {
+        let (d, q) = (&self.rs.device, &self.rs.queue);
+        if let Some(path) = s(p, "hdri") {
+            let mut env = Environment::load(d, q, Path::new(path)).map_err(|e| format!("couldn't load preview HDRI `{path}`: {e:#}"))?;
+            env.source = path.to_string();
+            return Ok(env);
+        }
+        let l = s(p, "lighting").unwrap_or("studio");
+        let id = pigment_core::envmath::preset_id(l).ok_or_else(|| format!("unknown preview lighting `{l}` (studio, night, overcast)"))?;
+        Environment::preset(d, q, id).ok_or_else(|| "lighting preset failed".into())
     }
 
     fn export_one(&mut self, doc0: &Document, v: &VariantDef, preset: &str, folder: &Path, name: &str, preview: Option<&Value>) -> Res<Value> {
@@ -1837,5 +1871,38 @@ mod tests {
         assert!(v.path.exists());
         assert!(s.render(&json!({ "views": ["front", "sideways"] })).is_err());
         std::fs::remove_dir_all(tmp).ok();
+    }
+
+    /// export_variants previews ignore the look left by earlier renders (they use
+    /// only the `preview` args over the defaults) and restore the session look.
+    #[test]
+    fn variant_previews_are_deterministic() {
+        let Ok(mut s) = Session::new() else { return };
+        let r = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        s.new_project(&json!({ "mesh": r.join("assets/ammo_box.glb"), "resolution": 512, "material": "Olive drab" })).unwrap();
+        s.add_layer(&json!({ "name": "Glow", "material": "Neon green", "variant": "lights" })).unwrap();
+        let out = std::env::temp_dir().join(format!("pigment-preview-{}", std::process::id()));
+        std::fs::remove_dir_all(&out).ok();
+        let export = |s: &mut Session, sub: &str, preview: Value| -> Vec<u8> {
+            let mut p = preview;
+            p["dir"] = json!(out.join(sub));
+            s.export_variants(&json!({ "dir": out.join("maps"), "name": "Box", "variants": [{ "name": "on", "seed": 1 }], "preview": p })).unwrap();
+            image::open(out.join(sub).join("Box__on.png")).unwrap().to_rgba8().into_raw()
+        };
+        let base = json!({ "yaw": 30, "pitch": 15, "width": 160, "height": 120 });
+        let fresh = export(&mut s, "a", base.clone());
+        // a render with a very different look must not leak into the preview
+        s.render(&json!({ "lighting": "night", "bloom": false, "exposure": 3.0, "env_rotation": 90, "background": false, "width": 200, "height": 100 })).unwrap();
+        let after = export(&mut s, "b", base.clone());
+        assert_eq!(fresh, after, "preview depends on the previous render's look");
+        // ...and the session keeps its own look
+        assert_eq!(s.app.env.source, "night");
+        assert!(!s.app.view.bloom.enabled && s.app.view.exposure == 3.0 && !s.app.view.show_env);
+        assert_eq!(s.size, [200, 100]);
+        // explicit preview args still apply
+        let night = export(&mut s, "c", json!({ "yaw": 30, "pitch": 15, "width": 160, "height": 120, "lighting": "night" }));
+        assert_ne!(fresh, night);
+        assert_eq!(s.app.env.source, "night");
+        std::fs::remove_dir_all(out).ok();
     }
 }

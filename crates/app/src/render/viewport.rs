@@ -109,6 +109,7 @@ struct Targets {
     paint_depth: Tex,
 }
 
+#[derive(Clone)]
 pub struct ViewSettings {
     pub mode: ViewMode,
     pub exposure: f32,

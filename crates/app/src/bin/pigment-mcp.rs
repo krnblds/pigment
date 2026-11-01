@@ -160,7 +160,7 @@ fn tools() -> Value {
                       "swaps": { "type": "object", "description": "decal / group / layer name -> image path, or {image, tint, emissive_strength, opacity, ...}" } }, "required": ["name"] } },
                   "only": { "type": "array", "items": { "type": "string" }, "description": "export just these variants" },
                   "folder": { "type": "string", "description": "folder pattern (default \"{name}__{variant}\")" },
-                  "preview": { "type": "object", "description": "render args (yaw, pitch, width, height, exposure, dir): also save a preview PNG per variant to <dir>/<name>__<variant>.png" },
+                  "preview": { "type": "object", "description": "render args (yaw, pitch, zoom, width, height, view, lighting, hdri, exposure, env_rotation, bloom, background, dir): also save a preview PNG per variant to <dir>/<name>__<variant>.png. Previews start from the default look (studio, bloom on, exposure 0), not from the last render; the session look is restored afterwards." },
                   "dry_run": { "type": "boolean", "description": "validate + store, report what each variant shows, export nothing" } }), &[]),
         t("undo", "Undo the last action.", json!({}), &[]),
         t("redo", "Redo.", json!({}), &[]),
