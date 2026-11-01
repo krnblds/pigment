@@ -1915,7 +1915,7 @@ fn apply_ground_fields(g: &mut Generator, m: &Value) {
         GeneratorKind::Cells => &[("warp", 1), ("randomness", 2), ("edge_width", 3), ("bevel", 3), ("stretch", 4), ("height_variation", 5), ("edge_noise", 6)],
         GeneratorKind::Scatter => &[("density", 0), ("size_variation", 1), ("elongation", 2), ("size", 3), ("radius", 3), ("per_cell", 4), ("align", 5), ("irregularity", 6), ("height_variation", 7)],
         GeneratorKind::Rock => &[("warp", 1), ("strata", 2), ("cracks", 3), ("bands", 4), ("streaks", 5), ("crack_scale", 6)],
-        GeneratorKind::Blades => &[("density", 0), ("clumping", 1), ("lean", 2), ("length", 3), ("width", 4), ("swirl", 5)],
+        GeneratorKind::Blades => &[("density", 0), ("clumping", 1), ("lean", 2), ("length", 3), ("width", 4), ("swirl", 5), ("level", 6)],
         GeneratorKind::Ripples => &[("irregularity", 1), ("asymmetry", 2), ("defects", 3), ("angle", 4), ("sharpness", 5)],
         _ => &[],
     };

@@ -722,7 +722,7 @@ fn ground_extra_labels(kind: GeneratorKind) -> (&'static str, [Option<(&'static 
         GeneratorKind::Cells => ("Warp", [Some(("Stretch x", 0.2..=5.0)), Some(("Height variation", 0.0..=1.0)), Some(("Edge noise", 0.0..=1.5)), None]),
         GeneratorKind::Scatter => ("Size variation", [Some(("Per cell", 1.0..=8.0)), Some(("Alignment", 0.0..=1.0)), Some(("Irregular outline", 0.0..=1.5)), Some(("Height variation", 0.0..=1.0))]),
         GeneratorKind::Rock => ("Warp", [Some(("Strata bands /m", 0.2..=12.0)), Some(("Downhill streaks", 0.0..=1.5)), Some(("Crack cells /m", 0.1..=8.0)), None]),
-        GeneratorKind::Blades => ("Clumping", [Some(("Blade width (m)", 0.0005..=0.02)), Some(("Swirl", 0.0..=1.0)), None, None]),
+        GeneratorKind::Blades => ("Clumping", [Some(("Blade width (m)", 0.0005..=0.02)), Some(("Swirl", 0.0..=1.0)), Some(("Tips / clumps level", 0.0..=1.0)), None]),
         GeneratorKind::Ripples => ("Irregularity", [Some(("Direction (deg)", -90.0..=90.0)), Some(("Crest sharpness", 0.0..=1.0)), None, None]),
         _ => ("Breakup", [None, None, None, None]),
     }

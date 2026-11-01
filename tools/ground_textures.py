@@ -186,19 +186,19 @@ def grass_turf():
     dry patches, clover."""
     blades = dict(scale=95.0, density=0.95, length=0.075, lean=0.6, clumping=0.55, width=0.0032, swirl=0.6, seed=61)
     above = {"mode": "above", "contrast": 0.08}
-    dry = [{"generator": "grunge", "op": "multiply", "amount": 0.4, "scale": 0.7, "softness": 0.25, "seed": 62}]
+    dry = [{"generator": "grunge", "op": "multiply", "amount": 0.52, "scale": 1.1, "softness": 0.1, "seed": 62}]
     return sheet("grass_turf", 2.0, {"base_color": [0.07, 0.055, 0.035], "roughness": 0.9, "height": 0.0}, [
         L("Thatch", (0.3, 0.26, 0.15), g("blades", scale=70.0, density=0.9, length=0.09, lean=0.97, clumping=0.2, width=0.0025, swirl=0.3, seed=63),
           height=1.0, height_profile=True, height_gain=0.5, jitter={"value": 0.35, "hue": 0.02}, roughness=0.85),
         L("Clover", (0.1, 0.24, 0.06), g("scatter", variant="clover", scale=14.0, density=0.85, size=0.4, per_cell=2, seed=65,
-                                         effects=[{"generator": "spots", "op": "multiply", "amount": 0.3, "scale": 1.6, "softness": 0.06, "breakup": 0.4, "seed": 66}]),
+                                         effects=[{"generator": "spots", "op": "multiply", "amount": 0.4, "scale": 1.6, "softness": 0.06, "breakup": 0.4, "seed": 66}]),
           height=1.0, height_profile=True, height_gain=1.8, height_blend=above, jitter={"value": 0.2, "hue": 0.02, "saturation": 0.15}, roughness=0.6),
         L("Blades", (0.12, 0.22, 0.05), g("blades", **blades), height=1.0, height_profile=True, height_gain=2.0, height_blend=above,
           jitter={"value": 0.3, "hue": 0.03, "saturation": 0.2, "roughness": 0.1}, roughness=0.6),
         L("Blades fine", (0.15, 0.25, 0.07), g("blades", **dict(blades, scale=120.0, length=0.06, width=0.0024, seed=67)), height=1.0, height_profile=True,
           height_gain=1.9, height_blend=above, jitter={"value": 0.3, "hue": 0.03, "saturation": 0.2}, roughness=0.6),
-        L("Dry tips", (0.45, 0.42, 0.24), g("blades", variant="tips", amount=0.18, softness=0.08, **blades), channels=NO_H, opacity=0.6, roughness=0.8),
-        L("Dry patches", (0.4, 0.36, 0.2), g("blades", variant="tips", amount=0.7, softness=0.2, **blades, effects=dry), channels=NO_H, opacity=0.55, roughness=0.8),
+        L("Dry tips", (0.45, 0.42, 0.22), g("blades", variant="tips", level=0.8, softness=0.05, **blades), channels=NO_H, opacity=0.6, roughness=0.8),
+        L("Dry patches", (0.42, 0.37, 0.2), g("blades", variant="tips", level=0.35, softness=0.15, **blades, effects=dry), channels=NO_H, opacity=0.75, roughness=0.8),
         L("Bare soil", (0.12, 0.09, 0.06), g("grunge", amount=0.12, scale=0.9, softness=0.12, seed=69),
           height_blend={"mode": "above", "offset": 0.6, "contrast": 0.3}, channels=NO_H, opacity=0.6),
     ])

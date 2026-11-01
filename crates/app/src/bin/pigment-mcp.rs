@@ -360,6 +360,7 @@ fn ground_gen_fields(g: &mut Value) {
         ("length", "blades: blade length in metres (= curvature_weight)"),
         ("width", "blades: blade half width at the root in metres (extra[0])"),
         ("swirl", "blades: how much neighbouring blades lean the same way (extra[1])"),
+        ("level", "blades tips / clumps: the output value where the mask starts, 0..1 (extra[2]; amount stays the blade density)"),
         ("asymmetry", "ripples: gentle windward / steep lee side 0..1 (= ao_influence)"),
         ("defects", "ripples: forking, ending, fading crests 0..1 (= curvature_weight)"),
         ("angle", "ripples: crest direction in degrees from x (extra[0])"),

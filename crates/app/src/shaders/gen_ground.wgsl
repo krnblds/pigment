@@ -429,7 +429,8 @@ fn gn_rock(t: vec2<i32>, gp: vec4<f32>, gp2: vec4<f32>, gp3: vec4<f32>) -> f32 {
 // blades: amount = density, scale = blades per metre (per axis), breakup =
 // clumping, ao slot = lean (0 upright .. 1 lying flat), curvature slot =
 // blade length (m), extra = (blade half width at the root (m), swirl: how
-// much neighbouring blades lean the same way). variant: 0 height (mask =
+// much neighbouring blades lean the same way, level: where the tips / clumps
+// mask starts, else 1 - amount). variant: 0 height (mask =
 // covered), 1 tips (0 at the root .. 1 at the tip), 2 clumps (the clump
 // density field). g_inst = the blade.
 fn gn_blades(t: vec2<i32>, gp: vec4<f32>, gp2: vec4<f32>, gp3: vec4<f32>) -> f32 {
@@ -481,14 +482,17 @@ fn gn_blades(t: vec2<i32>, gp: vec4<f32>, gp2: vec4<f32>, gp3: vec4<f32>) -> f32
         }
     }
     g_inst = inst;
+    // tips / clumps: amount is the blade density, so the mask starts at `level` (extra[2]) when set
+    let thr = select(1.0 - gp.x, gp3.z, gp3.z > 0.0);
+    let soft = max(gp.y, 0.003);
     switch u32(gp2.w + 0.5) {
         case 1u: {
             g_prof = tip * step(1e-4, best);
-            return wx_threshold(g_prof, gp);
+            return smoothstep(thr - soft, thr + soft, g_prof);
         }
         case 2u: {
             g_prof = clump;
-            return wx_threshold(clump, gp);
+            return smoothstep(thr - soft, thr + soft, clump);
         }
         default: {}
     }
