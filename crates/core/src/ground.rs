@@ -112,16 +112,23 @@ impl InstanceJitter {
     }
 }
 
+pub fn unit_gain() -> f32 {
+    1.0
+}
+pub fn is_unit_gain(v: &f32) -> bool {
+    *v == 1.0
+}
+
 /// Variant (output / shape) names of the ground generators.
 pub const CELL_VARIANTS: [&str; 5] = ["dome", "f2", "edges", "value", "plates"];
-pub const SCATTER_VARIANTS: [&str; 5] = ["pebble", "flake", "leaf", "twig", "shell"];
-pub const ROCK_VARIANTS: [&str; 3] = ["height", "cracks", "ledges"];
+pub const SCATTER_VARIANTS: [&str; 7] = ["pebble", "flake", "leaf", "twig", "shell", "clover", "chip"];
+pub const ROCK_VARIANTS: [&str; 4] = ["height", "cracks", "ledges", "streaks"];
 pub const BLADE_VARIANTS: [&str; 3] = ["height", "tips", "clumps"];
 pub const RIPPLE_VARIANTS: [&str; 2] = ["height", "crests"];
 
 /// Aliases accepted as `generator` that also pick a variant:
 /// (alias, generator id, variant).
-pub const GROUND_ALIASES: [(&str, &str, &str); 22] = [
+pub const GROUND_ALIASES: [(&str, &str, &str); 24] = [
     ("voronoi", "cells", "dome"),
     ("cellular", "cells", "dome"),
     ("worley", "cells", "dome"),
@@ -138,6 +145,8 @@ pub const GROUND_ALIASES: [(&str, &str, &str); 22] = [
     ("twigs", "scatter", "twig"),
     ("needles", "scatter", "twig"),
     ("shells", "scatter", "shell"),
+    ("clover", "scatter", "clover"),
+    ("scree", "scatter", "chip"),
     ("strata", "rock", "height"),
     ("eroded_rock", "rock", "height"),
     ("grass", "blades", "height"),
@@ -156,12 +165,13 @@ mod tests {
         let mut d = Document::default();
         let mut l = d.new_fill_layer("Sand");
         let plain = serde_json::to_value(&l).unwrap();
-        for k in ["height_blend", "jitter", "height_profile"] {
+        for k in ["height_blend", "jitter", "height_profile", "height_gain"] {
             assert!(plain.get(k).is_none(), "{k} is skipped when unset: {plain}");
         }
         l.height_blend = Some(HeightBlend { mode: HeightBlendMode::Below, contrast: 0.1, offset: 0.2 });
         l.jitter = Some(InstanceJitter { value: 0.2, hue: 0.02, saturation: 0.1, roughness: 0.15 });
         l.height_profile = true;
+        l.height_gain = 3.0;
         let back: crate::Layer = serde_json::from_value(serde_json::to_value(&l).unwrap()).unwrap();
         assert_eq!(back, l);
         // partial objects fill in defaults

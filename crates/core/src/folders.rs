@@ -81,6 +81,7 @@ impl Document {
             height_blend: None,
             jitter: None,
             height_profile: false,
+            height_gain: 1.0,
         }
     }
 

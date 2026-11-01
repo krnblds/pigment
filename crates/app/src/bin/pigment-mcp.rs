@@ -333,7 +333,7 @@ fn mask_schema() -> Value {
 /// Named parameters of the ground generators (docs/agents/ground/NOTES.md).
 fn ground_gen_fields(g: &mut Value) {
     let n = |d: &str| json!({ "type": "number", "description": d });
-    g["variant"] = json!({ "type": ["string", "integer"], "description": "tiles: bricks | square | hex; cells: dome | f2 | edges | value | plates; scatter: pebble | flake | leaf | twig | shell; rock: height | cracks | ledges; blades: height | tips | clumps; ripples: height | crests (or the index)" });
+    g["variant"] = json!({ "type": ["string", "integer"], "description": "tiles: bricks | square | hex; cells: dome | f2 | edges | value | plates; scatter: pebble | flake | leaf | twig | shell | clover | chip; rock: height | cracks | ledges | streaks; blades: height | tips | clumps; ripples: height | crests (or the index)" });
     let fields = [
         ("warp", "cells / rock: domain warp (= breakup)"),
         ("randomness", "cells: point jitter 0 (grid) .. 1 (= ao_influence)"),
@@ -374,6 +374,7 @@ fn ground_gen_fields(g: &mut Value) {
 /// Fill-layer ground options: height profile, height blend, per-instance jitter.
 fn ground_layer_fields(l: &mut Value) {
     l["height_profile"] = json!({ "type": "boolean", "description": "fill layers: the height follows the mask generator's shape (a dome per pebble, a blade's rise, the ripple profile) instead of a flat plateau; turns the height channel on" });
+    l["height_gain"] = json!({ "type": "number", "description": "fill layers: multiplies the fill's height, 0..8 (relief beyond -1..1: boulders, rock masses, ruts; the stack's height is HDR, normals see all of it, the exported height map clamps to -1..1); turns the height channel on" });
     l["height_blend"] = json!({ "type": ["object", "string", "null"], "additionalProperties": false,
         "description": "fill layers: show only where this layer's level (its height + offset) is above the stack (\"above\": sand between pebbles, water in ruts) or below it (\"below\": moss on the tops). A string sets the mode; null removes.",
         "properties": {

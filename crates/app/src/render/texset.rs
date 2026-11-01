@@ -107,7 +107,7 @@ struct LayerParams {
     gp3: [f32; 4],
     gb3: [f32; 4],
     gc3: [f32; 4],
-    /// height blend mode (0 off, 1 above, 2 below), contrast, offset; w = height profile on
+    /// height blend mode (0 off, 1 above, 2 below), contrast, offset; w = height gain, > 0 when the height follows the generator profile
     ground: [f32; 4],
     /// per-instance jitter: value, hue, saturation, roughness
     jit: [f32; 4],
@@ -219,7 +219,9 @@ fn ground_params(l: &Layer, p: &mut LayerParams) {
         p.ground[1] = hb.contrast.max(0.0);
         p.ground[2] = hb.offset;
     }
-    p.ground[3] = if l.height_profile { 1.0 } else { 0.0 };
+    // w: |w| = height gain, sign = the height follows the generator profile
+    let gain = l.height_gain.clamp(0.0, 8.0);
+    p.ground[3] = if l.height_profile { gain } else { -gain };
     if let Some(j) = &l.jitter {
         p.jit = [j.value, j.hue, j.saturation, j.roughness];
     }

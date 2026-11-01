@@ -958,6 +958,7 @@ fn ground_editor(ui: &mut egui::Ui, l: &mut Layer) {
     use pigment_core::ground::{HeightBlend, HeightBlendMode, InstanceJitter};
     ds::toggle(ui, &mut l.height_profile, "Height follows the generator shape")
         .on_hover_text("A dome per pebble, a blade's rise to its tip... instead of a flat plateau under the mask");
+    ds::slider_row(ui, "Height gain", &mut l.height_gain, 0.0..=8.0, ds::Unit::Plain(2));
     let mut on = l.height_blend.is_some();
     if ds::toggle(ui, &mut on, "Blend by height").on_hover_text("Show only where this layer's height is above (fills the lows) or below (the tops) the layers under it").changed() {
         l.height_blend = on.then(HeightBlend::default);

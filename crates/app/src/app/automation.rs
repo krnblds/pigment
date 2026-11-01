@@ -231,6 +231,9 @@ impl Session {
                     if l.height_profile {
                         o["height_profile"] = json!(true);
                     }
+                    if l.height_gain != 1.0 {
+                        o["height_gain"] = json!(l.height_gain);
+                    }
                     if let Some(m) = &l.mask {
                         o["mask"] = json!({
                             "generator": m.generator.as_ref().map(|g| json!({
@@ -1944,9 +1947,9 @@ fn check_ground_variant(m: &Value) -> Res<()> {
 fn configure_ground(l: &mut Layer, a: &Value) -> Res<()> {
     use pigment_core::ground::{HeightBlend, HeightBlendMode, InstanceJitter};
     let fill = matches!(l.kind, LayerKind::Fill { .. });
-    let any = ["height_blend", "jitter", "height_profile"].iter().any(|k| a.get(*k).is_some_and(|v| !v.is_null()));
+    let any = ["height_blend", "jitter", "height_profile", "height_gain"].iter().any(|k| a.get(*k).is_some_and(|v| !v.is_null()));
     if any && !fill {
-        return Err("`height_blend`, `jitter` and `height_profile` apply to fill layers only".into());
+        return Err("`height_blend`, `jitter`, `height_profile` and `height_gain` apply to fill layers only".into());
     }
     match a.get("height_blend") {
         None => {}
@@ -1982,6 +1985,10 @@ fn configure_ground(l: &mut Layer, a: &Value) -> Res<()> {
             }
             l.jitter = Some(j);
         }
+    }
+    if let Some(x) = f(a, "height_gain") {
+        l.height_gain = x.clamp(0.0, 8.0);
+        l.channels.height.enabled = true;
     }
     if let Some(b) = a.get("height_profile").and_then(Value::as_bool) {
         l.height_profile = b;

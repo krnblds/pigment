@@ -718,6 +718,10 @@ pub struct Layer {
     /// The fill's height follows the mask generator's shape profile.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub height_profile: bool,
+    /// Fill layers: multiplies the fill's height (relief beyond -1..1 for
+    /// stacked rock, boulders, ruts; the composited height is HDR).
+    #[serde(default = "crate::ground::unit_gain", skip_serializing_if = "crate::ground::is_unit_gain")]
+    pub height_gain: f32,
 }
 
 impl Layer {
@@ -1057,6 +1061,7 @@ impl Document {
             height_blend: None,
             jitter: None,
             height_profile: false,
+            height_gain: 1.0,
         }
     }
 
@@ -1083,6 +1088,7 @@ impl Document {
             height_blend: None,
             jitter: None,
             height_profile: false,
+            height_gain: 1.0,
         }
     }
 

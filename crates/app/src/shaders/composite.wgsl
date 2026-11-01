@@ -74,7 +74,7 @@ struct LayerParams {
     gen3: vec4<f32>,          // ground generators: Generator::extra of the main generator
     gb3: vec4<f32>,           // ... of mask effect b
     gc3: vec4<f32>,           // ... of mask effect c
-    ground: vec4<f32>,        // height blend mode (0 off, 1 above, 2 below), contrast, offset; w = height follows the generator profile
+    ground: vec4<f32>,        // height blend mode (0 off, 1 above, 2 below), contrast, offset; |w| = height gain, w > 0: height follows the generator profile
     jit: vec4<f32>,           // per-instance jitter: value, hue, saturation, roughness
 };
 @group(2) @binding(7) var<uniform> lp: LayerParams;
@@ -485,8 +485,9 @@ fn fs_layer(f: FullOut) -> Acc {
     // ground options (gen_ground.wgsl): the fill's height follows the
     // generator's shape, per-instance colour / roughness jitter, and the
     // height blend (show only where the layer's level is above / below the stack)
+    if (lp.flags.x == 1u) { h.x *= abs(lp.ground.w); }
     if (lp.flags.x == 1u && lp.flags.z != 0u && lp.flags.y == 1u) {
-        if (lp.ground.w > 0.5) { h.x *= clamp(l_prof, 0.0, 1.0); }
+        if (lp.ground.w > 0.0) { h.x *= clamp(l_prof, 0.0, 1.0); }
         if (any(lp.jit != vec4<f32>(0.0))) {
             c = vec4<f32>(gn_jitter_rgb(c.rgb, l_inst, lp.jit), c.a);
             r.x = clamp(r.x + (fract(l_inst * 31.7 + 0.71) - 0.5) * 2.0 * lp.jit.w, 0.0, 1.0);

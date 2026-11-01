@@ -279,6 +279,32 @@ fn gn_shape(shape: u32, l: vec2<f32>, r: f32, e: f32, irr: f32, ph: f32) -> f32 
             let dome = sqrt(max(1.0 - u * u, 0.0)) * (1.0 - pow(abs(a) / 1.1, 6.0));
             return clamp(0.55 * dome * (0.82 + 0.18 * cos(a * 18.0)) + 0.05, 0.0, 1.0);
         }
+        case 5u: {
+            // clover: three heart-shaped leaflets round a centre, a pale chevron on each
+            let x = l / r;
+            let rad = length(x);
+            let a = atan2(x.y, x.x) + ph * 6.2831853;
+            let lobe = abs(cos(1.5 * a));
+            let notch = 1.0 - 0.28 * pow(max(cos(3.0 * a), 0.0), 24.0);
+            let edge = (0.2 + 0.8 * pow(lobe, 0.6)) * notch;
+            if (rad >= edge) { return 0.0; }
+            let u = rad / edge;
+            return clamp(0.42 + 0.18 * u * u - 0.06 * (1.0 - smoothstep(0.0, 0.08, abs(sin(1.5 * a)) * rad)), 0.0, 1.0);
+        }
+        case 6u: {
+            // chip: an angular rock fragment, a convex polygon with a faceted top
+            let x = l / vec2<f32>(r * e, r);
+            var m = 0.0;
+            for (var i = 0; i < 6; i++) {
+                let fi = f32(i);
+                let a = (fi + 0.5 * fract(ph * 7.3 + fi * 0.37)) * 1.0471976;
+                let dist = 0.72 + 0.28 * fract(ph * 13.1 + fi * 0.61) - irr * 0.15 * fract(ph * 5.7 + fi * 0.29);
+                m = max(m, dot(x, vec2<f32>(cos(a), sin(a))) / dist);
+            }
+            if (m >= 1.0) { return 0.0; }
+            let ridge = 0.12 * abs(dot(x, vec2<f32>(cos(ph * 9.0), sin(ph * 9.0))));
+            return clamp(pow(1.0 - m, 0.55) - ridge, 0.0, 1.0);
+        }
         default: {
             // pebble: an ellipsoid dome with an irregular outline
             let x = l / vec2<f32>(r * e, r);
@@ -293,7 +319,7 @@ fn gn_shape(shape: u32, l: vec2<f32>, r: f32, e: f32, irr: f32, ph: f32) -> f32 
 // breakup = size variation, ao slot = elongation, curvature slot = radius
 // (fraction of a cell), extra = (instances per cell, alignment to x,
 // outline irregularity, height variation). variant = shape: 0 pebble,
-// 1 flake, 2 leaf, 3 twig / needle, 4 shell. The mask is the covered area;
+// 1 flake, 2 leaf, 3 twig / needle, 4 shell, 5 clover, 6 chip (angular). The mask is the covered area;
 // g_prof the topmost instance's height.
 fn gn_scatter(t: vec2<i32>, gp: vec4<f32>, gp2: vec4<f32>, gp3: vec4<f32>) -> f32 {
     let fr = gn_frame(t);
@@ -304,7 +330,7 @@ fn gn_scatter(t: vec2<i32>, gp: vec4<f32>, gp2: vec4<f32>, gp3: vec4<f32>) -> f3
     let e = max(gp2.y, 1.0);
     let rad = max(gp2.z, 0.02);
     let shape = u32(gp2.w + 0.5);
-    let reach = rad * e * select(1.25, 1.6, shape == 2u || shape == 4u);
+    let reach = rad * e * select(1.25, 1.6, shape == 2u || shape == 4u || shape == 5u);
     let nr = i32(clamp(ceil(reach), 1.0, 3.0));
     let layers = i32(clamp(select(1.0, gp3.x, gp3.x > 0.0), 1.0, 8.0));
     let align = clamp(gp3.y, 0.0, 1.0);
@@ -348,7 +374,8 @@ fn gn_scatter(t: vec2<i32>, gp: vec4<f32>, gp2: vec4<f32>, gp3: vec4<f32>) -> f3
 // strata strength, curvature slot = crack strength, extra = (strata bands
 // per metre along the surface's v / up axis, downhill streaks, crack cells
 // per metre). variant: 0 height, 1 cracks, 2 ledges (up-facing shelves of
-// the strata, where lichen and debris settle). g_inst = the rock block.
+// the strata, where lichen and debris settle), 3 streaks (the downhill
+// stain field). g_inst = the rock block.
 fn gn_rock(t: vec2<i32>, gp: vec4<f32>, gp2: vec4<f32>, gp3: vec4<f32>) -> f32 {
     let fr = gn_frame(t);
     let salt = gp2.x * 1.91 + fr.face * 17.0;
@@ -386,6 +413,7 @@ fn gn_rock(t: vec2<i32>, gp: vec4<f32>, gp2: vec4<f32>, gp3: vec4<f32>) -> f32 {
     switch u32(gp2.w + 0.5) {
         case 1u: { o = crack; }
         case 2u: { o = smoothstep(0.7, 0.95, bf) * mix(0.4, 1.0, br) * (1.0 - crack) * st; }
+        case 3u: { o = streak; }
         default: {}
     }
     g_prof = o;

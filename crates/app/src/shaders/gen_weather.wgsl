@@ -184,6 +184,7 @@ fn wx_tiles(t: vec2<i32>, gp: vec4<f32>, gp2: vec4<f32>) -> f32 {
     let r1 = wx_hash2(cell, gp2.x + sf.z * 17.0);
     let r2 = wx_hash2(cell + vec2<f32>(37.0, 91.0), gp2.x + sf.z * 17.0);
     let keep = select(0.0, 1.0, r1 < gp.x || gp.x >= 0.999);
+    g_inst = r2;  // per-cell id for fill jitter (gen_ground.wgsl)
     return face * keep * (1.0 - jitter * 0.4 * r2);
 }
 
