@@ -156,7 +156,7 @@ def building(asset, base, shell_extra):
     roof_y = max(p["center"][1] + p["size"][1] / 2 for p in shells) - 0.6
     for p in parts:
         k = classify(p)
-        if k == "glass" and max(p["size"]) >= 3.0:
+        if k == "glass" and p["size"][1] >= 3.0:  # tall glass
             k = "signface"        # the faces of a blade sign, not a window
         if k == "trim":
             s = sorted(p["size"])
