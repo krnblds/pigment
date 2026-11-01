@@ -24,6 +24,8 @@ func _ready() -> void:
 		_curb_test.call_deferred()
 	elif main.args.has("drive-test"):
 		_drive_test.call_deferred()
+	elif main.args.has("car-cost"):
+		_car_cost.call_deferred()
 	elif main.args.has("physics-shots"):
 		_shots.call_deferred(String(main.args["physics-shots"]))
 
@@ -910,4 +912,58 @@ func _shots(dir: String) -> void:
 	await _shot(dir, "02_skid_marks")
 	main.cam.manual = false
 	main.cam.mode = 0
+	_quit(0)
+
+
+# ================================================================== what the car costs (windowed)
+## --car-cost: parked at the spawn, static camera; 4 s windows with parts of the car switched off.
+func _measure(secs: float) -> Dictionary:
+	var n := 0
+	var tot := 0.0
+	var draws := 0.0
+	var phys := 0.0
+	var t0 := Time.get_ticks_usec()
+	while Time.get_ticks_usec() - t0 < int(secs * 1e6):
+		await get_tree().process_frame
+		n += 1
+		tot += get_process_delta_time()
+		draws += RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME)
+		phys += Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS) * 1000.0
+	return {"fps": snappedf(n / maxf(tot, 1e-6), 0.1), "draw_calls": int(draws / maxf(n, 1)), "physics_ms": snappedf(phys / maxf(n, 1), 0.01)}
+
+
+func _car_cost() -> void:
+	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
+	Engine.max_fps = 0
+	if main.traffic:
+		main.traffic.process_mode = Node.PROCESS_MODE_DISABLED
+		main.traffic.visible = false
+	main.rain.emitting = false
+	await _wait(6.0)
+	main.cam.manual = true
+	var res := {}
+	for rep in 2:
+		res["all_%d" % rep] = await _measure(4.0)
+		var tach: Node = null
+		for c in main.hud.get_children()[0].get_children():
+			if c.get_script() == preload("res://scripts/vehicle/tacho.gd"):
+				tach = c
+		if tach:
+			tach.visible = false
+			tach.process_mode = Node.PROCESS_MODE_DISABLED
+		res["no_tach_%d" % rep] = await _measure(4.0)
+		if car.fx:
+			car.fx.visible = false
+			car.fx.process_mode = Node.PROCESS_MODE_DISABLED
+		res["no_tach_no_fx_%d" % rep] = await _measure(4.0)
+		car.process_mode = Node.PROCESS_MODE_DISABLED
+		res["no_tach_no_fx_no_car_tick_%d" % rep] = await _measure(4.0)
+		car.process_mode = Node.PROCESS_MODE_INHERIT
+		if car.fx:
+			car.fx.visible = true
+			car.fx.process_mode = Node.PROCESS_MODE_INHERIT
+		if tach:
+			tach.visible = true
+			tach.process_mode = Node.PROCESS_MODE_INHERIT
+	print("CARCOST ", JSON.stringify(res))
 	_quit(0)

@@ -55,6 +55,8 @@ func _draw() -> void:
 		var a := _ang(k * 1000.0)
 		var d := Vector2(cos(a), sin(a))
 		draw_line(c + d * (R - 16.0), c + d * (R - 2.0), Color(0.8, 0.9, 1.0, 0.8), 2.0, true)
+		if k % 2 == 1:
+			continue                   # numbers on the even thousands: fewer draw calls
 		var txt := str(k)
 		var ts := _font.get_string_size(txt, HORIZONTAL_ALIGNMENT_CENTER, -1, 16)
 		draw_string(_font, c + d * (R - 30.0) + Vector2(-ts.x * 0.5, 6.0), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(0.8, 0.9, 1.0, 0.85))

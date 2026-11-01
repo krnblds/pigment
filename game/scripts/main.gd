@@ -108,7 +108,7 @@ func _ready() -> void:
 		var tauto := preload("res://scripts/traffic/traffic_automation.gd").new()
 		tauto.main = self
 		add_child(tauto)
-	elif args.has("curb-test") or args.has("drive-test") or args.has("physics-shots"):
+	elif args.has("curb-test") or args.has("drive-test") or args.has("physics-shots") or args.has("car-cost"):
 		var vt := preload("res://scripts/vehicle/vehicle_tests.gd").new()
 		vt.main = self
 		add_child(vt)
