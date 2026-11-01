@@ -186,8 +186,10 @@ def daylight():
             n.inputs["Color"].default_value = (0.5, 0.55, 0.65, 1)
             n.inputs["Strength"].default_value = 1.0
     for l in list(nt.links):
-        if l.to_socket.name == "Volume":
+        if l.to_socket.name == "Volume" or (l.to_node.type == "BACKGROUND" and l.to_socket.name in ("Color", "Strength")):
             nt.links.remove(l)
+    if bpy.data.objects.get("SkyFog"):          # tools/sky/make_sky.py apply_sky()
+        bpy.data.objects["SkyFog"].hide_render = True
     bpy.data.objects["Moon"].data.energy = 3.0
 
 
