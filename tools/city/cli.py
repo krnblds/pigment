@@ -334,13 +334,13 @@ def cmd_open(a):
     if not projs:
         raise SystemExit(f"{mid} has no Pigment project")
     proj = paths.absp(projs[0])
-    if not proj.is_file():
+    if not proj.exists():            # a .pigment project is a folder
         raise SystemExit(f"{projs[0]} does not exist yet: city build pigment:{a.model}")
     app = paths.pigment_app()
     if not app:
         raise SystemExit("Pigment app not found (set PIGMENT_APP)")
     print(f"opening {projs[0]} in Pigment. Save it there; `city watch` picks the project up:")
-    print("  the project is exported (pigment-mcp --export-for-blender) and the Godot / Blender copies are refreshed.")
+    print("  the node is pinned to the saved project, its texture sets are exported from it, and Godot / Blender are refreshed.")
     if a.dry:
         print(f"  (dry) {app} {proj}")
         return

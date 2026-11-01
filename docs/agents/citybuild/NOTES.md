@@ -12,7 +12,49 @@ cache**, and a **live link** swaps rebuilt assets into a running Godot (and Blen
 
 User guide: [docs/CITY_BUILD.md](../../CITY_BUILD.md).
 
-TIMINGS_AND_PROOF
+## Measured (RTX 4070 Ti shared with other agents, 16 cores)
+
+| | before (the script chain) | city build |
+|---|---|---|
+| **cold full build** (every node: decals, 46 meshes, 55 recipes, 74 Pigment scripts, 44 exports, the world, 63 Godot texture packs, import) | hours: props textures ~1 h, fleet ~7 min per vehicle, world export ~55 min, all by hand | **~22 min** (1,063 s for 333 nodes with `pigment=2`, + the 4K hero body at 2048 and the Godot import 175 s) |
+| world gen + build + export | 35 s + 3 min + ~55 min | **335 s** (export stage 87 s: 1,369 glbs written, fingerprints 5 s, writing 17 s) |
+| world rebuilt with no geometry change | the same ~58 min | **270 s, 0 of 1,369 glbs rewritten** (the build is deterministic; only gen + build cost time) |
+| **no-op build** (338 nodes fresh) | n/a | **3.3-5 s** |
+| `city status` | n/a | 2-5 s (graph 1.1 s) |
+
+Hot swap into a running `godot --path game -- --live` (times from the edit; `tools/city/proof.py`,
+results in `proof.json`):
+
+| change | what rebuilds | first swap | all swapped | undo (cache restore + swap) |
+|---|---|---|---|---|
+| **decal image** `billboard_noctis.png` | `godot.images:world` (tower crown billboards) | **1.4 s** | 1.4 s | 1.3 s |
+| ... same edit, the Pigment variants that show it (`watch --fast`) | building_a / b / c: open the saved project, `export_variants only=` the 1 / 1 / 1 variant(s), pack | **4.1 s** | 17.9 s | 2.6 s |
+| ... same, full Pigment re-runs (no `--fast`) | the 3 buildings' scripts (building_c is 4K) + 20 packs | 27.7 s | 83 s | 2.7 s |
+| **building recipe** (`pigment.patch` on building_b's LED strips) | Pigment re-run of building_b (7 variants, 7.2 s) + 7 packs | 11.4 s | **13.7 s** | 4.1 s |
+| **prop mesh parameter** (bollard `height` 0.96 -> 1.6) | mesh, recipe, Pigment, pack, export, world glb (6 nodes, ~1.5 s each) | 6.1 s | **9.6 s** | 2.0 s |
+
+Each swap itself takes 6-460 ms in Godot (the longest is reading a 2048 px texture set and
+building its mipmaps). The car keeps its position; nothing restarts.
+
+| decal image | building recipe | prop mesh parameter |
+|---|---|---|
+| ![](decal_before_after.png) | ![](recipe_before_after.png) | ![](prop_before_after.png) |
+
+Same camera before and after, set by the live link (`{"type": "camera"}`), captured by the live
+link (`{"type": "screenshot"}`), with the game running the whole time.
+
+Other runs:
+
+- `city watch` on a decal: change seen, rebuilt and queued in 0.1 s after the poll picked it up.
+- A Pigment project saved outside the build (`pigment-mcp` re-saving `street_lamp.pigment` with
+  an extra layer, as the app would): `watch` pinned `pigment:street_lamp` to the project,
+  exported from it and repacked in 3.0 s; `city unpin` + build restored the recipe's textures
+  from the cache in 0.2 s.
+- `city verify`: road obstacle scan 0 of 30,972 instances on a carriageway (1.3 s), 74 Pigment
+  scripts pass `--check` (8 s), decal audit skipped (not merged yet), world verify all 0 (263 s).
+- The world loads in Godot from the new glbs (headless `--drive-test`: 1,678 collision shapes,
+  0 read-backs, drive test normal).
+
 
 ## What was built
 
@@ -170,4 +212,27 @@ After merging:
 - The main checkout's `target/release/pigment-mcp.exe` was older than the town scripts (it did not
   know the `Cut-out` material): rebuild it, or point `$PIGMENT_MCP` at a current build.
 
-KNOWN_LIMITS
+## Known limits
+
+- **Not every generator is byte-deterministic.** `build_props.py` gives a slightly different glb
+  each run (UV packing), and the props / fleet game exports embed re-encoded textures, so
+  rebuilding a prop mesh always reaches Pigment and the export even when nothing really changed.
+  The early cut-off works wherever the tool is deterministic: Pigment's PNGs, the decal
+  generators, the kit meshes, the world glbs, the packs.
+- **The world itself is one node.** Its gen + build (~4 min) runs whenever its config, scripts or
+  the placement part of the props index change; only the glb export is per chunk. Splitting
+  generation by region would need world_gen changes.
+- **Collision and far proxies** are not rebuilt by a live swap (bounds rarely change; a restart
+  rebuilds them). Live-swapped meshes have no generated LODs until the next import.
+- **The decal fast path** (`watch --fast`) re-exports only the variants showing the decal; the
+  authored base folder keeps the old decal until the next full build (the node is marked partial
+  and shows as stale).
+- **`city adopt`** trusts existing outputs. Use it once per checkout (or after merging generated
+  assets), not to hide real changes.
+- The Pigment GUI was not opened in tests (`city open --dry`); the pin flow was tested by re-saving
+  a project with `pigment-mcp`, which is what the app's save writes.
+- The Blender side was tested headless only; the add-on needs reinstalling (zip) in the user's
+  Blender to get the queue.
+- `.citycache` grows with every distinct build (about 1 GB after adopting this city):
+  `city clean --gc` keeps the newest two keys per node.
+
