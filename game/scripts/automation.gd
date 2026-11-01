@@ -386,7 +386,8 @@ func _bridge_shots(dir: String) -> void:
 			# drive: car on the lane at loc heading to target, autopilot at ~60 km/h, chase camera
 			var p := _g(v.loc)
 			var d := _g(v.target) - p
-			main.car.place(TownLoader.car_transform(p, d))
+			var fz := Vector3(d.x, 0.0, d.z).normalized()
+			main.car.place(Transform3D(Basis(Vector3.UP.cross(fz).normalized(), Vector3.UP, fz), p + Vector3.UP * 0.9))
 			main.stream_now(p)
 			cam.manual = false
 			cam.snap()

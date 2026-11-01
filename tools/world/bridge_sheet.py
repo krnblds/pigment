@@ -1,5 +1,9 @@
-"""Compose the bridge design options sheet (docs/agents/bridges/design_options.png) from the clay
-renders listed by bridge_options.py --sheet (.citycache/bridges/options.json)."""
+"""Proof sheets for docs/agents/bridges/.
+
+    python tools/world/bridge_sheet.py .citycache/bridges/options.json      design_options.png (bridge_options.py --sheet)
+    python tools/world/bridge_sheet.py --pairs <before dir> <after dir>     <bridge>_before_after.png per bridge:
+                                                                           night wide, dusk wide, close-up(s)
+"""
 import json
 import os
 import sys
@@ -44,5 +48,33 @@ def main(lst):
     print("sheet ->", p)
 
 
+def pairs(bdir, adir, W=720, H=405):
+    tags = ["port", "expressway", "kagero", "tenjin"]
+    for tag in tags:
+        names = [n for n in sorted(os.listdir(adir)) if n.startswith(tag + "_") and n.endswith(".png")]
+        order = [f"{tag}_night_wide.png", f"{tag}_dusk_wide.png"] + [n for n in names if "wide" not in n]
+        order = [n for n in order if os.path.isfile(os.path.join(adir, n))]
+        if not order:
+            continue
+        head = 40
+        sheet = Image.new("RGB", (2 * W + 30, len(order) * (H + 28) + head + 10), (18, 19, 22))
+        dr = ImageDraw.Draw(sheet)
+        dr.text((10, 8), f"{tag}: before (left)  /  after (right), Cycles, same cameras", font=font(22, True), fill=(235, 235, 235))
+        y = head
+        for n in order:
+            dr.text((10, y + 4), n[:-4].replace(tag + "_", ""), font=font(16), fill=(200, 200, 200))
+            for k, d in enumerate((bdir, adir)):
+                p = os.path.join(d, n)
+                if os.path.isfile(p):
+                    sheet.paste(Image.open(p).convert("RGB").resize((W, H), Image.LANCZOS), (10 + k * (W + 10), y + 24))
+            y += H + 28
+        out = os.path.join(ROOT, "docs", "agents", "bridges", f"{tag}_before_after.png")
+        sheet.save(out, optimize=True)
+        print(out, os.path.getsize(out) // 1024, "KB")
+
+
 if __name__ == "__main__":
-    main(sys.argv[1])
+    if sys.argv[1] == "--pairs":
+        pairs(sys.argv[2], sys.argv[3])
+    else:
+        main(sys.argv[1])
