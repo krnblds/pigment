@@ -11,6 +11,7 @@ use std::collections::BTreeMap;
 pub mod brush;
 pub mod decals;
 pub mod filters;
+pub mod hibake;
 pub mod foliage;
 pub mod layers;
 pub mod library;

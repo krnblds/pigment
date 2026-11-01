@@ -698,11 +698,26 @@ pub struct Mask {
     /// Filters run on the evaluated mask, in order (blur, grow, warp...).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub filters: Vec<crate::filters::Filter>,
+    /// Only where the project's ID map has this colour (see `Document::id_map`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub id_color: Option<IdPick>,
+}
+
+/// An ID-map colour pick for a mask: sRGB 0..1 and a tolerance (distance in RGB).
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct IdPick {
+    pub color: [f32; 3],
+    #[serde(default = "default_id_tolerance")]
+    pub tolerance: f32,
+}
+
+fn default_id_tolerance() -> f32 {
+    0.1
 }
 
 impl Mask {
     pub fn new(res: ResId) -> Self {
-        Mask { res, generator: None, invert: false, enabled: true, parts: Vec::new(), effects: Vec::new(), filters: Vec::new() }
+        Mask { res, generator: None, invert: false, enabled: true, parts: Vec::new(), effects: Vec::new(), filters: Vec::new(), id_color: None }
     }
     pub fn with_generator(res: ResId, g: Generator) -> Self {
         Mask { generator: Some(g), ..Mask::new(res) }
@@ -808,6 +823,10 @@ pub struct BakeSettings {
     /// darken AO, so big interiors don't go black (Substance: max occluder distance).
     #[serde(default = "ao_distance")]
     pub ao_distance: f32,
+    /// High-to-low bake (see `hibake`): its AO / curvature replace the mesh
+    /// bakes, its normal map is a fill layer, its ID map masks layers.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub high: Option<crate::hibake::HighBake>,
 }
 
 fn ao_distance() -> f32 {
@@ -816,7 +835,7 @@ fn ao_distance() -> f32 {
 
 impl Default for BakeSettings {
     fn default() -> Self {
-        Self { ao_samples: 128, curvature_radius: 0.05, curvature_strength: 1.0, ao_distance: ao_distance() }
+        Self { ao_samples: 128, curvature_radius: 0.05, curvature_strength: 1.0, ao_distance: ao_distance(), high: None }
     }
 }
 
@@ -839,6 +858,9 @@ pub struct Document {
     /// Flat seamless tile / trim sheet / decal atlas project (see `tile`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tile: Option<crate::tile::TileSpec>,
+    /// Colour ID map (PNG, relative to the project folder) for ID masks.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub id_map: Option<String>,
 }
 
 fn default_preset() -> String {
@@ -857,6 +879,7 @@ impl Default for Document {
             next_id: 1,
             variants: Default::default(),
             tile: None,
+            id_map: None,
         }
     }
 }
@@ -971,7 +994,7 @@ impl Document {
         g.softness = 0.04;
         g.noise_scale = 22.0;
         g.noise_amount = 0.9;
-        wear.mask = Some(Mask { res, generator: Some(g), invert: false, enabled: true, parts: Vec::new(), effects: Vec::new(), filters: Vec::new() });
+        wear.mask = Some(Mask { res, generator: Some(g), invert: false, enabled: true, parts: Vec::new(), effects: Vec::new(), filters: Vec::new(), id_color: None });
 
         let mut dirt = self.new_fill_layer("Dirt");
         dirt.kind = LayerKind::Fill { values: material_preset("Grime") };
@@ -985,7 +1008,7 @@ impl Document {
         g.softness = 0.2;
         g.noise_scale = 5.0;
         g.noise_amount = 0.7;
-        dirt.mask = Some(Mask { res, generator: Some(g), invert: false, enabled: true, parts: Vec::new(), effects: Vec::new(), filters: Vec::new() });
+        dirt.mask = Some(Mask { res, generator: Some(g), invert: false, enabled: true, parts: Vec::new(), effects: Vec::new(), filters: Vec::new(), id_color: None });
         vec![base, wear, dirt]
     }
 
@@ -1003,7 +1026,7 @@ impl Document {
         l.kind = LayerKind::Fill { values };
         if let Some(g) = generator {
             let res = self.mint();
-            l.mask = Some(Mask { res, generator: Some(g), invert: false, enabled: true, parts: Vec::new(), effects: Vec::new(), filters: Vec::new() });
+            l.mask = Some(Mask { res, generator: Some(g), invert: false, enabled: true, parts: Vec::new(), effects: Vec::new(), filters: Vec::new(), id_color: None });
         }
         l
     }
@@ -1407,7 +1430,7 @@ mod tests {
     #[test]
     fn json_round_trip() {
         let mut d = Document::new_default();
-        d.layers[1].mask = Some(Mask { res: 99, generator: Some(Generator::new(GeneratorKind::EdgeWear)), invert: false, enabled: true, parts: Vec::new(), effects: Vec::new(), filters: Vec::new() });
+        d.layers[1].mask = Some(Mask { res: 99, generator: Some(Generator::new(GeneratorKind::EdgeWear)), invert: false, enabled: true, parts: Vec::new(), effects: Vec::new(), filters: Vec::new(), id_color: None });
         let s = serde_json::to_string_pretty(&d).unwrap();
         let back: Document = serde_json::from_str(&s).unwrap();
         assert_eq!(d, back);

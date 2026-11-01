@@ -548,7 +548,7 @@ mod tests {
             v([2.0, 0.0, 4.0], [0.0, 1.0, 0.0], [1.0, 1.0]),
             v([-2.0, 0.0, 4.0], [0.0, 1.0, 0.0], [0.5, 1.0]),
         ];
-        Mesh { name: "wall".into(), vertices, indices: vec![0, 1, 2, 0, 2, 3, 4, 6, 5, 4, 7, 6], has_uvs: true }
+        Mesh { name: "wall".into(), vertices, indices: vec![0, 1, 2, 0, 2, 3, 4, 6, 5, 4, 7, 6], has_uvs: true, ..Default::default() }
     }
 
     #[test]

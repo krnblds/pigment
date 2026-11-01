@@ -11,6 +11,7 @@ use serde_json::{json, Value};
 
 type Res<T> = Result<T, String>;
 
+mod bake_tools;
 mod brush_tools;
 mod decal_tools;
 mod filter_tools;
@@ -791,6 +792,9 @@ impl Session {
     }
 
     pub fn bake(&mut self, a: &Value) -> Res<Value> {
+        if a.get("high_mesh").is_some() || a.get("maps").is_some() {
+            return self.bake_high(a);
+        }
         let b = &mut self.app.doc.bake;
         if let Some(n) = a.get("ao_samples").and_then(Value::as_u64) {
             b.ao_samples = (n as u32).clamp(8, 1024);

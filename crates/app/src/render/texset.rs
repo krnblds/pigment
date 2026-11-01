@@ -121,6 +121,9 @@ struct LayerParams {
     /// radius (texels); w = relief strength. 496 of 512 bytes are now used:
     /// further per-layer data should go to a storage buffer (like part masks).
     ext: [f32; 4],
+    /// ID mask: ID-map colour (sRGB 0..1) and tolerance (w < 0 = off). With
+    /// this the struct is exactly 512 bytes (the uniform stride).
+    idc: [f32; 4],
 }
 
 /// One filter pass (`filter.wgsl` FilterParams), 256-byte slots.
@@ -210,6 +213,7 @@ fn layer_params(l: &Layer, variant_seed: u32) -> LayerParams {
         ground: [0.0; 4],
         jit: [0.0; 4],
         ext: [0.0; 4],
+        idc: [0.0, 0.0, 0.0, -1.0],
     };
     ground_params(l, &mut p);
     image_fill_params(l, &mut p);
@@ -249,6 +253,9 @@ fn layer_params(l: &Layer, variant_seed: u32) -> LayerParams {
             }
         }
         // same condition as variants::selected_parts returning Some
+        if let Some(id) = &m.id_color {
+            p.idc = [id.color[0], id.color[1], id.color[2], id.tolerance.max(0.0)];
+        }
         if !m.parts.is_empty() || l.variant.part_subset.is_some() {
             // misc.y / misc.z (where the bitset lives) are filled in by `composite`
             p.misc[0] = 1;
@@ -376,6 +383,8 @@ pub struct TexSet {
     dummy_anchor: Tex,
     filter_buf: wgpu::Buffer,
     filter_buf_slots: u64,
+    /// Colour ID map for ID masks (1 x 1 black until set).
+    pub id_map: Tex,
 }
 
 struct Pipes {
@@ -396,6 +405,8 @@ struct Pipes {
     jfa_init: wgpu::RenderPipeline,
     jfa_step: wgpu::RenderPipeline,
     filter_bgl: wgpu::BindGroupLayout,
+    /// High-to-low AO / curvature into bakes.rg (write-masked).
+    copy_rg: (wgpu::RenderPipeline, wgpu::BindGroupLayout),
     filter_acc: wgpu::RenderPipeline,
     filter_mask: wgpu::RenderPipeline,
     mask_eval: wgpu::RenderPipeline,
@@ -407,7 +418,8 @@ impl Pipes {
         let common = include_str!("../shaders/common.wgsl");
         let comp = gpu::shader(device, "composite.wgsl", &[common, include_str!("../shaders/composite.wgsl"), include_str!("../shaders/gen_weather.wgsl"), include_str!("../shaders/gen_ground.wgsl")].concat());
         let ts = gpu::shader(device, "texspace.wgsl", &[common, include_str!("../shaders/texspace.wgsl")].concat());
-        let shared_bgl = gpu::bgl(device, "shared", &[gpu::ntex(0), gpu::ntex(1), gpu::utex(2), gpu::uniform_entry(3, false), gpu::ntex(4), gpu::utex(5)]);
+        // binding 6: the colour ID map (ID masks)
+        let shared_bgl = gpu::bgl(device, "shared", &[gpu::ntex(0), gpu::ntex(1), gpu::utex(2), gpu::uniform_entry(3, false), gpu::ntex(4), gpu::utex(5), gpu::ntex(6)]);
         let acc_bgl = gpu::bgl(device, "acc", &[gpu::ntex(0), gpu::ntex(1), gpu::ntex(2), gpu::ntex(3)]);
         let layer_bgl = gpu::bgl(
             device,
@@ -490,6 +502,13 @@ impl Pipes {
                     cull: None,
                 },
             ),
+            copy_rg: {
+                let m = gpu::shader(device, "copy_rg.wgsl", &[common, include_str!("../shaders/copy_rg.wgsl")].concat());
+                let bgl = gpu::bgl(device, "copy rg", &[gpu::ntex(0)]);
+                let layout = gpu::layout(device, "copy rg", &[&bgl]);
+                let target = Some(wgpu::ColorTargetState { format: BAKES, blend: None, write_mask: wgpu::ColorWrites::RED | wgpu::ColorWrites::GREEN });
+                (gpu::fullscreen(device, "copy rg", &m, "fs_copy_rg", &layout, &[target]), bgl)
+            },
             jfa_init: gpu::fullscreen(device, "jfa init", &ts, "fs_jfa_init", &jfa_layout, &[gpu::target(NEAREST, None)]),
             jfa_step: gpu::fullscreen(device, "jfa step", &ts, "fs_jfa_step", &jfa_layout, &[gpu::target(NEAREST, None)]),
             shared_bgl,
@@ -499,6 +518,24 @@ impl Pipes {
             jfa_bgl,
         }
     }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn shared_bind_group(device: &wgpu::Device, p: &Pipes, bakes: &Tex, position: &Tex, nearest: &Tex, buf: &wgpu::Buffer, wnormal: &Tex, parts: &Tex, id_map: &Tex) -> wgpu::BindGroup {
+    gpu::bind_group(
+        device,
+        "shared",
+        &p.shared_bgl,
+        &[
+            wgpu::BindingResource::TextureView(&bakes.view),
+            wgpu::BindingResource::TextureView(&position.view),
+            wgpu::BindingResource::TextureView(&nearest.view),
+            buf.as_entire_binding(),
+            wgpu::BindingResource::TextureView(&wnormal.view),
+            wgpu::BindingResource::TextureView(&parts.view),
+            wgpu::BindingResource::TextureView(&id_map.view),
+        ],
+    )
 }
 
 fn filter_buffer(device: &wgpu::Device, slots: u64) -> wgpu::Buffer {
@@ -557,19 +594,8 @@ impl TexSet {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
-        let shared_bg = gpu::bind_group(
-            device,
-            "shared",
-            &p.shared_bgl,
-            &[
-                wgpu::BindingResource::TextureView(&bakes.view),
-                wgpu::BindingResource::TextureView(&position.view),
-                wgpu::BindingResource::TextureView(&nearest.view),
-                shared_buf.as_entire_binding(),
-                wgpu::BindingResource::TextureView(&wnormal.view),
-                wgpu::BindingResource::TextureView(&parts.view),
-            ],
-        );
+        let id_map = Tex::new(device, "id map", 1, 1, wgpu::TextureFormat::Rgba8Unorm, wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST, 1);
+        let shared_bg = shared_bind_group(device, &p, &bakes, &position, &nearest, &shared_buf, &wnormal, &parts, &id_map);
         let acc = vec![acc_set(device, &p, res, "acc final"), acc_set(device, &p, res, "acc ping"), acc_set(device, &p, res, "acc pong")];
         let dummy_layer = LayerTex::new(device, 1);
         let dummy_mask = Tex::target(device, "dummy mask", 1, MASK_FORMAT);
@@ -617,6 +643,7 @@ impl TexSet {
             dummy_anchor: Tex::target(device, "dummy anchor", 1, ANCHOR),
             filter_buf: filter_buffer(device, 16),
             filter_buf_slots: 16,
+            id_map,
         };
         // neutral bakes until the first real bake: AO 1, curvature 0.5
         let mut enc = device.create_command_encoder(&Default::default());
@@ -627,6 +654,37 @@ impl TexSet {
 
     pub fn mip_gen(&self) -> &MipGen {
         &self.mipgen
+    }
+
+    /// Set the colour ID map (RGBA8, `w` x `h`, row 0 = v 0); None clears it.
+    pub fn set_id_map(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, img: Option<(&[u8], u32, u32)>) {
+        self.id_map = match img {
+            Some((data, w, h)) => {
+                let t = Tex::new(device, "id map", w, h, wgpu::TextureFormat::Rgba8Unorm, wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST, 1);
+                gpu::upload(queue, &t, data);
+                t
+            }
+            None => Tex::new(device, "id map", 1, 1, wgpu::TextureFormat::Rgba8Unorm, wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST, 1),
+        };
+        self.shared_bg = shared_bind_group(device, &self.p, &self.bakes, &self.position, &self.nearest, &self.shared_buf, &self.wnormal, &self.parts, &self.id_map);
+    }
+
+    /// High-to-low AO (r) and curvature (g), `res` x `res` RG f32, into the
+    /// mesh bakes (b / a keep the drip and rain bakes).
+    pub fn apply_high_bakes(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, rg: &[[f32; 2]], res: u32) {
+        let data: Vec<half::f16> = rg.iter().flat_map(|v| [half::f16::from_f32(v[0]), half::f16::from_f32(v[1]), half::f16::ZERO, half::f16::ONE]).collect();
+        let t = Tex::new(device, "high bakes", res, res, wgpu::TextureFormat::Rgba16Float, wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST, 1);
+        gpu::upload(queue, &t, bytemuck::cast_slice(&data));
+        let bg = gpu::bind_group(device, "copy rg", &self.p.copy_rg.1, &[wgpu::BindingResource::TextureView(&t.view)]);
+        let mut enc = device.create_command_encoder(&Default::default());
+        {
+            let mut pass = gpu::pass(&mut enc, "high bakes", &[&self.bakes.view], None);
+            pass.set_pipeline(&self.p.copy_rg.0);
+            pass.set_bind_group(0, &bg, &[]);
+            pass.draw(0..3, 0..1);
+        }
+        queue.submit([enc.finish()]);
+        self.baked = true;
     }
 
     /// Create pixel storage for any paint layers / masks the document has but

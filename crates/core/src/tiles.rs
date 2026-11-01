@@ -196,7 +196,7 @@ mod tests {
     /// A unit quad in the XY plane facing +Z with UVs covering 0..1.
     fn quad() -> Mesh {
         let v = |x: f32, y: f32| Vertex { position: [x, y, 0.0], normal: [0.0, 0.0, 1.0], uv: [x, 1.0 - y], tangent: [1.0, 0.0, 0.0, 1.0] };
-        Mesh { name: "q".into(), vertices: vec![v(0.0, 0.0), v(1.0, 0.0), v(1.0, 1.0), v(0.0, 1.0)], indices: vec![0, 1, 2, 0, 2, 3], has_uvs: true }
+        Mesh { name: "q".into(), vertices: vec![v(0.0, 0.0), v(1.0, 0.0), v(1.0, 1.0), v(0.0, 1.0)], indices: vec![0, 1, 2, 0, 2, 3], has_uvs: true, ..Default::default() }
     }
 
     #[test]

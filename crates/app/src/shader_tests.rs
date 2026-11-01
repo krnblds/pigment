@@ -49,4 +49,5 @@ fn filter() {
     check("composite.wgsl + filter.wgsl", &[include_str!("shaders/composite.wgsl"), include_str!("shaders/gen_weather.wgsl"), include_str!("shaders/gen_ground.wgsl"), include_str!("shaders/filter.wgsl")].concat());
 }
 shader_test!(decal_box, "decal_box.wgsl");
+shader_test!(copy_rg, "copy_rg.wgsl");
 shader_test!(foliage, "foliage.wgsl");

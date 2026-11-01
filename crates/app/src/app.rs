@@ -28,6 +28,7 @@ mod folders_ui;
 mod bridge;
 mod brush_tools;
 mod decals;
+pub(crate) mod hibake_app;
 mod foliage;
 mod tour;
 #[cfg(test)]
@@ -429,6 +430,8 @@ impl PigmentApp {
         let Some(mg) = &self.mesh_gpu else { return };
         let t0 = Instant::now();
         self.baker.bake(&rs.device, &rs.queue, &self.mesh, mg, &mut self.ts, &self.doc.bake);
+        // a stored high-to-low bake's AO / curvature replace the mesh bakes
+        self.apply_high_bake_files(rs);
         self.composited = None;
         if self.ui.async_bake {
             // the window keeps drawing while the GPU bakes; a toast tracks it
@@ -810,7 +813,7 @@ impl PigmentApp {
             return;
         }
         self.ts.new_mask(&rs.device, &rs.queue, res, false);
-        self.doc.layers[i].mask = Some(Mask { res, generator: None, invert: false, enabled: true, parts: Vec::new(), effects: Vec::new(), filters: Vec::new() });
+        self.doc.layers[i].mask = Some(Mask { res, generator: None, invert: false, enabled: true, parts: Vec::new(), effects: Vec::new(), filters: Vec::new(), id_color: None });
         self.paint_mask = true;
         self.brush.mask_white = true;
         self.brush.erase = false;
@@ -1323,7 +1326,7 @@ mod tests {
         let i = app.doc.layers.len() - 1;
         let mres = app.doc.mint();
         app.ts.new_mask(&rs.device, &rs.queue, mres, true);
-        app.doc.layers[i].mask = Some(Mask { res: mres, generator: Some(Generator::new(GeneratorKind::Dirt)), invert: false, enabled: true, parts: Vec::new(), effects: Vec::new(), filters: Vec::new() });
+        app.doc.layers[i].mask = Some(Mask { res: mres, generator: Some(Generator::new(GeneratorKind::Dirt)), invert: false, enabled: true, parts: Vec::new(), effects: Vec::new(), filters: Vec::new(), id_color: None });
         app.selected = Some(app.doc.layers[i].id);
         app.paint_mask = true;
         app.brush.mask_white = false;

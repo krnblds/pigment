@@ -164,6 +164,23 @@ pub(super) fn configure_filters(app: &mut PigmentApp, i: usize, a: &Value) -> Re
         Some(_) => return Err("`anchor` is a name or null".into()),
     }
     if let Some(m) = a.get("mask").filter(|m| m.is_object()) {
+        match m.get("id_color") {
+            None => {}
+            Some(Value::Null) => {
+                if let Some(mk) = app.doc.layers[i].mask.as_mut() {
+                    mk.id_color = None;
+                }
+            }
+            Some(v) => {
+                let c = v.get("color").and_then(Value::as_array).filter(|c| c.len() == 3).ok_or("`mask.id_color.color` must be [r, g, b] (sRGB 0..1, as in the ID map)")?;
+                let color = [0, 1, 2].map(|k| c[k].as_f64().unwrap_or(0.0) as f32);
+                let tolerance = f32_arg(v, "tolerance").unwrap_or(0.1).max(0.0);
+                if app.doc.id_map.is_none() {
+                    return Err("`mask.id_color` needs an ID map: bake one first (bake maps [\"color_id\"] or [\"material_id\"])".into());
+                }
+                app.doc.layers[i].mask.as_mut().ok_or("`mask.id_color` needs a mask")?.id_color = Some(pigment_core::IdPick { color, tolerance });
+            }
+        }
         if let Some(v) = m.get("input") {
             let inp = gen_input(&app.doc, i, v)?;
             let g = app.doc.layers[i].mask.as_mut().and_then(|m| m.generator.as_mut()).ok_or("`mask.input` needs a mask generator")?;

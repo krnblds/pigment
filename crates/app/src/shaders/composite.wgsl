@@ -25,6 +25,16 @@ struct Shared {
 @group(0) @binding(3) var<uniform> sh: Shared;
 @group(0) @binding(4) var wnormal: texture_2d<f32>;    // world normal
 @group(0) @binding(5) var parts: texture_2d<u32>;      // mesh part id + 1
+@group(0) @binding(6) var id_map: texture_2d<f32>;     // colour ID map (any size, UV-mapped)
+
+// ID mask: 1 where the ID map's colour is within the tolerance of lp.idc.
+fn id_match(t: vec2<i32>) -> f32 {
+    let size = vec2<f32>(textureDimensions(id_map));
+    let uv = (vec2<f32>(t) + 0.5) / sh.res.x;
+    let c = textureLoad(id_map, clamp(vec2<i32>(uv * size), vec2<i32>(0), vec2<i32>(size) - 1), 0).rgb;
+    let d = length(c - lp.idc.rgb);
+    return 1.0 - smoothstep(lp.idc.w, lp.idc.w + 0.02, d);
+}
 
 // ---- group 1: accumulation input ----
 @group(1) @binding(0) var acc_color: texture_2d<f32>;
@@ -77,6 +87,7 @@ struct LayerParams {
     ground: vec4<f32>,        // height blend mode (0 off, 1 above, 2 below), contrast, offset; |w| = height gain, w > 0: height follows the generator profile
     jit: vec4<f32>,           // per-instance jitter: value, hue, saturation, roughness
     ext: vec4<f32>,           // x = 1: l_mask is the precomputed (filtered) mask; y = anchor input (0 bake, 1 height, 2 mask, 3 colour); z = relief radius (texels); w = relief strength
+    idc: vec4<f32>,           // ID mask: ID-map colour (sRGB 0..1), w = tolerance (< 0: off)
 };
 @group(2) @binding(7) var<uniform> lp: LayerParams;
 // Image fills bind their tiling images in the channel slots above
@@ -485,6 +496,7 @@ fn eval_mask(t: vec2<i32>) -> f32 {
             // selection is looked up at the padded source texel so seams stay clean
             mask *= part_selected(src_texel(t));
         }
+        if (lp.idc.w >= 0.0) { mask *= id_match(src_texel(t)); }
         if (lp.flags.w == 1u) { mask = 1.0 - mask; }
     }
     return mask;

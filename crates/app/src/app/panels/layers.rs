@@ -957,6 +957,7 @@ impl Panel for MaskPanel {
             });
         }
         super::filters::mask_filters_ui(app, ui, i);
+        super::hibake::id_mask_ui(app, ui, i);
         let m = app.doc.layers[i].mask.as_mut().unwrap();
         ds::section(ui, "Parts");
         let n = m.parts.len();

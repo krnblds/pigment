@@ -498,6 +498,7 @@ impl Panel for TextureSetPanel {
             app.bake(rs);
         }
         ds::hint(ui, "Edge wear, dirt and other generators read these maps. See them with the AO / Curvature chips on the viewport (Advanced).");
+        super::hibake::high_bake_ui(app, ui, rs);
         if let Some(t) = &app.doc.tile {
             ds::section(ui, "Sheet");
             ui.label(ds::text(format!("{} · {} cell(s)", t.kind.id(), t.cells.len()), font::SMALL));

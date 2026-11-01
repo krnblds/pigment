@@ -702,3 +702,30 @@ fn brush_engine_pen_line_and_path() {
     h.run(4);
     assert!(h.app.brush.tips.len() >= 10, "the tip library loads ({} tips)", h.app.brush.tips.len());
 }
+
+/// High-to-low bake and ID masks in the panels: bake the generated pair, then
+/// the Texture set & bake panel shows the high bake, and the Mask panel offers
+/// the ID map's colours.
+#[test]
+fn high_bake_and_id_mask_panels() {
+    let Some(mut h) = harness() else { return };
+    settle(&mut h);
+    let (low, high) = pigment_core::hibake::test_pair();
+    let rs = h.rs.clone();
+    h.app.new_project(&rs, low, None, Document::new_default());
+    let hb = pigment_core::hibake::HighBake::new("generated", vec![pigment_core::hibake::BakeMap::Normal, pigment_core::hibake::BakeMap::ColorId]);
+    h.app.bake_high(&rs, Some(&high), hb, true).unwrap();
+    let path = pigment_core::image_fill::resolve_path(h.app.doc.id_map.as_ref().unwrap(), &h.app.image_bases()).unwrap();
+    assert_eq!(super::panels::hibake::id_palette(&path).len(), 3, "three materials, three ID colours");
+    let layout = |p: PanelId| DockLayout { root: super::dock::Node::Split { vertical: false, ratio: 0.5, a: Box::new(super::dock::Node::Leaf { tabs: vec![PanelId::Viewport], active: 0 }), b: Box::new(super::dock::Node::Leaf { tabs: vec![p], active: 0 }) }, floating: vec![] };
+    *h.app.ui.prefs.layout_mut() = layout(PanelId::TextureSet);
+    h.run(4);
+    let i = h.app.doc.layers.len() - 1;
+    let res = h.app.doc.mint();
+    h.app.ts.new_mask(&rs.device, &rs.queue, res, true);
+    h.app.doc.layers[i].mask = Some(Mask::new(res));
+    let id = h.app.doc.layers[i].id;
+    h.app.select(Some(id), true);
+    *h.app.ui.prefs.layout_mut() = layout(PanelId::Mask);
+    h.run(4);
+}

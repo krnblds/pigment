@@ -83,6 +83,11 @@ impl TileImages {
     }
 
     /// Forget images that failed, so they are retried (after the user fixed a path).
+    /// Drop a path's cached textures (the file changed on disk).
+    pub fn forget(&mut self, path: &str) {
+        self.map.retain(|(p, _), _| p != path);
+    }
+
     pub fn retry_missing(&mut self) {
         self.map.retain(|_, t| t.is_some());
     }
