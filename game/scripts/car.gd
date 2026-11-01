@@ -42,6 +42,7 @@ var _steer := 0.0
 var _flip_time := 0.0
 var _last_vel := Vector3.ZERO
 var _bar_t := 0.0
+var _since_place := 0.0
 
 
 func setup(glb_path: String, json_path: String) -> void:
@@ -300,7 +301,8 @@ func _physics_process(delta: float) -> void:
 		bar_lights[1].light_energy = 0.0 if phase < 2 else 4.0
 	# impacts (for the MERIDIAN ticker)
 	var dv := (linear_velocity - _last_vel).length() / maxf(delta, 1e-4)
-	if dv > 60.0 and get_contact_count() > 0:
+	_since_place += delta
+	if dv > 150.0 and get_contact_count() > 0 and _since_place > 2.0:
 		impact.emit(dv)
 	_last_vel = linear_velocity
 	# stuck upside down: auto reset
@@ -321,4 +323,5 @@ func place(xf: Transform3D) -> void:
 	_steer = 0.0
 	_last_vel = Vector3.ZERO
 	_flip_time = 0.0
+	_since_place = 0.0
 	PhysicsServer3D.body_set_state(get_rid(), PhysicsServer3D.BODY_STATE_TRANSFORM, xf)

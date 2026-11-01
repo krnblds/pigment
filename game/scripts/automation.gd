@@ -134,17 +134,22 @@ func _autoshot(dir: String) -> void:
 	cam.snap()
 	_drive(true)
 	await _wait(2.0)
-	perf["drive"] = await _measure_for(10.0)
+	perf["drive_sdfgi_on"] = await _measure_for(10.0)
+	main.env.sdfgi_enabled = false
+	perf["drive_sdfgi_off"] = await _measure_for(6.0)
+	main.env.sdfgi_enabled = true
 	_ap = false
 	# overview from the Cycles "overview" camera position
 	cam.manual = true
-	cam.fov = 40.0
-	cam.global_position = Vector3(-40, 120, 110)
-	cam.look_at(Vector3(15, 0, -25), Vector3.UP)
+	main.rain.visible = false
+	cam.fov = 50.0
+	cam.global_position = Vector3(-95, 48, 70)
+	cam.look_at(Vector3(10, 4, -15), Vector3.UP)
 	await _wait(3.0)
 	await _shot(dir, "05_overview")
 	perf["overview"] = await _measure_for(3.0)
 	# street level, looking into the crossroads J1
+	main.rain.visible = true
 	var j := _junction("J1")
 	var p: Vector3 = _road_point_near(j, 32.0)
 	cam.fov = 55.0

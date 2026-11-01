@@ -8,7 +8,7 @@ var manual := false                  ## automation drives the camera directly
 const MODES := [
 	{"dist": 6.2, "height": 2.1, "look": 1.1, "fov": 68.0},
 	{"dist": 10.5, "height": 3.6, "look": 1.3, "fov": 62.0},
-	{"dist": -0.4, "height": 1.15, "look": 1.0, "fov": 78.0},   # hood
+	{"dist": -0.4, "height": 1.3, "look": 1.0, "fov": 78.0},    # hood
 ]
 var _dir := Vector3.BACK
 var _pos := Vector3.ZERO
@@ -58,7 +58,7 @@ func _process(delta: float) -> void:
 	_dir = _dir.slerp(want, 1.0 - exp(-delta * 4.0)).normalized()
 	var car := tx.origin
 	if mode == 2:
-		var hood: Vector3 = tx * Vector3(0, float(m.height), 0.4)
+		var hood: Vector3 = tx * Vector3(0, float(m.height), 1.2)
 		global_position = hood
 		look_at(hood + tx.basis.z * 10.0 + Vector3.DOWN * 0.3, Vector3.UP)
 		fov = float(m.fov) + speed * 0.25

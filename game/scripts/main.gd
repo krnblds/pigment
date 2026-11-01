@@ -5,7 +5,7 @@ extends Node3D
 ##   --autoshot=<dir>   scripted drive, saves PNGs + perf.json to <dir>, quits
 ##   --bench=<seconds>  autopilot drive, prints FPS / draw calls, quits
 ##   --drive-test       physics-only check (works with --headless), prints, quits
-##   --gi               start with SDFGI on       --no-rain   start without rain
+##   --no-gi            start with SDFGI off      --no-rain   start without rain
 ##   --no-town          skip the town (empty ground)
 
 const TownLoader := preload("res://scripts/town_loader.gd")
@@ -67,8 +67,8 @@ func _ready() -> void:
 	_setup_rain()
 	if args.has("no-rain"):
 		rain.emitting = false
-	if args.has("gi"):
-		env.sdfgi_enabled = true
+	if args.has("no-gi"):
+		env.sdfgi_enabled = false
 	_road_lines = town.road_polylines() if town.layout else []
 	if args.has("autoshot") or args.has("bench") or args.has("drive-test"):
 		var auto := preload("res://scripts/automation.gd").new()
@@ -179,9 +179,9 @@ func _setup_environment() -> void:
 	env.ssao_enabled = true
 	env.ssao_radius = 1.2
 	env.ssao_intensity = 1.6
-	# SDFGI is opt-in (G / --gi): voxelising ~14 M triangles stalls on a shared GPU; SSIL gives the
-	# cheap screen-space bounce of neon and lamps instead
-	env.sdfgi_enabled = false
+	# SDFGI: emissive bounce of the neon and windows (~1.5 ms at 1080p on a 4070 Ti); G toggles,
+	# --no-gi starts without it.  SSIL adds the short-range screen-space bounce.
+	env.sdfgi_enabled = true
 	env.ssil_enabled = true
 	env.ssil_radius = 6.0
 	env.ssil_intensity = 1.4

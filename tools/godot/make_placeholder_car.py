@@ -2,8 +2,9 @@
 
     blender -b --factory-startup --python tools/godot/make_placeholder_car.py -- [out_dir]
 
-Writes <out_dir>/car.glb + car.json (default game/assets/car/), the same contract as the real
-car (assets/car/car.glb + car.json from the car workstream), so swapping is drop-in:
+Writes <out_dir>/car.glb + car.json (default target/placeholder_car/; pass game/assets/car to use
+it in the game), the same contract as the real car (assets/car/car.glb + car.json from the car
+workstream, now merged and copied in by tools/godot/sync_car.py), so swapping is drop-in:
     glTF Y-up, the car faces glTF +Z (its left is +X), ground at y = 0
     nodes  Body, Wheel_FL, Wheel_FR, Wheel_RL, Wheel_RR (origins at the hub centres),
            Collider (convex), empties Headlight_L/R, Taillight_L/R
@@ -20,7 +21,7 @@ import bpy
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 ARGS = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
-OUT = os.path.abspath(ARGS[0]) if ARGS else os.path.join(ROOT, "game", "assets", "car")
+OUT = os.path.abspath(ARGS[0]) if ARGS else os.path.join(ROOT, "target", "placeholder_car")
 
 SPEC = {"wheel_radius": 0.34, "wheel_width": 0.24, "track": 1.62, "wheelbase": 2.74, "mass": 1350.0,
         "length": 4.62, "width": 1.92, "height": 1.32, "placeholder": True}
