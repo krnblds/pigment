@@ -1,0 +1,39 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Sky" path="res://sky/sky_night_rain.tres" id="1_sky"]
+
+[sub_resource type="Environment" id="Environment_night"]
+background_mode = 2
+sky = ExtResource("1_sky")
+ambient_light_source = 3
+ambient_light_energy = 0.9
+reflected_light_source = 2
+tonemap_mode = 4
+tonemap_exposure = 1.25
+glow_enabled = true
+glow_blend_mode = 1
+glow_hdr_threshold = 0.9
+fog_enabled = true
+fog_mode = 0
+fog_light_color = Color(0.1074, 0.0451, 0.0149, 1)
+fog_light_energy = 1.0
+fog_density = 0.006
+fog_sky_affect = 0.0
+fog_aerial_perspective = 0.2
+volumetric_fog_enabled = true
+volumetric_fog_density = 0.018
+volumetric_fog_albedo = Color(0.6200, 0.4200, 0.4000, 1)
+volumetric_fog_emission = Color(0.0300, 0.0160, 0.0130, 1)
+volumetric_fog_emission_energy = 1.0
+volumetric_fog_anisotropy = 0.45
+volumetric_fog_length = 110.0
+volumetric_fog_sky_affect = 0.3
+
+[node name="SkyNight" type="WorldEnvironment"]
+environment = SubResource("Environment_night")
+
+[node name="Moon" type="DirectionalLight3D" parent="."]
+rotation_degrees = Vector3(-55, -30.0, 0.0)
+light_color = Color(0.6000, 0.7000, 1.0000, 1)
+light_energy = 0.1
+light_volumetric_fog_energy = 0.4

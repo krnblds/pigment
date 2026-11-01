@@ -784,6 +784,9 @@ def _gc(c, k=1.0):
     return "Color(%.4f, %.4f, %.4f, 1)" % tuple(min(max(v * k, 0.0), 64.0) for v in c[:3])
 
 
+FOG_LEVEL = 0.15
+
+
 def write_godot(presets, res="2k"):
     """Copy the baked HDRs into game/sky/ and write the Godot side: one Sky resource per
     preset (city_sky.gdshader sampling the panorama in the shared convention),
@@ -805,8 +808,9 @@ def write_godot(presets, res="2k"):
         if res != "2k":
             continue
         st = hdr_stats(src)
-        # fog: the horizon colour (what the far fog must blend into), kept dim so lamps dominate
-        hz = st["horizon"]
+        # fog: the horizon's hue (what the far fog blends into) at FOG_LEVEL of its radiance, so
+        # the buildings stay darker than the sky behind them and the skyline reads
+        hz = [v * FOG_LEVEL for v in st["horizon"]]
         k = P["key"]
         meta[preset] = {
             "label": P["label"],
@@ -863,7 +867,7 @@ fog_mode = 0
 fog_light_color = {_gc(n["fog_light_color"])}
 fog_light_energy = 1.0
 fog_density = 0.006
-fog_sky_affect = 0.25
+fog_sky_affect = 0.0
 fog_aerial_perspective = 0.2
 volumetric_fog_enabled = true
 volumetric_fog_density = 0.018
