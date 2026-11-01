@@ -20,6 +20,7 @@ uniform bool use_emission = false;
 uniform sampler2D texture_emission : source_color, hint_default_black, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform vec4 emission : source_color = vec4(0.0, 0.0, 0.0, 1.0);
 uniform float emission_energy = 1.0;
+uniform bool emission_multiply = false;     // glTF imports: emissive factor x texture
 uniform bool use_alpha = true;
 uniform vec3 uv1_scale = vec3(1.0);
 uniform vec3 uv1_offset = vec3(0.0);
@@ -29,7 +30,7 @@ uniform int mask_mode = 0;                    // 0 = texels near paint_ref (body
 uniform bool paint_on = false;
 uniform vec3 paint_color : source_color = vec3(0.8, 0.1, 0.4);
 uniform vec3 paint_ref : source_color = vec3(0.5);     // the livery's dominant paint colour
-uniform float paint_tol = 0.22;
+uniform float paint_tol = 0.3;
 uniform int finish = 0;                       // 0 stock, 1 pearl, 2 chrome, 3 matte
 uniform float window_tint : hint_range(0.0, 1.0) = 0.0;
 
@@ -42,7 +43,8 @@ void fragment() {
 	float rough = roughness * dot(texture(texture_roughness, uv), roughness_channel);
 	vec3 em = vec3(0.0);
 	if (use_emission) {
-		em = (emission.rgb + texture(texture_emission, uv).rgb) * emission_energy;
+		vec3 et = texture(texture_emission, uv).rgb;
+		em = (emission_multiply ? emission.rgb * et : emission.rgb + et) * emission_energy;
 	}
 	float alpha = use_alpha ? a.a : 1.0;
 	float mask = 0.0;
@@ -52,7 +54,8 @@ void fragment() {
 			float lr = max(lum(paint_ref), 0.004);
 			vec3 cr = paint_ref / lr;
 			vec3 cc = a.rgb / max(l, 0.004);
-			float d = length(cc - cr) * 0.35 + abs(log((l + 0.004) / (lr + 0.004))) * 0.3;
+			// chroma counts less on dark paint (noisy hue), brightness changes (shading, flakes) count little
+			float d = length(cc - cr) * 0.3 * clamp(lr * 6.0, 0.25, 1.0) + abs(log((l + 0.01) / (lr + 0.01))) * 0.14;
 			mask = 1.0 - smoothstep(paint_tol * 0.55, paint_tol, d);
 			mask *= step(0.97, alpha) * (1.0 - clamp(lum(em) * 4.0, 0.0, 1.0));
 		} else {

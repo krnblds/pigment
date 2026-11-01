@@ -293,6 +293,8 @@ func _run() -> void:
 func _snap(dir: String, name: String) -> void:
 	await RenderingServer.frame_post_draw
 	var img := get_viewport().get_texture().get_image()
+	if img.get_width() > 1600:          # docs PNGs stay under ~1.5 MB
+		img.resize(1600, int(1600.0 * img.get_height() / img.get_width()), Image.INTERPOLATE_LANCZOS)
 	img.save_png(dir.path_join(name))
 	print("showroom shot: ", dir.path_join(name))
 
@@ -331,9 +333,9 @@ func _shots(dir: String) -> void:
 		g.set_value("cfg", c)
 		g.interior.spin = false
 		g.interior.turntable.rotation.y = -0.5
-		g.yaw = 0.25
-		g.pitch = 0.17
-		g.dist = 13.5
+		g.yaw = 0.3
+		g.pitch = 0.16
+		g.dist = 11.0
 		await _wait(2.0)
 		await _snap(dir, "showroom_wide.png")
 	if "custom1" in only:
@@ -366,8 +368,9 @@ func _shots(dir: String) -> void:
 	if "menu" in only:
 		g.ui.visible = true
 		var c3 := Tuning.default_cfg("tsubame" if not Fleet.find("tsubame").is_empty() else "")
-		c3.variant = "exec" if c3.vehicle == "tsubame" else c3.variant
-		c3.paint = {"on": true, "color": Tuning._arr(Color(0.42, 0.1, 1.0)), "finish": "chrome"}
+		c3.variant = "pearl" if c3.vehicle == "tsubame" else c3.variant
+		c3.paint = {"on": true, "color": Tuning._arr(Color(0.42, 0.1, 1.0)), "finish": "pearl"}
+		c3.underglow = {"on": true, "color": Tuning._arr(Color(0.05, 0.85, 1.0))}
 		c3.perf = {"engine": 2, "brakes": 1, "tyres": 2, "suspension": 1}
 		c3.kit = {"lip": true, "wing": false, "lightbar": true}
 		g.set_value("cfg", c3)

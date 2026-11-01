@@ -129,7 +129,7 @@ func _build() -> void:
 	_sub = _label(bar, "", 22, DIM)
 	_sub.position = Vector2(520, 13)
 	# customisation rows
-	var left := _panel(Vector2(24, 76), Vector2(600, 900), Control.PRESET_TOP_LEFT)
+	var left := _panel(Vector2(24, 76), Vector2(600, 790), Control.PRESET_TOP_LEFT)
 	var vb := VBoxContainer.new()
 	vb.position = Vector2(14, 12)
 	vb.size = Vector2(572, 880)
@@ -195,7 +195,7 @@ func _build() -> void:
 	drive.add_theme_color_override("font_color", MAGENTA)
 	_button(hb2, "LEAVE   [ESC]", func(): ctrl.leave(false), 270)
 	# specs
-	var right := _panel(Vector2(-520, 76), Vector2(496, 600), Control.PRESET_TOP_RIGHT)
+	var right := _panel(Vector2(-520, 76), Vector2(496, 560), Control.PRESET_TOP_RIGHT)
 	_spec_name = _label(right, "", 30, CYAN)
 	_spec_name.position = Vector2(18, 12)
 	_spec_name.size = Vector2(460, 40)
@@ -213,7 +213,7 @@ func _build() -> void:
 	right.add_child(_spec_grid)
 	# key hint
 	var hint := _label(_root, "W/S  select     A/D  change     TAB  vehicle     [ ]  livery     drag / Q E  orbit     wheel / Z X  zoom     SPACE  turntable     P  plate     ENTER  drive out     ESC  leave", 17, DIM)
-	hint.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	hint.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hint.offset_top = -40
 	hint.offset_bottom = -12

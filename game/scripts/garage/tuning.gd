@@ -138,6 +138,7 @@ static func paint_material(base: BaseMaterial3D, mask_mode: int) -> ShaderMateri
 	sm.set_shader_parameter("texture_emission", base.emission_texture)
 	sm.set_shader_parameter("emission", base.emission)
 	sm.set_shader_parameter("emission_energy", base.emission_energy_multiplier)
+	sm.set_shader_parameter("emission_multiply", base.emission_operator == BaseMaterial3D.EMISSION_OP_MULTIPLY)
 	sm.set_shader_parameter("use_alpha", base.transparency != BaseMaterial3D.TRANSPARENCY_DISABLED)
 	sm.set_shader_parameter("uv1_scale", base.uv1_scale)
 	sm.set_shader_parameter("uv1_offset", base.uv1_offset)
@@ -173,7 +174,7 @@ static func apply_paint(car: Node, v: Dictionary, cfg: Dictionary) -> void:
 	var stock := not bool(p.get("on", false)) and fin <= 0 and float(cfg.tint) <= 0.0
 	var ref := Color(0.5, 0.5, 0.5)
 	if not stock:
-		ref = _paint_ref(v, String(cfg.variant))
+		ref = _paint_ref(car, v, String(cfg.variant))
 	for mi: MeshInstance3D in _body_meshes(car):
 		for s in mi.mesh.get_surface_count():
 			var lm: Material = Fleet.livery_material(mi, s)
@@ -202,18 +203,100 @@ static func apply_paint(car: Node, v: Dictionary, cfg: Dictionary) -> void:
 			mi.set_surface_override_material(s, sm)
 
 
-static func _paint_ref(v: Dictionary, variant: String) -> Color:
-	# the small LOD2 copy of the livery's albedo is enough to find its main colour
-	for glb in [v.get("lod2", ""), v.glb]:
-		if glb == "" or not ResourceLoader.exists(glb):
-			continue
-		var t: Dictionary = Fleet.variant_table(glb, v.id, v.default_variant)
-		if t.has(variant):
-			for mesh_name in t[variant]:
-				for m in t[variant][mesh_name]:
-					if m is BaseMaterial3D and m.albedo_texture:
-						return Fleet.paint_reference(m)
-	return Color(0.5, 0.5, 0.5)
+static var _refs := {}
+
+
+## The livery's paint colour: the albedo under the outer panels of the body (roof, bonnet, boot lid and
+## the door skins, picked from the mesh by position and normal), most common colour wins -- so stripes,
+## decals, glass, trim and the interior parts of the atlas don't count.  Grey when the texture can't be
+## read (headless).
+static func _paint_ref(car: Node, v: Dictionary, variant: String) -> Color:
+	var key := "%s/%s" % [v.id, variant]
+	if _refs.has(key):
+		return _refs[key]
+	var out := Color(0.5, 0.5, 0.5)
+	var t: Dictionary = Fleet.variant_table(v.glb, v.id, v.default_variant)
+	var mat: BaseMaterial3D = null
+	if t.has(variant) and t[variant].has("Body"):
+		mat = t[variant]["Body"][0] as BaseMaterial3D
+	var img: Image = mat.albedo_texture.get_image() if mat and mat.albedo_texture else null
+	var body: MeshInstance3D = null
+	for mi in _body_meshes(car):
+		if String(mi.name) == "Body":
+			body = mi
+	if img and not img.is_empty() and body:
+		img = img.duplicate()
+		if img.is_compressed():
+			img.decompress()
+		img.convert(Image.FORMAT_RGBA8)
+		img.resize(512, 512, Image.INTERPOLATE_BILINEAR)
+		var box := _body_box(car)
+		var hw := box.size.x * 0.5
+		var hist := {}
+		var sums := {}
+		var shell_top := {}
+		var shell_side := {}
+		var mesh := body.mesh
+		for si in mesh.get_surface_count():
+			var arr := mesh.surface_get_arrays(si)
+			if arr.is_empty() or arr[Mesh.ARRAY_TEX_UV] == null or arr[Mesh.ARRAY_NORMAL] == null:
+				continue
+			var vs: PackedVector3Array = arr[Mesh.ARRAY_VERTEX]
+			var uvs: PackedVector2Array = arr[Mesh.ARRAY_TEX_UV]
+			var ns: PackedVector3Array = arr[Mesh.ARRAY_NORMAL]
+			var idx: PackedInt32Array = arr[Mesh.ARRAY_INDEX] if arr[Mesh.ARRAY_INDEX] != null else PackedInt32Array()
+			var ntri := idx.size() / 3 if idx.size() else vs.size() / 3
+			for ti in ntri:
+				var i0 := idx[ti * 3] if idx.size() else ti * 3
+				var i1 := idx[ti * 3 + 1] if idx.size() else ti * 3 + 1
+				var i2 := idx[ti * 3 + 2] if idx.size() else ti * 3 + 2
+				var a: Vector3 = body.transform * vs[i0]
+				var b: Vector3 = body.transform * vs[i1]
+				var c: Vector3 = body.transform * vs[i2]
+				var cr := (b - a).cross(c - a)
+				var area := cr.length() * 0.5
+				if area < 1e-5:
+					continue
+				var n: Vector3 = (body.transform.basis * (ns[i0] + ns[i1] + ns[i2])).normalized()
+				var p := (a + b + c) / 3.0
+				# the outer shell only: per 8 cm cell the highest up-facing / outermost side-facing triangle
+				if n.y > 0.7:
+					var key2 := Vector2i(int(floorf(p.x / 0.08)), int(floorf(p.z / 0.08)))
+					if not shell_top.has(key2) or shell_top[key2][0] < p.y:
+						shell_top[key2] = [p.y, (uvs[i0] + uvs[i1] + uvs[i2]) / 3.0, area]
+				elif absf(n.x) > 0.8 and signf(n.x) == signf(p.x) and p.y > box.position.y + box.size.y * 0.2:
+					var key3 := Vector3i(int(signf(p.x)), int(floorf(p.y / 0.08)), int(floorf(p.z / 0.08)))
+					if not shell_side.has(key3) or absf(shell_side[key3][0]) < absf(p.x):
+						shell_side[key3] = [p.x, (uvs[i0] + uvs[i1] + uvs[i2]) / 3.0, area]
+		for pair in [["t", shell_top], ["s", shell_side]]:
+			for key4 in pair[1]:
+				var e: Array = pair[1][key4]
+				var uv: Vector2 = e[1]
+				var px := img.get_pixel(clampi(int(fposmod(uv.x, 1.0) * 512.0), 0, 511), clampi(int(fposmod(uv.y, 1.0) * 512.0), 0, 511))
+				if px.a < 0.97:
+					continue
+				var k := Vector3i(int(px.r * 7.99), int(px.g * 7.99), int(px.b * 7.99))
+				if not hist.has(k):
+					hist[k] = {"t": 0.0, "s": 0.0}
+				hist[k][pair[0]] += 1.0
+				sums[k] = sums.get(k, Vector3.ZERO) + Vector3(px.r, px.g, px.b)
+		# a colour on both the roof / bonnet and the doors is the paint (a black roof or bonnet is not)
+		var tt := 0.0
+		var ts := 0.0
+		for k in hist:
+			tt += hist[k].t
+			ts += hist[k].s
+		var best := -1.0
+		for k in hist:
+			var ft: float = hist[k].t / maxf(tt, 1e-6)
+			var fs: float = hist[k].s / maxf(ts, 1e-6)
+			var score := minf(ft, fs) * 2.0 + maxf(ft, fs)
+			if score > best:
+				best = score
+				var c: Vector3 = sums[k] / float(hist[k].t + hist[k].s)
+				out = Color(c.x, c.y, c.z)
+	_refs[key] = out
+	return out
 
 
 # ------------------------------------------------------------------ wheels
@@ -242,7 +325,7 @@ static func apply_rims(car: Node, cfg: Dictionary) -> void:
 					var sm := paint_material(base, 1)
 					sm.set_shader_parameter("paint_on", true)
 					sm.set_shader_parameter("paint_color", col(rc))
-					sm.set_shader_parameter("finish", 2 if col(rc).get_luminance() > 0.6 else 1)
+					sm.set_shader_parameter("finish", 2 if col(rc).get_luminance() > 0.6 else 0)
 					mi.set_surface_override_material(s, sm)
 	_apply_camber(car, float(cfg.stance.get("camber", 0.0)))
 
@@ -422,8 +505,8 @@ static func apply_underglow(car: Node, cfg: Dictionary) -> void:
 		var l := OmniLight3D.new()
 		l.name = "Glow%d" % i
 		l.light_color = c
-		l.light_energy = 2.2
-		l.omni_range = 3.2
+		l.light_energy = 1.1
+		l.omni_range = 2.8
 		l.omni_attenuation = 1.4
 		l.light_volumetric_fog_energy = 0.0
 		l.position = Vector3(0, maxf(y - 0.02, 0.08), box.get_center().z + (float(i) - 1.0) * len * 0.42)

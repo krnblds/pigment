@@ -172,46 +172,6 @@ static func livery_material(mi: MeshInstance3D, s: int) -> Material:
 	return mi.get_meta("livery_mat_%d" % s) if mi.has_meta("livery_mat_%d" % s) else null
 
 
-## The livery's dominant paint colour (mode of the body albedo texture, from the small LOD2 copy when
-## there is one).  Grey when the image can't be read (headless).
-static var _paint_refs := {}
-
-
-static func paint_reference(mat: Material) -> Color:
-	if not (mat is BaseMaterial3D) or mat.albedo_texture == null:
-		return Color(0.5, 0.5, 0.5)
-	var tex: Texture2D = mat.albedo_texture
-	var key := tex.resource_path if tex.resource_path != "" else str(tex.get_instance_id())
-	if _paint_refs.has(key):
-		return _paint_refs[key]
-	var c := Color(0.5, 0.5, 0.5)
-	var img: Image = tex.get_image()
-	if img and not img.is_empty():
-		img = img.duplicate()
-		if img.is_compressed():
-			img.decompress()
-		img.convert(Image.FORMAT_RGBA8)
-		img.resize(96, 96, Image.INTERPOLATE_BILINEAR)
-		var hist := {}
-		var sums := {}
-		for y in img.get_height():
-			for x in img.get_width():
-				var p := img.get_pixel(x, y)
-				if p.a < 0.97:
-					continue
-				var k := Vector3i(int(p.r * 9.99), int(p.g * 9.99), int(p.b * 9.99))
-				hist[k] = hist.get(k, 0) + 1
-				sums[k] = sums.get(k, Vector3.ZERO) + Vector3(p.r, p.g, p.b)
-		var best := -1
-		for k in hist:
-			if hist[k] > best:
-				best = hist[k]
-				var s: Vector3 = sums[k] / float(hist[k])
-				c = Color(s.x, s.y, s.z)
-	_paint_refs[key] = c
-	return c
-
-
 # ------------------------------------------------------------------ specs
 ## Real (not "easy") physics numbers for the spec panel; `tune` scales like tuning.gd does.
 static func specs(v: Dictionary, perf := {}) -> Dictionary:

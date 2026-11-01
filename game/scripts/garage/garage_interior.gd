@@ -74,7 +74,7 @@ func _build_env() -> void:
 	env.background_color = Color(0.0, 0.0, 0.0)
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.ambient_light_color = Color(0.05, 0.045, 0.07)
-	env.ambient_light_energy = 0.35
+	env.ambient_light_energy = 1.0
 	env.reflected_light_source = Environment.REFLECTION_SOURCE_DISABLED
 	env.tonemap_mode = Environment.TONE_MAPPER_AGX
 	env.tonemap_exposure = 1.1
@@ -83,7 +83,7 @@ func _build_env() -> void:
 	env.glow_intensity = 0.55
 	env.glow_strength = 0.9
 	env.glow_bloom = 0.02
-	env.glow_hdr_threshold = 1.0
+	env.glow_hdr_threshold = 1.3
 	env.glow_blend_mode = Environment.GLOW_BLEND_MODE_SCREEN
 	for i in range(1, 8):
 		env.set("glow_levels/%d" % i, [0.0, 0.4, 0.7, 0.6, 0.35, 0.15, 0.0][i - 1])
@@ -101,7 +101,7 @@ func _build_env() -> void:
 	env.sdfgi_enabled = false
 	env.fog_enabled = false
 	env.volumetric_fog_enabled = true
-	env.volumetric_fog_density = 0.012
+	env.volumetric_fog_density = 0.006
 	env.volumetric_fog_albedo = Color(0.85, 0.85, 0.95)
 	env.volumetric_fog_anisotropy = 0.55
 	env.volumetric_fog_length = 40.0
@@ -171,10 +171,7 @@ func _pegboard_tex() -> ImageTexture:
 
 # ------------------------------------------------------------------ room
 func _build_room() -> void:
-	var floor_mat := _mat(Color(0.018, 0.018, 0.022), 0.07, 0.0)
-	floor_mat.clearcoat_enabled = true
-	floor_mat.clearcoat = 1.0
-	floor_mat.clearcoat_roughness = 0.02
+	var floor_mat := _mat(Color(0.02, 0.02, 0.025), 0.08, 0.0)
 	var wall_mat := _mat(Color(0.03, 0.03, 0.036), 0.75)
 	# floor + cyclorama sweep (one mesh: floor, cove, back wall)
 	var st := SurfaceTool.new()
@@ -225,7 +222,7 @@ func _build_room() -> void:
 		_box(Vector3(0.07, HEIGHT - COVE_R - 0.6, 0.07), Vector3(sx * (HALF_X - 0.9), COVE_R + (HEIGHT - COVE_R - 0.6) * 0.5, BACK_Z + 0.08), cyan if sx < 0 else mag)
 		# floor-to-wall corner strips along the side walls
 		_box(Vector3(0.05, 0.05, FRONT_Z - BACK_Z - COVE_R - 1.0), Vector3(sx * (HALF_X - 0.05), 0.03, (FRONT_Z + BACK_Z + COVE_R) * 0.5), mag if sx < 0 else cyan)
-	var ceil := _neon(Color(0.85, 0.92, 1.0), 3.2)
+	var ceil := _neon(Color(0.85, 0.92, 1.0), 1.4)
 	for i in 3:
 		_box(Vector3(0.12, 0.04, 9.0), Vector3((i - 1) * 2.6, HEIGHT - 0.05, 0.0), ceil)
 	# neon name on the back wall
@@ -263,7 +260,7 @@ func _build_room() -> void:
 
 func _build_lights() -> void:
 	# softbox key: a glowing panel over the turntable with a soft-shadowed spot under it
-	var panel := _neon(Color(0.9, 0.93, 1.0), 2.2)
+	var panel := _neon(Color(0.9, 0.93, 1.0), 1.1)
 	_box(Vector3(5.0, 0.04, 3.0), Vector3(0, HEIGHT - 0.6, 0), panel)
 	_box(Vector3(5.2, 0.02, 3.2), Vector3(0, HEIGHT - 0.57, 0), _mat(Color(0.02, 0.02, 0.02), 0.6))
 	var key := SpotLight3D.new()
@@ -271,40 +268,45 @@ func _build_lights() -> void:
 	key.position = Vector3(0, HEIGHT - 0.7, 0)
 	key.rotation = Vector3(-PI * 0.5, 0, 0)
 	key.light_color = Color(0.92, 0.95, 1.0)
-	key.light_energy = 9.0
-	key.spot_range = 12.0
+	key.light_energy = 22.0
+	key.spot_range = 24.0
 	key.spot_angle = 58.0
 	key.spot_angle_attenuation = 1.4
 	key.shadow_enabled = true
 	key.light_size = 2.4                    # PCSS: soft contact shadows under the car
 	key.shadow_blur = 1.5
 	key.light_volumetric_fog_energy = 0.4
+	key.light_specular = 0.0               # highlights come from the softbox panel (SSR + probe), not a hot spot
 	add_child(key)
 	# accent fills: magenta left / cyan right, low and wide, and a rim from behind
 	for sx in [-1.0, 1.0]:
 		var o := OmniLight3D.new()
 		o.position = Vector3(sx * 6.5, 2.2, -4.5)
-		o.light_energy = 4.0
-		o.omni_range = 11.0
+		o.light_energy = 7.0
+		o.omni_range = 16.0
 		o.omni_attenuation = 1.2
-		o.light_volumetric_fog_energy = 0.8
+		o.light_volumetric_fog_energy = 0.25
 		o.shadow_enabled = true
 		o.light_size = 0.8
+		o.light_specular = 0.0
 		add_child(o)
 		(_accent_lights if sx < 0 else _accent2_lights).append(o)
 		var f := OmniLight3D.new()
 		f.position = Vector3(sx * 5.0, 1.6, 6.5)
-		f.light_energy = 1.6
+		f.light_energy = 3.0
 		f.omni_range = 9.0
+		f.light_volumetric_fog_energy = 0.0
+		f.light_specular = 0.0              # no hot spots on the mirror floor
 		add_child(f)
 		(_accent2_lights if sx < 0 else _accent_lights).append(f)
 	var rim := SpotLight3D.new()
 	rim.position = Vector3(0, 5.5, BACK_Z + 2.5)
 	rim.look_at_from_position(rim.position, Vector3(0, 0.6, 0.5))
-	rim.light_energy = 6.0
+	rim.light_energy = 10.0
 	rim.spot_range = 16.0
 	rim.spot_angle = 35.0
 	rim.light_volumetric_fog_energy = 1.4
+	rim.light_specular = 0.0
 	add_child(rim)
 	_accent_lights.append(rim)
 	# cyclorama wash: uplights at the cove make the sweep glow from dark floor to colour
@@ -317,6 +319,7 @@ func _build_lights() -> void:
 		u.spot_range = 9.0
 		u.spot_angle = 42.0
 		u.light_volumetric_fog_energy = 0.0
+		u.light_specular = 0.0
 		add_child(u)
 		(_accent_lights if i % 2 == 0 else _accent2_lights).append(u)
 
@@ -363,14 +366,19 @@ func _build_turntable() -> void:
 		var a := TAU * i / 24.0
 		var t := _box(Vector3(0.04, 0.005, 0.22), Vector3(sin(a) * (TABLE_R - 0.16), TABLE_Y + 0.001, cos(a) * (TABLE_R - 0.16)), tick, turntable)
 		t.rotation.y = a
-	# lift posts (it is a garage): four hydraulic columns at the turntable corners
-	var post := _mat(Color(0.75, 0.55, 0.05), 0.4, 0.6)
-	for sx in [-1.0, 1.0]:
-		for sz in [-1.0, 1.0]:
-			var p := Vector3(sx * (TABLE_R + 0.9), 0, sz * (TABLE_R + 0.2))
-			_box(Vector3(0.32, 2.6, 0.32), p + Vector3(0, 1.3, 0), post)
-			_box(Vector3(0.5, 0.06, 0.5), p + Vector3(0, 0.03, 0), _mat(Color(0.02, 0.02, 0.02), 0.5, 0.5))
-			_box(Vector3(0.06, 2.2, 0.02), p + Vector3(0, 1.3, 0.17 * sz), _neon(Color(1.0, 0.16, 0.62), 3.0, 1))
+	# lift: the turntable sits on a scissor-lift deck (chrome rams peeking out under the rim)
+	var ram := _mat(Color(0.7, 0.72, 0.75), 0.12, 1.0)
+	for i in 6:
+		var a := TAU * (i + 0.5) / 6.0
+		var c := MeshInstance3D.new()
+		var cm := CylinderMesh.new()
+		cm.top_radius = 0.07
+		cm.bottom_radius = 0.07
+		cm.height = 0.1
+		c.mesh = cm
+		c.position = Vector3(sin(a) * (TABLE_R + 0.18), 0.1, cos(a) * (TABLE_R + 0.18))
+		c.material_override = ram
+		add_child(c)
 
 
 func _build_tool_walls() -> void:
@@ -409,6 +417,17 @@ func _build_tool_walls() -> void:
 				c.position = Vector3(wx - sx * 0.05, y, z)
 				c.material_override = steel
 				add_child(c)
+		# wall wash on the tools
+		var wash := SpotLight3D.new()
+		wash.position = Vector3(wx - sx * 3.0, 5.6, 0.5)
+		wash.look_at_from_position(wash.position, Vector3(wx, 2.4, 0.5))
+		wash.light_color = Color(0.85, 0.9, 1.0)
+		wash.light_energy = 6.0
+		wash.spot_range = 9.0
+		wash.spot_angle = 55.0
+		wash.light_specular = 0.0
+		wash.light_volumetric_fog_energy = 0.0
+		add_child(wash)
 		# neon frame around the board
 		var nm := _neon(Color(1.0, 0.16, 0.62) if sx < 0 else Color(0.2, 0.9, 1.0), 3.5, 1 if sx < 0 else 2)
 		_box(Vector3(0.04, 0.04, 8.6), Vector3(wx - sx * 0.03, 3.92, 0.5), nm)
@@ -439,6 +458,8 @@ func _build_tool_walls() -> void:
 		lamp.light_color = Color(1.0, 0.75, 0.45)
 		lamp.light_energy = 1.2
 		lamp.omni_range = 3.5
+		lamp.light_volumetric_fog_energy = 0.0
+		lamp.light_specular = 0.2
 		add_child(lamp)
 		_box(Vector3(0.18, 0.05, 0.4), Vector3(wx - sx * 0.5, 1.68, 8.6), _neon(Color(1.0, 0.8, 0.55), 3.0))
 
