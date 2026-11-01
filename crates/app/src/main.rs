@@ -2,6 +2,7 @@
 //!
 //! `pigment [model or project]` opens it; `pigment --design-gallery` shows
 //! every design-system component in every state.
+#![cfg_attr(all(windows, not(debug_assertions)), windows_subsystem = "windows")] // no console window for the release .exe
 
 use pigment_engine::app;
 

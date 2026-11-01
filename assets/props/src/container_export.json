@@ -1,0 +1,10 @@
+{
+ "lod0": "container.glb",
+ "lod0_bytes": 746412,
+ "lod0_tris": 3224,
+ "texture": 1024,
+ "lod1": "container_lod1.glb",
+ "lod1_bytes": 225952,
+ "lod1_tris": 967,
+ "lod1_texture": 512
+}

@@ -1,0 +1,98 @@
+name: Release
+
+# Push a version tag to build and publish:  git tag 0.0.1 && git push origin 0.0.1
+on:
+  push:
+    tags: ['*.*.*', 'v*.*.*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to build (e.g. 0.0.1)'
+        required: true
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: Build ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: windows-latest, name: windows-x64, ext: .exe }
+          - { os: ubuntu-22.04,   name: linux-x64,   ext: '' }
+          - { os: macos-14,       name: macos-arm64, ext: '' }
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Linux packages
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libxkbcommon-dev libwayland-dev libx11-dev libxcursor-dev libxrandr-dev libxi-dev libgl1-mesa-dev
+      - name: Build
+        run: cargo build --release -p pigment --bin pigment --bin pigment-mcp
+      - name: Package
+        shell: bash
+        run: |
+          TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          DIR="pigment-${TAG}-${{ matrix.name }}"
+          mkdir -p "$DIR/assets" "$DIR/scenes/town/projects"
+          cp "target/release/pigment${{ matrix.ext }}" "target/release/pigment-mcp${{ matrix.ext }}" "$DIR/"
+          # what the app needs at run time: samples, decals, tile sets and the sample meshes
+          cp -r assets/samples assets/decals assets/tiles assets/town "$DIR/assets/"
+          cp assets/*.glb "$DIR/assets/"
+          cp -r examples "$DIR/"
+          cp -r scenes/town/projects/building_a.pigment "$DIR/scenes/town/projects/"
+          cp README.md LICENSE "$DIR/"
+          cat > "$DIR/mcp.json" <<JSON
+          {
+            "mcpServers": {
+              "pigment": { "command": "<absolute path to this folder>/pigment-mcp${{ matrix.ext }}", "args": [] }
+            }
+          }
+          JSON
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            7z a -tzip "$DIR.zip" "$DIR" > /dev/null
+          else
+            tar czf "$DIR.tar.gz" "$DIR"
+          fi
+          ls -la
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}
+          path: |
+            pigment-*.zip
+            pigment-*.tar.gz
+          if-no-files-found: error
+
+  release:
+    name: Publish release
+    needs: build
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.tag || github.ref_name }}
+          name: Pigment ${{ github.event.inputs.tag || github.ref_name }}
+          generate_release_notes: true
+          files: dist/*
+          body: |
+            **Pigment ${{ github.event.inputs.tag || github.ref_name }}**: a PBR texture painter with an MCP server for AI agents.
+
+            - **Windows:** unzip and run `pigment.exe`. `pigment-mcp.exe` is the MCP server.
+            - **Linux / macOS:** extract and run `./pigment`.
+            - **Agents:** see the README section *Use it from an AI agent (MCP)*. `mcp.json` in the archive is a ready-made config; fill in the path.

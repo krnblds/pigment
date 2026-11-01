@@ -364,6 +364,54 @@ def painted(name, rough=0.45, metal=0.6, tex=None, scale=4.0):
     return m
 
 
+def cladding(name, tex=None, scale=4.0, colour=None, rust=0.6):
+    """Corrugated sheet (the Pigment `corrugated` tile, box-mapped in metres) for big sheds:
+    paint from the object colour (per-instance variants) or `colour`, weathered at the building
+    scale where a 4 m tile can't: salt-faded patches, rust runs from the eaves and the
+    fixings, and road grime splashed up the first metre and a half (object z)."""
+    m, nt, bsdf = _nodes(name)
+    tc = nt.nodes.new("ShaderNodeTexCoord")
+    ob = tc.outputs["Object"]
+    if colour is None:
+        col = nt.nodes.new("ShaderNodeObjectInfo").outputs["Color"]
+    else:
+        n = nt.nodes.new("ShaderNodeRGB")
+        n.outputs[0].default_value = (*colour, 1)
+        col = n.outputs[0]
+    rough = _val(nt, 0.5)
+    if tex:
+        v = _scaled(nt, ob, 1.0 / scale)
+        b = os.path.basename(tex)
+        c = _img(nt, os.path.join(tex, f"{b}_BaseColor.png"), True, v, True)
+        r = _img(nt, os.path.join(tex, f"{b}_Roughness.png"), False, v, True)
+        h = _img(nt, os.path.join(tex, f"{b}_Height.png"), False, v, True)
+        col = _mix(nt, 1.0, col, _math(nt, "MULTIPLY", c.outputs["Color"], 1.4), "MULTIPLY")
+        rough = r.outputs["Color"]
+        bump = nt.nodes.new("ShaderNodeBump")
+        bump.inputs["Strength"].default_value = 0.6
+        bump.inputs["Distance"].default_value = 0.02
+        nt.links.new(h.outputs["Color"], bump.inputs["Height"])
+        nt.links.new(bump.outputs["Normal"], bsdf.inputs["Normal"])
+    z = _sep(nt, ob)[2]
+    # salt fade: big soft patches lighten and dull the paint
+    fade = _smooth(nt, 0.45, 0.75, _noise(nt, _scaled(nt, ob, 0.12), 0.35, 3.0))
+    col = _mix(nt, _math(nt, "MULTIPLY", fade, 0.35), col, (0.55, 0.53, 0.5, 1.0))
+    # rust runs: noise stretched along z, strongest under the eaves, fading down the wall
+    streak_v = _scaled(nt, ob, (1.6, 1.6, 0.08))
+    streak = _smooth(nt, 0.55, 0.72, _noise(nt, streak_v, 3.0, 2.0))
+    top = _smooth(nt, 1.0, 0.25, _math(nt, "DIVIDE", _math(nt, "SUBTRACT", _val(nt, 14.0), z), 14.0))
+    run = _math(nt, "MULTIPLY", _math(nt, "MULTIPLY", streak, top), rust)
+    col = _mix(nt, run, col, (0.22, 0.09, 0.04, 1.0))
+    # road grime splashed up the walls
+    grime = _math(nt, "MULTIPLY", _smooth(nt, 1.6, 0.0, z), _smooth(nt, 0.3, 0.7, _noise(nt, _scaled(nt, ob, 0.6), 2.0, 4.0)))
+    col = _mix(nt, _math(nt, "MULTIPLY", grime, 0.8), col, (0.05, 0.045, 0.04, 1.0))
+    nt.links.new(col, bsdf.inputs["Base Color"])
+    nt.links.new(_mix(nt, _math(nt, "MAXIMUM", run, grime), rough, 0.85, kind="FLOAT") if not isinstance(rough, float) else rough,
+                 bsdf.inputs["Roughness"])
+    bsdf.inputs["Metallic"].default_value = 0.55
+    return m
+
+
 class Mesher:
     """bmesh helper: boxes and cylinders with metre UVs and material slots."""
 
@@ -528,35 +576,128 @@ class Kit:
         return b.finish(key, [M["facade_default"], M["roof"], M["band"], M["decal_fn"](os.path.join(self.story, img + ".png"))])
 
     def warehouse(self, key):
+        """Port shed (key warehouse_<L>x<W>x<H>): long axis x, roll-up doors on both long
+        sides, origin at the ground centre.  Concrete base course, corrugated cladding with
+        corner flashings, a low gable roof with overhanging eaves, fascias, gutters and
+        downpipes, ridge cap, roof vents and skylight strips; framed roll-up doors with slats,
+        canopies, lamps and dock bumpers, personnel doors, gable louvres and a line's sign on
+        both gables (story decals), and an UNPLUG tag on one wall."""
         L, W, H = [float(v) for v in key.split("_")[1].split("x")]
+        M = self.M
+        rng = random.Random(key)
         b = Mesher()
-        b.box((0, 0, H / 2), (L, W, H), 0, top=False)
-        # shallow gable roof
+        CL, DOOR, LAMP, STEEL, BASE, ROOF, SKY, SIGN, TAG = range(9)
+        rise = 1.6
+        hw, hl = W / 2, L / 2
+        b.box((0, 0, 0.55), (L + 0.12, W + 0.12, 1.1), BASE)                         # concrete base course
+        b.box((0, 0, H / 2), (L, W, H), CL, top=False)
+        for sx in (-1, 1):
+            for sy in (-1, 1):
+                b.box((sx * (hl - 0.05), sy * (hw - 0.05), H / 2 + 0.05), (0.22, 0.22, H - 0.9), STEEL, top=False)  # corner flashings
+        # roof: two slopes with eaves (0.6 m along the sides, 0.4 m at the gables), soffits, fascias
+        ox, oy, ft = 0.4, 0.6, 0.25
+        zr = H + rise
+        ze = H - (rise / hw) * oy
         for sgn in (1, -1):
-            pts = [(-L / 2 - 0.4, 0, H + 1.6), (L / 2 + 0.4, 0, H + 1.6), (L / 2 + 0.4, sgn * (W / 2 + 0.6), H - 0.1), (-L / 2 - 0.4, sgn * (W / 2 + 0.6), H - 0.1)]
+            ridge = [(-hl - ox, 0, zr), (hl + ox, 0, zr)]
+            eave = [(hl + ox, sgn * (hw + oy), ze), (-hl - ox, sgn * (hw + oy), ze)]
+            pts = ridge + eave
             if sgn < 0:
                 pts = [pts[1], pts[0], pts[3], pts[2]]
-            b.quad(pts, 0)
+            b.quad(pts, ROOF)
+            sof = [(-hl - ox, 0, zr - 0.12), (-hl - ox, sgn * (hw + oy), ze - 0.12), (hl + ox, sgn * (hw + oy), ze - 0.12), (hl + ox, 0, zr - 0.12)]
+            if sgn < 0:
+                sof = [sof[1], sof[0], sof[3], sof[2]]
+            b.quad(sof, STEEL)
+            y = sgn * (hw + oy)
+            fas = [(-hl - ox, y, ze - ft), (hl + ox, y, ze - ft), (hl + ox, y, ze), (-hl - ox, y, ze)]
+            if sgn > 0:
+                fas = [fas[1], fas[0], fas[3], fas[2]]
+            b.quad(fas, STEEL)
+            # gutter along the eave and downpipes every ~12 m
+            b.box((0, sgn * (hw + oy + 0.1), ze - ft - 0.08), (L + 2 * ox, 0.2, 0.16), STEEL, bottom=True)
+            for k in range(max(2, int(L // 12) + 1)):
+                x = -hl + 0.6 + k * (L - 1.2) / max(1, int(L // 12))
+                b.cyl((x, sgn * (hw + oy + 0.1), ze - ft - 0.1), (x, sgn * (hw + 0.12), ze - ft - 0.6), 0.07, STEEL, seg=6)
+                b.cyl((x, sgn * (hw + 0.12), ze - ft - 0.6), (x, sgn * (hw + 0.12), 0.25), 0.07, STEEL, seg=6)
+            # skylight strips on the slope
+            for k in range(int(L // 8)):
+                x = -hl + 4.0 + k * 8.0
+                f0, f1 = 0.36, 0.5
+                p = lambda f, dx: (x + dx, sgn * hw * f, zr - rise * f + 0.03)
+                sk = [p(f0, -2.8), p(f0, 2.8), p(f1, 2.8), p(f1, -2.8)]
+                if sgn < 0:
+                    sk = [sk[1], sk[0], sk[3], sk[2]]
+                b.quad(sk, SKY)
+        # gables, their rake fascias, louvres and the line's sign
+        logo = rng.choice(["container_logo_rust", "container_logo_orange", "container_logo_blue", "container_logo_green"])
         for sgn in (1, -1):
-            x = sgn * L / 2
-            pts = [(x, -W / 2, H), (x, W / 2, H), (x, 0, H + 1.6)]
-            vs = [b.bm.verts.new(p) for p in (pts if sgn > 0 else pts[::-1])]
-            b.bm.faces.new(vs).material_index = 0
-        # loading doors (dark) and a lit band over them on the long sides
+            x = sgn * hl
+            tri = [(x, -hw, H), (x, hw, H), (x, 0, H + rise)]
+            vs = [b.bm.verts.new(p) for p in (tri if sgn > 0 else tri[::-1])]
+            b.bm.faces.new(vs).material_index = CL
+            xf = x + sgn * (ox + 0.01)
+            for s2 in (1, -1):
+                rk = [(xf, s2 * (hw + oy), ze - ft), (xf, 0, zr - ft), (xf, 0, zr), (xf, s2 * (hw + oy), ze)]
+                if sgn * s2 < 0:
+                    rk = [rk[1], rk[0], rk[3], rk[2]]
+                b.quad(rk, STEEL)
+            for s2 in (-1, 1):
+                yl = s2 * W * 0.3
+                lv = [(x + sgn * 0.03, yl - 0.9, H - 1.6), (x + sgn * 0.03, yl + 0.9, H - 1.6), (x + sgn * 0.03, yl + 0.9, H - 0.6), (x + sgn * 0.03, yl - 0.9, H - 0.6)]
+                if sgn < 0:
+                    lv = [lv[1], lv[0], lv[3], lv[2]]
+                b.quad(lv, DOOR)
+            sw = min(W * 0.55, 16.0)
+            sh = sw * 0.38
+            zc = H - 0.4 - sh / 2 - 1.8
+            sg = [(x + sgn * 0.05, -sw / 2, zc - sh / 2), (x + sgn * 0.05, sw / 2, zc - sh / 2), (x + sgn * 0.05, sw / 2, zc + sh / 2), (x + sgn * 0.05, -sw / 2, zc + sh / 2)]
+            if sgn < 0:
+                sg = [sg[1], sg[0], sg[3], sg[2]]
+            b.quad(sg, SIGN, [(0, 0), (1, 0), (1, 1), (0, 1)])       # u runs left to right seen from outside
+        # ridge cap and roof vents
+        b.box((0, 0, zr + 0.04), (L + 2 * ox, 0.6, 0.12), STEEL, bottom=True)
+        for k in range(max(1, int(L // 14))):
+            x = -hl + 7.0 + k * 14.0
+            b.cyl((x, 0, zr - 0.1), (x, 0, zr + 0.8), 0.32, STEEL, seg=10)
+            b.cyl((x, 0, zr + 0.8), (x, 0, zr + 1.05), 0.55, STEEL, seg=10, r2=0.08)
+        # roll-up doors on the long sides: frame, slats, canopy, lamp, bumpers; personnel doors
         n = int(L // 12)
         for k in range(n):
-            x = -L / 2 + (k + 0.5) * L / n
+            x = -hl + (k + 0.5) * L / n
             for sgn in (1, -1):
-                y = sgn * (W / 2 + 0.03)
-                pts = [(x - 2.2, y, 0.0), (x + 2.2, y, 0.0), (x + 2.2, y, 5.0), (x - 2.2, y, 5.0)]
-                if sgn > 0:
-                    pts = [pts[1], pts[0], pts[3], pts[2]]
-                b.quad(pts, 1)
-                pts = [(x - 2.4, y, 5.3), (x + 2.4, y, 5.3), (x + 2.4, y, 5.5), (x - 2.4, y, 5.5)]
-                if sgn > 0:
-                    pts = [pts[1], pts[0], pts[3], pts[2]]
-                b.quad(pts, 2)
-        return b.finish(key, [self.M["corrugated"], self.M["door"], self.M["band_warm"]])
+                y = sgn * (hw + 0.05)
+
+                def face(x0, x1, z0, z1, yy, mat):
+                    pts = [(x0, yy, z0), (x1, yy, z0), (x1, yy, z1), (x0, yy, z1)]
+                    if sgn > 0:
+                        pts = [pts[1], pts[0], pts[3], pts[2]]
+                    b.quad(pts, mat)
+                face(x - 2.2, x + 2.2, 0.0, 5.0, y, DOOR)
+                for zz in (1.0, 2.0, 3.0, 4.0):
+                    b.box((x, sgn * (hw + 0.08), zz), (4.4, 0.05, 0.06), STEEL, bottom=True)
+                b.box((x, sgn * (hw + 0.09), 0.08), (4.4, 0.08, 0.16), STEEL, bottom=True)
+                for dx in (-2.35, 2.35):
+                    b.box((x + dx, sgn * (hw + 0.1), 2.6), (0.3, 0.2, 5.2), STEEL)
+                b.box((x, sgn * (hw + 0.1), 5.3), (5.0, 0.2, 0.4), STEEL)
+                b.box((x, sgn * (hw + 0.9), 5.9), (5.6, 1.7, 0.18), STEEL, bottom=True)
+                b.box((x, sgn * (hw + 0.25), 5.75), (0.5, 0.25, 0.14), LAMP, bottom=True)
+                for dx in (-1.9, 1.9):
+                    b.box((x + dx, sgn * (hw + 0.15), 1.05), (0.28, 0.22, 0.45), DOOR, bottom=True)
+                if k % 2 == 0:
+                    px = x + 3.4
+                    face(px - 0.5, px + 0.5, 0.0, 2.2, y, DOOR)
+                    b.box((px, sgn * (hw + 0.4), 2.45), (1.5, 0.8, 0.08), STEEL, bottom=True)
+                    b.box((px, sgn * (hw + 0.12), 2.32), (0.25, 0.12, 0.1), LAMP, bottom=True)
+        # an UNPLUG tag low on one long wall
+        tx = -hl + (rng.randrange(max(1, n)) + 0.5) * L / max(1, n) + 4.4         # between a door and the next
+        tg = [(tx, -hw - 0.06, 1.25), (tx + 3.0, -hw - 0.06, 1.25), (tx + 3.0, -hw - 0.06, 3.0), (tx, -hw - 0.06, 3.0)]
+        b.quad(tg, TAG, [(0, 0), (1, 0), (1, 1), (0, 1)])
+        props_dec = os.path.join(self.root, "assets", "decals", "props")
+        tag = rng.choice(["graffiti_unplug", "graffiti_who_owns", "graffiti_not_data"])
+        return b.finish(key, [self.M["cladding"], self.M["door"], self.M["band_warm"], self.M["steel_dark"], self.M["plinth"], self.M["roof_sheet"],
+                              self.M["skylight"], self.M["decal_fn"](os.path.join(props_dec, logo + ".png")),
+                              self.M["decal_flat"](os.path.join(self.story, tag + ".png"))])
 
     def container(self):
         b = Mesher()
@@ -643,6 +784,20 @@ def kit_materials(root, town):
     tex = tex_dir(root, "corrugated")
     M["corrugated"] = painted("WorldCorrugated", tex=tex, scale=4.0)
     M["crane_paint"] = painted("WorldCranePaint", rough=0.5, metal=0.4)
+    M["cladding"] = cladding("WorldWarehouseCladding", tex=tex, scale=4.0)
+    M["roof_sheet"] = cladding("WorldWarehouseRoof", tex=tex, scale=4.0, colour=(0.42, 0.43, 0.44), rust=0.9)
+    m, nt, bsdf = _nodes("WorldPlinth")
+    bsdf.inputs["Base Color"].default_value = (0.2, 0.195, 0.185, 1)
+    bsdf.inputs["Roughness"].default_value = 0.9
+    M["plinth"] = m
+    m, nt, bsdf = _nodes("WorldSkylight")
+    bsdf.inputs["Base Color"].default_value = (0.22, 0.27, 0.25, 1)
+    bsdf.inputs["Roughness"].default_value = 0.35
+    bsdf.inputs["Emission Color"].default_value = (1.0, 0.82, 0.55, 1)
+    bsdf.inputs["Emission Strength"].default_value = 0.25
+    M["skylight"] = m
+    M["decal_flat"] = lambda path: town["decal_material"](path, 0.0)
+
     m, nt, bsdf = _nodes("WorldDoor")
     bsdf.inputs["Base Color"].default_value = (0.05, 0.05, 0.055, 1)
     bsdf.inputs["Metallic"].default_value = 0.7

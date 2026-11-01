@@ -1,113 +1,242 @@
+<div align="center">
+
 # Pigment
 
-Open-source PBR texture painter: paint base color, roughness, metallic, height and
-normal directly onto 3D meshes, build materials from paint and fill layers with
-masks and procedural generators, bake mesh maps, and export to Unreal, Unity or Godot.
+**An open-source PBR texture painter you can drive by hand or hand to an AI agent.**
 
-Rust + wgpu (Vulkan / DX12 / Metal) + egui. Windows, Linux and macOS.
+Paint colour, roughness, metal, height, glow, glass and clearcoat straight onto 3D models,
+stack smart layers and procedural generators, stick decals, and export to
+Blender, Unreal, Unity and Godot. Every feature is also an MCP tool.
 
-![Demo crate: painted metal with generated edge wear and dirt](docs/demo_crate.png)
+[![License: MIT](https://img.shields.io/badge/license-MIT-orange.svg)](LICENSE)
+[![Rust](https://img.shields.io/badge/rust-2021-b7410e?logo=rust)](https://www.rust-lang.org/)
+[![wgpu](https://img.shields.io/badge/GPU-wgpu%2030-5865f2)](https://wgpu.rs/)
+[![egui](https://img.shields.io/badge/UI-egui%200.37-4b8bbe)](https://github.com/emilk/egui)
+[![Platforms](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-555)](#install)
+[![MCP](https://img.shields.io/badge/MCP-28%20tools-8a2be2)](#use-it-from-an-ai-agent-mcp)
+[![Blender](https://img.shields.io/badge/Blender-5.2%20add--on-e87d0d?logo=blender&logoColor=white)](tools/blender_addon/pigment_bridge)
+[![Godot](https://img.shields.io/badge/Godot-4.7-478cbf?logo=godotengine&logoColor=white)](game)
 
-It opens on a demo crate (110k triangles) set up as worn painted metal: a
-fill of teal paint, an **Edge wear** fill of bare steel masked by the
-curvature-driven edge-wear generator (with recessed chips via height), a
-**Dirt** fill masked by the AO/crevice generator, and an empty paint layer.
-Click a layer to see how it's built; drag the generator sliders to watch the
-wear change live.
+![Pigment's Advanced mode on a town building, and a strip of game assets textured in Pigment](docs/readme/hero.png)
 
-Two Blender-made examples ship in `examples/` (built headless by
-`assets/blender/*.py`, textured with the *Worn … metal* smart material):
+*Above: Pigment's Advanced mode on a building from the game, lit by the night-rain sky. Below it,
+16 of the assets an AI agent textured through Pigment's MCP server for a cyberpunk driving game.*
 
-| `examples/ammo_box.pigment` | `examples/jerry_can.pigment` |
+</div>
+
+---
+
+## Contents
+
+- [Why Pigment](#why-pigment)
+- [Install](#install)
+- [Getting started (2 minutes)](#getting-started-2-minutes)
+- [Use it from an AI agent (MCP)](#use-it-from-an-ai-agent-mcp)
+- [Features](#features)
+- [The showcase: a cyberpunk driving game](#the-showcase-a-cyberpunk-driving-game)
+- [Blender and game engines](#blender-and-game-engines)
+- [Building and testing](#building-and-testing)
+- [Project layout](#project-layout)
+- [Documentation](#documentation)
+- [License](#license)
+
+## Why Pigment
+
+- **Easy for anyone.** Simple mode: pick a model, click a smart material, drag *How worn?*, press Export.
+  Edge wear, dirt, leaks and rust land where they really would.
+- **Deep for experts.** Advanced mode has the full layer stack: folders, masks, 14 procedural generators,
+  blend modes, per-channel control, image fills, variants and baked AO and curvature.
+- **Built for agents.** All of it is exposed as **28 MCP tools** with strict JSON schemas, so Claude or any
+  MCP client can texture whole asset libraries. The showcase city was textured that way.
+- **Fast.** GPU compositing in wgpu, painting smooth on 4K texture sets, and a 7-map 4K export in about 0.3 s.
+
+## Install
+
+**Prerequisites:** [Rust](https://rustup.rs/) (stable) and a GPU with Vulkan, DX12 or Metal.
+
+```bash
+git clone https://github.com/krnblds/pigment.git
+cd pigment
+cargo build --release            # builds the app and the MCP server
+cargo run --release -p pigment   # opens the welcome screen
+```
+
+| Binary | What it is |
 |---|---|
-| ![ammo box](docs/ammo_box.png) | ![jerry can](docs/jerry_can.png) |
+| `target/release/pigment` | the desktop app |
+| `target/release/pigment-mcp` | the MCP server for AI agents and scripts |
 
-### Cyberpunk alley (Pigment + Blender over MCP)
+Open a model directly with `pigment model.glb`, or a project with `pigment my.pigment`.
+Models need UVs. In Blender: select the model, press **U**, choose *Smart UV Project*, then export as glTF.
 
-![cyberpunk alley](docs/cyberpunk_alley.png)
+## Getting started (2 minutes)
 
-Props textured in Pigment through its MCP server (smart materials, generators,
-projected neon / graffiti decals, emission), assembled and rendered in Blender.
-See [scenes/cyberpunk](scenes/cyberpunk/README.md).
+1. **Open something.** On the welcome screen, pick a sample (crate, vending machine, town building, jerry can)
+   or drop an OBJ / glTF / GLB onto the window.
+2. **Pick a material.** In *Materials*, click e.g. *Worn painted metal*. Use *Fill part* (**G**) to put it on
+   one piece only.
+3. **Make it yours.** Drag **How worn?**, paint (**B**), stick decals (**D**: stamp, box, fit-to-part or scatter
+   with tear/fade wear), and switch the lighting (Studio, Night city, the night-rain sky...).
+4. **Export.** Press **Ctrl+E** and choose Blender, Unreal, Unity, Godot or glTF, or press *Send to Blender*.
 
-## MCP server
+Switch **Simple / Advanced** with **Ctrl+Tab**. **Ctrl+K** opens the command palette and **?** shows every shortcut.
+Every panel is a dockable widget, so drag tabs to build your own layout.
+The full beginner guide with screenshots is **[docs/GETTING_STARTED.md](docs/GETTING_STARTED.md)**.
 
-`pigment-mcp` exposes Pigment to AI agents and scripts over the Model Context
-Protocol (stdio): `new_project`, `open_project`, `save_project`, `list_library`,
-`list_layers`, `add_smart_material`, `add_layer`, `update_layer`,
-`delete_layer`, `bake`, `paint_stroke`, `project_decal`, `render` (which returns
-the image), `export_textures`, `undo` and `redo`.
-It's registered in `.mcp.json`. Build it with
-`cargo build -p pigment --release --bin pigment-mcp`.
-It also runs without a client: `pigment-mcp --script calls.jsonl`.
-Script flags: `--keep-going` (don't stop at the first error), `--check`
-(validate every line against the tool schemas without running it); per-step
-timings go to stderr. Every call is checked against its JSON schema, so a typo
-fails with the argument's name. `get_project_info`, `batch`, and shape queries in
-`list_parts` / `pick_parts` / `mask.parts_where` are covered in
-[docs/agents/scale-mcp](docs/agents/scale-mcp/NOTES.md).
+| Simple mode | Advanced mode | Decal tool |
+|---|---|---|
+| ![simple](docs/agents/ui/simple_mode.png) | ![advanced](docs/agents/ui/advanced_mode.png) | ![decals](docs/agents/ui/decal_tool.png) |
 
-## Library
+## Use it from an AI agent (MCP)
 
-- **Materials (37 presets):** metals, paints, plastics, concrete, asphalt,
-  rust, verdigris and **neon / LED / screen** materials that glow.
-- **Generators:** edge wear, dirt, grunge, rain streaks, hazard stripes,
-  spots, scratches and panel lines. Pattern generators work in world space, in
-  units per metre.
-- **Smart materials (16):** worn painted metal in 7 colours, rusty steel, hazard
-  stripes, grimy concrete, tech panels, grimy chrome, and scuffed plastics.
-- **Decals:** `assets/decals/` has neon kanji and English signs, warning labels,
-  graffiti, a logo, a poster and a barcode tag.
+`pigment-mcp` speaks the [Model Context Protocol](https://modelcontextprotocol.io) over stdio. Build it once:
 
-See [docs/DESIGN.md](docs/DESIGN.md) for the architecture, project format and the graphics techniques.
-
-## Run
-
-```
-cargo run -p pigment --release                 # opens the demo crate
-cargo run -p pigment --release -- model.glb     # new project from a mesh
-cargo run -p pigment --release -- my.pigment    # open a project folder
+```bash
+cargo build --release -p pigment --bin pigment-mcp
 ```
 
-## Using it
+### Claude Code
 
-| Action | How |
+```bash
+claude mcp add pigment -- /absolute/path/to/pigment/target/release/pigment-mcp
+```
+
+Or commit a project-level `.mcp.json` (this repo ships one):
+
+```json
+{
+  "mcpServers": {
+    "pigment": { "command": "target/release/pigment-mcp", "args": [] }
+  }
+}
+```
+
+### Claude Desktop, Cursor and other MCP clients
+
+Add the same server block to the client's MCP config:
+- Claude Desktop: `claude_desktop_config.json`, under `mcpServers`.
+- Cursor: `.cursor/mcp.json`.
+
+Use the absolute path to `pigment-mcp` (`pigment-mcp.exe` on Windows). Restart the client and the `pigment`
+tools appear.
+
+### What an agent can do
+
+```text
+new_project      open_project       save_project      get_project_info   batch
+list_library     list_layers        list_parts        pick_parts
+add_layer        update_layer       delete_layer      add_smart_material
+save_smart_material                 apply_smart_material
+bake             paint_stroke       project_decal     scatter_decals
+render           render_turntable   export_lighting
+export_textures  export_variants    send_to_blender   export_mesh
+undo             redo
+```
+
+`render` returns the image, so an agent sees its own work. A typical agent loop:
+
+```text
+new_project(mesh)
+  -> list_parts / pick_parts (find the glass, frames, doors...)
+  -> add_layer + generator masks, project_decal / scatter_decals
+  -> render (check) -> export_textures / send_to_blender
+```
+
+Every call is validated against its schema, so a typo fails with the argument's name and a "did you mean".
+
+### Scripts without a client
+
+```bash
+pigment-mcp --script calls.jsonl              # one {"tool": ..., "args": {...}} per line
+pigment-mcp --script calls.jsonl --check      # validate only, no GPU
+pigment-mcp --script calls.jsonl --keep-going # don't stop at the first error
+pigment-mcp --export-for-blender my.pigment out/
+```
+
+Real examples: [`scenes/town/scripts/`](scenes/town/scripts) and [`scenes/cyberpunk/`](scenes/cyberpunk).
+
+## Features
+
+| Area | What you get |
 |---|---|
-| Paint | Left-drag on the model |
-| Orbit / pan / zoom | Alt+left-drag or right-drag / middle-drag / wheel (or Alt+right-drag) |
-| Brush size | `[` and `]` |
-| Brush / eraser | `B` / `E` |
-| Mask colour (white shows, black hides) | `X` |
-| Frame the model | `F` |
-| Material ↔ base colour view | `M` |
-| Undo / redo | Ctrl+Z / Ctrl+Y (or Ctrl+Shift+Z) |
-| Save / save as / open | Ctrl+S / Ctrl+Shift+S / Ctrl+O |
-| Export textures | Ctrl+Shift+E |
-| New project from a mesh | File menu, or drop an `.obj` / `.gltf` / `.glb` on the window |
-| Load an HDRI | Lighting button on the viewport, or drop a `.hdr` / `.exr` on the window |
+| **Channels** | base colour, roughness, metallic, height, normal, emission (HDR), opacity, transmission (glass), clearcoat, coat roughness, metallic flake |
+| **Layers** | paint and fill layers, folders (nested, with their own mask and opacity), blend modes per channel, masks, up to 3 generators per mask with ops |
+| **Generators (14)** | edge wear, dirt, grunge, streaks, stripes, spots, scratches, panel lines, ground gradient, leaks/drips, puddles, moss, tiles/bricks/hex, window grid |
+| **Fills** | flat materials (45+ presets), smart materials (save and apply `.pigsmart`), tiling image fills in UV or triplanar world space |
+| **Decals** | camera, part-fit, box and anchored placement in metres, scatter with spacing/height/fit rules, tear and fade wear, layer order |
+| **Variants** | many looks from one project (seeded lit windows, decal swaps), exported in one call |
+| **Projects** | model texturing, seamless tiles, trim sheets, decal atlases |
+| **Bakes** | ambient occlusion, curvature, drip (what overhangs each texel), rain exposure |
+| **Viewport** | PBR with HDR bloom, ACES tone mapping, studio/night/overcast presets, four night-city skies, HDRI loading |
+| **UI** | welcome screen, Simple/Advanced modes, dockable panels with saved layouts, design system (dark/light), command palette, history, autosave and recovery |
+| **Export** | Unreal (ORM), Unity, Godot, glTF/Blender "separate", plus a `material.json` sidecar; parallel PNG encoding |
 
-**Layout**: tool bar on top (brush/eraser, size, opacity, hardness, spacing, and what
-you're painting on); brush material and presets on the left; layer stack and
-properties on the right; view-mode chips (Material, Color, Rough, Metal, Height,
-Normal, AO, Curvature, UVs) and lighting over the viewport.
+## The showcase: a cyberpunk driving game
 
-**Layers**: `+ Add layer` gives paint and fill layers and the smart layers (edge wear,
-dirt, rust). Each layer card shows a material thumbnail and, on the right, its mask.
-The **Layer / Mask** tabs in Properties choose what you edit *and* what the brush
-paints. Painting on a fill layer without a mask gives it a black mask, so the brush
-reveals the fill where you paint. Generators read the baked AO and curvature;
-paint black on a generator mask to protect areas.
+Pigment was pushed by using it, through MCP, to texture a whole open-world city. The city is a 4×4 km night
+bay with islands, bridges and a mountain road, run by the Hoshikawa corporation and the MERIDIAN AI. The world,
+its assets and a drivable Godot 4.7 game are in this repo:
 
-**Texture set & baking** (bottom of the left panel): resolution (512 to 4096) and the AO / curvature bake.
+- **[`game/`](game)**: the Godot project. Open `game/project.godot` and press **F5**. It has wet neon streets,
+  traffic, a security cruiser with a light bar, and a simulated car with easy handling (`--sim` for full simulation).
+- **[`tools/world/`](tools/world)**: the procedural world generator.
+- **[`tools/city/`](tools/city)**: the incremental city build with smart models and live hot-swap into the
+  running game. See [docs/CITY_BUILD.md](docs/CITY_BUILD.md).
+- **Assets textured in Pigment**:
+  - 6 vehicles with 47 liveries;
+  - building variants with story signage;
+  - 38 street props;
+  - Japanese trees;
+  - road tiles, trim sheets and decal atlases.
 
-## Tests
+> The game's generated assets (about 300 MB) are git-ignored. Rebuild them with `python -m tools.city build`
+> (see [docs/CITY_BUILD.md](docs/CITY_BUILD.md)) before opening the game.
 
+## Blender and game engines
+
+- **Blender add-on**: [`tools/blender_addon/pigment_bridge`](tools/blender_addon/pigment_bridge).
+  - Zip the `pigment_bridge` folder and install it via *Edit → Preferences → Get Extensions → Install from Disk*
+    (Blender 5.2). It shows up as a **Pigment** tab in the 3D view's sidebar.
+  - It links objects to Pigment exports or projects and builds the full material: bump or displacement,
+    emission, glass and coat.
+  - Textures auto-reload when Pigment re-exports.
+  - It picks a random variant per object.
+- **Godot**: the *Godot* export preset, plus the loaders and shaders in `game/scripts/` (road, foliage, proxies).
+- **Unreal / Unity**: export presets with packed ORM and alpha in the base colour.
+
+## Building and testing
+
+```bash
+cargo test --release -- --test-threads=2   # core + GPU + UI harness + MCP schema tests
+cargo test -p pigment --release perf_targets -- --ignored --nocapture
 ```
-cargo test                                                       # 70+ tests, ~5 s
-cargo test -p pigment --release perf_targets -- --ignored --nocapture   # performance check
+
+- The core crate is GPU-free: document model, blend maths, undo, strokes, project files, export packing.
+- The app crate:
+  - validates every WGSL shader with naga;
+  - runs headless GPU tests that paint, composite, bake and export on a real device;
+  - drives the real UI through an offscreen harness.
+
+## Project layout
+
+```text
+crates/core      GPU-free document model, generators config, export, projects
+crates/app       the app (egui + wgpu), renderer, shaders, MCP server (src/bin/pigment-mcp.rs)
+tools/           Blender add-on, asset generators, world generator, city build
+assets/          meshes, decals, tiles, props, vehicles, trees, skies
+scenes/          Pigment projects and MCP scripts for the showcase
+game/            the Godot showcase game
+docs/            guides, design system, per-feature notes (docs/agents/*)
 ```
 
-The core crate (document model, blend math, undo, strokes, tiles, curvature,
-export packing, project files, IBL math) is GPU-free. The app crate validates every
-WGSL shader offline with naga, and runs headless GPU tests that paint, undo, redo,
-composite, bake, export, save and reload on a real device without opening a window.
+## Documentation
+
+- [Getting started](docs/GETTING_STARTED.md): the beginner guide with screenshots.
+- [Design system](docs/design/DESIGN_SYSTEM.md): tokens, components and the docking layout.
+- [Architecture](docs/DESIGN.md): project format and graphics techniques.
+- [City build](docs/CITY_BUILD.md): smart models, incremental builds and hot swap.
+- Per-feature notes in [`docs/agents/`](docs/agents): every subsystem's design, MCP args, tests and limits.
+
+## License
+
+[MIT](LICENSE) © 2026 Kieran Builds. Fonts (Inter, JetBrains Mono) are under the SIL Open Font License; see `crates/app/assets/fonts/`.

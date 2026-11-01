@@ -476,8 +476,16 @@ def place_all(cfg, hf, net, masks, bridges, walls, log):
         for py in br["pylons"]:
             P_light(P, Vector(py["pos"]), py["top"] + 1.0, (1.0, 0.05, 0.02), 900, "aviation")
 
+    # ---- tree kit (assets/trees): avenues lined in tree pits before the props, so props keep clear of the pits
+    TK = tree_kit(root)
+    if TK is not None:
+        TK[0].avenue_trees(cfg, P, net, TK[1], hf, log, rot90, edge_island, district_of, on_deck, WALK_Z)
+
     # ---- street props kit (assets/props) along every curbed road, corners, crossings, rooftops
     scatter_street_props(cfg, P, net, towers, rng, log)
+    if TK is not None:
+        TK[0].street_swaps(cfg, P, TK[1], log)
+        TK[0].park_groves(cfg, P, TK[1], hf, log, rect, district_of)
 
     # ---- trees on natural land
     place_trees(cfg, P, hf, masks, rng, log)
@@ -610,10 +618,28 @@ def place_port(cfg, P, dist, walls, rng, bump, log):
     log(f"port: {n_crane} cranes, {n_cont} containers, {n_wh} warehouses")
 
 
+def tree_kit(root):
+    """(tools/trees/tree_placement module, its Kit) when the tree kit is built (assets/trees/index.json)."""
+    p = os.path.join(root, "tools", "trees", "tree_placement.py")
+    if not os.path.isfile(p) or not os.path.isfile(os.path.join(root, "assets", "trees", "index.json")):
+        return None
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("tree_placement", p)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    kit = mod.Kit(root)
+    return (mod, kit) if kit.ok else None
+
+
 def place_trees(cfg, P, hf, masks, rng, log):
-    """Conifers and broadleaf clumps on natural land: away from roads and
-    buildings, slope < 35 deg, thinning out towards the summits."""
+    """Natural land: with the tree kit, forests / shores / slopes by context (tools/trees/tree_placement.py);
+    else the old conifers and broadleaf clumps: away from roads and buildings, slope < 35 deg,
+    thinning out towards the summits."""
     from terrain import Perlin
+    TK = tree_kit(cfg.get("_root", "."))
+    if TK is not None:
+        TK[0].nature_trees(cfg, P, hf, masks, TK[1], log, rect, Perlin, P.net, rot90)
+        return
     noise = Perlin(cfg["seed"] + 55)
     step = 13.0
     n = 0
@@ -686,13 +712,13 @@ def scatter_street_props(cfg, P, net, towers, rng, log, density_scale=0.8):
             ctx[dname] = {"seed": cfg["seed"] + len(ctx) * 101, "district": PROP_DISTRICT.get(dname, "commercial"),
                           "lines": [], "points": [], "areas": [], "blocked": []}
         return ctx[dname]
-    blocked_kinds = ("lamp", "pole", "signal", "mast")
+    blocked_kinds = ("lamp", "pole", "signal", "mast", "tree")
     for i in P.instances:
         if i.get("kind") in blocked_kinds:
             x, y, z = i["pos"]
             d = i.get("district")
             # roads-district street furniture blocks every context near it (cheap: add to all later)
-            P.__dict__.setdefault("_blocked", []).append({"pos": G(x, y, z), "radius": 1.1})
+            P.__dict__.setdefault("_blocked", []).append({"pos": G(x, y, z), "radius": 1.6 if i.get("kind") == "tree" else 1.1})
     for e in net.alive_edges():
         cc = net.classes[e.cls]
         if cc.get("side", "curb") != "curb" or e.kind != "grid":

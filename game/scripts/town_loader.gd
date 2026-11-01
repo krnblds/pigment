@@ -70,6 +70,8 @@ var _arrays_mats := {}         ## mesh key -> material name per surface
 var _hf: PackedFloat32Array
 var _hf_meta := {}
 var _proxy_mat: ShaderMaterial
+var _trees: RefCounted                    ## tree_kit.gd (tools/trees): kit trees get their own LOD path
+const TreeKit := preload("res://scripts/tree_kit.gd")
 
 
 func load_town(wet := 1.0, map := "town") -> bool:
@@ -96,11 +98,13 @@ func load_town(wet := 1.0, map := "town") -> bool:
 	_lights_root.name = "Lights"
 	add_child(_lights_root)
 	_load_heightfield(map)
+	_trees = TreeKit.new()
+	_trees.set_wet(wet)
 	var groups := _group_instances()
 	for g in groups:
-		g["pol"] = _policy(layout.meshes[g.mesh], g.xf.size())
+		g["pol"] = "tree" if _trees.has(g.mesh) else _policy(layout.meshes[g.mesh], g.xf.size())
 	# scenes only for what is drawn as itself; merged / collision meshes come as arrays (_load_arrays)
-	_preload_meshes(groups.filter(func(g): return g.pol != "merge" and not _headless))
+	_preload_meshes(groups.filter(func(g): return g.pol != "merge" and g.pol != "tree" and not _headless))
 	stats["mesh_load_ms"] = Time.get_ticks_msec() - t0
 	_build_groups(groups)
 	_index_lights()
@@ -243,6 +247,8 @@ func set_road_rain(v: float) -> void:
 	_wet = v
 	for m in road_materials:
 		m.set_shader_parameter("rain", v)
+	if _trees:
+		_trees.set_wet(v)
 
 
 func _road_tex(tile: String, map: String) -> Texture2D:
@@ -516,6 +522,9 @@ func _build_groups(groups: Array) -> void:
 			akeys[g.mesh] = true
 	_load_arrays(akeys)
 	for g in groups:
+		if g.pol == "tree":
+			_build_trees(g.mesh, g.xf)
+			continue
 		var info: Dictionary = layout.meshes[g.mesh]
 		var cat: String = info.get("cat", "other")
 		var vis_end: float = VIS_END.get(cat, 0.0)
@@ -603,10 +612,102 @@ func _build_groups(groups: Array) -> void:
 					_cells[uk].entries.append(e)
 					_cells[uk].r = maxf(_cells[uk].r, r)
 	_build_proxies(proxies)
+	_build_tree_impostors()
 	_prepare_collision()
 	_run_merges(merge_jobs.values())
 	_arrays_cache.clear()
 	_arrays_mats.clear()
+
+
+## Kit trees (tree_kit.gd): LOD0 / LOD1 MultiMeshes in streamed CELL cells, impostors per REGION
+## (always there, up to the far distance); the shaders pick the LOD per instance. Trunk capsules.
+func _build_trees(key: String, xfs: Array) -> void:
+	for x in xfs:
+		var c: Array = _trees.collider(key, x)
+		if not c.is_empty():
+			_col_cell(_key(x.origin, COL_CELL)).shapes.append(["cap", c[0], c[1], c[2]])
+	stats["trees"] = int(stats.get("trees", 0)) + xfs.size()
+	if _headless:
+		return
+	var bands: Array = _trees.bands(key)
+	var lods: int = _trees.lod_count(key)
+	for lod in mini(lods, 2):
+		var mesh: Mesh = _trees.mesh(key, lod)
+		if mesh == null:
+			continue
+		# LOD0 in 64 m cells; LOD1 in 256 m regions (fewer draws; out-of-band vertices collapse)
+		var size := CELL if lod == 0 else REGION
+		var by := {}
+		for x in xfs:
+			var k := _key(x.origin, size)
+			if not by.has(k):
+				by[k] = []
+			by[k].append(x)
+		var end: float = bands[lod][1] + TreeKit.FADE
+		for k in by:
+			var e := {"name": "%s_l%d_%d_%d" % [key, lod, k.x, k.y], "mesh": mesh, "buf": _mm_buffer(by[k]), "n": by[k].size(),
+				"vis": end + size * 0.71, "shadows": lods > 1 and lod == 0, "region": null}
+			var uk := Vector3i(k.x, k.y, 0 if lod == 0 else 2)
+			if not _cells.has(uk):
+				_cells[uk] = {"center": _center(k, size), "r": 0.0, "entries": []}
+			_cells[uk].entries.append(e)
+			_cells[uk].r = maxf(_cells[uk].r, e.vis + size * 0.75)
+	if lods > 2 and _trees.has_impostor(key):
+		for x in xfs:
+			var ic: Array = _trees.impostor_instance(key, x)
+			var k := _key(ic[0].origin, REGION)
+			if not _tree_imp.has(k):
+				_tree_imp[k] = []
+			_tree_imp[k].append(ic)
+
+
+var _tree_imp := {}            ## region -> [[Transform3D, Color custom]] (all species: one MultiMesh)
+
+
+## One impostor MultiMesh per region for every kit tree in it (shared atlas, variant in INSTANCE_CUSTOM).
+func _build_tree_impostors() -> void:
+	if _tree_imp.is_empty() or _headless:
+		return
+	var mesh: ArrayMesh = _trees.impostor_mesh()
+	for k in _tree_imp:
+		var list: Array = _tree_imp[k]
+		var buf := PackedFloat32Array()
+		buf.resize(list.size() * 16)
+		var o := 0
+		for ic in list:
+			var t: Transform3D = ic[0]
+			var c: Color = ic[1]
+			var bs := t.basis
+			buf[o] = bs.x.x
+			buf[o + 1] = bs.y.x
+			buf[o + 2] = bs.z.x
+			buf[o + 3] = t.origin.x
+			buf[o + 4] = bs.x.y
+			buf[o + 5] = bs.y.y
+			buf[o + 6] = bs.z.y
+			buf[o + 7] = t.origin.y
+			buf[o + 8] = bs.x.z
+			buf[o + 9] = bs.y.z
+			buf[o + 10] = bs.z.z
+			buf[o + 11] = t.origin.z
+			buf[o + 12] = c.r
+			buf[o + 13] = c.g
+			buf[o + 14] = c.b
+			buf[o + 15] = c.a
+			o += 16
+		var mm := MultiMesh.new()
+		mm.transform_format = MultiMesh.TRANSFORM_3D
+		mm.use_custom_data = true
+		mm.mesh = mesh
+		mm.instance_count = list.size()
+		mm.buffer = buf
+		var mmi := MultiMeshInstance3D.new()
+		mmi.name = "TreeImpostors_%d_%d" % [k.x, k.y]
+		mmi.multimesh = mm
+		_dress(mmi, 900.0 + REGION * 0.71, false)
+		_visuals.add_child(mmi)
+		stats.multimesh += 1
+	_tree_imp.clear()
 
 
 func _build_proxies(proxies: Dictionary) -> void:
@@ -1112,6 +1213,11 @@ func _make_collision(item: Dictionary) -> Node:
 						var b := BoxShape3D.new()
 						b.size = s[1]
 						cs.shape = b
+					elif s[0] == "cap":       # tree trunks (tree_kit.gd)
+						var cp := CapsuleShape3D.new()
+						cp.radius = s[3]
+						cp.height = s[1]
+						cs.shape = cp
 					else:
 						var c := CylinderShape3D.new()
 						c.radius = 0.22
@@ -1429,6 +1535,10 @@ func _physics_process(_dt: float) -> void:
 
 
 func _process(delta: float) -> void:
+	if _trees and not _headless:
+		var tc := get_viewport().get_camera_3d()
+		if tc:
+			_trees.update(tc.global_position)
 	if not streaming or layout.is_empty():
 		return
 	_check_teleport()

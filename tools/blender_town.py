@@ -1257,6 +1257,39 @@ def build(root=None, export_junctions=False, quick=False):
             lp = wp - nout * 2.1
             put(li, (lp.x, lp.y, j.z + WALK_Z + 5.8), name="LampLight")
             n_lamp += 1
+    # ---- a few street trees from the tree kit (tools/trees), sparingly: cherries and pagoda trees in
+    # grates on the walk, clear of lamps and poles (skipped when assets/trees is not built)
+    n_tree = 0
+    if os.path.isfile(os.path.join(root, "assets", "trees", "index.json")):
+        import sys as _sys
+        _sys.path.insert(0, os.path.join(root, "tools", "trees"))
+        import tree_blender as _TB
+        trng = random.Random(77)
+        busy = [o.location.to_2d() for o in coll.objects if o.name.startswith(("StreetLamp", "PowerPole"))]
+        keys = ["tree_cherry_a", "tree_cherry_b", "tree_pagoda_a", "tree_cherry_c", "tree_pagoda_c"]
+        for ri, path in enumerate(runs):
+            if ri % 2:
+                continue
+            s = 18.0
+            side = -1 if ri % 4 else 1
+            while s < path.length - 12:
+                pos, t = path.at(s)
+                nout = rot90(t) * side
+                p = pos.to_2d() + nout * 5.9
+                if all((p - q).length > 3.5 for q in busy):
+                    key = keys[n_tree % len(keys)]
+                    me = _TB.kit_mesh(root, key)
+                    if me is not None:
+                        o = put(me, (p.x, p.y, pos.z + WALK_Z - 0.2), trng.uniform(0, 6.28), name=key)
+                        tsc = trng.uniform(0.62, 0.75)
+                        o.scale = (tsc, tsc, tsc)
+                        g = _TB.kit_mesh(root, "tree_grate")
+                        if g is not None:
+                            put(g, (p.x, p.y, pos.z + WALK_Z + 0.005), math.atan2(-nout.x, nout.y), name="tree_grate")
+                        busy.append(p)
+                        n_tree += 1
+                s += 44.0
+        print(f"town: {n_tree} kit street trees")
     wires = bpy.data.curves.new("PowerLines", "CURVE")
     wires.dimensions = "3D"
     wires.bevel_depth = 0.012

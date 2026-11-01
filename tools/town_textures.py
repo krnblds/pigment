@@ -647,17 +647,42 @@ SIGN_VARIANTS = [
 
 
 def fence():
-    """Chain-link (welded wire) fence: the panel is one quad, the wire is a cut-out."""
+    """Security fence bay (tools/make_fence.py): galvanised posts on concrete footings, top rail,
+    barbed-wire arms and strands, a HOSHIKAWA PROPERTY plate; the chain-link mesh is one quad
+    and its wire a cut-out.  Parts are told apart by shape (glTF metres: y up)."""
     parts = parts_of("fence")
-    panel = [min(parts, key=lambda p: sorted(p["size"])[0])["id"]]  # the flat quad
-    frame = [p["id"] for p in parts if p["id"] not in panel]
+    thin = lambda p: sorted(p["size"])[0]
+    panel = [min(parts, key=thin)["id"]]                                           # the flat quad
+    plate = [p["id"] for p in parts if abs(sorted(p["size"])[2] - 0.46) < 0.02 and abs(sorted(p["size"])[1] - 0.3) < 0.02]
+    footing = [p["id"] for p in parts if p["center"][1] < 0.06 and sorted(p["size"])[2] > 0.2]
+    barbed = [p["id"] for p in parts if p["center"][1] > 2.08 and sorted(p["size"])[1] < 0.03 and p["id"] not in panel]
+    metal = [p["id"] for p in parts if p["id"] not in panel + plate + footing + barbed]
+    galv = {"base_color": [0.55, 0.57, 0.58], "roughness": 0.42, "metallic": 1.0}
     L = [{"tool": "new_project", "args": {"mesh": "assets/town/fence.glb", "resolution": 4096, "material": "Brushed steel"}},
          {"tool": "bake", "args": {"curvature_radius": 0.004, "ao_distance": 0.1}},
-         fill("Wire", None, panel, values={"base_color": [0.55, 0.57, 0.58], "roughness": 0.45, "metallic": 1.0}),
+         fill("Wire", None, panel, values=galv),
          *perforated("Chain-link holes", panel, 16.0, 0.14),
-         fill("Posts", "Gunmetal", frame),
-         fill("Rust", "Rust", None, {"generator": "spots", "amount": 0.25, "scale": 6.0}, opacity=0.7),
-         fill("Grime", "Grime", None, {"generator": "gradient", "amount": 0.25, "breakup": 0.5}, opacity=0.6)]
+         fill("Posts and rails", None, metal, values=galv),
+         fill("Galvanised spangle", None, metal + panel, {"generator": "grunge", "amount": 0.45, "scale": 9.0, "softness": 0.35},
+              values={"base_color": [0.42, 0.44, 0.45], "roughness": 0.62, "metallic": 0.9}, opacity=0.5, channels={"height": False}),
+         fill("Barbed wire", None, barbed, values={"base_color": [0.3, 0.29, 0.28], "roughness": 0.55, "metallic": 0.85}),
+         fill("Footings", "Concrete", footing),
+         fill("Plate", None, plate, values={"base_color": [0.86, 0.86, 0.84], "roughness": 0.35, "metallic": 0.0}),
+         fill("Rust", "Rust", metal + barbed + plate, {"generator": "edge_wear", "amount": 0.4, "softness": 0.2, "breakup": 0.8, "scale": 6.0,
+                                                       "effects": [{"generator": "spots", "op": "multiply", "amount": 0.7, "scale": 7.0, "softness": 0.2}]},
+              opacity=0.85, channels={"height": False}),
+         fill("Rust on barbs", "Rust", barbed, {"generator": "spots", "amount": 0.55, "scale": 30.0, "softness": 0.2}, opacity=0.9, channels={"height": False}),
+         fill("Rust runs", None, metal + footing + plate, {"generator": "leaks", "amount": 0.45, "scale": 3.0, "breakup": 0.6, "drip_length": 0.7,
+                                                           "softness": 0.15}, values={"base_color": [0.3, 0.13, 0.05], "roughness": 0.7},
+              opacity=0.6, channels={"height": False}),
+         fill("Moss", None, footing, {"generator": "moss", "amount": 0.45, "scale": 5.0, "breakup": 0.6, "ao_influence": 0.6},
+              values={"base_color": [0.12, 0.18, 0.06], "roughness": 0.9}, opacity=0.8, channels={"height": False}),
+         fill("Grime", "Grime", None, {"generator": "gradient", "amount": 0.3, "breakup": 0.5}, opacity=0.6),
+         {"tool": "add_layer", "args": {"kind": "paint", "name": "Story decals"}}]
+    for p in plate:
+        L.append({"tool": "project_decal", "args": {"image": "assets/decals/story/plate_property.png", "layer": "Story decals", "part": p,
+                                                    "facing": "+z", "fit": "contain", "margin": 0.04, "wear": 0.2}})
+    L.append(fill("Decal grime", "Grime", plate, {"generator": "grunge", "amount": 0.35, "scale": 4.0, "softness": 0.3}, opacity=0.4, channels={"height": False}))
     finish(L, "fence")
 
 

@@ -392,6 +392,19 @@ def uv_unwrap(ob, pieces, angle=55.0, margin=0.004):
     bpy.ops.uv.average_islands_scale()
     bpy.ops.object.mode_set(mode="OBJECT")
     boost = {p.id: p.uv_boost for p in pieces if p.uv_boost != 1.0}
+    if "uvlow" in ob.data.attributes:
+        # faces nobody sees (backs of single-skin sheets, undersides): a sliver of the atlas
+        bm = bmesh.new()
+        bm.from_mesh(ob.data)
+        low = bm.faces.layers.int.get("uvlow")
+        uv = bm.loops.layers.uv.active
+        for f in bm.faces:
+            if f[low]:
+                c = sum((l[uv].uv for l in f.loops), f.loops[0][uv].uv * 0) / len(f.loops)
+                for l in f.loops:
+                    l[uv].uv = c + (l[uv].uv - c) * 0.12
+        bm.to_mesh(ob.data)
+        bm.free()
     if boost:
         bm = bmesh.new()
         bm.from_mesh(ob.data)

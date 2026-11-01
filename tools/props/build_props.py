@@ -29,7 +29,7 @@ import proplib  # noqa: E402
 from proplib import Prop, gl  # noqa: E402
 
 MODELS = {}
-for mod in ("models_street", "models_clutter"):
+for mod in ("models_street", "models_clutter", "models_port"):
     try:
         MODELS.update(__import__(mod).MODELS)
     except ImportError as e:
@@ -121,8 +121,9 @@ def build(name):
         node_objs = node_objs
     # drop the helper attribute so it stays out of the glb
     for o in {ob, *node_objs}:
-        if "piece" in o.data.attributes:
-            o.data.attributes.remove(o.data.attributes["piece"])
+        for att in ("piece", "uvlow"):
+            if att in o.data.attributes:
+                o.data.attributes.remove(o.data.attributes[att])
 
     os.makedirs(SRC, exist_ok=True)
     path = os.path.join(SRC, f"{name}.glb")

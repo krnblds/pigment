@@ -487,3 +487,36 @@ fn ui_frame_timing() {
         eprintln!("{mode:?} 4096: idle frame {im:.2} ms (p95 {ip:.2}), painting frame {pm:.2} ms (p95 {pp:.2}), {} strokes", h.app.counters.strokes);
     }
 }
+
+/// README hero shot: Advanced mode on a finished town building under the night sky.
+/// `cargo test -p pigment --release readme_hero -- --ignored`
+#[test]
+#[ignore]
+fn readme_hero() {
+    let Some(mut h) = Harness::new([1600.0, 900.0], 1.0) else { return };
+    let rs = h.rs.clone();
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let project = std::env::var("PIGMENT_HERO_PROJECT").map(PathBuf::from).unwrap_or_else(|_| root.join("scenes/town/projects/building_b.pigment"));
+    h.app.ui.welcome = false;
+    h.app.run_pending_ui(&rs, Pending::OpenProject(project));
+    h.app.set_mode(Mode::Advanced);
+    *h.app.ui.prefs.layout_mut() = DockLayout::texturing();
+    settle(&mut h);
+    thumbs_done(&mut h);                       // material swatches render under studio light first
+    h.app.set_lighting(&rs, "night_rain");
+    settle(&mut h);
+    let (c, r) = h.app.mesh.bounding_sphere();
+    h.app.camera.frame(c, r);
+    h.app.camera.yaw = 0.55;
+    h.app.camera.pitch = 0.12;
+    h.app.camera.distance *= 0.78;
+    if let Some(i) = h.app.doc.layers.iter().position(|l| l.mask.as_ref().is_some_and(|m| m.generator.is_some())) {
+        let id = h.app.doc.layers[i].id;
+        h.app.select(Some(id), false);
+    }
+    thumbs_done(&mut h);
+    h.run(40);
+    let out = std::env::var("PIGMENT_HERO_OUT").map(PathBuf::from).unwrap_or_else(|_| docs().join("readme/pigment_ui.png"));
+    std::fs::create_dir_all(out.parent().unwrap()).unwrap();
+    h.save_png(&out);
+}
