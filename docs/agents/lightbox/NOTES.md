@@ -64,7 +64,7 @@ Common options:
 - `--labels 0` turns off the cell labels. `--width N` sets the final width of a sheet.
 - `--lod _lod1` picks a vehicle LOD. `--yaw DEG` adds a turn on top of the preset.
 
-Sheets are composed by the system Python, because Blender's own Python has no PIL. The script finds it on `PATH`; set `LIGHTBOX_PYTHON` to override. `save_small` keeps every PNG under 1.5 MB: if full colour does not fit, it quantises to 256 colours with dither.
+Sheets are composed by the system Python, because Blender's own Python has no PIL. The script finds it on `PATH`; set `LIGHTBOX_PYTHON` to override. `save_small` keeps every PNG under 1.5 MB. It tries full colour first, then 7 and 6 bits per channel (still true colour), and only then a 256-colour palette. The palette step shifts hues, so avoid it. The hero is saved at 6 bits per channel, 1.18 MB; the original was 2.2 MB at 8 bits.
 
 As a module:
 

@@ -22,7 +22,7 @@ import json
 import os
 import sys
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageOps
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
@@ -56,13 +56,21 @@ def label_cell(im, text, size=None):
 
 
 def save_small(im, out, max_bytes=1_500_000):
-    """PNG under max_bytes: full colour if it fits, else a 256-colour quantised PNG (dithered),
-    else shrink by 10 % steps."""
+    """PNG under max_bytes: full colour if it fits, else 7 then 6 bits per channel (still true
+    colour), else a 256-colour quantised PNG (dithered), else shrink by 10 % steps."""
     os.makedirs(os.path.dirname(os.path.abspath(out)), exist_ok=True)
     im = im.convert("RGB")
     while True:
         buf = io.BytesIO()
         im.save(buf, "PNG", optimize=True)
+        if buf.tell() <= max_bytes:
+            break
+        # mild lossy steps that keep true colour first: drop the low bit(s) of each channel
+        for bits in (7, 6):
+            buf = io.BytesIO()
+            ImageOps.posterize(im, bits).save(buf, "PNG", optimize=True)
+            if buf.tell() <= max_bytes:
+                break
         if buf.tell() <= max_bytes:
             break
         q = im.quantize(colors=256, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.FLOYDSTEINBERG)
