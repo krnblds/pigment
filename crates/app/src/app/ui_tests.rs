@@ -423,3 +423,67 @@ fn sample_previews() {
         image::save_buffer(out.join(format!("{}.png", s.id)), &px, 480, 360, image::ExtendedColorType::Rgba8).unwrap();
     }
 }
+
+/// HiDPI: the window renders at 2x and the brush ring is sized in points.
+#[test]
+fn hidpi_renders_at_scale() {
+    let Some(mut h) = Harness::new([900.0, 600.0], 2.0) else { return };
+    settle(&mut h);
+    let img = h.render();
+    assert_eq!((img.width(), img.height()), (1800, 1200));
+    assert_eq!(h.app.brush_radius_px(), h.app.brush.size * 0.5 * 2.0, "brush radius follows pixels per point");
+    // the UI scale preference is a zoom factor on top
+    h.ctx.set_zoom_factor(1.25);
+    h.run(3);
+    assert!((h.app.ui.prefs.ui_scale - 1.25).abs() < 1e-3, "zoom remembered: {}", h.app.ui.prefs.ui_scale);
+}
+
+/// Frame times of the whole window (UI + viewport + compositing) while
+/// painting on a 4K texture set. `cargo test -p pigment --release ui_frame_timing -- --ignored --nocapture`
+#[test]
+#[ignore]
+fn ui_frame_timing() {
+    let Some(mut h) = harness() else { return };
+    let rs = h.rs.clone();
+    h.app.change_resolution(&rs, 4096);
+    for (mode, layout) in [(Mode::Simple, DockLayout::beginner()), (Mode::Advanced, DockLayout::texturing())] {
+        h.app.ui.prefs.mode = mode;
+        *h.app.ui.prefs.layout_mut() = layout;
+        settle(&mut h);
+        thumbs_done(&mut h);
+        let wait = |h: &Harness| {
+            let _ = h.rs.device.poll(eframe::egui_wgpu::wgpu::PollType::Wait { submission_index: None, timeout: None });
+        };
+        let mut idle = vec![];
+        for _ in 0..60 {
+            let t = Instant::now();
+            h.step();
+            wait(&h);
+            idle.push(t.elapsed().as_secs_f64() * 1000.0);
+        }
+        let v = anchor(&h, "viewport");
+        let (a, b) = (v.center() - egui::vec2(200.0, 50.0), v.center() + egui::vec2(200.0, 60.0));
+        let mut paint = vec![];
+        h.drag(a, a, 1);
+        h.hover(a);
+        h.step();
+        h.events_push_press(a);
+        for i in 0..120 {
+            let p = a + (b - a) * (i as f32 / 119.0);
+            h.hover(p);
+            let t = Instant::now();
+            h.step();
+            wait(&h);
+            paint.push(t.elapsed().as_secs_f64() * 1000.0);
+        }
+        h.events_push_release(b);
+        h.run(2);
+        let stats = |v: &mut Vec<f64>| {
+            v.sort_by(|a, b| a.total_cmp(b));
+            (v.iter().sum::<f64>() / v.len() as f64, v[v.len() * 95 / 100])
+        };
+        let (im, ip) = stats(&mut idle);
+        let (pm, pp) = stats(&mut paint);
+        eprintln!("{mode:?} 4096: idle frame {im:.2} ms (p95 {ip:.2}), painting frame {pm:.2} ms (p95 {pp:.2}), {} strokes", h.app.counters.strokes);
+    }
+}

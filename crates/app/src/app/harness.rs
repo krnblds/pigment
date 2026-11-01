@@ -98,6 +98,15 @@ impl Harness {
         self.step();
     }
 
+    /// Press / release the primary button without moving (for long drags).
+    pub fn events_push_press(&mut self, p: egui::Pos2) {
+        self.button(p, egui::PointerButton::Primary, true);
+    }
+
+    pub fn events_push_release(&mut self, p: egui::Pos2) {
+        self.button(p, egui::PointerButton::Primary, false);
+    }
+
     pub fn right_click(&mut self, p: egui::Pos2) {
         self.hover(p);
         self.step();

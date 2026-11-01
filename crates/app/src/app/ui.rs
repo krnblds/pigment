@@ -115,6 +115,8 @@ pub struct UiState {
     pub dock_rects: Vec<(PanelId, Rect)>,
     pub pending_theme: bool,
     pub pending_sample: Option<usize>,
+    /// Directory listings, refreshed every few seconds instead of every frame.
+    pub fs_cache: std::collections::HashMap<String, (Instant, Vec<PathBuf>)>,
     pub image_thumbs: super::panels::library::ImageThumbs,
 }
 
@@ -150,6 +152,7 @@ impl UiState {
             dock_rects: vec![],
             pending_theme: false,
             pending_sample: None,
+            fs_cache: Default::default(),
             image_thumbs: Default::default(),
         }
     }
@@ -247,6 +250,18 @@ impl eframe::App for PigmentApp {
 }
 
 impl PigmentApp {
+    /// A cached directory listing (`list` runs at most every 3 s per key).
+    pub(super) fn cached_list(&mut self, key: &str, list: impl FnOnce() -> Vec<PathBuf>) -> Vec<PathBuf> {
+        match self.ui.fs_cache.get(key) {
+            Some((t, v)) if t.elapsed().as_secs_f32() < 3.0 => v.clone(),
+            _ => {
+                let v = list();
+                self.ui.fs_cache.insert(key.to_string(), (Instant::now(), v.clone()));
+                v
+            }
+        }
+    }
+
     fn prefs_changed(&mut self) {
         self.ui.prefs_dirty_at.get_or_insert(Instant::now());
     }

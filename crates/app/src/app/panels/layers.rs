@@ -451,6 +451,10 @@ impl Panel for PropertiesPanel {
         app.paint_mask = paint_mask;
         ui.add_space(space::SM);
         let image_bases = app.image_bases();
+        let tile_sets = app.cached_list("tile sets", || {
+            let root = super::decals::asset_dir("tiles");
+            root.as_ref().map(|r| pigment_core::image_fill::list_tile_sets(r).into_iter().map(|s| r.join(s)).collect()).unwrap_or_default()
+        });
         let mut save_smart = false;
         let mut save_lib = false;
         let l = &mut app.doc.layers[i];
@@ -473,7 +477,7 @@ impl Panel for PropertiesPanel {
                     material_editor(ui, "fill", values, None);
                 });
                 ds::section(ui, "Image fill");
-                ds::card(ui, |ui| image_fill_editor(ui, &mut l.image, &mut l.channels, &image_bases, &mut app.ui.image_thumbs));
+                ds::card(ui, |ui| image_fill_editor(ui, &mut l.image, &mut l.channels, &image_bases, &tile_sets, &mut app.ui.image_thumbs));
             }
             LayerKind::Paint { .. } => {
                 ds::card(ui, |ui| {
@@ -503,24 +507,24 @@ impl Panel for PropertiesPanel {
 
 /// Tiling images for a fill layer: tile set browser with previews,
 /// projection, transform and one image per channel.
-fn image_fill_editor(ui: &mut egui::Ui, image: &mut Option<ImageFill>, channels: &mut Channels<ChannelSettings>, bases: &[PathBuf], thumbs: &mut library::ImageThumbs) {
-    use pigment_core::image_fill::{list_tile_sets, ImageChannel};
+fn image_fill_editor(ui: &mut egui::Ui, image: &mut Option<ImageFill>, channels: &mut Channels<ChannelSettings>, bases: &[PathBuf], sets: &[PathBuf], thumbs: &mut library::ImageThumbs) {
+    use pigment_core::image_fill::ImageChannel;
     let p = ds::pal(ui);
     let mut pick: Option<String> = None;
     thumbs.begin_frame();
-    let root = super::decals::asset_dir("tiles");
-    let sets = root.as_ref().map(|r| list_tile_sets(r)).unwrap_or_default();
+    let root = sets.first().and_then(|s| s.parent()).map(Path::to_path_buf);
     if sets.is_empty() {
         ds::hint(ui, "No tile sets found in assets/tiles.");
     }
     ui.horizontal_wrapped(|ui| {
         ui.spacing_mut().item_spacing = egui::vec2(space::SM, space::SM);
-        for s in &sets {
-            let dir = root.as_ref().unwrap().join(s);
+        for dir in sets {
+            let s = dir.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
+            let dir = dir.clone();
             let img = ["base_color.png", "base_color.jpg", "basecolor.png", "albedo.png"].iter().map(|f| dir.join(f)).find(|f| f.exists()).or_else(|| std::fs::read_dir(&dir).ok()?.flatten().map(|e| e.path()).find(|p| p.to_string_lossy().to_lowercase().contains("color")));
             let tex = img.and_then(|i| thumbs.get(ui.ctx(), &i));
             let on = image.as_ref().is_some_and(|f| f.images.iter().any(|(_, path)| path.contains(s.as_str())));
-            let r = ds::asset_tile(ui, 76.0, tex, |pa, r| Icon::Image.paint(pa, r.shrink(space::LG), p.text_muted), s, "", on);
+            let r = ds::asset_tile(ui, 76.0, tex, |pa, r| Icon::Image.paint(pa, r.shrink(space::LG), p.text_muted), &s, "", on);
             if r.clicked() {
                 pick = Some(format!("assets/tiles/{s}"));
             }

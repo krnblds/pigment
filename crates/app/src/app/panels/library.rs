@@ -439,16 +439,20 @@ impl PigmentApp {
         let path = dir.join(format!("{}.{}", name.replace(['/', '\\', ':'], "_"), pigment_core::smart::SMART_EXTENSION));
         match self.save_smart(id, &name, &path) {
             Ok(_) => {
+                self.ui.fs_cache.remove("saved smart");
                 self.ui.toasts.push(ToastKind::Success, "Saved to your library", format!("{name} is under Saved in the Materials panel."));
             }
             Err(e) => self.notify_error("Couldn't save the smart material", &e),
         }
     }
 
-    pub(in crate::app) fn saved_materials(&self) -> Vec<LibItem> {
+    pub(in crate::app) fn saved_materials(&mut self) -> Vec<LibItem> {
         let Some(dir) = self.ui.prefs.dir.as_ref().map(|d| d.join("smart materials")) else { return vec![] };
-        let mut v: Vec<PathBuf> = std::fs::read_dir(dir).into_iter().flatten().flatten().map(|e| e.path()).filter(|p| p.extension().is_some_and(|e| e == pigment_core::smart::SMART_EXTENSION)).collect();
-        v.sort();
+        let v = self.cached_list("saved smart", || {
+            let mut v: Vec<PathBuf> = std::fs::read_dir(dir).into_iter().flatten().flatten().map(|e| e.path()).filter(|p| p.extension().is_some_and(|e| e == pigment_core::smart::SMART_EXTENSION)).collect();
+            v.sort();
+            v
+        });
         v.into_iter().map(LibItem::File).collect()
     }
 }
