@@ -2,6 +2,7 @@
 //! `pigment` desktop app and the `pigment-mcp` server.
 
 pub mod app;
+pub mod mcp_args;
 pub mod render;
 
 #[cfg(test)]

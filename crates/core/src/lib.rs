@@ -10,6 +10,7 @@ pub mod document;
 pub mod envmath;
 pub mod export;
 pub mod mesh;
+pub mod partquery;
 pub mod project;
 pub mod stroke;
 pub mod tiles;

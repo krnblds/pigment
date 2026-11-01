@@ -60,12 +60,12 @@ fn view_mode(name: &str) -> Res<ViewMode> {
     ViewMode::ALL
         .into_iter()
         .find(|m| m.label().to_ascii_lowercase().starts_with(&n) || format!("{m:?}").to_ascii_lowercase() == n)
-        .ok_or_else(|| format!("unknown view `{name}` (material, base color, roughness, metallic, height, normal, ambient, curvature, world, uv)"))
+        .ok_or_else(|| format!("`view` = \"{name}\": unknown view (one of: {})", ViewMode::ALL.iter().map(|m| m.label().to_ascii_lowercase()).collect::<Vec<_>>().join(", ")))
 }
 
 fn channel(name: &str) -> Res<Channel> {
     let n = name.to_ascii_lowercase().replace([' ', '-'], "_");
-    Channel::ALL.into_iter().find(|c| c.file_stem() == n || c.label().to_ascii_lowercase().replace(' ', "_") == n).ok_or_else(|| format!("unknown channel `{name}`"))
+    Channel::ALL.into_iter().find(|c| c.file_stem() == n || c.label().to_ascii_lowercase().replace(' ', "_") == n).ok_or_else(|| format!("unknown channel `{name}` (one of: {})", Channel::ALL.map(|c| c.file_stem()).join(", ")))
 }
 
 fn blend_mode(name: &str) -> Res<BlendMode> {
@@ -84,7 +84,20 @@ fn blend_mode(name: &str) -> Res<BlendMode> {
     ]
     .into_iter()
     .find(|m| m.label().to_ascii_lowercase().starts_with(&n) || format!("{m:?}").to_ascii_lowercase() == n)
-    .ok_or_else(|| format!("unknown blend mode `{name}`"))
+    .ok_or_else(|| format!("unknown blend mode `{name}` (normal, multiply, screen, overlay, add, subtract, darken, lighten, replace, combine)"))
+}
+
+fn unknown_material(arg: &str, name: &str) -> String {
+    let names: Vec<&str> = material_presets().into_iter().map(|(n, _)| n).collect();
+    format!("`{arg}` = \"{name}\": unknown material preset (names are case-sensitive; one of: {})", names.join(", "))
+}
+
+fn unknown_smart_material(name: &str) -> String {
+    format!("`name` / `smart_material` = \"{name}\": unknown smart material (one of: {})", smart_material_names().join(", "))
+}
+
+fn unknown_generator(arg: &str, k: &str) -> String {
+    format!("`{arg}` = \"{k}\": unknown generator (one of: {})", GeneratorKind::ALL.iter().map(|g| g.id()).collect::<Vec<_>>().join(", "))
 }
 
 impl Session {
@@ -123,7 +136,7 @@ impl Session {
         // start from an empty stack, then optionally a smart material and a paint layer on top
         self.app.doc.layers.clear();
         if let Some(name) = s(a, "smart_material") {
-            let layers = self.app.doc.smart_material(name).ok_or_else(|| format!("unknown smart material `{name}`"))?;
+            let layers = self.app.doc.smart_material(name).ok_or_else(|| unknown_smart_material(name))?;
             self.app.doc.layers.extend(layers);
         } else {
             let base = self.app.doc.fill_with("Base", s(a, "material").unwrap_or("White plastic"), None);
@@ -212,13 +225,17 @@ impl Session {
     fn find_layer(&self, r: &Value) -> Res<usize> {
         match r {
             Value::Number(n) => {
-                let i = n.as_u64().ok_or("layer index must be >= 0")? as usize;
-                (i < self.app.doc.layers.len()).then_some(i).ok_or_else(|| format!("no layer {i}"))
+                let i = n.as_u64().ok_or("`layer` index must be >= 0")? as usize;
+                let len = self.app.doc.layers.len();
+                (i < len).then_some(i).ok_or_else(|| format!("`layer` = {i}: no such layer (indices 0..{}, 0 = bottom)", len.saturating_sub(1)))
             }
             Value::String(name) => {
                 let n = name.to_ascii_lowercase();
                 // last match = the topmost layer with that name
-                self.app.doc.layers.iter().rposition(|l| l.name.to_ascii_lowercase() == n).ok_or_else(|| format!("no layer named `{name}`"))
+                self.app.doc.layers.iter().rposition(|l| l.name.to_ascii_lowercase() == n).ok_or_else(|| {
+                    let names: Vec<&str> = self.app.doc.layers.iter().map(|l| l.name.as_str()).collect();
+                    format!("`layer` = \"{name}\": no layer with that name (layers bottom to top: {})", names.join(", "))
+                })
             }
             _ => Err("`layer` must be a name or an index (0 = bottom)".into()),
         }
@@ -239,7 +256,7 @@ impl Session {
         }
         if let Some(name) = s(a, "material") {
             if !material_presets().iter().any(|(n, _)| *n == name) {
-                return Err(format!("unknown material `{name}` (see list_library)"));
+                return Err(unknown_material("material", name));
             }
             let values = material_preset(name);
             let l = &mut app.doc.layers[i];
@@ -310,7 +327,7 @@ impl Session {
             }
             Some(m) => {
                 let kind = match s(m, "generator") {
-                    Some(k) => Some(GeneratorKind::from_id(k).ok_or_else(|| format!("unknown generator `{k}`"))?),
+                    Some(k) => Some(GeneratorKind::from_id(k).ok_or_else(|| unknown_generator("mask.generator", k))?),
                     None => None,
                 };
                 if app.doc.layers[i].mask.is_none() {
@@ -352,7 +369,7 @@ impl Session {
                     mask.effects.clear();
                     for e in effs {
                         let k = s(e, "generator").ok_or("each effect needs `generator`")?;
-                        let mut g = Generator::new(GeneratorKind::from_id(k).ok_or_else(|| format!("unknown generator `{k}`"))?);
+                        let mut g = Generator::new(GeneratorKind::from_id(k).ok_or_else(|| unknown_generator("mask.effects[].generator", k))?);
                         apply_generator_fields(&mut g, e);
                         let op = match s(e, "op") {
                             Some(o) => MaskOp::from_id(o).ok_or_else(|| format!("unknown op `{o}` (multiply, add, subtract, max, min)"))?,
@@ -388,13 +405,19 @@ impl Session {
 
     /// Which parts are under viewport points (0..1) for a camera view.
     pub fn pick_parts(&mut self, a: &Value) -> Res<Value> {
+        match (a.get("points"), a.get("shape")) {
+            (Some(_), Some(_)) => return Err("pick_parts takes either `points` (viewport picking) or `shape` (a shape query), not both".into()),
+            (None, Some(shape)) => return self.pick_parts_by_shape(shape),
+            (None, None) => return Err("pick_parts needs `points` ([[x, y], ...] in 0..1 for a camera view) or `shape` (e.g. {\"max_thickness\": 0.02, \"min_area\": 1.0})".into()),
+            _ => {}
+        }
         self.set_camera(a);
         let px = Vec2::new(self.size[0] as f32, self.size[1] as f32);
-        let pts = a.get("points").and_then(Value::as_array).ok_or("missing `points`")?;
+        let pts = a.get("points").and_then(Value::as_array).ok_or("`points` must be an array of [x, y] in 0..1")?;
         let mut out = Vec::new();
-        for p in pts {
-            let p = p.as_array().ok_or("points are [x, y]")?;
-            let v = Vec2::new(p[0].as_f64().unwrap_or(0.0) as f32, p[1].as_f64().unwrap_or(0.0) as f32);
+        for (i, p) in pts.iter().enumerate() {
+            let xy = p.as_array().filter(|p| p.len() == 2 && p.iter().all(Value::is_number)).ok_or_else(|| format!("`points[{i}]` must be [x, y] (numbers in 0..1), got {p}"))?;
+            let v = Vec2::new(xy[0].as_f64().unwrap_or(0.0) as f32, xy[1].as_f64().unwrap_or(0.0) as f32);
             out.push(self.app.part_at(v * px, px).map(Value::from).unwrap_or(Value::Null));
         }
         Ok(json!({ "parts": out }))
@@ -402,7 +425,7 @@ impl Session {
 
     pub fn add_smart_material(&mut self, a: &Value) -> Res<Value> {
         let name = req(a, "name")?;
-        let layers = self.app.doc.smart_material(name).ok_or_else(|| format!("unknown smart material `{name}` (see list_library)"))?;
+        let layers = self.app.doc.smart_material(name).ok_or_else(|| unknown_smart_material(name))?;
         // insert below the topmost paint layer so painting stays on top
         let at = self.app.doc.layers.iter().rposition(|l| l.is_paint()).unwrap_or(self.app.doc.layers.len());
         for (k, l) in layers.into_iter().enumerate() {
@@ -439,7 +462,7 @@ impl Session {
     }
 
     pub fn update_layer(&mut self, a: &Value) -> Res<Value> {
-        let i = self.find_layer(a.get("layer").ok_or("missing `layer`")?)?;
+        let i = self.find_layer(a.get("layer").ok_or("missing `layer` (a layer name or index, 0 = bottom; see list_layers)")?)?;
         self.configure(i, a)?;
         if let Some(to) = a.get("move_to").and_then(Value::as_u64) {
             let l = self.app.doc.layers.remove(i);
@@ -451,7 +474,7 @@ impl Session {
     }
 
     pub fn delete_layer(&mut self, a: &Value) -> Res<Value> {
-        let i = self.find_layer(a.get("layer").ok_or("missing `layer`")?)?;
+        let i = self.find_layer(a.get("layer").ok_or("missing `layer` (a layer name or index, 0 = bottom; see list_layers)")?)?;
         self.app.doc.layers.remove(i);
         self.settle();
         Ok(json!({ "layers": self.layers() }))
@@ -593,7 +616,7 @@ impl Session {
         let b = &mut self.app.brush;
         if let Some(name) = s(a, "material") {
             if !material_presets().iter().any(|(n, _)| *n == name) {
-                return Err(format!("unknown material `{name}`"));
+                return Err(unknown_material("material", name));
             }
             b.values = material_preset(name);
             b.channels = [true, true, true, b.values.height.abs() > 1e-3, false, b.values.emissive_strength > 0.0];
@@ -664,6 +687,7 @@ impl Session {
         self.settle();
         let b = &mut self.app.brush;
         b.values = match s(a, "material") {
+            Some(m) if !material_presets().iter().any(|(n, _)| *n == m) => return Err(unknown_material("material", m)),
             Some(m) => material_preset(m),
             None => MaterialValues { base_color: [1.0; 3], roughness: 0.4, ..Default::default() },
         };
@@ -761,6 +785,186 @@ impl Session {
             .collect();
         Ok(json!({ "status": msg, "files": files, "emissive_scale": scale, "compression": compression.id(),
                    "timing_ms": { "gpu_finish": wait_ms, "read_back": read_ms, "encode": encode_ms, "total": total_ms } }))
+    }
+}
+
+// ---------------------------------------------------------------------- part queries, project info
+
+use pigment_core::partquery::{PartQuery, Range, Shape, SortKey, AXES};
+
+/// Keys of a part shape query (list_parts filters, pick_parts `shape`).
+pub const PART_QUERY_KEYS: [&str; 17] = [
+    "min_triangles", "max_triangles", "min_thickness", "max_thickness", "min_width", "max_width", "min_length", "max_length",
+    "min_area", "max_area", "min_volume", "max_volume", "facing", "inside", "ids", "min_size", "max_size",
+];
+/// Paging / output keys shared by list_parts and pick_parts `shape`.
+pub const PART_LIST_KEYS: [&str; 5] = ["sort", "order", "limit", "offset", "ids_only"];
+
+fn num(a: &Value, k: &str, path: &str) -> Res<Option<f32>> {
+    match a.get(k) {
+        None | Some(Value::Null) => Ok(None),
+        Some(v) => v.as_f64().map(|x| Some(x as f32)).ok_or_else(|| format!("`{path}{k}` must be a number, got {v}")),
+    }
+}
+
+fn range(a: &Value, what: &str, path: &str) -> Res<Range> {
+    Ok(Range { min: num(a, &format!("min_{what}"), path)?, max: num(a, &format!("max_{what}"), path)? })
+}
+
+/// Parse a part shape query. `path` prefixes argument names in errors ("shape.").
+pub fn part_query(a: &Value, path: &str) -> Res<PartQuery> {
+    let mut q = PartQuery {
+        triangles: range(a, "triangles", path)?,
+        thickness: range(a, "thickness", path)?,
+        width: range(a, "width", path)?,
+        length: range(a, "length", path)?,
+        area: range(a, "area", path)?,
+        volume: range(a, "volume", path)?,
+        ..Default::default()
+    };
+    // min_size / max_size: the longest side (alias of min_length / max_length)
+    let size = range(a, "size", path)?;
+    q.length.min = q.length.min.or(size.min);
+    q.length.max = q.length.max.or(size.max);
+    if let Some(v) = a.get("facing") {
+        let f = v.as_str().map(|s| s.to_ascii_lowercase());
+        q.facing = Some(AXES.iter().position(|x| Some(*x) == f.as_deref()).ok_or_else(|| format!("`{path}facing` must be \"x\", \"y\" or \"z\" (the axis of the part's thinnest side), got {v}"))?);
+    }
+    if let Some(v) = a.get("inside") {
+        let bad = || format!("`{path}inside` must be [[x0, y0, z0], [x1, y1, z1]] (null = unbounded), got {v}");
+        let corners = v.as_array().filter(|c| c.len() == 2).ok_or_else(bad)?;
+        let mut out = [[f32::NEG_INFINITY; 3], [f32::INFINITY; 3]];
+        for (c, corner) in corners.iter().enumerate() {
+            let xs = corner.as_array().filter(|x| x.len() == 3).ok_or_else(bad)?;
+            for (k, x) in xs.iter().enumerate() {
+                if !x.is_null() {
+                    out[c][k] = x.as_f64().ok_or_else(bad)? as f32;
+                }
+            }
+        }
+        q.inside = Some((out[0], out[1]));
+    }
+    if let Some(v) = a.get("ids") {
+        let ids = v.as_array().ok_or_else(|| format!("`{path}ids` must be an array of part ids"))?;
+        q.ids = Some(ids.iter().enumerate().map(|(i, x)| x.as_u64().map(|x| x as u32).ok_or_else(|| format!("`{path}ids[{i}]` must be a part id, got {x}"))).collect::<Res<_>>()?);
+    }
+    Ok(q)
+}
+
+fn r3(x: f32) -> f64 {
+    (x as f64 * 1000.0).round() / 1000.0
+}
+
+impl Session {
+    /// `list_parts` with optional shape filters, sorting and paging. With no
+    /// arguments it returns the plain array of every part (as before).
+    pub fn list_parts_query(&self, a: &Value) -> Res<Value> {
+        let has_any = a.as_object().is_some_and(|o| !o.is_empty());
+        if !has_any {
+            return Ok(self.list_parts());
+        }
+        self.query_parts(a, "")
+    }
+
+    fn query_parts(&self, a: &Value, path: &str) -> Res<Value> {
+        let q = part_query(a, path)?;
+        let sort = match a.get("sort") {
+            None => SortKey::Id,
+            Some(v) => v.as_str().and_then(SortKey::from_id).ok_or_else(|| {
+                format!("`{path}sort` = {v}: expected one of {}", SortKey::ALL.iter().map(|(n, _)| *n).collect::<Vec<_>>().join(", "))
+            })?,
+        };
+        // biggest first unless asked otherwise (except for ids)
+        let descending = match a.get("order").map(|v| (v, v.as_str())) {
+            None => sort != SortKey::Id,
+            Some((_, Some("desc"))) => true,
+            Some((_, Some("asc"))) => false,
+            Some((v, _)) => return Err(format!("`{path}order` must be \"asc\" or \"desc\", got {v}")),
+        };
+        let int = |k: &str| -> Res<Option<usize>> {
+            match a.get(k) {
+                None => Ok(None),
+                Some(v) => v.as_u64().map(|x| Some(x as usize)).ok_or_else(|| format!("`{path}{k}` must be an integer >= 0, got {v}")),
+            }
+        };
+        let (limit, offset) = (int("limit")?, int("offset")?.unwrap_or(0));
+        let ids_only = a.get("ids_only").and_then(Value::as_bool).unwrap_or(false);
+        let info = &self.app.parts.info;
+        let hits = q.run(info, sort, descending);
+        let page: Vec<usize> = hits.iter().copied().skip(offset).take(limit.unwrap_or(usize::MAX)).collect();
+        let parts: Vec<Value> = page
+            .iter()
+            .map(|&i| {
+                if ids_only {
+                    return json!(i);
+                }
+                let p = &info[i];
+                let s = Shape::of(p);
+                json!({
+                    "id": i, "triangles": p.triangles,
+                    "center": s.center.map(r3), "size": s.size.map(r3),
+                    "thickness": r3(s.thickness), "area": r3(s.area), "facing": AXES[s.facing],
+                })
+            })
+            .collect();
+        Ok(json!({ "total_parts": info.len(), "matched": hits.len(), "returned": parts.len(), "offset": offset, "parts": parts }))
+    }
+
+    /// `pick_parts` by shape: `shape` holds a part query (see list_parts).
+    pub fn pick_parts_by_shape(&self, shape: &Value) -> Res<Value> {
+        if !shape.is_object() {
+            return Err(format!("`shape` must be an object of filters, e.g. {{\"max_thickness\": 0.02, \"min_area\": 1.0}}, got {shape}"));
+        }
+        if let Some(k) = shape.as_object().unwrap().keys().find(|k| !PART_QUERY_KEYS.contains(&k.as_str()) && !PART_LIST_KEYS.contains(&k.as_str())) {
+            return Err(format!("unknown argument `shape.{k}`; accepted: {}, {}", PART_QUERY_KEYS.join(", "), PART_LIST_KEYS.join(", ")));
+        }
+        let mut s = shape.clone();
+        s["ids_only"] = json!(true);
+        let r = self.query_parts(&s, "shape.")?;
+        Ok(json!({ "parts": r["parts"], "count": r["matched"] }))
+    }
+
+    /// One-call overview of the session: mesh, resolution, parts, layers,
+    /// bake status, project folder and the last export.
+    pub fn project_info(&self) -> Value {
+        let app = &self.app;
+        let m = &app.mesh;
+        let (mut lo, mut hi) = ([f32::MAX; 3], [f32::MIN; 3]);
+        for v in &m.vertices {
+            for k in 0..3 {
+                lo[k] = lo[k].min(v.position[k]);
+                hi[k] = hi[k].max(v.position[k]);
+            }
+        }
+        let loaded = !m.vertices.is_empty();
+        let part_layers: Vec<Value> = app
+            .doc
+            .layers
+            .iter()
+            .filter_map(|l| l.mask.as_ref().filter(|mk| !mk.parts.is_empty()).map(|mk| json!({ "layer": l.name, "parts": mk.parts.len(), "max_id": mk.parts.iter().max() })))
+            .collect();
+        json!({
+            "mesh": if loaded { json!({
+                "name": m.name, "source": app.mesh_source, "triangles": m.triangle_count(), "vertices": m.vertices.len(), "has_uvs": m.has_uvs,
+                "bounds": { "min": lo.map(r3), "max": hi.map(r3) }, "size": ([0, 1, 2].map(|k| r3(hi[k] - lo[k]))),
+            }) } else { Value::Null },
+            "resolution": app.doc.resolution,
+            "parts": { "count": app.parts.info.len(), "max_selectable": MAX_SELECTABLE_PARTS, "masked_layers": part_layers },
+            "layers": {
+                "count": app.doc.layers.len(),
+                "visible": app.doc.layers.iter().filter(|l| l.visible).count(),
+                "paint": app.doc.layers.iter().filter(|l| l.is_paint()).count(),
+                "masked": app.doc.layers.iter().filter(|l| l.mask.is_some()).count(),
+                "names": app.doc.layers.iter().map(|l| l.name.clone()).collect::<Vec<_>>(),
+            },
+            "bake": { "baked": app.ts.baked, "settings": serde_json::to_value(&app.doc.bake).unwrap_or(Value::Null) },
+            "project_dir": app.project_dir,
+            "modified": app.modified,
+            "undo_steps": app.history.len(),
+            "export": { "preset": app.doc.export_preset, "name": app.export_name, "dir": app.export_dir, "compression": app.export_compression.id(),
+                        "last_timing_ms": { "gpu_finish": r3(app.last_export_ms[0] as f32), "read_back": r3(app.last_export_ms[1] as f32), "encode": r3(app.last_export_ms[2] as f32), "total": r3(app.last_export_ms[3] as f32) } },
+            "gpu_memory_mb": (app.ts.vram_bytes() as f64 / (1024.0 * 1024.0)).round(),
+        })
     }
 }
 
@@ -895,5 +1099,50 @@ mod tests {
         assert!(everything > only_body + 1000, "whole model glows more than one part ({everything} vs {only_body})");
         let layers = s.layers();
         assert!(layers.to_string().contains("\"parts\":[]"));
+    }
+
+    #[test]
+    fn part_queries_project_info_and_named_errors() {
+        let Ok(mut s) = Session::new() else { return };
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        s.new_project(&json!({ "mesh": root.join("assets/ammo_box.glb"), "resolution": 512 })).unwrap();
+        let all = s.list_parts_query(&json!({})).unwrap();
+        let n = all.as_array().unwrap().len();
+        // filtered + sorted + paged
+        let big = s.list_parts_query(&json!({ "sort": "area", "limit": 3 })).unwrap();
+        assert_eq!(big["total_parts"], n);
+        assert_eq!(big["returned"], 3);
+        let areas: Vec<f64> = big["parts"].as_array().unwrap().iter().map(|p| p["area"].as_f64().unwrap()).collect();
+        assert!(areas.windows(2).all(|w| w[0] >= w[1]), "biggest first: {areas:?}");
+        let biggest = big["parts"][0]["id"].as_u64().unwrap();
+        let small = s.list_parts_query(&json!({ "max_size": 0.05, "ids_only": true })).unwrap();
+        assert!(!small["parts"].as_array().unwrap().iter().any(|p| p.as_u64() == Some(biggest)));
+        let m = small["matched"].as_u64().unwrap() as usize;
+        let rest = s.list_parts_query(&json!({ "min_size": 0.05000001, "ids_only": true })).unwrap();
+        assert_eq!(m + rest["matched"].as_u64().unwrap() as usize, n, "size filters split the parts");
+        // pick by shape = the same query
+        let p = s.pick_parts(&json!({ "shape": { "sort": "area", "limit": 1 } })).unwrap();
+        assert_eq!(p["parts"][0].as_u64(), Some(biggest));
+        assert_eq!(p["count"].as_u64(), Some(n as u64));
+        assert!(s.pick_parts(&json!({})).unwrap_err().contains("`points`"));
+        assert!(s.pick_parts(&json!({ "shape": { "facing": "w" } })).unwrap_err().contains("`shape.facing`"));
+        assert!(s.list_parts_query(&json!({ "sort": "colour" })).unwrap_err().contains("`sort`"));
+        // bad part ids name the argument
+        let e = s.add_layer(&json!({ "name": "X", "mask": { "parts": [0, n + 5] } })).unwrap_err();
+        assert!(e.contains(&format!("`mask.parts[1]` = {}", n + 5)) && e.contains(&format!("the mesh has {n} parts")), "{e}");
+        assert!(s.layers().as_array().unwrap().iter().all(|l| l["name"] != "X"), "failed add_layer leaves no layer");
+        let e = s.update_layer(&json!({ "layer": "Nope" })).unwrap_err();
+        assert!(e.contains("`layer` = \"Nope\"") && e.contains("Paint"), "{e}");
+        let e = s.add_layer(&json!({ "material": "steel" })).unwrap_err();
+        assert!(e.contains("`material` = \"steel\"") && e.contains("Steel"), "{e}");
+        // project info
+        s.add_layer(&json!({ "name": "Glow", "material": "Neon green", "mask": { "parts": [biggest] } })).unwrap();
+        let info = s.project_info();
+        assert_eq!(info["resolution"], 512);
+        assert_eq!(info["parts"]["count"], n);
+        assert_eq!(info["parts"]["masked_layers"][0]["layer"], "Glow");
+        assert_eq!(info["mesh"]["triangles"].as_u64().unwrap() as usize, s.app.mesh.triangle_count());
+        assert_eq!(info["layers"]["count"].as_u64().unwrap() as usize, s.app.doc.layers.len());
+        assert!(info["bake"]["baked"].as_bool().unwrap(), "{info}");
     }
 }
