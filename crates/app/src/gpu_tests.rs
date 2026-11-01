@@ -641,3 +641,6 @@ fn folders_composite_as_sub_stacks() {
     let m = rough(&mut s.ts, &doc, None);
     assert!((m - 0.5).abs() < 0.02, "child mask alone: {m}");
 }
+
+#[path = "gpu_tests_weather.rs"]
+mod weather;

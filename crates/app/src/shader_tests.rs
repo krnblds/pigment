@@ -25,7 +25,12 @@ shader_test!(post, "post.wgsl");
 shader_test!(env, "env.wgsl");
 shader_test!(mip, "mip.wgsl");
 shader_test!(texspace, "texspace.wgsl");
-shader_test!(composite, "composite.wgsl");
+#[test]
+fn composite() {
+    // the weathering generators live in their own file, appended at load
+    let src = [include_str!("shaders/composite.wgsl"), include_str!("shaders/gen_weather.wgsl")].concat();
+    check("composite.wgsl + gen_weather.wgsl", &src);
+}
 shader_test!(stamp, "stamp.wgsl");
 shader_test!(apply, "apply.wgsl");
 shader_test!(bake_ao, "bake_ao.wgsl");
@@ -36,5 +41,5 @@ shader_test!(bake_blur, "bake_blur.wgsl");
 /// The folder pass is appended to the compositor (it reuses its bindings).
 #[test]
 fn folder() {
-    check("composite.wgsl + folder.wgsl", &[include_str!("shaders/composite.wgsl"), include_str!("shaders/folder.wgsl")].concat());
+    check("composite.wgsl + folder.wgsl", &[include_str!("shaders/composite.wgsl"), include_str!("shaders/gen_weather.wgsl"), include_str!("shaders/folder.wgsl")].concat());
 }

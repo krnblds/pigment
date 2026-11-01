@@ -81,7 +81,8 @@ fn tools() -> Value {
         "yaw": { "type": "number", "description": "degrees around the model (default 35)" },
         "pitch": { "type": "number", "description": "degrees above (default 20)" },
         "zoom": { "type": "number", "description": "1 = framed, 2 = twice as close" },
-        "width": { "type": "integer" }, "height": { "type": "integer" }
+        "width": { "type": "integer" }, "height": { "type": "integer" },
+        "target": { "type": "array", "items": { "type": "number" }, "maxItems": 3, "description": "orbit centre [x, y, z] in world metres (default: the model's centre); combine with zoom for close-ups" }
     });
     let mut add_props = layer_fields.clone();
     let layer_ref = |d: &str| json!({ "type": ["string", "integer"], "description": d });
@@ -165,6 +166,7 @@ fn tools() -> Value {
                   "box": { "type": "object", "description": "instead of rect/part: a world-space box {min: [x,y,z], max: [x,y,z]} or {center, size}; the image goes on the surface seen through its broad face (for areas of big walls)" },
                   "facing": { "type": "string", "enum": ["+x", "-x", "+y", "-y", "+z", "-z"], "description": "with part/box: look at this side (default: the thinnest axis, away from the model centre)" },
                   "yaw": { "type": "number" }, "pitch": { "type": "number" }, "zoom": { "type": "number" }, "width": { "type": "integer" }, "height": { "type": "integer" },
+                  "target": { "type": "array", "items": { "type": "number" }, "maxItems": 3, "description": "orbit centre [x, y, z] in world metres (with rect + camera)" },
                   "tint": { "type": "array", "items": { "type": "number" }, "description": "multiplies the image colour, sRGB 0..1" }, "material": { "type": "string", "description": "preset for roughness/metallic (default plain paint)" },
                   "emissive_strength": { "type": "number" }, "height": { "type": "number" }, "opacity": { "type": "number" },
                   "layer": layer_ref("target layer (default: top paint layer)"), "mask": { "type": "boolean", "description": "project into the layer's mask instead" },
@@ -211,11 +213,21 @@ fn tools() -> Value {
 
 /// Schema of a layer `mask` argument.
 fn mask_schema() -> Value {
-    let gens: Vec<&str> = pigment_core::GeneratorKind::ALL.iter().map(|g| g.id()).collect();
+    let mut gens: Vec<&str> = pigment_core::GeneratorKind::ALL.iter().map(|g| g.id()).collect();
+    // aliases GeneratorKind::from_id accepts (bricks / square / hex also pick the tile variant)
+    gens.extend(["drips", "leak", "wetness", "wet", "puddle", "grime_accumulation", "lichen", "bricks", "brick", "tile", "square", "hex", "windows", "window_lights"]);
     let mut gen_fields = json!({
         "generator": { "type": "string", "enum": gens, "description": "procedural mask" },
         "amount": { "type": "number" }, "softness": { "type": "number" }, "scale": { "type": "number" }, "breakup": { "type": "number" },
-        "seed": { "type": "integer", "minimum": 0 }, "ao_influence": { "type": "number" }, "curvature_weight": { "type": "number" }
+        "seed": { "type": "integer", "minimum": 0 }, "ao_influence": { "type": "number" }, "curvature_weight": { "type": "number" },
+        // weathering generators: named slots (see docs/agents/generators/NOTES.md)
+        "drip_length": { "type": "number", "description": "leaks: metres a streak runs (= curvature_weight, default 2.5)" },
+        "variant": { "type": ["string", "integer"], "description": "tiles: bricks | square | hex (or 0 / 1 / 2)" },
+        "aspect": { "type": "number", "description": "tiles / window_grid: cell width / height (= curvature_weight)" },
+        "mortar": { "type": "number", "description": "tiles: mortar width as a fraction of a row (= ao_influence)" },
+        "frame": { "type": "number", "description": "window_grid: frame width as a fraction of the cell (= ao_influence)" },
+        "cell_size": { "type": "number", "description": "window_grid: cell (storey) height in metres (= scale)" },
+        "fill": { "type": "number", "description": "window_grid: lit fraction 0..1 (= amount)" }
     });
     let mut effect = gen_fields.clone();
     effect["op"] = json!({ "type": "string", "enum": ["multiply", "add", "subtract", "max", "min"], "description": "how it combines with the mask so far (default multiply)" });

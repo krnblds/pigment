@@ -217,7 +217,8 @@ impl Session {
                         o["mask"] = json!({
                             "generator": m.generator.as_ref().map(|g| json!({
                                 "kind": g.kind.id(), "amount": g.amount, "softness": g.softness, "scale": g.noise_scale,
-                                "breakup": g.noise_amount, "seed": g.seed, "ao_influence": g.ao_influence, "curvature_weight": g.curvature_weight
+                                "breakup": g.noise_amount, "seed": g.seed, "ao_influence": g.ao_influence, "curvature_weight": g.curvature_weight,
+                                "variant": g.variant
                             })),
                             "effects": m.effects.iter().map(|e| json!({ "generator": e.generator.kind.id(), "op": format!("{:?}", e.op).to_lowercase(), "amount": e.generator.amount, "scale": e.generator.noise_scale })).collect::<Vec<_>>(),
                             "parts": m.parts,
@@ -744,6 +745,10 @@ impl Session {
         cam.yaw = f(a, "yaw").map(|d| d.to_radians()).unwrap_or(35f32.to_radians());
         cam.pitch = f(a, "pitch").map(|d| d.to_radians()).unwrap_or(20f32.to_radians());
         cam.distance *= f(a, "zoom").map(|z| 1.0 / z.max(0.05)).unwrap_or(1.0);
+        // optional orbit centre in world metres (close-ups of one spot)
+        if let Some(t) = a.get("target").and_then(Value::as_array).filter(|t| t.len() == 3) {
+            cam.target = glam::Vec3::new(t[0].as_f64().unwrap_or(0.0) as f32, t[1].as_f64().unwrap_or(0.0) as f32, t[2].as_f64().unwrap_or(0.0) as f32);
+        }
         if let Some(w) = a.get("width").and_then(Value::as_u64) {
             self.size[0] = (w as u32).clamp(64, 4096);
         }
@@ -1770,6 +1775,41 @@ fn apply_generator_fields(g: &mut Generator, m: &Value) {
     }
     if let Some(x) = f(m, "curvature_weight") {
         g.curvature_weight = x;
+    }
+    apply_weather_fields(g, m);
+}
+
+/// Named parameters of the weathering / pattern generators, mapped onto the
+/// generic slots (see `GeneratorKind::Leaks` .. `WindowGrid`):
+///   leaks:       drip_length (m)          -> curvature_weight
+///   tiles:       variant bricks|square|hex, mortar -> ao_influence, aspect -> curvature_weight
+///   window_grid: cell_size (m) -> scale, fill -> amount, frame -> ao_influence, aspect -> curvature_weight
+fn apply_weather_fields(g: &mut Generator, m: &Value) {
+    // `generator: "hex"` / "bricks" / "square" picks the tile variant too
+    let named = s(m, "variant").or(s(m, "generator").filter(|k| GeneratorKind::TILE_VARIANTS.contains(k) || *k == "brick"));
+    if let Some(v) = named {
+        let v = if v == "brick" { "bricks" } else { v };
+        if let Some(i) = GeneratorKind::TILE_VARIANTS.iter().position(|t| *t == v) {
+            g.variant = i as u32;
+        }
+    } else if let Some(v) = m.get("variant").and_then(Value::as_u64) {
+        g.variant = v.min(2) as u32;
+    }
+    for k in ["drip_length", "aspect"] {
+        if let Some(x) = f(m, k) {
+            g.curvature_weight = x;
+        }
+    }
+    for k in ["mortar", "frame"] {
+        if let Some(x) = f(m, k) {
+            g.ao_influence = x;
+        }
+    }
+    if let Some(x) = f(m, "cell_size") {
+        g.noise_scale = x;
+    }
+    if let Some(x) = f(m, "fill") {
+        g.amount = x;
     }
 }
 

@@ -147,11 +147,11 @@ fn layer_params(l: &Layer, variant_seed: u32) -> LayerParams {
         if let Some(g) = &m.generator {
             p.flags[2] = g.gpu_id();
             p.gp = [g.amount, g.softness, g.noise_scale, g.noise_amount];
-            p.gp2 = [vseed(g.seed) as f32, g.ao_influence, g.curvature_weight, 0.0];
+            p.gp2 = [vseed(g.seed) as f32, g.ao_influence, g.curvature_weight, g.variant as f32];
             for (k, e) in m.effects.iter().take(pigment_core::MAX_MASK_EFFECTS).enumerate() {
                 let g = &e.generator;
                 let a = [g.amount, g.softness, g.noise_scale, g.noise_amount];
-                let b = [vseed(g.seed) as f32, g.ao_influence, g.curvature_weight, 0.0];
+                let b = [vseed(g.seed) as f32, g.ao_influence, g.curvature_weight, g.variant as f32];
                 p.eff[2 * k] = g.gpu_id();
                 p.eff[2 * k + 1] = e.op.gpu_id();
                 if k == 0 {
@@ -280,7 +280,7 @@ struct Pipes {
 impl Pipes {
     fn new(device: &wgpu::Device) -> Self {
         let common = include_str!("../shaders/common.wgsl");
-        let comp = gpu::shader(device, "composite.wgsl", &[common, include_str!("../shaders/composite.wgsl")].concat());
+        let comp = gpu::shader(device, "composite.wgsl", &[common, include_str!("../shaders/composite.wgsl"), include_str!("../shaders/gen_weather.wgsl")].concat());
         let ts = gpu::shader(device, "texspace.wgsl", &[common, include_str!("../shaders/texspace.wgsl")].concat());
         let shared_bgl = gpu::bgl(device, "shared", &[gpu::ntex(0), gpu::ntex(1), gpu::utex(2), gpu::uniform_entry(3, false), gpu::ntex(4), gpu::utex(5)]);
         let acc_bgl = gpu::bgl(device, "acc", &[gpu::ntex(0), gpu::ntex(1), gpu::ntex(2), gpu::ntex(3)]);
@@ -306,7 +306,7 @@ impl Pipes {
             ],
         );
         let full_layout = gpu::layout(device, "composite", &[&shared_bgl, &acc_bgl, &layer_bgl]);
-        let folder_src = [common, include_str!("../shaders/composite.wgsl"), include_str!("../shaders/folder.wgsl")].concat();
+        let folder_src = [common, include_str!("../shaders/composite.wgsl"), include_str!("../shaders/gen_weather.wgsl"), include_str!("../shaders/folder.wgsl")].concat();
         let folder_mod = gpu::shader(device, "folder.wgsl", &folder_src);
         // folder passes use the mask, params and (for part masks) the part bitsets
         let folder_bgl = gpu::bgl(device, "folder", &[gpu::ntex(6), gpu::uniform_entry(7, true), gpu::storage_entry(11)]);
