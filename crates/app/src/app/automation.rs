@@ -479,6 +479,10 @@ impl Session {
         cam.yaw = f(a, "yaw").map(|d| d.to_radians()).unwrap_or(35f32.to_radians());
         cam.pitch = f(a, "pitch").map(|d| d.to_radians()).unwrap_or(20f32.to_radians());
         cam.distance *= f(a, "zoom").map(|z| 1.0 / z.max(0.05)).unwrap_or(1.0);
+        // optional orbit centre in world metres (close-ups of one spot)
+        if let Some(t) = a.get("target").and_then(Value::as_array).filter(|t| t.len() == 3) {
+            cam.target = glam::Vec3::new(t[0].as_f64().unwrap_or(0.0) as f32, t[1].as_f64().unwrap_or(0.0) as f32, t[2].as_f64().unwrap_or(0.0) as f32);
+        }
         if let Some(w) = a.get("width").and_then(Value::as_u64) {
             self.size[0] = (w as u32).clamp(64, 4096);
         }

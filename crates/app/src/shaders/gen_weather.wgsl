@@ -94,8 +94,11 @@ fn wx_moss(t: vec2<i32>, gp: vec4<f32>, gp2: vec4<f32>) -> f32 {
     let s = max(gp.z, 0.01);
     let up = smoothstep(0.35, 0.85, n.y);
     let occl = 1.0 - bk.r;
-    let damp = clamp(occl * gp2.y * 1.5, 0.0, 1.0);
-    let cavity = clamp((0.5 - bk.g) * 2.0, 0.0, 1.0) * gp2.z;
+    // crevices only hold enough water and debris where the surface isn't
+    // sheer: full growth on floors / corners, a third of it on walls
+    let holds = mix(0.35, 1.0, smoothstep(-0.2, 0.6, n.y));
+    let damp = clamp(occl * gp2.y * 1.5, 0.0, 1.0) * holds;
+    let cavity = clamp((0.5 - bk.g) * 2.0, 0.0, 1.0) * gp2.z * holds;
     // nothing hangs on ceilings
     let not_down = smoothstep(-0.6, -0.2, n.y);
     let base = max(up * (0.55 + 0.45 * damp), max(damp * 0.8, cavity)) * not_down;

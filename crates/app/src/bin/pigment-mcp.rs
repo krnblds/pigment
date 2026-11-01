@@ -58,6 +58,7 @@ fn tools() -> Value {
     render_props["view"] = json!({ "type": "string", "description": "material (default), base color, roughness, metallic, height, normal, ambient occlusion, curvature, world normal, uv checker" });
     render_props["path"] = json!({ "type": "string", "description": "where to save the PNG (default: temp)" });
     render_props["exposure"] = json!({ "type": "number" });
+    render_props["target"] = json!({ "type": "array", "items": { "type": "number" }, "description": "orbit centre [x, y, z] in world metres (default: the model's centre); combine with zoom for close-ups" });
     render_props["background"] = json!({ "type": "boolean" });
     let t = |name: &str, desc: &str, props: Value, req: &[&str]| json!({ "name": name, "description": desc, "inputSchema": { "type": "object", "properties": props, "required": req } });
     json!([
