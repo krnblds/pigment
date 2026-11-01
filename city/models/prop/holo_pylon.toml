@@ -49,8 +49,19 @@ mutable = ["scenes/props/textures/variants.json"]
 scripts = ["scenes/props/scripts/holo_pylon.jsonl"]
 textures = "scenes/props/textures"
 resolution = 2048
-variants = ["meridian", "hacked"]
+variants = ["meridian", "hacked", "hotel", "dolls", "sale", "volt"]
 decals = [
+  "assets/decals/ads/holo_dolls_1.png",
+  "assets/decals/ads/holo_dolls_2.png",
+  "assets/decals/ads/holo_dolls_3.png",
+  "assets/decals/ads/holo_gacha.png",
+  "assets/decals/ads/holo_hotel_1.png",
+  "assets/decals/ads/holo_hotel_2.png",
+  "assets/decals/ads/holo_hotel_3.png",
+  "assets/decals/ads/holo_sale_1.png",
+  "assets/decals/ads/holo_sale_2.png",
+  "assets/decals/ads/holo_sale_3.png",
+  "assets/decals/ads/holo_volt.png",
   "assets/decals/props/holo_dreamlink.png",
   "assets/decals/props/holo_hacked.png",
   "assets/decals/props/holo_meridian.png",
@@ -59,8 +70,12 @@ decals = [
 outputs = [
   "scenes/props/projects/holo_pylon.pigment",
   "scenes/props/textures/holo_pylon",
+  "scenes/props/textures/holo_pylon__dolls",
   "scenes/props/textures/holo_pylon__hacked",
+  "scenes/props/textures/holo_pylon__hotel",
   "scenes/props/textures/holo_pylon__meridian",
+  "scenes/props/textures/holo_pylon__sale",
+  "scenes/props/textures/holo_pylon__volt",
 ]
 patch = []
 decal_slots = {}
@@ -97,9 +112,17 @@ lod = { lod0_tris = 304, lod1_tris = 152, lod1_from_m = 32.5, visible_to_m = 162
 
 # Where the world places it (read from scenes/world/world.json; scatter rules live in the props catalog).
 [placement]
-instances = 181
+instances = 174
 source = "tools/props/scatter.py (rules: tools/props/catalog.py)"
-districts = { corporate = 7, downtown = 39, hillside = 18, midtown = 90, old_town = 18, port = 9 }
+
+[placement.districts]
+corporate = 7
+downtown = 41
+hillside = 11
+midtown = 83
+old_town = 21
+port = 9
+yoimachi = 2
 
 [placement.scatter]
 slots = ["plaza", "walk", "corner"]

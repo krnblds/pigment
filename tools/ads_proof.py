@@ -20,7 +20,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SHOTS = {
     # name: (district, variants that make the shot, camera height, look-up)
     "yoimachi_night": ("yoimachi", {"love_hotel", "hostess_bar", "cabaret_row", "hostess_row", "welcome", "velvet_moon", "peep_show", "snack"}, 1.6, 4.0),
-    "downtown_corporate": ("downtown", {"platinum", "showroom", "implants", "capsules", "pawn_row", "night_market"}, 1.6, 14.0),
+    "downtown_corporate": ("downtown", {"platinum", "showroom"}, 1.6, 22.0),
 }
 
 
@@ -38,6 +38,8 @@ def main():
             pts = r["points"]
             for k in range(0, len(pts) - 1, 2):
                 a, b = pts[k], pts[min(k + 6, len(pts) - 1)]
+                if dist == "downtown" and math.dist(a[:2], (-120, -150)) > 260:
+                    continue                      # the core, among the towers
                 L = math.dist(a[:2], b[:2])
                 if L < 10:
                     continue

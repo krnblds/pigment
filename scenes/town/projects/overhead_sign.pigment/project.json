@@ -1000,6 +1000,238 @@
                 0.2
               ]
             }
+          },
+          {
+            "name": "face_w/sign_welcome_yoimachi",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "emissive_strength": 6.0,
+              "image": "assets/decals/ads/sign_welcome_yoimachi.png",
+              "material": "Neon pink",
+              "normal": [
+                -1,
+                0,
+                0
+              ],
+              "position": [
+                -0.134,
+                0.475,
+                0.92
+              ],
+              "size": [
+                0.89,
+                0.3911
+              ],
+              "tint": [
+                1.0,
+                0.35,
+                0.6
+              ]
+            }
+          },
+          {
+            "name": "face_e/sign_welcome_yoimachi",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "emissive_strength": 6.0,
+              "image": "assets/decals/ads/sign_welcome_yoimachi.png",
+              "material": "Neon pink",
+              "normal": [
+                1,
+                0,
+                0
+              ],
+              "position": [
+                0.134,
+                0.475,
+                0.92
+              ],
+              "size": [
+                0.89,
+                0.3911
+              ],
+              "tint": [
+                1.0,
+                0.35,
+                0.6
+              ]
+            }
+          },
+          {
+            "name": "face_w/sign_velvet_moon",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "emissive_strength": 6.0,
+              "image": "assets/decals/ads/sign_velvet_moon.png",
+              "material": "Neon pink",
+              "normal": [
+                -1,
+                0,
+                0
+              ],
+              "position": [
+                -0.134,
+                0.475,
+                0.92
+              ],
+              "size": [
+                0.89,
+                0.3068
+              ],
+              "tint": [
+                1.0,
+                0.25,
+                0.65
+              ]
+            }
+          },
+          {
+            "name": "face_e/sign_velvet_moon",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "emissive_strength": 6.0,
+              "image": "assets/decals/ads/sign_velvet_moon.png",
+              "material": "Neon pink",
+              "normal": [
+                1,
+                0,
+                0
+              ],
+              "position": [
+                0.134,
+                0.475,
+                0.92
+              ],
+              "size": [
+                0.89,
+                0.3068
+              ],
+              "tint": [
+                1.0,
+                0.25,
+                0.65
+              ]
+            }
+          },
+          {
+            "name": "face_w/sign_peep_show",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "emissive_strength": 6.0,
+              "image": "assets/decals/ads/sign_peep_show.png",
+              "material": "Neon pink",
+              "normal": [
+                -1,
+                0,
+                0
+              ],
+              "position": [
+                -0.134,
+                0.475,
+                0.92
+              ],
+              "size": [
+                0.8131,
+                0.69
+              ],
+              "tint": [
+                1.0,
+                0.15,
+                0.35
+              ]
+            }
+          },
+          {
+            "name": "face_e/sign_dolls_kisaragi",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "emissive_strength": 6.0,
+              "image": "assets/decals/ads/sign_dolls_kisaragi.png",
+              "material": "Neon pink",
+              "normal": [
+                1,
+                0,
+                0
+              ],
+              "position": [
+                0.134,
+                0.475,
+                0.92
+              ],
+              "size": [
+                0.89,
+                0.3494
+              ],
+              "tint": [
+                0.85,
+                0.75,
+                1.0
+              ]
+            }
+          },
+          {
+            "name": "face_w/sign_snack_yocho",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "emissive_strength": 6.0,
+              "image": "assets/decals/ads/sign_snack_yocho.png",
+              "material": "Neon pink",
+              "normal": [
+                -1,
+                0,
+                0
+              ],
+              "position": [
+                -0.134,
+                0.475,
+                0.92
+              ],
+              "size": [
+                0.89,
+                0.5215
+              ],
+              "tint": [
+                1.0,
+                0.45,
+                0.7
+              ]
+            }
+          },
+          {
+            "name": "face_e/sign_host_zero",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "emissive_strength": 6.0,
+              "image": "assets/decals/ads/sign_host_zero.png",
+              "material": "Neon pink",
+              "normal": [
+                1,
+                0,
+                0
+              ],
+              "position": [
+                0.134,
+                0.475,
+                0.92
+              ],
+              "size": [
+                0.89,
+                0.5858
+              ],
+              "tint": [
+                1.0,
+                0.82,
+                0.4
+              ]
+            }
           }
         ]
       }
@@ -1121,6 +1353,50 @@
         "enable": [
           "face_w/sign_charge",
           "face_e/sign_offgrid"
+        ],
+        "disable": [
+          "story"
+        ]
+      },
+      {
+        "name": "welcome",
+        "seed": 170,
+        "enable": [
+          "face_w/sign_welcome_yoimachi",
+          "face_e/sign_welcome_yoimachi"
+        ],
+        "disable": [
+          "story"
+        ]
+      },
+      {
+        "name": "velvet_moon",
+        "seed": 177,
+        "enable": [
+          "face_w/sign_velvet_moon",
+          "face_e/sign_velvet_moon"
+        ],
+        "disable": [
+          "story"
+        ]
+      },
+      {
+        "name": "peep_show",
+        "seed": 184,
+        "enable": [
+          "face_w/sign_peep_show",
+          "face_e/sign_dolls_kisaragi"
+        ],
+        "disable": [
+          "story"
+        ]
+      },
+      {
+        "name": "snack",
+        "seed": 191,
+        "enable": [
+          "face_w/sign_snack_yocho",
+          "face_e/sign_host_zero"
         ],
         "disable": [
           "story"

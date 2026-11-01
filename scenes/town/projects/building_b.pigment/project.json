@@ -4392,12 +4392,12 @@
             }
           },
           {
-            "name": "roof/billboard_meridian",
+            "name": "roof/billboard_ad_volt_rush",
             "group": "story",
             "enabled": true,
             "args": {
               "emissive_strength": 1.6,
-              "image": "assets/decals/story/billboard_meridian.png",
+              "image": "assets/decals/ads/billboard_ad_volt_rush.png",
               "material": "White plastic",
               "normal": [
                 0,
@@ -4952,12 +4952,12 @@
             }
           },
           {
-            "name": "roof/billboard_jobs",
+            "name": "roof/billboard_ad_sakura_credit",
             "group": "story",
             "enabled": false,
             "args": {
               "emissive_strength": 1.6,
-              "image": "assets/decals/story/billboard_jobs.png",
+              "image": "assets/decals/ads/billboard_ad_sakura_credit.png",
               "material": "White plastic",
               "normal": [
                 0,
@@ -5174,6 +5174,430 @@
             }
           },
           {
+            "name": "roof/billboard_ad_star_gacha",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "emissive_strength": 1.6,
+              "image": "assets/decals/ads/billboard_ad_star_gacha.png",
+              "material": "White plastic",
+              "normal": [
+                0,
+                0,
+                1
+              ],
+              "position": [
+                2.2,
+                18.4,
+                3.64
+              ],
+              "size": [
+                7.84,
+                3.92
+              ]
+            }
+          },
+          {
+            "name": "bay1/sign_cabaret_luna",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "emissive_strength": 6.0,
+              "image": "assets/decals/ads/sign_cabaret_luna.png",
+              "material": "Neon pink",
+              "normal": [
+                0,
+                0,
+                1
+              ],
+              "position": [
+                -5.85,
+                3.93,
+                6.248
+              ],
+              "size": [
+                1.7883,
+                0.73
+              ],
+              "tint": [
+                1.0,
+                0.75,
+                0.35
+              ]
+            }
+          },
+          {
+            "name": "bay2/sign_peep_show",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "emissive_strength": 6.0,
+              "image": "assets/decals/ads/sign_peep_show.png",
+              "material": "Neon pink",
+              "normal": [
+                0,
+                0,
+                1
+              ],
+              "position": [
+                -1.95,
+                3.93,
+                6.248
+              ],
+              "size": [
+                0.8602,
+                0.73
+              ],
+              "tint": [
+                1.0,
+                0.15,
+                0.35
+              ]
+            }
+          },
+          {
+            "name": "bay3/sign_host_zero",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "emissive_strength": 6.0,
+              "image": "assets/decals/ads/sign_host_zero.png",
+              "material": "Neon pink",
+              "normal": [
+                0,
+                0,
+                1
+              ],
+              "position": [
+                1.95,
+                3.93,
+                6.248
+              ],
+              "size": [
+                1.1091,
+                0.73
+              ],
+              "tint": [
+                1.0,
+                0.82,
+                0.4
+              ]
+            }
+          },
+          {
+            "name": "bay4/sign_snack_yocho",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "emissive_strength": 6.0,
+              "image": "assets/decals/ads/sign_snack_yocho.png",
+              "material": "Neon pink",
+              "normal": [
+                0,
+                0,
+                1
+              ],
+              "position": [
+                5.85,
+                3.93,
+                6.248
+              ],
+              "size": [
+                1.2459,
+                0.73
+              ],
+              "tint": [
+                1.0,
+                0.45,
+                0.7
+              ]
+            }
+          },
+          {
+            "name": "roof/billboard_ad_cabaret_luna",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "emissive_strength": 1.6,
+              "image": "assets/decals/ads/billboard_ad_cabaret_luna.png",
+              "material": "White plastic",
+              "normal": [
+                0,
+                0,
+                1
+              ],
+              "position": [
+                2.2,
+                18.4,
+                3.64
+              ],
+              "size": [
+                7.84,
+                3.92
+              ]
+            }
+          },
+          {
+            "name": "window1/window_now_hiring",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "fade": 0.1,
+              "image": "assets/decals/ads/window_now_hiring.png",
+              "material": "White plastic",
+              "normal": [
+                0,
+                0,
+                1
+              ],
+              "opacity": 0.95,
+              "position": [
+                -6.5,
+                1.8,
+                4.036
+              ],
+              "size": [
+                1.64,
+                0.82
+              ],
+              "values": {
+                "opacity": 1.0,
+                "transmission": 0.0
+              },
+              "wear_scale": 6.0
+            }
+          },
+          {
+            "name": "window2/window_hearts",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "fade": 0.1,
+              "image": "assets/decals/ads/window_hearts.png",
+              "material": "White plastic",
+              "normal": [
+                0,
+                0,
+                1
+              ],
+              "opacity": 0.95,
+              "position": [
+                -1.3,
+                1.8,
+                4.036
+              ],
+              "size": [
+                1.64,
+                0.82
+              ],
+              "values": {
+                "opacity": 1.0,
+                "transmission": 0.0
+              },
+              "wear_scale": 6.0
+            }
+          },
+          {
+            "name": "bay1/sign_club_sapphire",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "emissive_strength": 6.0,
+              "image": "assets/decals/ads/sign_club_sapphire.png",
+              "material": "Neon pink",
+              "normal": [
+                0,
+                0,
+                1
+              ],
+              "position": [
+                -5.85,
+                3.93,
+                6.248
+              ],
+              "size": [
+                1.9216,
+                0.73
+              ],
+              "tint": [
+                0.35,
+                0.55,
+                1.0
+              ]
+            }
+          },
+          {
+            "name": "bay2/sign_dolls_kisaragi",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "emissive_strength": 6.0,
+              "image": "assets/decals/ads/sign_dolls_kisaragi.png",
+              "material": "Neon pink",
+              "normal": [
+                0,
+                0,
+                1
+              ],
+              "position": [
+                -1.95,
+                3.93,
+                6.248
+              ],
+              "size": [
+                1.8595,
+                0.73
+              ],
+              "tint": [
+                0.85,
+                0.75,
+                1.0
+              ]
+            }
+          },
+          {
+            "name": "bay3/sign_velvet_moon",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "emissive_strength": 6.0,
+              "image": "assets/decals/ads/sign_velvet_moon.png",
+              "material": "Neon pink",
+              "normal": [
+                0,
+                0,
+                1
+              ],
+              "position": [
+                1.95,
+                3.93,
+                6.248
+              ],
+              "size": [
+                2.1176,
+                0.73
+              ],
+              "tint": [
+                1.0,
+                0.25,
+                0.65
+              ]
+            }
+          },
+          {
+            "name": "bay4/sign_karaoke",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "emissive_strength": 6.0,
+              "image": "assets/decals/story/sign_karaoke.png",
+              "material": "Neon pink",
+              "normal": [
+                0,
+                0,
+                1
+              ],
+              "position": [
+                5.85,
+                3.93,
+                6.248
+              ],
+              "size": [
+                1.5837,
+                0.73
+              ],
+              "tint": [
+                1.0,
+                0.3,
+                0.85
+              ]
+            }
+          },
+          {
+            "name": "roof/billboard_ad_noir_satin",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "emissive_strength": 1.6,
+              "image": "assets/decals/ads/billboard_ad_noir_satin.png",
+              "material": "White plastic",
+              "normal": [
+                0,
+                0,
+                1
+              ],
+              "position": [
+                2.2,
+                18.4,
+                3.64
+              ],
+              "size": [
+                7.84,
+                3.92
+              ]
+            }
+          },
+          {
+            "name": "window1/window_members_only",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "fade": 0.1,
+              "image": "assets/decals/ads/window_members_only.png",
+              "material": "White plastic",
+              "normal": [
+                0,
+                0,
+                1
+              ],
+              "opacity": 0.95,
+              "position": [
+                -6.5,
+                1.8,
+                4.036
+              ],
+              "size": [
+                1.64,
+                0.82
+              ],
+              "values": {
+                "opacity": 1.0,
+                "transmission": 0.0
+              },
+              "wear_scale": 6.0
+            }
+          },
+          {
+            "name": "window2/window_hotel_rates",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "fade": 0.1,
+              "image": "assets/decals/ads/window_hotel_rates.png",
+              "material": "White plastic",
+              "normal": [
+                0,
+                0,
+                1
+              ],
+              "opacity": 0.95,
+              "position": [
+                -1.3,
+                1.8,
+                4.036
+              ],
+              "size": [
+                1.64,
+                0.82
+              ],
+              "values": {
+                "opacity": 1.0,
+                "transmission": 0.0
+              },
+              "wear_scale": 6.0
+            }
+          },
+          {
             "name": "posters_w/poster_missing_aiko",
             "group": "story",
             "enabled": true,
@@ -5299,6 +5723,294 @@
               "wear": 0.2560874819755554,
               "wear_scale": 3.5,
               "wear_seed": 54.06203842163086
+            }
+          },
+          {
+            "name": "ads_back/poster_ad_ramen_retro+poster_ad_pachinko_galaxy+flyer_grand_open+poster_ad_noctis_sleep+flyer_rent_face+poster_ad_volt_rush",
+            "group": "story",
+            "enabled": true,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.13122977316379547,
+              "fade": 0.21515783667564392,
+              "image": "assets/decals/ads/flyer_grand_open.png",
+              "material": "White plastic",
+              "normal": [
+                0.0,
+                0.0,
+                -1.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                6.752374172210693,
+                1.6588060855865479,
+                -6.000000476837158
+              ],
+              "rotation": 2.5753021240234375,
+              "size": [
+                0.5249190926551819,
+                0.743453860282898
+              ],
+              "wear": 0.3018450140953064,
+              "wear_scale": 3.5,
+              "wear_seed": 93.61666107177734
+            }
+          },
+          {
+            "name": "ads_back/poster_ad_ramen_retro+poster_ad_pachinko_galaxy+flyer_grand_open+poster_ad_noctis_sleep+flyer_rent_face+poster_ad_volt_rush",
+            "group": "story",
+            "enabled": true,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.14161249995231628,
+              "fade": 0.3023427724838257,
+              "image": "assets/decals/ads/poster_ad_ramen_retro.png",
+              "material": "White plastic",
+              "normal": [
+                0.0,
+                0.0,
+                -1.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                1.9406018257141113,
+                1.4153494834899902,
+                -6.000000476837158
+              ],
+              "rotation": 3.153106451034546,
+              "size": [
+                0.5664499998092651,
+                0.8089885711669922
+              ],
+              "wear": 0.31586408615112305,
+              "wear_scale": 3.5,
+              "wear_seed": 35.65338134765625
+            }
+          },
+          {
+            "name": "ads_back/poster_ad_ramen_retro+poster_ad_pachinko_galaxy+flyer_grand_open+poster_ad_noctis_sleep+flyer_rent_face+poster_ad_volt_rush",
+            "group": "story",
+            "enabled": true,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.14221787452697754,
+              "fade": 0.15313562750816345,
+              "image": "assets/decals/ads/poster_ad_pachinko_galaxy.png",
+              "material": "White plastic",
+              "normal": [
+                0.0,
+                0.0,
+                -1.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                5.612996578216553,
+                1.7670502662658691,
+                -6.000000476837158
+              ],
+              "rotation": 3.0510802268981934,
+              "size": [
+                0.5688714981079102,
+                0.8124468922615051
+              ],
+              "wear": 0.21893906593322754,
+              "wear_scale": 3.5,
+              "wear_seed": 93.70848083496094
+            }
+          },
+          {
+            "name": "ads_back/poster_ad_ramen_retro+poster_ad_pachinko_galaxy+flyer_grand_open+poster_ad_noctis_sleep+flyer_rent_face+poster_ad_volt_rush",
+            "group": "story",
+            "enabled": true,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.13974930346012115,
+              "fade": 0.3253766596317291,
+              "image": "assets/decals/ads/poster_ad_noctis_sleep.png",
+              "material": "White plastic",
+              "normal": [
+                0.0,
+                0.0,
+                -1.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                6.663778305053711,
+                1.2210773229599,
+                -6.000000476837158
+              ],
+              "rotation": -2.5716419219970703,
+              "size": [
+                0.5589972138404846,
+                0.7983446717262268
+              ],
+              "wear": 0.3400998115539551,
+              "wear_scale": 3.5,
+              "wear_seed": 34.710853576660156
+            }
+          },
+          {
+            "name": "ads_back/poster_ad_ramen_retro+poster_ad_pachinko_galaxy+flyer_grand_open+poster_ad_noctis_sleep+flyer_rent_face+poster_ad_volt_rush",
+            "group": "story",
+            "enabled": true,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.1493074744939804,
+              "fade": 0.357702374458313,
+              "image": "assets/decals/ads/poster_ad_volt_rush.png",
+              "material": "White plastic",
+              "normal": [
+                0.0,
+                0.0,
+                -1.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                3.961381435394287,
+                1.6016111373901367,
+                -6.000000476837158
+              ],
+              "rotation": -3.4391846656799316,
+              "size": [
+                0.5972298979759216,
+                0.8529475927352905
+              ],
+              "wear": 0.1612863838672638,
+              "wear_scale": 3.5,
+              "wear_seed": 53.5165901184082
+            }
+          },
+          {
+            "name": "ads_back/poster_ad_ramen_retro+poster_ad_pachinko_galaxy+flyer_grand_open+poster_ad_noctis_sleep+flyer_rent_face+poster_ad_volt_rush",
+            "group": "story",
+            "enabled": true,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.12775231897830963,
+              "fade": 0.3665202856063843,
+              "image": "assets/decals/ads/flyer_rent_face.png",
+              "material": "White plastic",
+              "normal": [
+                0.0,
+                0.0,
+                -1.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                5.484471321105957,
+                1.348435401916504,
+                -6.000000476837158
+              ],
+              "rotation": -2.951096534729004,
+              "size": [
+                0.5110092759132385,
+                0.7237530946731567
+              ],
+              "wear": 0.18811166286468506,
+              "wear_scale": 3.5,
+              "wear_seed": 67.95745086669922
+            }
+          },
+          {
+            "name": "ads_back/poster_ad_ramen_retro+poster_ad_pachinko_galaxy+flyer_grand_open+poster_ad_noctis_sleep+flyer_rent_face+poster_ad_volt_rush",
+            "group": "story",
+            "enabled": true,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.12748494744300842,
+              "fade": 0.2381184697151184,
+              "image": "assets/decals/ads/poster_ad_noctis_sleep.png",
+              "material": "White plastic",
+              "normal": [
+                0.0,
+                0.0,
+                -1.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                1.12443208694458,
+                1.7070045471191406,
+                -6.000000476837158
+              ],
+              "rotation": 1.8382349014282227,
+              "size": [
+                0.5099397897720337,
+                0.7282822132110596
+              ],
+              "wear": 0.21875739097595215,
+              "wear_scale": 3.5,
+              "wear_seed": 47.977142333984375
+            }
+          },
+          {
+            "name": "ads_back/poster_ad_ramen_retro+poster_ad_pachinko_galaxy+flyer_grand_open+poster_ad_noctis_sleep+flyer_rent_face+poster_ad_volt_rush",
+            "group": "story",
+            "enabled": true,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.13030394911766052,
+              "fade": 0.20804712176322937,
+              "image": "assets/decals/ads/flyer_rent_face.png",
+              "material": "White plastic",
+              "normal": [
+                0.0,
+                0.0,
+                -1.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                2.7494592666625977,
+                1.6543285846710205,
+                -6.000000476837158
+              ],
+              "rotation": 3.996631383895874,
+              "size": [
+                0.5212157964706421,
+                0.7382088303565979
+              ],
+              "wear": 0.32004040479660034,
+              "wear_scale": 3.5,
+              "wear_seed": 29.209392547607422
+            }
+          },
+          {
+            "name": "ads_back/poster_ad_ramen_retro+poster_ad_pachinko_galaxy+flyer_grand_open+poster_ad_noctis_sleep+flyer_rent_face+poster_ad_volt_rush",
+            "group": "story",
+            "enabled": true,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.14238819479942322,
+              "fade": 0.2528189420700073,
+              "image": "assets/decals/ads/poster_ad_volt_rush.png",
+              "material": "White plastic",
+              "normal": [
+                0.0,
+                0.0,
+                -1.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                2.9196834564208984,
+                1.3737986087799072,
+                -6.000000476837158
+              ],
+              "rotation": -0.9135971665382385,
+              "size": [
+                0.5695527791976929,
+                0.8134198784828186
+              ],
+              "wear": 0.38171571493148804,
+              "wear_scale": 3.5,
+              "wear_seed": 22.025680541992188
             }
           },
           {
@@ -5747,6 +6459,550 @@
               "wear": 0.2560874819755554,
               "wear_scale": 3.5,
               "wear_seed": 54.06203842163086
+            }
+          },
+          {
+            "name": "ads_back/poster_ad_volt_rush+flyer_money_today+poster_ad_sale_now+sticker_score_qr+poster_ad_hoshicoin+flyer_kidney_cash+poster_ad_torn_sale_hostess",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.1351473480463028,
+              "fade": 0.21515783667564392,
+              "image": "assets/decals/ads/poster_ad_hoshicoin.png",
+              "material": "White plastic",
+              "normal": [
+                0.0,
+                0.0,
+                -1.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                2.5884833335876465,
+                1.2356716394424438,
+                -6.000000476837158
+              ],
+              "rotation": 0.9576974511146545,
+              "size": [
+                0.5405893921852112,
+                0.7720551490783691
+              ],
+              "wear": 0.3018450140953064,
+              "wear_scale": 3.5,
+              "wear_seed": 93.61666107177734
+            }
+          },
+          {
+            "name": "ads_back/poster_ad_volt_rush+flyer_money_today+poster_ad_sale_now+sticker_score_qr+poster_ad_hoshicoin+flyer_kidney_cash+poster_ad_torn_sale_hostess",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.14548538625240326,
+              "fade": 0.3023427724838257,
+              "image": "assets/decals/ads/poster_ad_volt_rush.png",
+              "material": "White plastic",
+              "normal": [
+                0.0,
+                0.0,
+                -1.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                6.764692306518555,
+                1.3944284915924072,
+                -6.000000476837158
+              ],
+              "rotation": 2.632493495941162,
+              "size": [
+                0.581941545009613,
+                0.8311131596565247
+              ],
+              "wear": 0.31586408615112305,
+              "wear_scale": 3.5,
+              "wear_seed": 35.65338134765625
+            }
+          },
+          {
+            "name": "ads_back/poster_ad_volt_rush+flyer_money_today+poster_ad_sale_now+sticker_score_qr+poster_ad_hoshicoin+flyer_kidney_cash+poster_ad_torn_sale_hostess",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.13361842930316925,
+              "fade": 0.15313562750816345,
+              "image": "assets/decals/ads/flyer_money_today.png",
+              "material": "White plastic",
+              "normal": [
+                0.0,
+                0.0,
+                -1.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                6.114454746246338,
+                1.2249910831451416,
+                -6.000000476837158
+              ],
+              "rotation": -0.07137680053710938,
+              "size": [
+                0.534473717212677,
+                0.7569862604141235
+              ],
+              "wear": 0.21893906593322754,
+              "wear_scale": 3.5,
+              "wear_seed": 93.70848083496094
+            }
+          },
+          {
+            "name": "ads_back/poster_ad_volt_rush+flyer_money_today+poster_ad_sale_now+sticker_score_qr+poster_ad_hoshicoin+flyer_kidney_cash+poster_ad_torn_sale_hostess",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.1260496973991394,
+              "fade": 0.3253766596317291,
+              "image": "assets/decals/ads/poster_ad_sale_now.png",
+              "material": "White plastic",
+              "normal": [
+                0.0,
+                0.0,
+                -1.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                6.93802547454834,
+                1.7265316247940063,
+                -6.000000476837158
+              ],
+              "rotation": -2.3468775749206543,
+              "size": [
+                0.5041987895965576,
+                0.7200830578804016
+              ],
+              "wear": 0.3400998115539551,
+              "wear_scale": 3.5,
+              "wear_seed": 34.710853576660156
+            }
+          },
+          {
+            "name": "ads_back/poster_ad_volt_rush+flyer_money_today+poster_ad_sale_now+sticker_score_qr+poster_ad_hoshicoin+flyer_kidney_cash+poster_ad_torn_sale_hostess",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.13720571994781494,
+              "fade": 0.357702374458313,
+              "image": "assets/decals/ads/flyer_kidney_cash.png",
+              "material": "White plastic",
+              "normal": [
+                0.0,
+                0.0,
+                -1.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                4.192629814147949,
+                1.652122974395752,
+                -6.000000476837158
+              ],
+              "rotation": -0.2243495136499405,
+              "size": [
+                0.5488228797912598,
+                0.7773092985153198
+              ],
+              "wear": 0.1612863838672638,
+              "wear_scale": 3.5,
+              "wear_seed": 53.5165901184082
+            }
+          },
+          {
+            "name": "ads_back/poster_ad_volt_rush+flyer_money_today+poster_ad_sale_now+sticker_score_qr+poster_ad_hoshicoin+flyer_kidney_cash+poster_ad_torn_sale_hostess",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.12983602285385132,
+              "fade": 0.3665202856063843,
+              "image": "assets/decals/ads/sticker_score_qr.png",
+              "material": "White plastic",
+              "normal": [
+                0.0,
+                0.0,
+                -1.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                3.388479709625244,
+                1.7888479232788086,
+                -6.000000476837158
+              ],
+              "rotation": 0.35204648971557617,
+              "size": [
+                0.5193440914154053,
+                0.727508008480072
+              ],
+              "wear": 0.18811166286468506,
+              "wear_scale": 3.5,
+              "wear_seed": 67.95745086669922
+            }
+          },
+          {
+            "name": "ads_back/poster_ad_volt_rush+flyer_money_today+poster_ad_sale_now+sticker_score_qr+poster_ad_hoshicoin+flyer_kidney_cash+poster_ad_torn_sale_hostess",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.14653579890727997,
+              "fade": 0.2381184697151184,
+              "image": "assets/decals/ads/poster_ad_torn_sale_hostess.png",
+              "material": "White plastic",
+              "normal": [
+                0.0,
+                0.0,
+                -1.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                1.724386215209961,
+                1.4439955949783325,
+                -6.000000476837158
+              ],
+              "rotation": 1.3572478294372559,
+              "size": [
+                0.5861431956291199,
+                0.8371138572692871
+              ],
+              "wear": 0.21875739097595215,
+              "wear_scale": 3.5,
+              "wear_seed": 47.977142333984375
+            }
+          },
+          {
+            "name": "ads_back/poster_ad_volt_rush+flyer_money_today+poster_ad_sale_now+sticker_score_qr+poster_ad_hoshicoin+flyer_kidney_cash+poster_ad_torn_sale_hostess",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.14077866077423096,
+              "fade": 0.20804712176322937,
+              "image": "assets/decals/ads/flyer_kidney_cash.png",
+              "material": "White plastic",
+              "normal": [
+                0.0,
+                0.0,
+                -1.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                3.019052505493164,
+                1.4933661222457886,
+                -6.000000476837158
+              ],
+              "rotation": -2.8722386360168457,
+              "size": [
+                0.5631146430969238,
+                0.7975510358810425
+              ],
+              "wear": 0.32004040479660034,
+              "wear_scale": 3.5,
+              "wear_seed": 29.209392547607422
+            }
+          },
+          {
+            "name": "ads_back/poster_ad_volt_rush+flyer_money_today+poster_ad_sale_now+sticker_score_qr+poster_ad_hoshicoin+flyer_kidney_cash+poster_ad_torn_sale_hostess",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.12730661034584045,
+              "fade": 0.2528189420700073,
+              "image": "assets/decals/ads/poster_ad_sale_now.png",
+              "material": "White plastic",
+              "normal": [
+                0.0,
+                0.0,
+                -1.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                4.273497104644775,
+                1.2712517976760864,
+                -6.000000476837158
+              ],
+              "rotation": -0.5751485824584961,
+              "size": [
+                0.5092264413833618,
+                0.7272634506225586
+              ],
+              "wear": 0.38171571493148804,
+              "wear_scale": 3.5,
+              "wear_seed": 22.025680541992188
+            }
+          },
+          {
+            "name": "ads_e/poster_ad_platinum_citizen+poster_ad_meridian_lotto+poster_ad_unplug_over_platinum+poster_ad_hoshikawa_limbs+poster_ad_aqua_pure+sticker_rate_street",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.13734877109527588,
+              "fade": 0.4041990339756012,
+              "image": "assets/decals/ads/poster_ad_unplug_over_platinum.png",
+              "material": "White plastic",
+              "normal": [
+                1.0,
+                0.0,
+                0.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                8.0,
+                1.2233757972717285,
+                -3.469694137573242
+              ],
+              "rotation": -2.9218759536743164,
+              "size": [
+                0.5493950843811035,
+                0.7846311926841736
+              ],
+              "wear": 0.2581482529640198,
+              "wear_scale": 3.5,
+              "wear_seed": 28.4306697845459
+            }
+          },
+          {
+            "name": "ads_e/poster_ad_platinum_citizen+poster_ad_meridian_lotto+poster_ad_unplug_over_platinum+poster_ad_hoshikawa_limbs+poster_ad_aqua_pure+sticker_rate_street",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.13023826479911804,
+              "fade": 0.22919467091560364,
+              "image": "assets/decals/ads/poster_ad_aqua_pure.png",
+              "material": "White plastic",
+              "normal": [
+                1.0,
+                0.0,
+                0.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                8.0,
+                1.5440094470977783,
+                0.27932214736938477
+              ],
+              "rotation": 2.97927188873291,
+              "size": [
+                0.5209530591964722,
+                0.7440110445022583
+              ],
+              "wear": 0.16340985894203186,
+              "wear_scale": 3.5,
+              "wear_seed": 52.88687515258789
+            }
+          },
+          {
+            "name": "ads_e/poster_ad_platinum_citizen+poster_ad_meridian_lotto+poster_ad_unplug_over_platinum+poster_ad_hoshikawa_limbs+poster_ad_aqua_pure+sticker_rate_street",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.12961874902248383,
+              "fade": 0.31044864654541016,
+              "image": "assets/decals/ads/poster_ad_hoshikawa_limbs.png",
+              "material": "White plastic",
+              "normal": [
+                1.0,
+                0.0,
+                0.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                8.0,
+                1.820465326309204,
+                -4.228160858154297
+              ],
+              "rotation": 1.9245678186416626,
+              "size": [
+                0.5184749960899353,
+                0.7404719591140747
+              ],
+              "wear": 0.33472299575805664,
+              "wear_scale": 3.5,
+              "wear_seed": 75.543701171875
+            }
+          },
+          {
+            "name": "ads_e/poster_ad_platinum_citizen+poster_ad_meridian_lotto+poster_ad_unplug_over_platinum+poster_ad_hoshikawa_limbs+poster_ad_aqua_pure+sticker_rate_street",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.13781873881816864,
+              "fade": 0.39572709798812866,
+              "image": "assets/decals/ads/poster_ad_meridian_lotto.png",
+              "material": "White plastic",
+              "normal": [
+                1.0,
+                0.0,
+                0.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                8.0,
+                1.568906307220459,
+                -3.897219181060791
+              ],
+              "rotation": 2.6532812118530273,
+              "size": [
+                0.5512749552726746,
+                0.7873159646987915
+              ],
+              "wear": 0.3057297468185425,
+              "wear_scale": 3.5,
+              "wear_seed": 62.936126708984375
+            }
+          },
+          {
+            "name": "ads_e/poster_ad_platinum_citizen+poster_ad_meridian_lotto+poster_ad_unplug_over_platinum+poster_ad_hoshikawa_limbs+poster_ad_aqua_pure+sticker_rate_street",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.1429980993270874,
+              "fade": 0.3840266466140747,
+              "image": "assets/decals/ads/poster_ad_platinum_citizen.png",
+              "material": "White plastic",
+              "normal": [
+                1.0,
+                0.0,
+                0.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                8.0,
+                1.6990561485290527,
+                -3.5624749660491943
+              ],
+              "rotation": 0.9736042022705078,
+              "size": [
+                0.5719923973083496,
+                0.8169040679931641
+              ],
+              "wear": 0.4023725092411041,
+              "wear_scale": 3.5,
+              "wear_seed": 85.70733642578125
+            }
+          },
+          {
+            "name": "ads_e/poster_ad_platinum_citizen+poster_ad_meridian_lotto+poster_ad_unplug_over_platinum+poster_ad_hoshikawa_limbs+poster_ad_aqua_pure+sticker_rate_street",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.13184526562690735,
+              "fade": 0.22420963644981384,
+              "image": "assets/decals/ads/sticker_rate_street.png",
+              "material": "White plastic",
+              "normal": [
+                1.0,
+                0.0,
+                0.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                8.0,
+                1.7704336643218994,
+                -2.1289315223693848
+              ],
+              "rotation": -1.709893822669983,
+              "size": [
+                0.5273810625076294,
+                0.7387663722038269
+              ],
+              "wear": 0.3799715042114258,
+              "wear_scale": 3.5,
+              "wear_seed": 34.60426330566406
+            }
+          },
+          {
+            "name": "ads_e/poster_ad_platinum_citizen+poster_ad_meridian_lotto+poster_ad_unplug_over_platinum+poster_ad_hoshikawa_limbs+poster_ad_aqua_pure+sticker_rate_street",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.14063972234725952,
+              "fade": 0.22526493668556213,
+              "image": "assets/decals/ads/poster_ad_aqua_pure.png",
+              "material": "White plastic",
+              "normal": [
+                1.0,
+                0.0,
+                0.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                8.0,
+                1.2715954780578613,
+                -2.4816079139709473
+              ],
+              "rotation": -1.7865781784057617,
+              "size": [
+                0.5625588893890381,
+                0.8034313917160034
+              ],
+              "wear": 0.33365607261657715,
+              "wear_scale": 3.5,
+              "wear_seed": 20.20200538635254
+            }
+          },
+          {
+            "name": "ads_e/poster_ad_platinum_citizen+poster_ad_meridian_lotto+poster_ad_unplug_over_platinum+poster_ad_hoshikawa_limbs+poster_ad_aqua_pure+sticker_rate_street",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.14288794994354248,
+              "fade": 0.20980113744735718,
+              "image": "assets/decals/ads/poster_ad_hoshikawa_limbs.png",
+              "material": "White plastic",
+              "normal": [
+                1.0,
+                0.0,
+                0.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                8.0,
+                1.3908253908157349,
+                0.7170591354370117
+              ],
+              "rotation": 1.5869531631469727,
+              "size": [
+                0.5715517997741699,
+                0.8162748217582703
+              ],
+              "wear": 0.2928354740142822,
+              "wear_scale": 3.5,
+              "wear_seed": 44.867122650146484
             }
           },
           {
@@ -5971,6 +7227,1222 @@
               "wear": 0.20110443234443665,
               "wear_scale": 3.5,
               "wear_seed": 80.24109649658203
+            }
+          },
+          {
+            "name": "posters_w/poster_ad_club_sapphire+poster_ad_host_zero+flyer_missing_kei+poster_ad_missing_over_hostess",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.13917627930641174,
+              "fade": 0.41510459780693054,
+              "image": "assets/decals/ads/poster_ad_host_zero.png",
+              "material": "White plastic",
+              "normal": [
+                -1.0,
+                0.0,
+                0.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                -8.0,
+                1.3840888738632202,
+                -1.0812902450561523
+              ],
+              "rotation": 1.8791519403457642,
+              "size": [
+                0.556705117225647,
+                0.7950711846351624
+              ],
+              "wear": 0.15711884200572968,
+              "wear_scale": 3.5,
+              "wear_seed": 33.745662689208984
+            }
+          },
+          {
+            "name": "posters_w/poster_ad_club_sapphire+poster_ad_host_zero+flyer_missing_kei+poster_ad_missing_over_hostess",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.1546497642993927,
+              "fade": 0.25807395577430725,
+              "image": "assets/decals/ads/flyer_missing_kei.png",
+              "material": "White plastic",
+              "normal": [
+                -1.0,
+                0.0,
+                0.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                -8.0,
+                1.3291581869125366,
+                -0.05138969421386719
+              ],
+              "rotation": -3.9450371265411377,
+              "size": [
+                0.6185990571975708,
+                0.8761347532272339
+              ],
+              "wear": 0.2652623653411865,
+              "wear_scale": 3.5,
+              "wear_seed": 54.77288818359375
+            }
+          },
+          {
+            "name": "posters_w/poster_ad_club_sapphire+poster_ad_host_zero+flyer_missing_kei+poster_ad_missing_over_hostess",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.14080269634723663,
+              "fade": 0.37020987272262573,
+              "image": "assets/decals/ads/poster_ad_club_sapphire.png",
+              "material": "White plastic",
+              "normal": [
+                -1.0,
+                0.0,
+                0.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                -8.0,
+                1.5225858688354492,
+                0.6658124923706055
+              ],
+              "rotation": -1.6504998207092285,
+              "size": [
+                0.5632107853889465,
+                0.804362416267395
+              ],
+              "wear": 0.2863408923149109,
+              "wear_scale": 3.5,
+              "wear_seed": 0.29230713844299316
+            }
+          },
+          {
+            "name": "posters_w/poster_ad_club_sapphire+poster_ad_host_zero+flyer_missing_kei+poster_ad_missing_over_hostess",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.14863024652004242,
+              "fade": 0.25019681453704834,
+              "image": "assets/decals/ads/poster_ad_missing_over_hostess.png",
+              "material": "White plastic",
+              "normal": [
+                -1.0,
+                0.0,
+                0.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                -8.0,
+                1.7339582443237305,
+                1.6919310092926025
+              ],
+              "rotation": 3.113384246826172,
+              "size": [
+                0.5945209860801697,
+                0.8490787744522095
+              ],
+              "wear": 0.2560874819755554,
+              "wear_scale": 3.5,
+              "wear_seed": 54.06203842163086
+            }
+          },
+          {
+            "name": "ads_back/poster_ad_rose_theatre+poster_ad_cabaret_hanabi+poster_ad_peep_show+poster_ad_noir_satin_legs+sticker_call_stiletto+poster_ad_not_for_sale+flyer_dream_bootleg",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.1351473480463028,
+              "fade": 0.21515783667564392,
+              "image": "assets/decals/ads/sticker_call_stiletto.png",
+              "material": "White plastic",
+              "normal": [
+                0.0,
+                0.0,
+                -1.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                2.5884833335876465,
+                1.2356716394424438,
+                -6.000000476837158
+              ],
+              "rotation": 0.9576974511146545,
+              "size": [
+                0.5405893921852112,
+                0.7572688460350037
+              ],
+              "wear": 0.3018450140953064,
+              "wear_scale": 3.5,
+              "wear_seed": 93.61666107177734
+            }
+          },
+          {
+            "name": "ads_back/poster_ad_rose_theatre+poster_ad_cabaret_hanabi+poster_ad_peep_show+poster_ad_noir_satin_legs+sticker_call_stiletto+poster_ad_not_for_sale+flyer_dream_bootleg",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.14548538625240326,
+              "fade": 0.3023427724838257,
+              "image": "assets/decals/ads/poster_ad_rose_theatre.png",
+              "material": "White plastic",
+              "normal": [
+                0.0,
+                0.0,
+                -1.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                6.764692306518555,
+                1.3944284915924072,
+                -6.000000476837158
+              ],
+              "rotation": 2.632493495941162,
+              "size": [
+                0.581941545009613,
+                0.8311131596565247
+              ],
+              "wear": 0.31586408615112305,
+              "wear_scale": 3.5,
+              "wear_seed": 35.65338134765625
+            }
+          },
+          {
+            "name": "ads_back/poster_ad_rose_theatre+poster_ad_cabaret_hanabi+poster_ad_peep_show+poster_ad_noir_satin_legs+sticker_call_stiletto+poster_ad_not_for_sale+flyer_dream_bootleg",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.13361842930316925,
+              "fade": 0.15313562750816345,
+              "image": "assets/decals/ads/poster_ad_cabaret_hanabi.png",
+              "material": "White plastic",
+              "normal": [
+                0.0,
+                0.0,
+                -1.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                6.114454746246338,
+                1.2249910831451416,
+                -6.000000476837158
+              ],
+              "rotation": -0.07137680053710938,
+              "size": [
+                0.534473717212677,
+                0.7633209228515625
+              ],
+              "wear": 0.21893906593322754,
+              "wear_scale": 3.5,
+              "wear_seed": 93.70848083496094
+            }
+          },
+          {
+            "name": "ads_back/poster_ad_rose_theatre+poster_ad_cabaret_hanabi+poster_ad_peep_show+poster_ad_noir_satin_legs+sticker_call_stiletto+poster_ad_not_for_sale+flyer_dream_bootleg",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.1260496973991394,
+              "fade": 0.3253766596317291,
+              "image": "assets/decals/ads/poster_ad_peep_show.png",
+              "material": "White plastic",
+              "normal": [
+                0.0,
+                0.0,
+                -1.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                6.93802547454834,
+                1.7265316247940063,
+                -6.000000476837158
+              ],
+              "rotation": -2.3468775749206543,
+              "size": [
+                0.5041987895965576,
+                0.7200830578804016
+              ],
+              "wear": 0.3400998115539551,
+              "wear_scale": 3.5,
+              "wear_seed": 34.710853576660156
+            }
+          },
+          {
+            "name": "ads_back/poster_ad_rose_theatre+poster_ad_cabaret_hanabi+poster_ad_peep_show+poster_ad_noir_satin_legs+sticker_call_stiletto+poster_ad_not_for_sale+flyer_dream_bootleg",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.13720571994781494,
+              "fade": 0.357702374458313,
+              "image": "assets/decals/ads/poster_ad_not_for_sale.png",
+              "material": "White plastic",
+              "normal": [
+                0.0,
+                0.0,
+                -1.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                4.192629814147949,
+                1.652122974395752,
+                -6.000000476837158
+              ],
+              "rotation": -0.2243495136499405,
+              "size": [
+                0.5488228797912598,
+                0.783814013004303
+              ],
+              "wear": 0.1612863838672638,
+              "wear_scale": 3.5,
+              "wear_seed": 53.5165901184082
+            }
+          },
+          {
+            "name": "ads_back/poster_ad_rose_theatre+poster_ad_cabaret_hanabi+poster_ad_peep_show+poster_ad_noir_satin_legs+sticker_call_stiletto+poster_ad_not_for_sale+flyer_dream_bootleg",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.12983602285385132,
+              "fade": 0.3665202856063843,
+              "image": "assets/decals/ads/poster_ad_noir_satin_legs.png",
+              "material": "White plastic",
+              "normal": [
+                0.0,
+                0.0,
+                -1.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                3.388479709625244,
+                1.7888479232788086,
+                -6.000000476837158
+              ],
+              "rotation": 0.35204648971557617,
+              "size": [
+                0.5193440914154053,
+                0.7417131662368774
+              ],
+              "wear": 0.18811166286468506,
+              "wear_scale": 3.5,
+              "wear_seed": 67.95745086669922
+            }
+          },
+          {
+            "name": "ads_back/poster_ad_rose_theatre+poster_ad_cabaret_hanabi+poster_ad_peep_show+poster_ad_noir_satin_legs+sticker_call_stiletto+poster_ad_not_for_sale+flyer_dream_bootleg",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.14653579890727997,
+              "fade": 0.2381184697151184,
+              "image": "assets/decals/ads/flyer_dream_bootleg.png",
+              "material": "White plastic",
+              "normal": [
+                0.0,
+                0.0,
+                -1.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                1.724386215209961,
+                1.4439955949783325,
+                -6.000000476837158
+              ],
+              "rotation": 1.3572478294372559,
+              "size": [
+                0.5861431956291199,
+                0.8301668763160706
+              ],
+              "wear": 0.21875739097595215,
+              "wear_scale": 3.5,
+              "wear_seed": 47.977142333984375
+            }
+          },
+          {
+            "name": "ads_back/poster_ad_rose_theatre+poster_ad_cabaret_hanabi+poster_ad_peep_show+poster_ad_noir_satin_legs+sticker_call_stiletto+poster_ad_not_for_sale+flyer_dream_bootleg",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.14077866077423096,
+              "fade": 0.20804712176322937,
+              "image": "assets/decals/ads/poster_ad_not_for_sale.png",
+              "material": "White plastic",
+              "normal": [
+                0.0,
+                0.0,
+                -1.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                3.019052505493164,
+                1.4933661222457886,
+                -6.000000476837158
+              ],
+              "rotation": -2.8722386360168457,
+              "size": [
+                0.5631146430969238,
+                0.8042250871658325
+              ],
+              "wear": 0.32004040479660034,
+              "wear_scale": 3.5,
+              "wear_seed": 29.209392547607422
+            }
+          },
+          {
+            "name": "ads_back/poster_ad_rose_theatre+poster_ad_cabaret_hanabi+poster_ad_peep_show+poster_ad_noir_satin_legs+sticker_call_stiletto+poster_ad_not_for_sale+flyer_dream_bootleg",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.12730661034584045,
+              "fade": 0.2528189420700073,
+              "image": "assets/decals/ads/poster_ad_peep_show.png",
+              "material": "White plastic",
+              "normal": [
+                0.0,
+                0.0,
+                -1.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                4.273497104644775,
+                1.2712517976760864,
+                -6.000000476837158
+              ],
+              "rotation": -0.5751485824584961,
+              "size": [
+                0.5092264413833618,
+                0.7272634506225586
+              ],
+              "wear": 0.38171571493148804,
+              "wear_scale": 3.5,
+              "wear_seed": 22.025680541992188
+            }
+          },
+          {
+            "name": "ads_e/poster_ad_velvet_moon_rates+sticker_hotel_heart+sticker_call_velvet+poster_ad_torn_layers+poster_ad_rouge9_lips+sticker_call_angel+poster_ad_dreamlink_intimate",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.1294533908367157,
+              "fade": 0.4041990339756012,
+              "image": "assets/decals/ads/poster_ad_rouge9_lips.png",
+              "material": "White plastic",
+              "normal": [
+                1.0,
+                0.0,
+                0.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                8.0,
+                1.374358892440796,
+                -2.728762149810791
+              ],
+              "rotation": -2.2597954273223877,
+              "size": [
+                0.5178135633468628,
+                0.7395273447036743
+              ],
+              "wear": 0.2581482529640198,
+              "wear_scale": 3.5,
+              "wear_seed": 28.4306697845459
+            }
+          },
+          {
+            "name": "ads_e/poster_ad_velvet_moon_rates+sticker_hotel_heart+sticker_call_velvet+poster_ad_torn_layers+poster_ad_rouge9_lips+sticker_call_angel+poster_ad_dreamlink_intimate",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.12507624924182892,
+              "fade": 0.22919467091560364,
+              "image": "assets/decals/ads/sticker_hotel_heart.png",
+              "material": "White plastic",
+              "normal": [
+                1.0,
+                0.0,
+                0.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                8.0,
+                1.2122414112091064,
+                -0.9024944305419922
+              ],
+              "rotation": 1.326959490776062,
+              "size": [
+                0.5003049969673157,
+                0.7008376717567444
+              ],
+              "wear": 0.16340985894203186,
+              "wear_scale": 3.5,
+              "wear_seed": 52.88687515258789
+            }
+          },
+          {
+            "name": "ads_e/poster_ad_velvet_moon_rates+sticker_hotel_heart+sticker_call_velvet+poster_ad_torn_layers+poster_ad_rouge9_lips+sticker_call_angel+poster_ad_dreamlink_intimate",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.13939078152179718,
+              "fade": 0.31044864654541016,
+              "image": "assets/decals/ads/sticker_call_velvet.png",
+              "material": "White plastic",
+              "normal": [
+                1.0,
+                0.0,
+                0.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                8.0,
+                1.424546480178833,
+                -0.5515670776367188
+              ],
+              "rotation": -2.967057943344116,
+              "size": [
+                0.5575631260871887,
+                0.7810460329055786
+              ],
+              "wear": 0.33472299575805664,
+              "wear_scale": 3.5,
+              "wear_seed": 75.543701171875
+            }
+          },
+          {
+            "name": "ads_e/poster_ad_velvet_moon_rates+sticker_hotel_heart+sticker_call_velvet+poster_ad_torn_layers+poster_ad_rouge9_lips+sticker_call_angel+poster_ad_dreamlink_intimate",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.14579150080680847,
+              "fade": 0.39572709798812866,
+              "image": "assets/decals/ads/sticker_call_angel.png",
+              "material": "White plastic",
+              "normal": [
+                1.0,
+                0.0,
+                0.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                8.0,
+                1.5384852886199951,
+                0.15223121643066406
+              ],
+              "rotation": -3.5640134811401367,
+              "size": [
+                0.5831660032272339,
+                0.8169110417366028
+              ],
+              "wear": 0.3057297468185425,
+              "wear_scale": 3.5,
+              "wear_seed": 62.936126708984375
+            }
+          },
+          {
+            "name": "ads_e/poster_ad_velvet_moon_rates+sticker_hotel_heart+sticker_call_velvet+poster_ad_torn_layers+poster_ad_rouge9_lips+sticker_call_angel+poster_ad_dreamlink_intimate",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.14139404892921448,
+              "fade": 0.3840266466140747,
+              "image": "assets/decals/ads/poster_ad_dreamlink_intimate.png",
+              "material": "White plastic",
+              "normal": [
+                1.0,
+                0.0,
+                0.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                8.0,
+                1.641430377960205,
+                -2.972137689590454
+              ],
+              "rotation": -3.158724308013916,
+              "size": [
+                0.5655761957168579,
+                0.8077406287193298
+              ],
+              "wear": 0.4023725092411041,
+              "wear_scale": 3.5,
+              "wear_seed": 85.70733642578125
+            }
+          },
+          {
+            "name": "ads_e/poster_ad_velvet_moon_rates+sticker_hotel_heart+sticker_call_velvet+poster_ad_torn_layers+poster_ad_rouge9_lips+sticker_call_angel+poster_ad_dreamlink_intimate",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.12858432531356812,
+              "fade": 0.22420963644981384,
+              "image": "assets/decals/ads/poster_ad_velvet_moon_rates.png",
+              "material": "White plastic",
+              "normal": [
+                1.0,
+                0.0,
+                0.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                8.0,
+                1.5214476585388184,
+                -4.0978498458862305
+              ],
+              "rotation": 1.2000732421875,
+              "size": [
+                0.5143373012542725,
+                0.7345626354217529
+              ],
+              "wear": 0.3799715042114258,
+              "wear_scale": 3.5,
+              "wear_seed": 34.60426330566406
+            }
+          },
+          {
+            "name": "ads_e/poster_ad_velvet_moon_rates+sticker_hotel_heart+sticker_call_velvet+poster_ad_torn_layers+poster_ad_rouge9_lips+sticker_call_angel+poster_ad_dreamlink_intimate",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.13149771094322205,
+              "fade": 0.22526493668556213,
+              "image": "assets/decals/ads/poster_ad_torn_layers.png",
+              "material": "White plastic",
+              "normal": [
+                1.0,
+                0.0,
+                0.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                8.0,
+                1.7426598072052002,
+                -0.7911429405212402
+              ],
+              "rotation": -2.3672237396240234,
+              "size": [
+                0.5259908437728882,
+                0.7512058615684509
+              ],
+              "wear": 0.33365607261657715,
+              "wear_scale": 3.5,
+              "wear_seed": 20.20200538635254
+            }
+          },
+          {
+            "name": "ads_e/poster_ad_velvet_moon_rates+sticker_hotel_heart+sticker_call_velvet+poster_ad_torn_layers+poster_ad_rouge9_lips+sticker_call_angel+poster_ad_dreamlink_intimate",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.1299189329147339,
+              "fade": 0.20980113744735718,
+              "image": "assets/decals/ads/poster_ad_velvet_moon_rates.png",
+              "material": "White plastic",
+              "normal": [
+                1.0,
+                0.0,
+                0.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                8.0,
+                1.3182461261749268,
+                -0.12391328811645508
+              ],
+              "rotation": 1.0010051727294922,
+              "size": [
+                0.5196757316589355,
+                0.7421868443489075
+              ],
+              "wear": 0.2928354740142822,
+              "wear_scale": 3.5,
+              "wear_seed": 44.867122650146484
+            }
+          },
+          {
+            "name": "ads_back/poster_ad_club_sapphire+poster_ad_host_zero+flyer_missing_kei+poster_ad_missing_over_hostess+sticker_call_moon+poster_ad_who_owns_dolls+flyer_snack_bar",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.1351473480463028,
+              "fade": 0.21515783667564392,
+              "image": "assets/decals/ads/sticker_call_moon.png",
+              "material": "White plastic",
+              "normal": [
+                0.0,
+                0.0,
+                -1.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                2.5884833335876465,
+                1.2356716394424438,
+                -6.000000476837158
+              ],
+              "rotation": 0.9576974511146545,
+              "size": [
+                0.5405893921852112,
+                0.7572688460350037
+              ],
+              "wear": 0.3018450140953064,
+              "wear_scale": 3.5,
+              "wear_seed": 93.61666107177734
+            }
+          },
+          {
+            "name": "ads_back/poster_ad_club_sapphire+poster_ad_host_zero+flyer_missing_kei+poster_ad_missing_over_hostess+sticker_call_moon+poster_ad_who_owns_dolls+flyer_snack_bar",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.14548538625240326,
+              "fade": 0.3023427724838257,
+              "image": "assets/decals/ads/poster_ad_club_sapphire.png",
+              "material": "White plastic",
+              "normal": [
+                0.0,
+                0.0,
+                -1.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                6.764692306518555,
+                1.3944284915924072,
+                -6.000000476837158
+              ],
+              "rotation": 2.632493495941162,
+              "size": [
+                0.581941545009613,
+                0.8311131596565247
+              ],
+              "wear": 0.31586408615112305,
+              "wear_scale": 3.5,
+              "wear_seed": 35.65338134765625
+            }
+          },
+          {
+            "name": "ads_back/poster_ad_club_sapphire+poster_ad_host_zero+flyer_missing_kei+poster_ad_missing_over_hostess+sticker_call_moon+poster_ad_who_owns_dolls+flyer_snack_bar",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.13361842930316925,
+              "fade": 0.15313562750816345,
+              "image": "assets/decals/ads/poster_ad_host_zero.png",
+              "material": "White plastic",
+              "normal": [
+                0.0,
+                0.0,
+                -1.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                6.114454746246338,
+                1.2249910831451416,
+                -6.000000476837158
+              ],
+              "rotation": -0.07137680053710938,
+              "size": [
+                0.534473717212677,
+                0.7633209228515625
+              ],
+              "wear": 0.21893906593322754,
+              "wear_scale": 3.5,
+              "wear_seed": 93.70848083496094
+            }
+          },
+          {
+            "name": "ads_back/poster_ad_club_sapphire+poster_ad_host_zero+flyer_missing_kei+poster_ad_missing_over_hostess+sticker_call_moon+poster_ad_who_owns_dolls+flyer_snack_bar",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.1260496973991394,
+              "fade": 0.3253766596317291,
+              "image": "assets/decals/ads/flyer_missing_kei.png",
+              "material": "White plastic",
+              "normal": [
+                0.0,
+                0.0,
+                -1.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                6.93802547454834,
+                1.7265316247940063,
+                -6.000000476837158
+              ],
+              "rotation": -2.3468775749206543,
+              "size": [
+                0.5041987895965576,
+                0.7141072750091553
+              ],
+              "wear": 0.3400998115539551,
+              "wear_scale": 3.5,
+              "wear_seed": 34.710853576660156
+            }
+          },
+          {
+            "name": "ads_back/poster_ad_club_sapphire+poster_ad_host_zero+flyer_missing_kei+poster_ad_missing_over_hostess+sticker_call_moon+poster_ad_who_owns_dolls+flyer_snack_bar",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.13720571994781494,
+              "fade": 0.357702374458313,
+              "image": "assets/decals/ads/poster_ad_who_owns_dolls.png",
+              "material": "White plastic",
+              "normal": [
+                0.0,
+                0.0,
+                -1.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                4.192629814147949,
+                1.652122974395752,
+                -6.000000476837158
+              ],
+              "rotation": -0.2243495136499405,
+              "size": [
+                0.5488228797912598,
+                0.783814013004303
+              ],
+              "wear": 0.1612863838672638,
+              "wear_scale": 3.5,
+              "wear_seed": 53.5165901184082
+            }
+          },
+          {
+            "name": "ads_back/poster_ad_club_sapphire+poster_ad_host_zero+flyer_missing_kei+poster_ad_missing_over_hostess+sticker_call_moon+poster_ad_who_owns_dolls+flyer_snack_bar",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.12983602285385132,
+              "fade": 0.3665202856063843,
+              "image": "assets/decals/ads/poster_ad_missing_over_hostess.png",
+              "material": "White plastic",
+              "normal": [
+                0.0,
+                0.0,
+                -1.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                3.388479709625244,
+                1.7888479232788086,
+                -6.000000476837158
+              ],
+              "rotation": 0.35204648971557617,
+              "size": [
+                0.5193440914154053,
+                0.7417131662368774
+              ],
+              "wear": 0.18811166286468506,
+              "wear_scale": 3.5,
+              "wear_seed": 67.95745086669922
+            }
+          },
+          {
+            "name": "ads_back/poster_ad_club_sapphire+poster_ad_host_zero+flyer_missing_kei+poster_ad_missing_over_hostess+sticker_call_moon+poster_ad_who_owns_dolls+flyer_snack_bar",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.14653579890727997,
+              "fade": 0.2381184697151184,
+              "image": "assets/decals/ads/flyer_snack_bar.png",
+              "material": "White plastic",
+              "normal": [
+                0.0,
+                0.0,
+                -1.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                1.724386215209961,
+                1.4439955949783325,
+                -6.000000476837158
+              ],
+              "rotation": 1.3572478294372559,
+              "size": [
+                0.5861431956291199,
+                0.8301668763160706
+              ],
+              "wear": 0.21875739097595215,
+              "wear_scale": 3.5,
+              "wear_seed": 47.977142333984375
+            }
+          },
+          {
+            "name": "ads_back/poster_ad_club_sapphire+poster_ad_host_zero+flyer_missing_kei+poster_ad_missing_over_hostess+sticker_call_moon+poster_ad_who_owns_dolls+flyer_snack_bar",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.14077866077423096,
+              "fade": 0.20804712176322937,
+              "image": "assets/decals/ads/poster_ad_who_owns_dolls.png",
+              "material": "White plastic",
+              "normal": [
+                0.0,
+                0.0,
+                -1.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                3.019052505493164,
+                1.4933661222457886,
+                -6.000000476837158
+              ],
+              "rotation": -2.8722386360168457,
+              "size": [
+                0.5631146430969238,
+                0.8042250871658325
+              ],
+              "wear": 0.32004040479660034,
+              "wear_scale": 3.5,
+              "wear_seed": 29.209392547607422
+            }
+          },
+          {
+            "name": "ads_back/poster_ad_club_sapphire+poster_ad_host_zero+flyer_missing_kei+poster_ad_missing_over_hostess+sticker_call_moon+poster_ad_who_owns_dolls+flyer_snack_bar",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.12730661034584045,
+              "fade": 0.2528189420700073,
+              "image": "assets/decals/ads/flyer_missing_kei.png",
+              "material": "White plastic",
+              "normal": [
+                0.0,
+                0.0,
+                -1.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                4.273497104644775,
+                1.2712517976760864,
+                -6.000000476837158
+              ],
+              "rotation": -0.5751485824584961,
+              "size": [
+                0.5092264413833618,
+                0.7212280631065369
+              ],
+              "wear": 0.38171571493148804,
+              "wear_scale": 3.5,
+              "wear_seed": 22.025680541992188
+            }
+          },
+          {
+            "name": "ads_e/poster_ad_rose_theatre+poster_ad_cabaret_hanabi+poster_ad_peep_show+poster_ad_noir_satin_legs+sticker_call_stiletto+poster_ad_not_for_sale+flyer_dream_bootleg",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.1294533908367157,
+              "fade": 0.4041990339756012,
+              "image": "assets/decals/ads/sticker_call_stiletto.png",
+              "material": "White plastic",
+              "normal": [
+                1.0,
+                0.0,
+                0.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                8.0,
+                1.374358892440796,
+                -2.728762149810791
+              ],
+              "rotation": -2.2597954273223877,
+              "size": [
+                0.5178135633468628,
+                0.7253640294075012
+              ],
+              "wear": 0.2581482529640198,
+              "wear_scale": 3.5,
+              "wear_seed": 28.4306697845459
+            }
+          },
+          {
+            "name": "ads_e/poster_ad_rose_theatre+poster_ad_cabaret_hanabi+poster_ad_peep_show+poster_ad_noir_satin_legs+sticker_call_stiletto+poster_ad_not_for_sale+flyer_dream_bootleg",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.12507624924182892,
+              "fade": 0.22919467091560364,
+              "image": "assets/decals/ads/poster_ad_cabaret_hanabi.png",
+              "material": "White plastic",
+              "normal": [
+                1.0,
+                0.0,
+                0.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                8.0,
+                1.2122414112091064,
+                -0.9024944305419922
+              ],
+              "rotation": 1.326959490776062,
+              "size": [
+                0.5003049969673157,
+                0.7145220637321472
+              ],
+              "wear": 0.16340985894203186,
+              "wear_scale": 3.5,
+              "wear_seed": 52.88687515258789
+            }
+          },
+          {
+            "name": "ads_e/poster_ad_rose_theatre+poster_ad_cabaret_hanabi+poster_ad_peep_show+poster_ad_noir_satin_legs+sticker_call_stiletto+poster_ad_not_for_sale+flyer_dream_bootleg",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.13939078152179718,
+              "fade": 0.31044864654541016,
+              "image": "assets/decals/ads/poster_ad_peep_show.png",
+              "material": "White plastic",
+              "normal": [
+                1.0,
+                0.0,
+                0.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                8.0,
+                1.424546480178833,
+                -0.5515670776367188
+              ],
+              "rotation": -2.967057943344116,
+              "size": [
+                0.5575631260871887,
+                0.7962965965270996
+              ],
+              "wear": 0.33472299575805664,
+              "wear_scale": 3.5,
+              "wear_seed": 75.543701171875
+            }
+          },
+          {
+            "name": "ads_e/poster_ad_rose_theatre+poster_ad_cabaret_hanabi+poster_ad_peep_show+poster_ad_noir_satin_legs+sticker_call_stiletto+poster_ad_not_for_sale+flyer_dream_bootleg",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.14579150080680847,
+              "fade": 0.39572709798812866,
+              "image": "assets/decals/ads/poster_ad_not_for_sale.png",
+              "material": "White plastic",
+              "normal": [
+                1.0,
+                0.0,
+                0.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                8.0,
+                1.5384852886199951,
+                0.15223121643066406
+              ],
+              "rotation": -3.5640134811401367,
+              "size": [
+                0.5831660032272339,
+                0.8328619003295898
+              ],
+              "wear": 0.3057297468185425,
+              "wear_scale": 3.5,
+              "wear_seed": 62.936126708984375
+            }
+          },
+          {
+            "name": "ads_e/poster_ad_rose_theatre+poster_ad_cabaret_hanabi+poster_ad_peep_show+poster_ad_noir_satin_legs+sticker_call_stiletto+poster_ad_not_for_sale+flyer_dream_bootleg",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.14139404892921448,
+              "fade": 0.3840266466140747,
+              "image": "assets/decals/ads/flyer_dream_bootleg.png",
+              "material": "White plastic",
+              "normal": [
+                1.0,
+                0.0,
+                0.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                8.0,
+                1.641430377960205,
+                -2.972137689590454
+              ],
+              "rotation": -3.158724308013916,
+              "size": [
+                0.5655761957168579,
+                0.8010373711585999
+              ],
+              "wear": 0.4023725092411041,
+              "wear_scale": 3.5,
+              "wear_seed": 85.70733642578125
+            }
+          },
+          {
+            "name": "ads_e/poster_ad_rose_theatre+poster_ad_cabaret_hanabi+poster_ad_peep_show+poster_ad_noir_satin_legs+sticker_call_stiletto+poster_ad_not_for_sale+flyer_dream_bootleg",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.12858432531356812,
+              "fade": 0.22420963644981384,
+              "image": "assets/decals/ads/poster_ad_rose_theatre.png",
+              "material": "White plastic",
+              "normal": [
+                1.0,
+                0.0,
+                0.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                8.0,
+                1.5214476585388184,
+                -4.0978498458862305
+              ],
+              "rotation": 1.2000732421875,
+              "size": [
+                0.5143373012542725,
+                0.7345626354217529
+              ],
+              "wear": 0.3799715042114258,
+              "wear_scale": 3.5,
+              "wear_seed": 34.60426330566406
+            }
+          },
+          {
+            "name": "ads_e/poster_ad_rose_theatre+poster_ad_cabaret_hanabi+poster_ad_peep_show+poster_ad_noir_satin_legs+sticker_call_stiletto+poster_ad_not_for_sale+flyer_dream_bootleg",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.13149771094322205,
+              "fade": 0.22526493668556213,
+              "image": "assets/decals/ads/poster_ad_noir_satin_legs.png",
+              "material": "White plastic",
+              "normal": [
+                1.0,
+                0.0,
+                0.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                8.0,
+                1.7426598072052002,
+                -0.7911429405212402
+              ],
+              "rotation": -2.3672237396240234,
+              "size": [
+                0.5259908437728882,
+                0.7512058615684509
+              ],
+              "wear": 0.33365607261657715,
+              "wear_scale": 3.5,
+              "wear_seed": 20.20200538635254
+            }
+          },
+          {
+            "name": "ads_e/poster_ad_rose_theatre+poster_ad_cabaret_hanabi+poster_ad_peep_show+poster_ad_noir_satin_legs+sticker_call_stiletto+poster_ad_not_for_sale+flyer_dream_bootleg",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.1299189329147339,
+              "fade": 0.20980113744735718,
+              "image": "assets/decals/ads/poster_ad_rose_theatre.png",
+              "material": "White plastic",
+              "normal": [
+                1.0,
+                0.0,
+                0.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                8.0,
+                1.3182461261749268,
+                -0.12391328811645508
+              ],
+              "rotation": 1.0010051727294922,
+              "size": [
+                0.5196757316589355,
+                0.7421868443489075
+              ],
+              "wear": 0.2928354740142822,
+              "wear_scale": 3.5,
+              "wear_seed": 44.867122650146484
             }
           },
           {
@@ -6361,10 +8833,11 @@
           "bay2/sign_karaoke",
           "bay3/sign_charge",
           "bay4/sign_offgrid",
-          "roof/billboard_meridian",
+          "roof/billboard_ad_volt_rush",
           "tag_e/graffiti_unplug",
           "posters_w/poster_missing_aiko",
-          "plate/plate_curfew"
+          "plate/plate_curfew",
+          "ads_back/poster_ad_ramen_retro+poster_ad_pachinko_galaxy+flyer_grand_open+poster_ad_noctis_sleep+flyer_rent_face+poster_ad_volt_rush"
         ],
         "disable": [
           "story"
@@ -6430,10 +8903,12 @@
           "bay2/sign_offgrid",
           "bay3/sign_implant_repair",
           "bay4/sign_dreams",
-          "roof/billboard_jobs",
+          "roof/billboard_ad_sakura_credit",
           "tag_e/stencil_eye_crossed",
           "posters_w/poster_unplug",
-          "plate/plate_curfew"
+          "plate/plate_curfew",
+          "ads_back/poster_ad_volt_rush+flyer_money_today+poster_ad_sale_now+sticker_score_qr+poster_ad_hoshicoin+flyer_kidney_cash+poster_ad_torn_sale_hostess",
+          "ads_e/poster_ad_platinum_citizen+poster_ad_meridian_lotto+poster_ad_unplug_over_platinum+poster_ad_hoshikawa_limbs+poster_ad_aqua_pure+sticker_rate_street"
         ],
         "disable": [
           "story"
@@ -6466,10 +8941,52 @@
           "bay2/sign_score_reset",
           "bay3/sign_capsule_2h",
           "bay4/sign_clinic",
-          "roof/billboard_meridian",
+          "roof/billboard_ad_star_gacha",
           "tag_w/stencil_eye_crossed",
           "posters_e/poster_missing_ren+poster_missing_aiko",
-          "plate/plate_observed"
+          "plate/plate_observed",
+          "ads_back/poster_ad_volt_rush+flyer_money_today+poster_ad_sale_now+sticker_score_qr+poster_ad_hoshicoin+flyer_kidney_cash+poster_ad_torn_sale_hostess"
+        ],
+        "disable": [
+          "story"
+        ]
+      },
+      {
+        "name": "cabaret_row",
+        "seed": 96,
+        "enable": [
+          "bay1/sign_cabaret_luna",
+          "bay2/sign_peep_show",
+          "bay3/sign_host_zero",
+          "bay4/sign_snack_yocho",
+          "roof/billboard_ad_cabaret_luna",
+          "window1/window_now_hiring",
+          "window2/window_hearts",
+          "tag_w/graffiti_who_owns",
+          "plate/plate_loitering",
+          "posters_w/poster_ad_club_sapphire+poster_ad_host_zero+flyer_missing_kei+poster_ad_missing_over_hostess",
+          "ads_back/poster_ad_rose_theatre+poster_ad_cabaret_hanabi+poster_ad_peep_show+poster_ad_noir_satin_legs+sticker_call_stiletto+poster_ad_not_for_sale+flyer_dream_bootleg",
+          "ads_e/poster_ad_velvet_moon_rates+sticker_hotel_heart+sticker_call_velvet+poster_ad_torn_layers+poster_ad_rouge9_lips+sticker_call_angel+poster_ad_dreamlink_intimate"
+        ],
+        "disable": [
+          "story"
+        ]
+      },
+      {
+        "name": "hostess_row",
+        "seed": 108,
+        "enable": [
+          "bay1/sign_club_sapphire",
+          "bay2/sign_dolls_kisaragi",
+          "bay3/sign_velvet_moon",
+          "bay4/sign_karaoke",
+          "roof/billboard_ad_noir_satin",
+          "window1/window_members_only",
+          "window2/window_hotel_rates",
+          "tag_e/graffiti_unplug",
+          "plate/plate_observed",
+          "ads_back/poster_ad_club_sapphire+poster_ad_host_zero+flyer_missing_kei+poster_ad_missing_over_hostess+sticker_call_moon+poster_ad_who_owns_dolls+flyer_snack_bar",
+          "ads_e/poster_ad_rose_theatre+poster_ad_cabaret_hanabi+poster_ad_peep_show+poster_ad_noir_satin_legs+sticker_call_stiletto+poster_ad_not_for_sale+flyer_dream_bootleg"
         ],
         "disable": [
           "story"

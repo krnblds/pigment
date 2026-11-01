@@ -134,6 +134,29 @@ images = [
 ]
 
 [decals.used_by]
+banner_club_sapphire = ["building/building_a"]
+banner_velvet_moon = ["building/building_a"]
+billboard_ad_attention_market = ["building/building_c"]
+billboard_ad_cabaret_luna = ["building/building_b"]
+billboard_ad_capsule_estate = ["building/building_a"]
+billboard_ad_dolls_kisaragi = ["building/building_a"]
+billboard_ad_dreamlink_intimate = ["building/building_a"]
+billboard_ad_hoshikawa_home = ["building/building_c"]
+billboard_ad_hoshikawa_limbs = ["building/building_a"]
+billboard_ad_hoshikawa_secure = ["building/building_c"]
+billboard_ad_kagerou_watch = ["building/building_c"]
+billboard_ad_kanzaki_hayate = ["building/building_c"]
+billboard_ad_meridian_future = ["building/building_c"]
+billboard_ad_meridian_platinum = ["building/building_c"]
+billboard_ad_noir_satin = ["building/building_a", "building/building_b"]
+billboard_ad_platinum_defaced = ["building/building_c"]
+billboard_ad_ramen_kira = ["building/building_a"]
+billboard_ad_sakura_credit = ["building/building_a", "building/building_b"]
+billboard_ad_star_gacha = ["building/building_b"]
+billboard_ad_velvet_moon = ["building/building_a"]
+billboard_ad_volt_rush = ["building/building_b"]
+blade_club = ["building/building_a"]
+blade_kyukei = ["building/building_a"]
 holo_dolls_1 = ["prop/holo_pylon"]
 holo_dolls_2 = ["prop/holo_pylon"]
 holo_dolls_3 = ["prop/holo_pylon"]
@@ -158,7 +181,27 @@ lightbox_platinum = ["prop/bus_stop", "prop/data_kiosk"]
 lightbox_ramen_kira = ["prop/bus_stop"]
 lightbox_velvet_moon = ["prop/bus_stop"]
 lightbox_volt_rush = ["prop/bus_stop", "prop/data_kiosk"]
+sign_cabaret_luna = ["building/building_b"]
+sign_club_sapphire = ["building/building_a", "building/building_b"]
+sign_dolls_kisaragi = ["building/building_b", "prop/overhead_sign"]
+sign_host_zero = ["building/building_b", "prop/overhead_sign"]
+sign_peep_show = ["building/building_b", "prop/overhead_sign"]
+sign_snack_yocho = ["building/building_b", "prop/overhead_sign"]
+sign_velvet_moon = ["building/building_a", "building/building_b", "prop/overhead_sign"]
+sign_welcome_yoimachi = ["prop/overhead_sign"]
+window_hearts = ["building/building_b"]
+window_hotel_rates = ["building/building_a", "building/building_b"]
+window_members_only = ["building/building_a", "building/building_b"]
+window_now_hiring = ["building/building_b"]
 
 # Game rules (Godot): collision, streaming policy, LOD / proxy, lights.
 [game]
 category = "decal"
+images = [
+  "images/billboard_ad_dreamlink_premium.png",
+  "images/billboard_ad_hoshikawa_home.png",
+  "images/billboard_ad_hoshikawa_limbs.png",
+  "images/billboard_ad_hoshikawa_secure.png",
+  "images/billboard_ad_sale_overload.png",
+  "images/billboard_ad_volt_rush.png",
+]

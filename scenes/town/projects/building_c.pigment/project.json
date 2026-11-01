@@ -4974,6 +4974,198 @@
             }
           },
           {
+            "name": "crown_n/billboard_ad_meridian_platinum",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "emissive_strength": 1.6,
+              "image": "assets/decals/ads/billboard_ad_meridian_platinum.png",
+              "material": "White plastic",
+              "normal": [
+                0,
+                0,
+                1
+              ],
+              "position": [
+                0.0,
+                33.55,
+                5.34
+              ],
+              "size": [
+                7.04,
+                3.52
+              ]
+            }
+          },
+          {
+            "name": "crown_e/billboard_ad_meridian_future",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "emissive_strength": 1.6,
+              "image": "assets/decals/ads/billboard_ad_meridian_future.png",
+              "material": "White plastic",
+              "normal": [
+                1,
+                0,
+                0
+              ],
+              "position": [
+                5.34,
+                33.55,
+                0.0
+              ],
+              "size": [
+                7.04,
+                3.52
+              ]
+            }
+          },
+          {
+            "name": "crown_s/billboard_ad_hoshikawa_secure",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "emissive_strength": 1.6,
+              "image": "assets/decals/ads/billboard_ad_hoshikawa_secure.png",
+              "material": "White plastic",
+              "normal": [
+                0,
+                0,
+                -1
+              ],
+              "position": [
+                0.0,
+                33.55,
+                -5.34
+              ],
+              "size": [
+                7.04,
+                3.52
+              ]
+            }
+          },
+          {
+            "name": "crown_w/billboard_ad_platinum_defaced",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "emissive_strength": 1.6,
+              "image": "assets/decals/ads/billboard_ad_platinum_defaced.png",
+              "material": "White plastic",
+              "normal": [
+                -1,
+                0,
+                0
+              ],
+              "position": [
+                -5.34,
+                33.55,
+                0.0
+              ],
+              "size": [
+                7.04,
+                3.52
+              ]
+            }
+          },
+          {
+            "name": "crown_n/billboard_ad_kanzaki_hayate",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "emissive_strength": 1.6,
+              "image": "assets/decals/ads/billboard_ad_kanzaki_hayate.png",
+              "material": "White plastic",
+              "normal": [
+                0,
+                0,
+                1
+              ],
+              "position": [
+                0.0,
+                33.55,
+                5.34
+              ],
+              "size": [
+                7.04,
+                3.52
+              ]
+            }
+          },
+          {
+            "name": "crown_e/billboard_ad_kagerou_watch",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "emissive_strength": 1.6,
+              "image": "assets/decals/ads/billboard_ad_kagerou_watch.png",
+              "material": "White plastic",
+              "normal": [
+                1,
+                0,
+                0
+              ],
+              "position": [
+                5.34,
+                33.55,
+                0.0
+              ],
+              "size": [
+                7.04,
+                3.52
+              ]
+            }
+          },
+          {
+            "name": "crown_s/billboard_ad_hoshikawa_home",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "emissive_strength": 1.6,
+              "image": "assets/decals/ads/billboard_ad_hoshikawa_home.png",
+              "material": "White plastic",
+              "normal": [
+                0,
+                0,
+                -1
+              ],
+              "position": [
+                0.0,
+                33.55,
+                -5.34
+              ],
+              "size": [
+                7.04,
+                3.52
+              ]
+            }
+          },
+          {
+            "name": "crown_w/billboard_ad_attention_market",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "emissive_strength": 1.6,
+              "image": "assets/decals/ads/billboard_ad_attention_market.png",
+              "material": "White plastic",
+              "normal": [
+                -1,
+                0,
+                0
+              ],
+              "position": [
+                -5.34,
+                33.55,
+                0.0
+              ],
+              "size": [
+                7.04,
+                3.52
+              ]
+            }
+          },
+          {
             "name": "posters_w/poster_unplug+poster_missing_aiko",
             "group": "story",
             "enabled": false,
@@ -5095,6 +5287,262 @@
               "size": [
                 0.5779091119766235,
                 0.8253541588783264
+              ],
+              "wear": 0.41300907731056213,
+              "wear_scale": 3.5,
+              "wear_seed": 33.37120819091797
+            }
+          },
+          {
+            "name": "posters_w/poster_ad_platinum_citizen+poster_ad_meridian_lotto+poster_ad_unplug_over_platinum+poster_ad_hoshikawa_limbs",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.12802450358867645,
+              "fade": 0.26990094780921936,
+              "image": "assets/decals/ads/poster_ad_platinum_citizen.png",
+              "material": "White plastic",
+              "normal": [
+                -1.0,
+                0.0,
+                0.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                -7.0,
+                1.670701026916504,
+                2.7511935234069824
+              ],
+              "rotation": -2.331456184387207,
+              "size": [
+                0.5120980143547058,
+                0.7313645482063293
+              ],
+              "wear": 0.28744471073150635,
+              "wear_scale": 3.5,
+              "wear_seed": 6.6513776779174805
+            }
+          },
+          {
+            "name": "posters_w/poster_ad_platinum_citizen+poster_ad_meridian_lotto+poster_ad_unplug_over_platinum+poster_ad_hoshikawa_limbs",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.13051295280456543,
+              "fade": 0.34244608879089355,
+              "image": "assets/decals/ads/poster_ad_hoshikawa_limbs.png",
+              "material": "White plastic",
+              "normal": [
+                -1.0,
+                0.0,
+                0.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                -7.0,
+                1.20704185962677,
+                2.169137954711914
+              ],
+              "rotation": 3.2252402305603027,
+              "size": [
+                0.5220518112182617,
+                0.74558025598526
+              ],
+              "wear": 0.41107913851737976,
+              "wear_scale": 3.5,
+              "wear_seed": 35.57988357543945
+            }
+          },
+          {
+            "name": "posters_w/poster_ad_platinum_citizen+poster_ad_meridian_lotto+poster_ad_unplug_over_platinum+poster_ad_hoshikawa_limbs",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.14789797365665436,
+              "fade": 0.4014343321323395,
+              "image": "assets/decals/ads/poster_ad_meridian_lotto.png",
+              "material": "White plastic",
+              "normal": [
+                -1.0,
+                0.0,
+                0.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                -7.0,
+                1.2710992097854614,
+                3.5229594707489014
+              ],
+              "rotation": -0.9555864930152893,
+              "size": [
+                0.5915918946266174,
+                0.8448955416679382
+              ],
+              "wear": 0.22809216380119324,
+              "wear_scale": 3.5,
+              "wear_seed": 19.346792221069336
+            }
+          },
+          {
+            "name": "posters_w/poster_ad_platinum_citizen+poster_ad_meridian_lotto+poster_ad_unplug_over_platinum+poster_ad_hoshikawa_limbs",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.14908547699451447,
+              "fade": 0.2340172529220581,
+              "image": "assets/decals/ads/poster_ad_unplug_over_platinum.png",
+              "material": "White plastic",
+              "normal": [
+                -1.0,
+                0.0,
+                0.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                -7.0,
+                1.7558882236480713,
+                1.3665928840637207
+              ],
+              "rotation": 0.8118257522583008,
+              "size": [
+                0.5963419079780579,
+                0.8516793847084045
+              ],
+              "wear": 0.41300907731056213,
+              "wear_scale": 3.5,
+              "wear_seed": 33.37120819091797
+            }
+          },
+          {
+            "name": "posters_w/poster_ad_volt_rush+flyer_money_today+poster_ad_sale_now+sticker_score_qr",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.12802450358867645,
+              "fade": 0.26990094780921936,
+              "image": "assets/decals/ads/poster_ad_volt_rush.png",
+              "material": "White plastic",
+              "normal": [
+                -1.0,
+                0.0,
+                0.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                -7.0,
+                1.670701026916504,
+                2.7511935234069824
+              ],
+              "rotation": -2.331456184387207,
+              "size": [
+                0.5120980143547058,
+                0.7313645482063293
+              ],
+              "wear": 0.28744471073150635,
+              "wear_scale": 3.5,
+              "wear_seed": 6.6513776779174805
+            }
+          },
+          {
+            "name": "posters_w/poster_ad_volt_rush+flyer_money_today+poster_ad_sale_now+sticker_score_qr",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.13051295280456543,
+              "fade": 0.34244608879089355,
+              "image": "assets/decals/ads/sticker_score_qr.png",
+              "material": "White plastic",
+              "normal": [
+                -1.0,
+                0.0,
+                0.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                -7.0,
+                1.20704185962677,
+                2.169137954711914
+              ],
+              "rotation": 3.2252402305603027,
+              "size": [
+                0.5220518112182617,
+                0.7313010096549988
+              ],
+              "wear": 0.41107913851737976,
+              "wear_scale": 3.5,
+              "wear_seed": 35.57988357543945
+            }
+          },
+          {
+            "name": "posters_w/poster_ad_volt_rush+flyer_money_today+poster_ad_sale_now+sticker_score_qr",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.14789797365665436,
+              "fade": 0.4014343321323395,
+              "image": "assets/decals/ads/flyer_money_today.png",
+              "material": "White plastic",
+              "normal": [
+                -1.0,
+                0.0,
+                0.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                -7.0,
+                1.2710992097854614,
+                3.5229594707489014
+              ],
+              "rotation": -0.9555864930152893,
+              "size": [
+                0.5915918946266174,
+                0.8378839492797852
+              ],
+              "wear": 0.22809216380119324,
+              "wear_scale": 3.5,
+              "wear_seed": 19.346792221069336
+            }
+          },
+          {
+            "name": "posters_w/poster_ad_volt_rush+flyer_money_today+poster_ad_sale_now+sticker_score_qr",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "alpha_from_luminance": false,
+              "depth": 0.14908547699451447,
+              "fade": 0.2340172529220581,
+              "image": "assets/decals/ads/poster_ad_sale_now.png",
+              "material": "White plastic",
+              "normal": [
+                -1.0,
+                0.0,
+                0.0
+              ],
+              "opacity": 0.949999988079071,
+              "paper_rim": 0.03500000014901161,
+              "position": [
+                -7.0,
+                1.7558882236480713,
+                1.3665928840637207
+              ],
+              "rotation": 0.8118257522583008,
+              "size": [
+                0.5963419079780579,
+                0.8516793847084045
               ],
               "wear": 0.41300907731056213,
               "wear_scale": 3.5,
@@ -5294,6 +5742,35 @@
               "wear_scale": 3.0,
               "wear_style": "grunge"
             }
+          },
+          {
+            "name": "tag_e/graffiti_who_owns",
+            "group": "story",
+            "enabled": false,
+            "args": {
+              "fade": 0.25,
+              "image": "assets/decals/story/graffiti_who_owns.png",
+              "material": "White plastic",
+              "normal": [
+                1,
+                0,
+                0
+              ],
+              "opacity": 0.92,
+              "paper_rim": 0.0,
+              "position": [
+                7.0,
+                1.6,
+                -3.4
+              ],
+              "rotation": -2,
+              "size": [
+                3.0,
+                0.7441
+              ],
+              "wear_scale": 3.0,
+              "wear_style": "grunge"
+            }
           }
         ]
       }
@@ -5358,6 +5835,42 @@
           "tag_e/graffiti_unplug",
           "tag_w/graffiti_not_data",
           "posters_w/poster_unplug+poster_missing_aiko"
+        ],
+        "disable": [
+          "story"
+        ]
+      },
+      {
+        "name": "platinum",
+        "seed": 52,
+        "enable": [
+          "lobby/logo_hoshikawa_dynamics",
+          "band/sign_meridian_kiosk",
+          "crown_n/billboard_ad_meridian_platinum",
+          "crown_e/billboard_ad_meridian_future",
+          "crown_s/billboard_ad_hoshikawa_secure",
+          "crown_w/billboard_ad_platinum_defaced",
+          "plate/plate_observed",
+          "tag_e/graffiti_who_owns",
+          "posters_w/poster_ad_platinum_citizen+poster_ad_meridian_lotto+poster_ad_unplug_over_platinum+poster_ad_hoshikawa_limbs"
+        ],
+        "disable": [
+          "story"
+        ]
+      },
+      {
+        "name": "showroom",
+        "seed": 65,
+        "enable": [
+          "lobby/logo_hoshikawa_dynamics",
+          "band/sign_hoshikawa_security",
+          "crown_n/billboard_ad_kanzaki_hayate",
+          "crown_e/billboard_ad_kagerou_watch",
+          "crown_s/billboard_ad_hoshikawa_home",
+          "crown_w/billboard_ad_attention_market",
+          "plate/plate_property",
+          "tag_w/graffiti_not_data",
+          "posters_w/poster_ad_volt_rush+flyer_money_today+poster_ad_sale_now+sticker_score_qr"
         ],
         "disable": [
           "story"

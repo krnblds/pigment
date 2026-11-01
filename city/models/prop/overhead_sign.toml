@@ -50,9 +50,19 @@ variants = [
   "jailbreak",
   "organ_credit",
   "karaoke",
-  "kiosk",
+  "charging",
+  "welcome",
+  "velvet_moon",
+  "peep_show",
+  "snack",
 ]
 decals = [
+  "assets/decals/ads/sign_dolls_kisaragi.png",
+  "assets/decals/ads/sign_host_zero.png",
+  "assets/decals/ads/sign_peep_show.png",
+  "assets/decals/ads/sign_snack_yocho.png",
+  "assets/decals/ads/sign_velvet_moon.png",
+  "assets/decals/ads/sign_welcome_yoimachi.png",
   "assets/decals/story/sign_capsule_2h.png",
   "assets/decals/story/sign_charge.png",
   "assets/decals/story/sign_clinic.png",
@@ -62,7 +72,6 @@ decals = [
   "assets/decals/story/sign_jailbreak.png",
   "assets/decals/story/sign_karaoke.png",
   "assets/decals/story/sign_memory_pawn.png",
-  "assets/decals/story/sign_meridian_kiosk.png",
   "assets/decals/story/sign_offgrid.png",
   "assets/decals/story/sign_organ_credit.png",
   "assets/decals/story/sign_score_reset.png",
@@ -71,42 +80,53 @@ outputs = [
   "scenes/town/projects/overhead_sign.pigment",
   "scenes/town/textures/overhead_sign",
   "scenes/town/textures/overhead_sign__capsule",
+  "scenes/town/textures/overhead_sign__charging",
   "scenes/town/textures/overhead_sign__clinic",
   "scenes/town/textures/overhead_sign__implant_repair",
   "scenes/town/textures/overhead_sign__jailbreak",
   "scenes/town/textures/overhead_sign__karaoke",
-  "scenes/town/textures/overhead_sign__kiosk",
   "scenes/town/textures/overhead_sign__memory_pawn",
   "scenes/town/textures/overhead_sign__noodles",
   "scenes/town/textures/overhead_sign__organ_credit",
+  "scenes/town/textures/overhead_sign__peep_show",
   "scenes/town/textures/overhead_sign__score_reset",
+  "scenes/town/textures/overhead_sign__snack",
+  "scenes/town/textures/overhead_sign__velvet_moon",
+  "scenes/town/textures/overhead_sign__welcome",
 ]
 patch = []
 
 [pigment.decal_slots]
 face_e = [
   "sign_capsule_2h",
-  "sign_charge",
   "sign_clinic",
+  "sign_dolls_kisaragi",
   "sign_dreams",
   "sign_dumplings",
+  "sign_host_zero",
   "sign_implant_repair",
   "sign_memory_pawn",
   "sign_offgrid",
   "sign_organ_credit",
   "sign_score_reset",
+  "sign_velvet_moon",
+  "sign_welcome_yoimachi",
 ]
 face_w = [
   "sign_capsule_2h",
+  "sign_charge",
   "sign_clinic",
   "sign_dumplings",
   "sign_implant_repair",
   "sign_jailbreak",
   "sign_karaoke",
   "sign_memory_pawn",
-  "sign_meridian_kiosk",
   "sign_organ_credit",
+  "sign_peep_show",
   "sign_score_reset",
+  "sign_snack_yocho",
+  "sign_velvet_moon",
+  "sign_welcome_yoimachi",
 ]
 
 # Game rules (Godot): collision, streaming policy, LOD / proxy, lights.
@@ -118,24 +138,35 @@ policy = "cell"
 proxy = false
 world_keys = [
   "overhead_sign__capsule",
+  "overhead_sign__charging",
   "overhead_sign__clinic",
   "overhead_sign__implant_repair",
   "overhead_sign__jailbreak",
   "overhead_sign__karaoke",
-  "overhead_sign__kiosk",
   "overhead_sign__memory_pawn",
   "overhead_sign__noodles",
   "overhead_sign__organ_credit",
+  "overhead_sign__peep_show",
   "overhead_sign__score_reset",
+  "overhead_sign__snack",
+  "overhead_sign__velvet_moon",
+  "overhead_sign__welcome",
 ]
 visible_to_m = 220.0
 
 # Where the world places it (read from scenes/world/world.json; scatter rules live in the props catalog).
 [placement]
-instances = 1487
+instances = 1513
 source = "tools/world/placement.py"
 rules = "street furniture along roads (world_config.json props)"
-districts = { corporate = 4, downtown = 232, hillside = 194, midtown = 800, old_town = 257 }
+
+[placement.districts]
+corporate = 5
+downtown = 209
+hillside = 201
+midtown = 732
+old_town = 252
+yoimachi = 114
 
 [placement.variant_counts]
 capsule = 153
