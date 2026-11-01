@@ -36,7 +36,7 @@ for ob in bpy.data.objects:
         ob.data.materials.clear()
         ob.data.materials.append(mat)
 res = tuple(int(v) for v in opt("--res", "1280x720").split("x"))
-WR.setup(int(opt("--samples", 96)), res)
+WR.setup(int(opt("--samples", 96)), res, cpu="--cpu" in A)
 sc = bpy.context.scene
 # daylight
 w = bpy.data.worlds.get("GroundSky") or bpy.data.worlds.new("GroundSky")
