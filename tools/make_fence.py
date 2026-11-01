@@ -42,6 +42,9 @@ bpy.ops.object.transform_apply(location=False, rotation=True, scale=True)
 bpy.ops.object.join()
 fence = bpy.context.active_object
 fence.name = "fence"
+# origin at the bottom centre (the joined object kept the panel's origin)
+bpy.context.scene.cursor.location = (0, 0, 0)
+bpy.ops.object.origin_set(type="ORIGIN_CURSOR")
 bpy.ops.object.mode_set(mode="EDIT")
 bpy.ops.mesh.select_all(action="SELECT")
 bpy.ops.uv.smart_project(angle_limit=math.radians(66), island_margin=0.01, scale_to_bounds=True)
