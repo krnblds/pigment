@@ -230,14 +230,14 @@ func _setup_environment() -> void:
 	env.tonemap_exposure = 1.25
 	env.glow_enabled = true
 	env.glow_normalized = false
-	env.glow_intensity = 0.7
-	env.glow_strength = 1.0
-	env.glow_bloom = 0.04
-	env.glow_hdr_threshold = 0.9
+	env.glow_intensity = 0.32          # less bloom (user feedback)
+	env.glow_strength = 0.85
+	env.glow_bloom = 0.0
+	env.glow_hdr_threshold = 1.3
 	env.glow_hdr_scale = 2.0
 	env.glow_blend_mode = Environment.GLOW_BLEND_MODE_SCREEN
 	for i in range(1, 8):
-		env.set("glow_levels/%d" % i, [0.0, 0.6, 0.8, 1.0, 0.8, 0.5, 0.0][i - 1])
+		env.set("glow_levels/%d" % i, [0.0, 0.5, 0.6, 0.55, 0.3, 0.1, 0.0][i - 1])
 	env.ssr_enabled = true
 	env.ssr_max_steps = int(args.get("ssr-steps", "160"))
 	env.ssr_fade_in = float(args.get("ssr-in", "0.05"))
