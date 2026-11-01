@@ -5075,7 +5075,7 @@
     "curvature_strength": 0.7,
     "ao_distance": 0.12
   },
-  "export_preset": "unreal",
+  "export_preset": "separate",
   "next_id": 72,
   "variants": {
     "seed": 0,

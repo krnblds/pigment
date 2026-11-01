@@ -288,8 +288,8 @@ def finish(L, asset, defs=None):
         view = PREVIEW_VIEW.get(asset, {"yaw": 25, "pitch": 10})
         L.append({"tool": "export_variants", "args": {"dir": "scenes/town/textures", "name": asset, "preset": "separate", "variants": defs,
                                                       "preview": dict(view, width=480, height=640, exposure=-0.4, dir=P)}})
-    else:
-        L.append({"tool": "export_textures", "args": {"dir": f"scenes/town/textures/{asset}", "preset": "separate", "name": asset}})
+    # the authored look always gets a base folder too (fallback for tools that don't pick variants)
+    L.append({"tool": "export_textures", "args": {"dir": f"scenes/town/textures/{asset}", "preset": "separate", "name": asset}})
     L.append({"tool": "save_project", "args": {"path": f"scenes/town/projects/{asset}.pigment"}})
     (OUT / "scripts").mkdir(parents=True, exist_ok=True)
     (OUT / "scripts" / f"{asset}.jsonl").write_text("\n".join(json.dumps(l) for l in L), encoding="utf8")
