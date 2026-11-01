@@ -227,7 +227,7 @@ assert abs(ebsdf.inputs["Emission Strength"].default_value - scale) < 1e-4
 fc = m.node_tree.animation_data.drivers[0]
 assert fc.driver.is_valid and fc.driver.is_simple_expression
 m["pigment_emission_mult"] = 2.0
-m.node_tree.update_tag()
+m.update_tag()  # what a UI edit does
 bpy.context.view_layer.update()
 dg = bpy.context.evaluated_depsgraph_get()
 ev = m.evaluated_get(dg)

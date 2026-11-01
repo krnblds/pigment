@@ -576,6 +576,7 @@ def build_material(spec, mat=None, options=None, uv_map=""):
     if spec.get("resolution"):
         mat["pigment_resolution"] = int(spec["resolution"])
     _seen[mat.name] = signature(spec)
+    mat.update_tag()  # re-evaluate the emission driver
     return mat
 
 
