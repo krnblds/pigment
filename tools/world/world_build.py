@@ -189,6 +189,7 @@ def build(world, out, root, town, load_tool, region=None, log=print, trees=True,
                "orange": (0.8, 0.3, 0.05), "grey": (0.35, 0.36, 0.37), "teal": (0.05, 0.35, 0.38), "red": (0.55, 0.06, 0.04)}
     exts = {"building_a": (-4.39, 4.39, -6.62, 5.17), "building_b": (-8.39, 8.39, -6.39, 6.17), "building_c": (-7.39, 7.39, -9.25, 7.12)}
     n_inst = 0
+    var_mesh = {}
     for i in world["instances"]:
         x, y, z = i["pos"]
         if not inside(x, y, 10):
@@ -207,18 +208,28 @@ def build(world, out, root, town, load_tool, region=None, log=print, trees=True,
         d = i.get("district", "misc")
         if d not in dcoll:
             dcoll[d] = C["Nature"] if d == "nature" else C["Props"] if d == "roads" else coll("World_" + d, top)
-        o = put(dcoll[d], a, data, (x, y, z), i["rot"], i.get("scale"))
         v = i.get("variant")
+        # Variants are mesh copies with their material (not object-level
+        # overrides): Cycles keys geometry by material, so overrides would
+        # turn 4000 instanced buildings into 4000 BVHs.
+        vm = None
         if v:
             mname = f"Pigment_{a}__{v}"
             if mname in var_mats:
-                o.material_slots[0].link = "OBJECT"
-                o.material_slots[0].material = var_mats[mname]
+                vm = var_mats[mname]
             elif a.startswith(("tower_", "landmark_")) and ("facade_" + v) in KM:
-                o.material_slots[0].link = "OBJECT"
-                o.material_slots[0].material = KM["facade_" + v]
-            elif v in colours:
-                o.color = (*colours[v], 1.0)
+                vm = KM["facade_" + v]
+        if vm is not None:
+            key = (data.name, vm.name)
+            if key not in var_mesh:
+                me2 = data.copy()
+                me2.name = f"{data.name}__{v}"
+                me2.materials[0] = vm
+                var_mesh[key] = me2
+            data = var_mesh[key]
+        o = put(dcoll[d], a, data, (x, y, z), i["rot"], i.get("scale"))
+        if v and vm is None and v in colours:
+            o.color = (*colours[v], 1.0)
         if a.startswith(("tree", "container", "warehouse", "crane")) and not v:
             o.color = (0.4, 0.4, 0.4, 1)
         dep = i.get("footing")

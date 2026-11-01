@@ -15,11 +15,12 @@ import numpy as np
 from mathutils import Vector
 
 
-def setup(samples, res):
+def setup(samples, res, cpu=False):
     sc = bpy.context.scene
     sc.render.engine = "CYCLES"
     prefs = bpy.context.preferences.addons["cycles"].preferences
-    for dev in ("OPTIX", "CUDA"):
+    sc.cycles.device = "CPU"
+    for dev in (() if cpu else ("OPTIX", "CUDA")):
         try:
             prefs.compute_device_type = dev
             prefs.get_devices()
@@ -45,6 +46,14 @@ def setup(samples, res):
     except TypeError:
         pass
     sc.view_settings.exposure = 0.0
+    # Thousands of instanced buildings with emissive windows: light-sampling
+    # every emissive triangle would put ~10^8 triangles in the light tree.
+    # Windows still glow when seen; the street is lit by the point lights.
+    for m in bpy.data.materials:
+        try:
+            m.cycles.emission_sampling = "NONE"
+        except (AttributeError, TypeError):
+            pass
 
 
 def sky(kind, fog=0.0):
@@ -165,7 +174,7 @@ def shots(world, built):
 
 def render(world, built, root, opt, log):
     res = tuple(int(v) for v in str(opt("--res", "1600x900")).split("x"))
-    setup(int(opt("--samples", 128)), res)
+    setup(int(opt("--samples", 128)), res, cpu=bool(opt("--cpu")))
     sc = bpy.context.scene
     cam = bpy.data.objects.get("WorldCam") or bpy.data.objects.new("WorldCam", bpy.data.cameras.new("WorldCam"))
     if cam.name not in sc.collection.objects:

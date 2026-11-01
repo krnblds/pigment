@@ -673,12 +673,7 @@ def generate(cfg, town, out_dir, log=print):
     roads = lane_graph(cfg, net)
     juncs, signals = junctions_json(cfg, net)
     place = PL.place_all(cfg, hf, net, masks, bridges, walls, log)
-    for sg in signals:           # signal poles are instances too (mast over the approach lanes)
-        d = Vector(sg["facing"]) * -1.0
-        nrm = Vector((-d.y, d.x))
-        place["instances"].append({"asset": "signal_pole_long" if sg["mast"] > 7.0 else "signal_pole", "variant": None,
-                                   "pos": sg["pos"], "rot": round(math.atan2(nrm.y, nrm.x) % (2 * math.pi), 5), "scale": [1, 1, 1],
-                                   "district": "roads", "kind": "signal", "signal": sg["id"]})
+    PL.signal_instances(cfg, signals, juncs, place, log)
     # outputs
     os.makedirs(out_dir, exist_ok=True)
     hpath = os.path.join(out_dir, "heightfield.f32")

@@ -476,6 +476,9 @@ def place_all(cfg, hf, net, masks, bridges, walls, log):
         for py in br["pylons"]:
             P_light(P, Vector(py["pos"]), py["top"] + 1.0, (1.0, 0.05, 0.02), 900, "aviation")
 
+    # ---- street props kit (assets/props) along every curbed road, corners, crossings, rooftops
+    scatter_street_props(cfg, P, net, towers, rng, log)
+
     # ---- trees on natural land
     place_trees(cfg, P, hf, masks, rng, log)
 
@@ -640,3 +643,170 @@ def place_trees(cfg, P, hf, masks, rng, log):
         P.add("tree_pine" if conifer else "tree_broad", (p.x, p.y, float(z) - 0.2), rng.uniform(0, 6.28), "nature", scale=(sc, sc, sc * rng.uniform(0.9, 1.2)), kind="tree")
         n += 1
     log(f"trees: {n}")
+
+
+# ---------------------------------------------------------------- street props kit (assets/props, tools/props/scatter.py)
+
+PROP_DISTRICT = {"downtown": "downtown", "midtown": "commercial", "old_town": "market", "hillside": "residential",
+                 "port": "industrial", "corporate": "luxury"}
+SIGNAL_PROPS = ("traffic_light_pole", "traffic_light_mast", "ped_signal")
+
+
+def G(x, y, z):
+    """Blender (x, y, z up) -> Godot (x, y up, z = -y)."""
+    return [round(x, 3), round(z, 3), round(-y, 3)]
+
+
+def props_kit(root):
+    """(scatter module, index) when the props kit is merged, else (None, None)."""
+    p = os.path.join(root, "tools", "props", "scatter.py")
+    if not os.path.isfile(p) or not os.path.isfile(os.path.join(root, "assets", "props", "index.json")):
+        return None, None
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("props_scatter", p)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod, mod.load_index()
+
+
+def scatter_street_props(cfg, P, net, towers, rng, log, density_scale=0.8):
+    """Dress every district with the props kit: builds one scatter context per
+    district (curb / walk / frontage lines along both sides of every curbed
+    road, junction corners and crossings, tower rooftops; lamps, poles and
+    signals as blocked discs) and adds the placements as instances."""
+    sc, index = props_kit(cfg.get("_root", "."))
+    if sc is None:
+        log("props kit not found (assets/props): street props skipped")
+        return 0
+    names = [n for n in index["props"] if n not in SIGNAL_PROPS]
+    ctx = {}
+
+    def C(dname):
+        if dname not in ctx:
+            ctx[dname] = {"seed": cfg["seed"] + len(ctx) * 101, "district": PROP_DISTRICT.get(dname, "commercial"),
+                          "lines": [], "points": [], "areas": [], "blocked": []}
+        return ctx[dname]
+    blocked_kinds = ("lamp", "pole", "signal", "mast")
+    for i in P.instances:
+        if i.get("kind") in blocked_kinds:
+            x, y, z = i["pos"]
+            d = i.get("district")
+            # roads-district street furniture blocks every context near it (cheap: add to all later)
+            P.__dict__.setdefault("_blocked", []).append({"pos": G(x, y, z), "radius": 1.1})
+    for e in net.alive_edges():
+        cc = net.classes[e.cls]
+        if cc.get("side", "curb") != "curb" or e.kind != "grid":
+            continue
+        isl = edge_island(cfg, net, e)
+        path = e.path
+        L = path.length
+        if L < 16:
+            continue
+        mid, _ = path.at(L / 2)
+        dist = district_of(cfg, isl, mid.to_2d())
+        if dist is None:
+            continue
+        c = C(dist["name"])
+        H = cc["half"]
+        s = np.linspace(3.0, L - 3.0, max(2, int((L - 6.0) / 4.0) + 1))
+        pos, t = path.at_many(s)
+        if any(np.interp(s, e.s, e.deck.astype(float)) > 0.5):
+            continue
+        for sgn in (1, -1):
+            nrm = np.stack([-t[:, 1], t[:, 0]], 1) * sgn
+            for slot, off in (("curb", H + 0.75), ("walk", H + 1.7), ("frontage", H + 2.75)):
+                pts = [G(p[0] + n[0] * off, p[1] + n[1] * off, p[2] + WALK_Z) for p, n in zip(pos, nrm)]
+                c["lines"].append({"slot": slot, "points": pts, "toward": [round(float(mid.x), 2), round(float(-mid.y), 2)]})
+    for nd in net.alive_nodes():
+        J = nd.J
+        if J is None or nd.kind != "junction" or not nd.grid:
+            continue
+        isl = next(g["island"] for g in cfg["grids"] if g["name"] == nd.grid)
+        dist = district_of(cfg, isl, nd.pos)
+        if dist is None:
+            continue
+        c = C(dist["name"])
+        for cr in J.corners:
+            if "C" not in cr or not cr["concave"]:
+                continue
+            line = J.corner_line(cr, 1.2)
+            m = J.pos + line[len(line) // 2]
+            into = (J.pos - m).normalized()
+            a, b = J.dirs[cr["ia"]], J.dirs[cr["ib"]]
+            c["points"].append({"slot": "corner", "pos": G(m.x, m.y, J.z + WALK_Z), "dir": [round(into.x, 4), round(-into.y, 4)],
+                                "curbs": [[round(a.x, 4), round(-a.y, 4)], [round(b.x, 4), round(-b.y, 4)]]})
+        for k, d in enumerate(J.dirs):
+            nrm = rot90(d)
+            for sgn in (1, -1):
+                p = J.pos + d * (J.L[k] - 2.7) + nrm * sgn * (J.half[k] + 0.8)
+                into = -nrm * sgn
+                c["points"].append({"slot": "crossing", "pos": G(p.x, p.y, J.z + WALK_Z), "dir": [round(into.x, 4), round(-into.y, 4)]})
+    for tw in towers:
+        dname = tw["district"]
+        w, d_, _ = tw["tiers"][-1]
+        cn = Vector(tw["pos"][:2])
+        rz = tw["rot"]
+        top = tw["pos"][2] + sum(t_[2] for t_ in tw["tiers"])
+        poly = [G(q.x, q.y, top) for q in rect(cn, rz, (-w / 2 + 2, w / 2 - 2, -d_ / 2 + 2, d_ / 2 - 2))]
+        C(dname)["areas"].append({"slot": "rooftop", "polygon": poly})
+    blocked = P.__dict__.get("_blocked", [])
+    n = 0
+    stats = {}
+    for dname, c in ctx.items():
+        # only the blocked discs near this district's lines
+        xs = [p[0] for l in c["lines"] for p in l["points"][::4]]
+        zs = [p[2] for l in c["lines"] for p in l["points"][::4]]
+        if xs:
+            x0, x1, z0, z1 = min(xs) - 10, max(xs) + 10, min(zs) - 10, max(zs) + 10
+            c["blocked"] = [b for b in blocked if x0 <= b["pos"][0] <= x1 and z0 <= b["pos"][2] <= z1]
+        out = sc.scatter_props(c, names, density_scale=density_scale)
+        for pl in out:
+            gx, gy, gz = pl["pos"]
+            P.add(pl["prop"], (gx, -gz, gy), pl["yaw"], dname, variant=pl.get("variant") if pl.get("variant") != "default" else None,
+                  scale=pl.get("scale", (1, 1, 1)), kind="prop", slot=pl.get("slot"), file="assets/props/" + pl["file"])
+            stats[pl["prop"]] = stats.get(pl["prop"], 0) + 1
+            n += 1
+    log(f"street props: {n} from the props kit in {len(ctx)} districts; top: " +
+        ", ".join(f"{k} {v}" for k, v in sorted(stats.items(), key=lambda kv: -kv[1])[:8]))
+    return n
+
+
+def signal_instances(cfg, signals, juncs, place, log):
+    """Traffic lights at the signalised (avenue) junctions: a mast signal per
+    approach (arm over the incoming lanes, heads facing the traffic) and a
+    pedestrian signal at both ends of every crosswalk. Uses the props kit's
+    traffic_light_mast / ped_signal when present, else the procedural pole."""
+    have = os.path.isfile(os.path.join(cfg.get("_root", "."), "assets", "props", "traffic_light_mast.glb"))
+    n = 0
+    for sg in signals:
+        d = Vector(sg["facing"]) * -1.0
+        nrm = Vector((-d.y, d.x))
+        asset = "traffic_light_mast" if have else ("signal_pole_long" if sg["mast"] > 7.0 else "signal_pole")
+        rz = math.atan2(nrm.y, nrm.x) % (2 * math.pi)
+        rec = {"asset": asset, "variant": None, "pos": sg["pos"], "rot": round(rz, 5), "scale": [1, 1, 1],
+               "district": "roads", "kind": "signal", "signal": sg["id"]}
+        if have:
+            rec["file"] = "assets/props/traffic_light_mast.glb"
+        place["instances"].append(rec)
+        sg["prop"] = asset
+        sg["heads"] = ["A", "B", "C"] if have else ["A"]
+        n += 1
+    nped = 0
+    if have:
+        for j in juncs:
+            if not j.get("signalised"):
+                continue
+            for a in j["arms"]:
+                d = Vector(a["dir"])
+                nrm = Vector((-d.y, d.x))
+                for sgn in (1, -1):
+                    p = Vector(j["pos"][:2]) + d * (a["length"] - 2.7) + nrm * sgn * (a["half_width"] + 1.2)
+                    face = -nrm * sgn                    # across the crosswalk
+                    rz = math.atan2(face.x, -face.y)     # local -y (glTF +Z front) onto face
+                    place["instances"].append({"asset": "ped_signal", "variant": None, "pos": [round(p.x, 2), round(p.y, 2), round(j["z"] + WALK_Z, 2)],
+                                               "rot": round(rz % (2 * math.pi), 5), "scale": [1, 1, 1], "district": "roads", "kind": "signal",
+                                               "file": "assets/props/ped_signal.glb", "junction": j["id"], "arm": a["index"]})
+                    j.setdefault("ped_signals", []).append({"arm": a["index"], "pos": [round(p.x, 2), round(p.y, 2), round(j["z"] + WALK_Z, 2)],
+                                                            "facing": [round(face.x, 4), round(face.y, 4)]})
+                    nped += 1
+    log(f"signals: {n} approach signals ({'props kit' if have else 'procedural'}), {nped} pedestrian signals")
