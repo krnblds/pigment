@@ -11,6 +11,7 @@ Everything is pieces, never one giant mesh:
     World_<district>  instances (kit meshes, towers, port kit, props) by district
     World_Lights      lamps, alley lights, masts, aviation lights
 """
+import json
 import math
 import os
 import random
@@ -234,6 +235,8 @@ def build(world, out, root, town, load_tool, region=None, log=print, trees=True,
                 vm = var_mats[mname]
             elif a.startswith(("tower_", "landmark_")) and ("facade_" + v) in KM:
                 vm = KM["facade_" + v]
+            elif data.name.startswith("PROP_"):
+                vm = prop_variant_material(props_dir, a, v, data, var_mats)
         if vm is not None:
             key = (data.name, vm.name)
             if key not in var_mesh:
@@ -335,6 +338,36 @@ def import_prop(props_dir, name):
         if o is not None:
             bpy.data.objects.remove(o)
     return me
+
+
+def prop_variant_material(props_dir, name, variant, me, cache):
+    """A props-kit variant (assets/props/index.json `variants`: albedo / emission swaps) as a copy
+    of the prop's material, e.g. the port containers' yard colours and the cranes' paints. None
+    when the prop has no such variant (the default look is used)."""
+    mname = f"PROP_{name}__{variant}"
+    if mname in cache:
+        return cache[mname]
+    idx = cache.get("_props_index")
+    if idx is None:
+        ip = os.path.join(props_dir, "index.json")
+        idx = cache["_props_index"] = json.load(open(ip, encoding="utf8")).get("props", {}) if os.path.isfile(ip) else {}
+    var = next((x for x in idx.get(name, {}).get("variants", []) if x.get("name") == variant and x.get("albedo")), None)
+    if var is None or not me.materials or me.materials[0] is None or not me.materials[0].use_nodes:
+        cache[mname] = None
+        return None
+    m = me.materials[0].copy()
+    m.name = mname
+    for n in m.node_tree.nodes:
+        if n.type != "TEX_IMAGE" or n.image is None:
+            continue
+        sock = {l.to_socket.name for l in n.outputs["Color"].links}
+        key = "albedo" if "Base Color" in sock else "emission" if any("Emission" in x for x in sock) else None
+        if key and var.get(key):
+            n.image = bpy.data.images.load(os.path.join(props_dir, var[key]), check_existing=True)
+            if key == "emission":
+                n.image.colorspace_settings.name = "sRGB"
+    cache[mname] = m
+    return m
 
 
 def sea_wall(w, H, T, mat):

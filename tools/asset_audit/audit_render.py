@@ -154,6 +154,7 @@ def load_item(it, keep):
             for m in bpy.data.materials:
                 m.use_fake_user = True
         me = KIT["kit"].get(it["key"])
+        me.use_fake_user = True          # the kit caches its meshes: keep them between items
         o = bpy.data.objects.new(it["key"], me)
         o.color = tuple(it.get("color", (0.4, 0.4, 0.4))) + (1.0,)
         bpy.context.scene.collection.objects.link(o)
