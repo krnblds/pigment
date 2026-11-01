@@ -456,7 +456,8 @@ def a_slots(parts):
         "posters_e": scatter_slot(shell, {"min": [3.7, 0.0, 1.2], "max": [4.3, 3.0, 4.6]}, seed=9, count=3),
         # ads (tools/make_ad_decals.py): the shop window's vinyl, a dense overlapping ad wall on the
         # blank back wall (clear of the pipes at x 0.9 / -3.55) and a second cluster on the west wall
-        "window": on_part("window", parts, (-2.0, 1.4, 4.43), (3.06, 1.86, 0.012), "+z", margin=0.1),
+        # vinyl on the shop glass (part at z 4.43), below the transom frame (bottom at y 1.99)
+        "window": on_wall("window", (-2.0, 1.24, 4.436), "+z", 2.6),
         "ads_back": scatter_slot(shell, {"min": [-3.0, 0.0, -5.3], "max": [0.3, 3.0, -4.7]}, seed=31, count=7, size=[0.5, 0.6], spacing=0.32),
         "ads_w": scatter_slot(shell, {"min": [-4.3, 0.0, 1.0], "max": [-3.7, 3.0, 4.4]}, seed=33, count=6, size=[0.5, 0.6], spacing=0.32),
     }
