@@ -929,6 +929,12 @@ impl Session {
         self.app.export(&self.rs);
         self.status().map_err(|e| format!("variant `{}`: {e}", v.name))?;
         let mut o = json!({ "name": v.name, "folder": folder, "seed": v.seed, "decals_replayed": painted, "emissive_scale": self.app.last_emissive_scale });
+        // sidecar for consumers (Blender): the emission map is normalised per
+        // variant, so its strength travels with it
+        let shown: Vec<Value> = self.app.doc.layers.iter().filter(|l| l.visible).flat_map(|l| l.variant.decals.iter().filter(|d| d.enabled)).map(|d| json!({ "name": d.name, "group": d.group, "image": d.args.get("image") })).collect();
+        let hidden: Vec<&str> = self.app.doc.layers.iter().filter(|l| !l.visible).map(|l| l.name.as_str()).collect();
+        let side = json!({ "asset": name, "variant": v.name, "seed": v.seed, "preset": preset, "emissive_scale": self.app.last_emissive_scale, "decals": shown, "hidden_layers": hidden });
+        std::fs::write(folder.join("variant.json"), serde_json::to_string_pretty(&side).unwrap_or_default()).map_err(|e| e.to_string())?;
         if let Some(p) = preview {
             let mut pa = p.clone();
             let path = match s(p, "dir") {
@@ -1074,5 +1080,72 @@ mod tests {
         assert!(everything > only_body + 1000, "whole model glows more than one part ({everything} vs {only_body})");
         let layers = s.layers();
         assert!(layers.to_string().contains("\"parts\":[]"));
+    }
+
+    /// Variants: seeded part subsets, decal enable/disable and image swaps
+    /// export as separate texture sets and leave the authored project intact.
+    #[test]
+    fn export_variants_makes_distinct_sets_and_restores_the_project() {
+        let Ok(mut s) = Session::new() else { return };
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        s.new_project(&json!({ "mesh": root.join("assets/ammo_box.glb"), "resolution": 512, "material": "Matte black" })).unwrap();
+        let n = s.list_parts().as_array().unwrap().len() as u64;
+        let all: Vec<u64> = (0..n).collect();
+        s.add_layer(&json!({ "name": "Glow", "material": "Neon green", "mask": { "parts": all }, "part_subset": { "from": 0.0, "to": 0.5, "salt": 3 } })).unwrap();
+        s.add_layer(&json!({ "kind": "paint", "name": "Signs" })).unwrap();
+        let decal = |img: &str| root.join("assets/decals").join(img);
+        s.project_decal(&json!({ "layer": "Signs", "image": decal("neon_open.png"), "rect": [0.25, 0.3, 0.75, 0.6], "tint": [1.0, 0.2, 0.7], "emissive_strength": 5.0, "variant": "shop" })).unwrap();
+        s.project_decal(&json!({ "layer": "Signs", "image": decal("neon_bar.png"), "rect": [0.25, 0.3, 0.75, 0.6], "tint": [0.2, 0.9, 1.0], "emissive_strength": 5.0, "variant": "shop", "enabled": false })).unwrap();
+        let layers = s.layers().to_string();
+        assert!(layers.contains("\"neon_bar\"") && layers.contains("\"part_subset\""), "{layers}");
+        let signs_res = s.app.doc.layers.iter().find(|l| l.name == "Signs").unwrap().paint_res().unwrap();
+        let signs_px = io::read_layer(&s.rs.device, &s.rs.queue, &s.app.ts, signs_res).unwrap();
+        let doc_before = s.app.doc.clone();
+
+        // a typo is an error and stores nothing
+        let bad = s.export_variants(&json!({ "dir": "x", "variants": [{ "name": "a", "enable": ["neon_baar"] }] }));
+        assert!(bad.unwrap_err().contains("neon_baar"));
+        assert!(s.app.doc.variants.defs.is_empty());
+
+        let out = std::env::temp_dir().join(format!("pigment-variants-{}", std::process::id()));
+        std::fs::remove_dir_all(&out).ok();
+        let r = s
+            .export_variants(&json!({ "dir": out, "name": "Box", "variants": [
+                { "name": "open", "seed": 1 },
+                { "name": "bar", "seed": 2, "disable": ["neon_open"], "enable": ["neon_bar"] },
+                { "name": "swapped", "seed": 1, "swaps": { "neon_open": { "image": decal("neon_ramen.png"), "tint": [1.0, 0.5, 0.1] } } },
+                { "name": "dark", "seed": 1, "disable": ["*", "Glow"] }
+            ], "preview": { "width": 160, "height": 120, "dir": out.join("previews") } }))
+            .unwrap();
+        assert_eq!(r["variants"].as_array().unwrap().len(), 4, "{r}");
+        let emis = |v: &str| image::open(out.join(format!("Box__{v}/Box_Emissive.png"))).unwrap().to_rgb8();
+        for v in ["open", "bar", "swapped", "dark"] {
+            assert!(out.join(format!("Box__{v}/Box_BaseColor.png")).exists(), "{v}");
+            assert!(out.join(format!("previews/Box__{v}.png")).exists(), "{v}");
+        }
+        let lit = |img: &image::RgbImage| img.pixels().filter(|p| p.0.iter().any(|&c| c > 40)).count();
+        let (open, bar, swapped, dark) = (emis("open"), emis("bar"), emis("swapped"), emis("dark"));
+        assert!(lit(&open) > 1000, "open glows");
+        assert_eq!(lit(&dark), 0, "everything off is dark");
+        assert_ne!(open, bar, "seed + decal switch change the emission");
+        assert_ne!(open, swapped, "image swap changes the emission");
+        // the replay reproduces the authored decal exactly: same seed, same decal
+        let again = s.export_variants(&json!({ "dir": out, "name": "Box", "only": ["open"] })).unwrap();
+        assert_eq!(again["variants"][0]["decals_replayed"], 0, "untouched layer isn't replayed");
+        assert_eq!(emis("open"), open);
+
+        // the authored project is untouched, and the definitions are stored
+        let mut doc_after = s.app.doc.clone();
+        assert_eq!(doc_after.variants.defs.len(), 4);
+        doc_after.variants.defs.clear();
+        doc_after.next_id = doc_before.next_id;
+        assert_eq!(doc_after, doc_before);
+        assert_eq!(io::read_layer(&s.rs.device, &s.rs.queue, &s.app.ts, signs_res).unwrap(), signs_px);
+        let dry = s.export_variants(&json!({ "dry_run": true })).unwrap();
+        assert_eq!(dry["variants"][1]["decals"][0][0], "neon_bar", "{dry}");
+        s.save_project(&json!({ "path": out.join("box.pigment") })).unwrap();
+        let manifest = std::fs::read_to_string(out.join("box.pigment/project.json")).unwrap();
+        assert!(manifest.contains("\"swapped\"") && manifest.contains("\"decals\""));
+        std::fs::remove_dir_all(out).ok();
     }
 }
