@@ -1,0 +1,14 @@
+schema_version = "1.0.0"
+
+id = "pigment_bridge"
+version = "1.0.0"
+name = "Pigment Bridge"
+tagline = "Live Pigment texture sets as Blender materials"
+maintainer = "Pigment"
+type = "add-on"
+blender_version_min = "4.2.0"
+license = ["SPDX:MIT"]
+tags = ["Material", "Import-Export"]
+
+[permissions]
+files = "Read Pigment texture folders and run pigment-mcp to export linked projects"

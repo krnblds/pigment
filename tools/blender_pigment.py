@@ -1,5 +1,10 @@
 """Apply Pigment's exported texture set to a Blender object (Blender 5.2, bpy).
 
+Thin compatibility wrapper over the Pigment Bridge add-on's shared module
+(tools/blender_addon/pigment_bridge/core.py), which does the real work. The
+add-on itself adds a UI panel, live reload, variants and mesh import; see
+docs/agents/blender-bridge/NOTES.md.
+
 Pigment's "separate" export preset writes, for base name N:
     N_BaseColor.png        sRGB
     N_Roughness.png        L8   (Non-Color)
@@ -10,11 +15,14 @@ Pigment's "separate" export preset writes, for base name N:
     N_Emissive.png         sRGB RGB, black = no emission (optional)
     N_Opacity.png          L8 alpha, 255 = solid, 0 = cut away (only when not solid)
     N_Transmission.png     L8, 255 = clear glass (only when the material has any)
+    material.json          sidecar: maps, emissive_scale, normal convention, resolution, project
+Other presets (unreal/unity/godot: packed ORM, DirectX normals, opacity in
+the base colour's alpha...) work too.
 
 Opacity drives the Principled BSDF's Alpha (cut-outs, partly see-through
 glass) and Transmission its Transmission Weight (refracting glass). The
 material is then switched to a see-through render method for EEVEE; Cycles
-needs no settings.
+needs no settings (`configure_see_through`).
 
 Usage inside Blender:
     exec(open(r".../tools/blender_pigment.py").read())
@@ -22,12 +30,13 @@ Usage inside Blender:
 or import it as a module if tools/ is on sys.path.
 """
 import os
+import sys
 
 import bpy
 
-__all__ = ["apply_pigment_material", "configure_see_through", "PIGMENT_MAPS"]
+__all__ = ["apply_pigment_material", "configure_see_through", "PIGMENT_MAPS", "pigment_core"]
 
-# key -> (file suffix, is_color)
+# key -> (file suffix, is_color) for the "separate" preset (kept for scripts that read it)
 PIGMENT_MAPS = {
     "BaseColor": ("_BaseColor.png", True),
     "Roughness": ("_Roughness.png", False),
@@ -41,238 +50,74 @@ PIGMENT_MAPS = {
 }
 
 
-def _colorspace_names():
-    try:
-        return [i.identifier for i in bpy.types.ColorManagedInputColorspaceSettings.bl_rna.properties["name"].enum_items]
-    except Exception:
-        return []
+def _addon_dir():
+    """tools/blender_addon, found from this file, the working dir, the .blend's folder or $PIGMENT_REPO."""
+    cands = []
+    f = globals().get("__file__")
+    if f:
+        cands.append(os.path.join(os.path.dirname(os.path.abspath(f)), "blender_addon"))
+    if os.environ.get("PIGMENT_REPO"):
+        cands.append(os.path.join(os.environ["PIGMENT_REPO"], "tools", "blender_addon"))
+    cands.append(os.path.join(os.getcwd(), "tools", "blender_addon"))
+    d = os.path.dirname(bpy.data.filepath) if bpy.data.filepath else ""
+    while d and os.path.dirname(d) != d:
+        cands.append(os.path.join(d, "tools", "blender_addon"))
+        d = os.path.dirname(d)
+    for c in cands:
+        if os.path.isfile(os.path.join(c, "pigment_bridge", "core.py")):
+            return c
+    return None
 
 
-def _set_colorspace(img, is_color):
-    """Set sRGB / Non-Color, tolerating OCIO-config naming differences."""
-    wanted = ("sRGB", "sRGB IEC61966-2.1", "srgb_tx") if is_color else ("Non-Color", "Raw", "Generic Data", "data")
-    for name in wanted:
-        try:
-            img.colorspace_settings.name = name
-            return name
-        except TypeError:
-            continue
-    avail = _colorspace_names()
-    key = "srgb" if is_color else "non-color"
-    for name in avail:
-        if key in name.lower():
-            img.colorspace_settings.name = name
-            return name
-    if not is_color:
-        img.colorspace_settings.is_data = True
-    return img.colorspace_settings.name
-
-
-def _sock(sockets, *names):
-    """Find a socket by name or identifier (first match among names)."""
-    for n in names:
-        for s in sockets:
-            if s.name == n or s.identifier == n:
-                if getattr(s, "enabled", True):
-                    return s
-    for n in names:
-        s = sockets.get(n)
-        if s is not None:
-            return s
-    raise KeyError(f"socket {names} not found in {[s.identifier for s in sockets]}")
-
-
-def _input(node, *names, kind=None):
-    """An input socket by name / identifier, else the first enabled one of `kind`
-    (socket type, e.g. "VALUE") whose name contains names[0]; None if absent."""
-    try:
-        return _sock(node.inputs, *names)
-    except KeyError:
+def _load_core():
+    try:  # installed as an extension or legacy add-on
+        import importlib
+        for mod in list(sys.modules):
+            if mod.endswith("pigment_bridge.core"):
+                return sys.modules[mod]
+        return importlib.import_module("pigment_bridge.core")
+    except ImportError:
         pass
-    key = names[0].lower().split()[0]
-    for s in node.inputs:
-        if (kind is None or s.type == kind) and key in s.name.lower() and getattr(s, "enabled", True):
-            return s
-    return None
+    d = _addon_dir()
+    if d is None:
+        raise ImportError("Pigment Bridge core not found: run from the repo root, set $PIGMENT_REPO, or install "
+                          "tools/blender_addon/pigment_bridge as an add-on")
+    if d not in sys.path:
+        sys.path.insert(0, d)
+    from pigment_bridge import core
+    return core
 
 
-def _set_enum(obj, prop, *wanted):
-    """Set an enum property to the first supported value; ignore if missing."""
-    if not hasattr(obj, prop):
-        return None
-    try:
-        items = [i.identifier for i in obj.bl_rna.properties[prop].enum_items]
-    except (KeyError, AttributeError):
-        items = []
-    for w in wanted:
-        if not items or w in items:
-            try:
-                setattr(obj, prop, w)
-                return w
-            except (TypeError, ValueError):
-                continue
-    return None
+pigment_core = _load_core()
+configure_see_through = pigment_core.configure_see_through
 
 
-def _set_attr(obj, prop, value):
-    if hasattr(obj, prop):
-        try:
-            setattr(obj, prop, value)
-            return True
-        except (TypeError, AttributeError, ValueError):
-            pass
-    return False
-
-
-def configure_see_through(mat, alpha=True, transmission=False):
-    """Material settings for cut-outs / glass (Blender 4.2+ EEVEE Next, 5.x).
-
-    Dithered is the 5.x default render method: it handles alpha cut-outs and
-    sorts correctly; refraction is on for transmissive glass (thin slab
-    panes). Blender's older blend_method / shadow_method are set only where
-    they still exist. Cycles reads the node tree directly.
-    """
-    if alpha or transmission:
-        _set_enum(mat, "surface_render_method", "DITHERED")
-        _set_enum(mat, "blend_method", "HASHED", "BLEND")           # pre-4.2
-        _set_enum(mat, "shadow_method", "HASHED")                   # pre-4.2
-        _set_attr(mat, "use_transparent_shadow", True)
-        _set_attr(mat, "use_backface_culling", False)
-    if transmission:
-        _set_attr(mat, "use_raytrace_refraction", True)             # 4.2+
-        _set_attr(mat, "use_screen_refraction", True)               # pre-4.2
-        _set_enum(mat, "thickness_mode", "SLAB")                    # window panes are thin
-        _set_attr(mat, "use_thickness_from_shadow", False)
-
-
-def _load_image(path, is_color):
-    abspath = os.path.abspath(path)
-    img = bpy.data.images.load(abspath, check_existing=True)
-    if img.filepath and os.path.exists(abspath):
-        img.reload()  # pick up a fresh export over an old cached image
-    _set_colorspace(img, is_color)
-    return img
-
-
-def apply_pigment_material(obj, folder, name, emission_strength=8.0, use_height=False, height_scale=0.01):
+def apply_pigment_material(obj, folder, name, emission_strength=None, use_height=False, height_scale=0.01):
     """Build material "Pigment_<name>" from Pigment's exported maps and assign it to obj.
 
-    Replaces all of obj's material slots with the new material. Returns the material.
+    Replaces all of obj's material slots with the new material (rebuilt in place
+    if it exists). `emission_strength=None` uses the exported emissive_scale
+    from material.json (8.0 when there is no sidecar); a number overrides it.
+    Returns the material.
     """
+    core = pigment_core
     if obj is None or obj.type != "MESH":
         raise TypeError("apply_pigment_material: obj must be a mesh object")
-
-    paths = {k: os.path.join(folder, f"{name}{suf}") for k, (suf, _) in PIGMENT_MAPS.items()}
-    have = {k: os.path.isfile(p) for k, p in paths.items()}
-    if not any(have.values()):
-        raise FileNotFoundError(f"no Pigment maps named '{name}_*.png' found in {folder}")
-
+    spec = core.discover(folder, name)
+    opts = {
+        "height_mode": "BUMP" if use_height else "NONE",
+        "bump_distance": float(height_scale),
+        "emission_override": 0.0,
+    }
+    if emission_strength is not None:
+        opts["emission_override"] = float(emission_strength)
+    elif not spec.get("sidecar") and not spec.get("variant_json"):
+        opts["emission_override"] = 8.0  # legacy default for exports without material.json / variant.json
+    uv = obj.data.uv_layers[0].name if len(obj.data.uv_layers) else ""
     mat_name = f"Pigment_{name}"
     mat = bpy.data.materials.get(mat_name) or bpy.data.materials.new(mat_name)
-    mat.use_nodes = True
-    nt = mat.node_tree
-    nt.nodes.clear()
-    nodes, links = nt.nodes, nt.links
-
-    out = nodes.new("ShaderNodeOutputMaterial")
-    out.location = (900, 300)
-    bsdf = nodes.new("ShaderNodeBsdfPrincipled")
-    bsdf.location = (500, 300)
-    links.new(_sock(bsdf.outputs, "BSDF"), _sock(out.inputs, "Surface"))
-
-    # UV: first UV map on the mesh
-    uv_layers = obj.data.uv_layers
-    uv_name = uv_layers[0].name if len(uv_layers) else ""
-    uvn = nodes.new("ShaderNodeUVMap")
-    uvn.location = (-900, 300)
-    uvn.uv_map = uv_name
-
-    tex = {}
-    order = ["BaseColor", "AO", "Metallic", "Roughness", "Emissive", "Opacity", "Transmission", "Normal", "Height"]
-    y = 800
-    for key in order:
-        if not have[key]:
-            continue
-        if key == "Height" and not use_height:
-            continue
-        is_color = PIGMENT_MAPS[key][1]
-        n = nodes.new("ShaderNodeTexImage")
-        n.name = n.label = f"Pigment {key}"
-        n.image = _load_image(paths[key], is_color)
-        n.interpolation = "Linear"
-        n.location = (-550, y)
-        y -= 300
-        links.new(_sock(uvn.outputs, "UV"), _sock(n.inputs, "Vector"))
-        tex[key] = n
-
-    # Base colour (optionally x AO)
-    if "BaseColor" in tex:
-        col_out = _sock(tex["BaseColor"].outputs, "Color")
-        if "AO" in tex:
-            mix = nodes.new("ShaderNodeMix")
-            mix.name = mix.label = "AO Multiply"
-            mix.data_type = "RGBA"
-            mix.blend_type = "MULTIPLY"
-            mix.clamp_result = True
-            mix.location = (-150, 800)
-            _sock(mix.inputs, "Factor_Float", "Factor").default_value = 0.5
-            links.new(col_out, _sock(mix.inputs, "A_Color"))
-            links.new(_sock(tex["AO"].outputs, "Color"), _sock(mix.inputs, "B_Color"))
-            col_out = _sock(mix.outputs, "Result_Color")
-        links.new(col_out, _sock(bsdf.inputs, "Base Color"))
-
-    if "Metallic" in tex:
-        links.new(_sock(tex["Metallic"].outputs, "Color"), _sock(bsdf.inputs, "Metallic"))
-    if "Roughness" in tex:
-        links.new(_sock(tex["Roughness"].outputs, "Color"), _sock(bsdf.inputs, "Roughness"))
-
-    if "Emissive" in tex:
-        links.new(_sock(tex["Emissive"].outputs, "Color"), _sock(bsdf.inputs, "Emission Color"))
-        _sock(bsdf.inputs, "Emission Strength").default_value = float(emission_strength)
-
-    # Opacity -> Alpha, Transmission -> Transmission Weight (looked up by
-    # name, then by type, so a renamed socket in a later Blender still wires)
-    if "Opacity" in tex:
-        a = _input(bsdf, "Alpha", kind="VALUE")
-        if a is not None:
-            links.new(_sock(tex["Opacity"].outputs, "Color"), a)
-    if "Transmission" in tex:
-        t = _input(bsdf, "Transmission Weight", "Transmission", kind="VALUE")
-        if t is not None:
-            links.new(_sock(tex["Transmission"].outputs, "Color"), t)
-        ior = _input(bsdf, "IOR", kind="VALUE")
-        if ior is not None:
-            ior.default_value = 1.5
-    configure_see_through(mat, alpha="Opacity" in tex, transmission="Transmission" in tex)
-
-    normal_out = None
-    if "Normal" in tex:
-        nm = nodes.new("ShaderNodeNormalMap")
-        nm.space = "TANGENT"
-        nm.uv_map = uv_name
-        nm.location = (-150, tex["Normal"].location.y)
-        # OpenGL convention matches Blender: no green flip needed.
-        links.new(_sock(tex["Normal"].outputs, "Color"), _sock(nm.inputs, "Color"))
-        normal_out = _sock(nm.outputs, "Normal")
-
-    if "Height" in tex:
-        bump = nodes.new("ShaderNodeBump")
-        bump.location = (150, tex["Height"].location.y)
-        _sock(bump.inputs, "Strength").default_value = 1.0
-        _sock(bump.inputs, "Distance").default_value = float(height_scale)
-        links.new(_sock(tex["Height"].outputs, "Color"), _sock(bump.inputs, "Height"))
-        if normal_out is not None:
-            links.new(normal_out, _sock(bump.inputs, "Normal"))
-        normal_out = _sock(bump.outputs, "Normal")
-
-    if normal_out is not None:
-        links.new(normal_out, _sock(bsdf.inputs, "Normal"))
-
-    # replace all material slots with this one
-    me = obj.data
-    me.materials.clear()
-    me.materials.append(mat)
-    if len(me.polygons):
-        me.polygons.foreach_set("material_index", [0] * len(me.polygons))
-        me.update()
+    core.build_material(spec, mat, opts, uv)
+    core.assign(obj, mat)
+    obj["pigment_source"] = spec["folder"]
+    obj["pigment_folder"] = spec["folder"]
     return mat

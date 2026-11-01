@@ -4,6 +4,7 @@
 //! without a graphics device. The renderer in `pigment` mirrors this state.
 
 pub mod blend;
+pub mod bridge;
 pub mod camera;
 pub mod curvature;
 pub mod document;
