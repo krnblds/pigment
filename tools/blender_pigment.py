@@ -103,12 +103,14 @@ pigment_core = _load_core()
 configure_see_through = pigment_core.configure_see_through
 
 
-def apply_pigment_material(obj, folder, name, emission_strength=None, use_height=False, height_scale=0.01, flake=True):
+def apply_pigment_material(obj, folder, name, emission_strength=None, use_height=False, height_scale=0.01, flake=True, interiors=None):
     """Build material "Pigment_<name>" from Pigment's exported maps and assign it to obj.
 
     Replaces all of obj's material slots with the new material (rebuilt in place
     if it exists). `emission_strength=None` uses the exported emissive_scale
     from material.json (8.0 when there is no sidecar); a number overrides it.
+    `interiors="building_a"` (a kit asset) adds interior-mapped rooms behind its glass panes
+    (tools/interiors/blender_interiors.py; needs the interior atlas and window maps).
     Returns the material.
     """
     core = pigment_core
@@ -132,4 +134,10 @@ def apply_pigment_material(obj, folder, name, emission_strength=None, use_height
     core.assign(obj, mat)
     obj["pigment_source"] = spec["folder"]
     obj["pigment_folder"] = spec["folder"]
+    if interiors:
+        d = os.path.join(os.path.dirname(os.path.abspath(globals().get("__file__", os.path.join(os.getcwd(), "tools", "x")))), "interiors")
+        if d not in sys.path:
+            sys.path.insert(0, d)
+        import blender_interiors
+        blender_interiors.add_interiors(mat, interiors, folder)
     return mat
