@@ -126,7 +126,7 @@ pub fn pane_frames(mesh: &Mesh, parts: &Parts, ids: &[u32], outward_from: Vec3, 
         for &t in list {
             let [a, b, cc] = tri(t).map(pos);
             let fn_ = (b - a).cross(cc - a);
-            if fn_.length() < 1e-9 || fn_.normalize().dot(n).abs() < 0.9 {
+            if fn_.length() < 1e-9 || fn_.normalize().dot(n) < 0.9 {
                 continue;
             }
             for v in tri(t) {
