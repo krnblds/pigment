@@ -310,7 +310,7 @@ pub fn write_part_map(path: &Path, map: &[u16], res: u32) -> Result<()> {
 
 /// Colour grade applied to a room (in linear light).
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
-#[serde(default)]
+#[serde(default, deny_unknown_fields)]
 pub struct Grade {
     /// Stops.
     pub exposure: f32,
