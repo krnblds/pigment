@@ -938,3 +938,155 @@ def check_reload(force=False, watch_projects=False, exe=None):
 def forget_seen():
     """Drop the in-memory cache (on file load: the stored signatures are used)."""
     _seen.clear()
+
+
+# ------------------------------------------------------------------ city build events (tools/city)
+#
+# `python -m tools.city build|watch` appends one JSON object per line to a queue file
+# (<repo>/.citycache/blender_events.jsonl, or $CITY_BLENDER_EVENTS):
+#     {"type": "texture_folder", "path": ".../scenes/town/textures/building_a__soba"}
+#     {"type": "mesh", "path": ".../assets/town/building_a.glb"}
+# The add-on's timer calls check_city_events(): texture folders rebuild the Pigment materials
+# that use them; a mesh event re-imports the glb and swaps the mesh data of every object linked
+# to it with link_city_mesh() (materials kept). Only events written after the first check are
+# applied (an old queue is not replayed).
+
+_city = {"path": None, "offset": None}
+
+
+def city_queue_path():
+    p = os.environ.get("CITY_BLENDER_EVENTS")
+    if p:
+        return p
+    here = os.path.dirname(os.path.abspath(__file__))
+    repo = os.path.dirname(os.path.dirname(os.path.dirname(here)))        # tools/blender_addon/pigment_bridge
+    return os.path.join(repo, ".citycache", "blender_events.jsonl")
+
+
+def _norm(p):
+    return os.path.normcase(os.path.normpath(_abs(p)))
+
+
+def link_city_mesh(obj, path):
+    """Mark an object as built from a city glb, so mesh events replace its mesh data."""
+    obj["city_source"] = os.path.normpath(_abs(path))
+
+
+def replace_mesh(path):
+    """Re-import `path` and give its geometry to every object linked to it. Returns the object names."""
+    want = _norm(path)
+    users = [o for o in bpy.data.objects if o.type == "MESH" and o.get("city_source") and _norm(o["city_source"]) == want]
+    if not users or not os.path.isfile(path):
+        return []
+    before = set(bpy.data.objects)
+    bpy.ops.import_scene.gltf(filepath=path)
+    new = [o for o in bpy.data.objects if o not in before]
+    meshes = [o for o in new if o.type == "MESH" and not o.name.startswith("Collider")]
+    if not meshes:
+        for o in new:
+            bpy.data.objects.remove(o)
+        return []
+    for o in bpy.context.view_layer.objects:
+        o.select_set(False)
+    for o in meshes:
+        o.select_set(True)
+    bpy.context.view_layer.objects.active = meshes[0]
+    if len(meshes) > 1:
+        bpy.ops.object.join()
+    src = bpy.context.view_layer.objects.active
+    bpy.ops.object.parent_clear(type="CLEAR_KEEP_TRANSFORM")
+    bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+    fresh = src.data
+    done = []
+    for o in users:
+        old = o.data
+        me = fresh.copy()
+        me.name = old.name
+        mats = [s.material for s in o.material_slots]
+        links = [s.link for s in o.material_slots]
+        o.data = me
+        for i, m in enumerate(mats):
+            if i < len(o.material_slots):
+                o.material_slots[i].link = links[i]
+                o.material_slots[i].material = m
+            else:
+                me.materials.append(m)
+        if old.users == 0:
+            bpy.data.meshes.remove(old)
+        done.append(o.name)
+    names = set()
+    for o in new:
+        try:
+            names.add(o.name)
+        except ReferenceError:
+            pass
+    for nm in names:
+        ob = bpy.data.objects.get(nm)
+        if ob is not None:
+            bpy.data.objects.remove(ob)
+    if fresh.users == 0:
+        bpy.data.meshes.remove(fresh)
+    return done
+
+
+def reload_folder(folder):
+    """Rebuild every Pigment material that reads `folder`. Returns the material names."""
+    want = _norm(folder)
+    out = []
+    for mat in pigment_materials():
+        if _norm(mat["pigment_folder"]) != want:
+            continue
+        try:
+            spec = discover(mat["pigment_folder"], mat["pigment_name"])
+        except FileNotFoundError:
+            continue
+        uv = ""
+        nm = next((n for n in mat.node_tree.nodes if n.type == "UV_MAP"), None)
+        if nm is not None:
+            uv = nm.uv_map
+        build_material(spec, mat, None, uv)
+        for n in mat.node_tree.nodes:
+            if n.type == "TEX_IMAGE" and n.image is not None:
+                n.image.reload()
+        _seen[mat.name] = signature(spec)
+        out.append(mat.name)
+    return out
+
+
+def check_city_events(path=None):
+    """Apply new city build events. Returns {"events", "materials", "objects"}."""
+    path = path or city_queue_path()
+    if _city["path"] != path:
+        _city.update(path=path, offset=None)
+    if not os.path.isfile(path):
+        if _city["offset"] is None:
+            _city["offset"] = 0
+        return {"events": 0, "materials": [], "objects": []}
+    size = os.path.getsize(path)
+    if _city["offset"] is None:          # first look: start at the end
+        _city["offset"] = size
+        return {"events": 0, "materials": [], "objects": []}
+    if size < _city["offset"]:           # truncated / recreated
+        _city["offset"] = 0
+    if size == _city["offset"]:
+        return {"events": 0, "materials": [], "objects": []}
+    with open(path, "rb") as f:
+        f.seek(_city["offset"])
+        data = f.read()
+    end = data.rfind(b"\n")
+    if end < 0:
+        return {"events": 0, "materials": [], "objects": []}
+    _city["offset"] += end + 1
+    mats, objs, n = [], [], 0
+    for line in data[:end].decode("utf-8", "replace").splitlines():
+        try:
+            e = json.loads(line)
+        except ValueError:
+            continue
+        n += 1
+        if e.get("type") == "texture_folder":
+            mats += reload_folder(e["path"])
+        elif e.get("type") == "mesh":
+            objs += replace_mesh(e["path"])
+    last_report.update(time=time.time(), city_events=n, city_materials=mats, city_objects=objs)
+    return {"events": n, "materials": mats, "objects": objs}
