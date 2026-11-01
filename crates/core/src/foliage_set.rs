@@ -542,16 +542,18 @@ pub fn grow_ivy(grid: &TriGrid, starts: &[(Vec3, Vec3)], leaf: (u16, &FoliageCel
     }
     let step = o.step.max(0.005);
     let search = step * 1.6;
-    // (position, normal, direction, length budget)
-    let mut queue: Vec<(Vec3, Vec3, Vec3, f32)> = Vec::new();
+    // (position, normal, direction, length budget, up-bias scale)
+    // FIFO: every start's main strand grows before the branches, so each start gets its share
+    let mut queue: std::collections::VecDeque<(Vec3, Vec3, Vec3, f32, f32)> = Default::default();
     for &(p, n) in starts {
         let Some((q, nq)) = grid.closest(p, 0.5) else { continue };
         let n = if nq.dot(n) < 0.0 && n.length_squared() > 0.0 { nq } else { nq };
-        queue.push((q, n, up_tangent(n), o.length));
+        queue.push_back((q, n, up_tangent(n), o.length, 1.0));
     }
     let place_opts = PlaceOpts { scale: o.leaf_scale, rotation_jitter: 60.0, ..Default::default() };
-    while let Some((mut p, mut n, mut dir, budget)) = queue.pop() {
-        if res.strands >= o.max_strands {
+    let max_strands = o.max_strands * queue.len().max(1);
+    while let Some((mut p, mut n, mut dir, budget, bias)) = queue.pop_front() {
+        if res.strands >= max_strands {
             break;
         }
         res.strands += 1;
@@ -562,7 +564,9 @@ pub fn grow_ivy(grid: &TriGrid, starts: &[(Vec3, Vec3)], leaf: (u16, &FoliageCel
             let up_t = up_tangent(n);
             let rnd = (Vec3::new(rng.range(-1.0, 1.0), rng.range(-1.0, 1.0), rng.range(-1.0, 1.0)) - n * 0.0).normalize_or(Vec3::X);
             let rnd = (rnd - n * rnd.dot(n)).normalize_or(up_t);
-            let mut d = (dir * 0.65 + up_t * o.up_bias + rnd * o.wander).normalize_or(up_t);
+            // side branches first spread sideways, then turn upwards
+            let ub = o.up_bias * (bias + (1.0 - bias) * (walked / budget.max(1e-3)).min(1.0));
+            let mut d = (dir * 0.75 + up_t * ub + rnd * o.wander).normalize_or(up_t);
             d = (d - n * d.dot(n)).normalize_or(up_t);
             // stay on the surface: step, then snap back; round convex corners
             let guess = p + d * step + n * step * 0.25;
@@ -598,9 +602,9 @@ pub fn grow_ivy(grid: &TriGrid, starts: &[(Vec3, Vec3)], leaf: (u16, &FoliageCel
                 res.instances.push(inst);
             }
             // branch
-            if rng.f32() < o.branching * len && res.strands + queue.len() < o.max_strands {
-                let a = if rng.f32() < 0.5 { -1.0 } else { 1.0 } * rng.range(0.5, 1.1);
-                queue.push((q, nq, rotate(d, nq, a), (budget - walked) * rng.range(0.35, 0.65)));
+            if rng.f32() < o.branching * len && res.strands + queue.len() < max_strands {
+                let a = if rng.f32() < 0.5 { -1.0 } else { 1.0 } * rng.range(0.7, 1.4);
+                queue.push_back((q, nq, rotate(d, nq, a), (budget - walked) * rng.range(0.35, 0.7), 0.15));
             }
             walked += len;
             res.length += len;

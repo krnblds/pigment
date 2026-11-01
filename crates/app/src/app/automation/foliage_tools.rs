@@ -253,7 +253,7 @@ impl Session {
 
     /// Bark on a seamless tile: a generated paint layer above the base.
     pub fn add_bark(&mut self, a: &Value) -> Res<Value> {
-        if self.app.doc.tile.is_none() {
+        if self.app.doc.tile.as_ref().is_none_or(|t| t.kind != pigment_core::tile::SheetKind::Tile) {
             return Err("add_bark needs a seamless tile project: new_project {tile: {size_m: [1, 2]}}".into());
         }
         let style = s(a, "style").unwrap_or("fissured");
@@ -597,5 +597,154 @@ impl Session {
             "builtin_cells": builtin,
             "bark_styles": fol::BarkStyle::ALL.map(|b| b.id()),
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn session() -> Option<Session> {
+        Session::new().ok()
+    }
+
+    /// Mean colour (rgb) and coverage of the opaque texels of atlas cell `cell`.
+    fn cell_stats(s: &mut Session, cell: usize) -> [f32; 4] {
+        s.settle();
+        let m = crate::render::io::read_material(&s.rs.device, &s.rs.queue, &s.app.ts);
+        let uv = s.app.doc.tile.as_ref().unwrap().cells[cell].uv;
+        let r = pigment_core::foliage::cell_rect(uv, m.size);
+        let (mut acc, mut n) = ([0.0f32; 3], 0.0f32);
+        for y in r[1]..r[3] {
+            for x in r[0]..r[2] {
+                let k = ((y * m.size + x) * 4) as usize;
+                if m.color[k + 3] > 200 {
+                    for c in 0..3 {
+                        acc[c] += m.color[k + c] as f32;
+                    }
+                    n += 1.0;
+                }
+            }
+        }
+        let area = ((r[2] - r[0]) * (r[3] - r[1])) as f32;
+        [acc[0] / n.max(1.0), acc[1] / n.max(1.0), acc[2] / n.max(1.0), n / area]
+    }
+
+    #[test]
+    fn foliage_atlas_cells_generate_update_undo_and_export() {
+        let _gpu = gpu_lock();
+        let Some(mut s) = session() else { return };
+        let r = s
+            .new_project(&json!({ "resolution": 512, "foliage_atlas": { "name": "T", "cells": [
+                { "name": "maple", "preset": "maple_leaf", "size_m": 0.1 },
+                { "name": "grass", "preset": "grass" },
+                { "name": "custom", "shape": "lanceolate", "arrangement": "twig", "count": 5, "serration": 0.6, "size_m": [0.2, 0.3] } ] } }))
+            .unwrap();
+        assert_eq!(r["cells"].as_array().unwrap().len(), 3);
+        let out = std::env::temp_dir().join(format!("pigment-foliage-atlas-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&out);
+        let green = cell_stats(&mut s, 0);
+        assert!(green[1] > green[0] && green[3] > 0.1 && green[3] < 0.95, "maple is a green leaf shape: {green:?}");
+        // autumn turns that cell red; undo brings it back
+        s.update_foliage_cell(&json!({ "cell": "maple", "autumn": 1.0, "autumn_jitter": 0.0 })).unwrap();
+        let red = cell_stats(&mut s, 0);
+        assert!(red[0] > red[1] * 1.3, "autumn maple: {red:?}");
+        s.undo(false).unwrap();
+        let back = cell_stats(&mut s, 0);
+        assert!((back[0] - green[0]).abs() < 2.0 && (back[1] - green[1]).abs() < 2.0, "undo restores the cell: {back:?} vs {green:?}");
+        assert!(s.update_foliage_cell(&json!({ "cell": "nope", "autumn": 1.0 })).is_err());
+        assert!(s.update_foliage_cell(&json!({ "cell": 0, "shape": "triangle" })).is_err());
+        // export: translucency, thickness, godot backlight and the atlas json
+        let r = s.export_textures(&json!({ "dir": out, "preset": "godot", "name": "T" })).unwrap();
+        for f in ["T_BaseColorAlpha.png", "T_Translucency.png", "T_Thickness.png", "T_backlight.png", "T_foliage.json"] {
+            assert!(out.join(f).exists(), "{f}: {r}");
+        }
+        let meta: Value = serde_json::from_str(&std::fs::read_to_string(out.join("T_foliage.json")).unwrap()).unwrap();
+        assert_eq!(meta["cells"][2]["name"], "custom");
+        // add a cell: repacked, the new cell gets drawn
+        s.add_foliage_cell(&json!({ "name": "ivy", "preset": "ivy_leaf" })).unwrap();
+        assert_eq!(s.app.doc.tile.as_ref().unwrap().cells.len(), 4);
+        assert!(cell_stats(&mut s, 3)[3] > 0.1);
+        // save + reopen keeps the generated pixels without redrawing
+        let proj = out.join("t.pigment");
+        s.save_project(&json!({ "path": proj })).unwrap();
+        s.open_project(&json!({ "path": proj })).unwrap();
+        assert_eq!(s.app.foliage.generated.len(), 1);
+        assert!(cell_stats(&mut s, 3)[3] > 0.1);
+        // bark needs a tile project
+        assert!(s.add_bark(&json!({ "style": "plated" })).is_err());
+        s.new_project(&json!({ "resolution": 512, "tile": { "size_m": [1, 1] } })).unwrap();
+        s.add_bark(&json!({ "style": "plated", "seed": 3 })).unwrap();
+        s.settle();
+        let m = crate::render::io::read_material(&s.rs.device, &s.rs.queue, &s.app.ts);
+        let spread = m.height.iter().map(|v| *v as i64).max().unwrap() - m.height.iter().map(|v| *v as i64).min().unwrap();
+        assert!(spread > 4000, "bark has relief: {spread}");
+        let _ = std::fs::remove_dir_all(&out);
+    }
+
+    #[test]
+    fn foliage_layers_scatter_paint_ivy_undo_save_and_export() {
+        let _gpu = gpu_lock();
+        let Some(mut s) = session() else { return };
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        s.new_project(&json!({ "mesh": root.join("assets/town/building_a.glb"), "resolution": 512 })).unwrap();
+        // grass only on up-facing surfaces
+        let r = s.scatter_foliage(&json!({ "cells": ["grass"], "count": 200, "facing": "up", "seed": 1 })).unwrap();
+        assert_eq!(r["placed"], 200, "{r}");
+        let li = s.app.doc.layers.iter().position(|l| l.is_foliage()).unwrap();
+        assert!(s.app.doc.layers[li].foliage().unwrap().instances.iter().all(|i| i.y[1] > 0.0), "grass stands up");
+        // a layer's generator mask limits where moss goes
+        s.add_layer(&json!({ "name": "Moss", "values": { "base_color": [0.2, 0.3, 0.1] }, "mask": { "generator": "moss", "amount": 0.3 } })).unwrap();
+        let mossy = s.scatter_foliage(&json!({ "cells": ["moss"], "count": 100, "facing": "any", "mask": "Moss", "seed": 2, "layer": "Mossy" })).unwrap();
+        assert!(mossy["placed"].as_u64().unwrap() > 20, "{mossy}");
+        let mi = s.app.doc.layers.iter().position(|l| l.name == "Mossy").unwrap();
+        let ups: Vec<f32> = s.app.doc.layers[mi].foliage().unwrap().instances.iter().map(|i| i.y[1] / i.y[0].hypot(i.y[1]).hypot(i.y[2])).collect();
+        // the moss generator grows on ledges: masked moss stands mostly upright
+        assert!(ups.iter().filter(|u| **u > 0.5).count() as f32 > ups.len() as f32 * 0.8, "{ups:?}");
+        // inline generator mask + AO crevices
+        s.scatter_foliage(&json!({ "cells": ["weed"], "count": 30, "mask": { "generator": "moss", "amount": 0.4 }, "ao": [0, 0.9], "seed": 5, "layer": "Weeds" })).unwrap();
+        // a camera brush stroke, then erase it; each is one undo step
+        let li = s.app.doc.layers.iter().position(|l| l.is_foliage() && l.name == "Foliage").unwrap();
+        let before = s.app.doc.layers[li].foliage().unwrap().instances.len();
+        let p = s.paint_foliage(&json!({ "points": [[0.4, 0.5], [0.6, 0.5]], "yaw": 90, "pitch": 5, "zoom": 2, "cells": ["ivy_leaf"], "radius": 0.5, "density": 30, "layer": "Foliage" })).unwrap();
+        let added = p["added"].as_u64().unwrap() as usize;
+        assert!(added > 10, "{p}");
+        assert_eq!(s.app.doc.layers[li].foliage().unwrap().instances.len(), before + added);
+        s.undo(false).unwrap();
+        assert_eq!(s.app.doc.layers[li].foliage().unwrap().instances.len(), before);
+        s.undo(true).unwrap();
+        let e = s.paint_foliage(&json!({ "points": [[0.4, 0.5], [0.6, 0.5]], "yaw": 90, "pitch": 5, "zoom": 2, "erase": true, "radius": 0.6, "cells": ["ivy_leaf"], "layer": "Foliage" })).unwrap();
+        assert!(e["removed"].as_u64().unwrap() as usize >= added * 9 / 10, "{e}");
+        // ivy climbs the +X wall
+        let ivy = s.grow_ivy(&json!({ "start": [[4.4, 0.2, 0.5]], "length": 3, "seed": 2, "layer": "Ivy" })).unwrap();
+        assert!(ivy["highest_y"].as_f64().unwrap() > 1.5, "{ivy}");
+        assert!(ivy["strands"].as_u64().unwrap() > 1);
+        // the viewport draws the cards
+        s.settle();
+        assert!(s.app.viewport.foliage.card_count() > 300);
+        // save / reopen keeps the layers
+        let out = std::env::temp_dir().join(format!("pigment-foliage-layers-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&out);
+        let n_all: usize = s.app.doc.layers.iter().filter_map(|l| l.foliage()).map(|f| f.instances.len()).sum();
+        s.save_project(&json!({ "path": out.join("b.pigment") })).unwrap();
+        s.open_project(&json!({ "path": out.join("b.pigment") })).unwrap();
+        let n_back: usize = s.app.doc.layers.iter().filter_map(|l| l.foliage()).map(|f| f.instances.len()).sum();
+        assert_eq!(n_all, n_back);
+        // export: glb + instances + maps + sidecar
+        let x = s.export_foliage(&json!({ "dir": out.join("exp"), "name": "b" })).unwrap();
+        for f in ["b_foliage.glb", "b_foliage_instances.json", "b_foliage_BaseColorAlpha.png", "b_foliage_Translucency.png", "material.json"] {
+            assert!(out.join("exp").join(f).exists(), "{f}: {x}");
+        }
+        let inst: Value = serde_json::from_str(&std::fs::read_to_string(out.join("exp/b_foliage_instances.json")).unwrap()).unwrap();
+        let total: u64 = inst["groups"].as_array().unwrap().iter().map(|g| g["count"].as_u64().unwrap()).sum();
+        assert_eq!(total as usize, n_back);
+        let glb = pigment_core::Mesh::load(&out.join("exp/b_foliage.glb")).unwrap();
+        assert!(glb.triangle_count() >= n_back * 2);
+        let side: Value = serde_json::from_str(&std::fs::read_to_string(out.join("exp/material.json")).unwrap()).unwrap();
+        assert_eq!(side["materials"]["b_foliage"]["kind"], "foliage");
+        // bad args name the problem
+        assert!(s.scatter_foliage(&json!({ "cells": ["nope"] })).unwrap_err().contains("nope"));
+        assert!(s.scatter_foliage(&json!({ "facing": "sideways" })).is_err());
+        let _ = std::fs::remove_dir_all(&out);
     }
 }
