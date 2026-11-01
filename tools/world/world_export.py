@@ -39,9 +39,14 @@ def export(world, built, out, root, dest, log):
     sp = world.get("spawn")
     spawn = {"pos": gpos(sp["pos"]), "dir": gpos((sp["dir"][0], sp["dir"][1], 0.0))} if sp else None
     # lights are exported from the scene's light objects (World_Lights)
+    # tools/city: $CITY_EXPORT_HOOK names a script whose make_writer() skips unchanged glbs (incremental export)
+    hook = {}
+    if os.environ.get("CITY_EXPORT_HOOK"):
+        exec(compile(open(os.environ["CITY_EXPORT_HOOK"], encoding="utf-8").read(), os.environ["CITY_EXPORT_HOOK"], "exec"), hook)
+    writer = hook["make_writer"](dest, ns, log) if hook else None
     layout = ns["export_layout"](bpy.data.collections["World"], dest, roads, juncs, spawn,
                                  {"world": world["name"], "buildings": sum(1 for i in world["instances"] if i.get("kind") == "building")},
-                                 t0, name="world_layout.json")
+                                 t0, name="world_layout.json", write_mesh=writer)
     # terrain LODs (8 m and 32 m cells) per chunk
     T = world["terrain"]
     H = built["H"]
@@ -56,13 +61,19 @@ def export(world, built, out, root, dest, log):
             me = WM.terrain_chunk(f"Terrain_{ch['id']}_lod{cell_m:g}", H, T["origin"][0], T["cell_m"], ch["ix"] * per, ch["iy"] * per, per, step)
             if tmat:
                 me.materials.append(tmat)
-            ns["export_mesh"](me, os.path.join(lod_dir, f"{ch['id']}_{cell_m:g}m.glb"))
+            lod_path = os.path.join(lod_dir, f"{ch['id']}_{cell_m:g}m.glb")
+            if writer:
+                writer(f"terrain_lod/{ch['id']}_{cell_m:g}m", me, lod_path)
+            else:
+                ns["export_mesh"](me, lod_path)
             bpy.data.meshes.remove(me)
             n_lod += 1
     for fn in ("world.json", T["heightfield"], "masks_urban.npy"):
         p = os.path.join(out, fn)
         if os.path.isfile(p):
             shutil.copyfile(p, os.path.join(dest, fn))
+    if hook.get("finish"):
+        hook["finish"]()
     log(f"export: {len(layout['meshes'])} meshes, {len(layout['instances'])} instances, {n_lod} terrain LOD chunks -> {dest} ({time.time() - t0:.0f} s)")
     if "--pack" in __import__("sys").argv:
         ns["pack"](dest)

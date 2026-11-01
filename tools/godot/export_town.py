@@ -308,10 +308,11 @@ def main():
         pack(OUT)
 
 
-def export_layout(coll, OUT, roads, juncs, spawn, stats, t0=None, name="town_layout.json", extra=None):
+def export_layout(coll, OUT, roads, juncs, spawn, stats, t0=None, name="town_layout.json", extra=None, write_mesh=None):
     """Write every object of `coll` (and its children) as mesh glbs + instances
     into OUT/meshes and OUT/<name>. Shared mesh data -> one glb. Also used
-    by tools/world/world_export.py for the open world."""
+    by tools/world/world_export.py for the open world.
+    write_mesh(key, mesh, path): optional replacement for export_mesh (tools/city: skip unchanged glbs)."""
     t0 = t0 or time.time()
     os.makedirs(os.path.join(OUT, "meshes"), exist_ok=True)
     images_out = os.path.join(OUT, "images")
@@ -368,7 +369,10 @@ def export_layout(coll, OUT, roads, juncs, spawn, stats, t0=None, name="town_lay
                     me.materials.append(m)
         if key not in meshes:
             path = os.path.join(OUT, "meshes", key + ".glb")
-            export_mesh(me, path)
+            if write_mesh:
+                write_mesh(key, me, path)
+            else:
+                export_mesh(me, path)
             used = sorted({p.material_index for p in me.polygons})
             surfaces = [mat_entry(me.materials[i] if i < len(me.materials) else None) for i in used]
             lo = Vector((min(v.co.x for v in me.vertices), min(v.co.y for v in me.vertices), min(v.co.z for v in me.vertices)))

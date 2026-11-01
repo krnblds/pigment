@@ -189,4 +189,5 @@ def no_mesh_lods(layout):
     print(f"mesh LODs off for {n} terrain / road / bridge meshes (re-import to apply)")
 
 
-main()
+if __name__ == "__main__":     # tools/city imports pack() for one folder at a time
+    main()
