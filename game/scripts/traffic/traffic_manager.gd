@@ -213,6 +213,20 @@ func _random_road_spot() -> Array:
 	return [l, rng.randf_range(4.0, l.length - 8.0)]
 
 
+## A random road-lane spot in the ring [rmin, rmax] around p (spatial grid; big worlds).
+func _spot_near(p: Vector3, rmin: float, rmax: float) -> Array:
+	for k in 6:
+		var a := rng.randf() * TAU
+		var r := sqrt(rng.randf_range(rmin * rmin, rmax * rmax))
+		var q := p + Vector3(cos(a) * r, 0.0, sin(a) * r)
+		var hit: Array = graph.nearest(q, 20.0, true)
+		if hit[0] >= 0:
+			var l = graph.lanes[hit[0]]
+			if l.length > 20.0:
+				return [l, clampf(hit[1], 4.0, l.length - 8.0)]
+	return []
+
+
 func _lane_free(l, s: float, gap: float) -> bool:
 	for c in occ.get(l.id, []):
 		if absf(c.s - s) < gap:
@@ -229,9 +243,12 @@ func _fill(initial: bool) -> void:
 	var want := target - active.filter(func(c): return not c.patrol).size()
 	var tries := want * 6 if initial else 10
 	var pp := _player_pos()
+	var big := _road_cum[_road_cum.size() - 1] > 8000.0      # lanes far beyond the ring: sample near the player
 	while want > 0 and tries > 0:
 		tries -= 1
-		var spot := _random_road_spot()
+		var spot := _spot_near(pp, 25.0 if initial else ring_min, ring_max) if big else _random_road_spot()
+		if spot.is_empty():
+			continue
 		var l = spot[0]
 		var s: float = spot[1]
 		var p: Vector3 = l.pos_at(s)

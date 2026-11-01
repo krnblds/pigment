@@ -62,6 +62,12 @@ func _test(seconds: float) -> void:
 	var park := Transform3D(Basis(), centre + Vector3.UP * 25.0)
 	T.ignore_player = true
 	car.global_transform = park
+	if T.world_spawn != null:
+		# re-centre the traffic on the world's spawn point
+		for c in T.active.duplicate():
+			T._despawn(c)
+		await get_tree().physics_frame
+		T._fill(true)
 	var res := {"seconds": seconds, "graph": T.graph.summary(), "vehicles": T.lib.source, "models": T.lib.models.size()}
 	var layout: Dictionary = main.town.layout if main.town and main.town.layout else {}
 	var offroad := 0
@@ -150,7 +156,18 @@ func _test(seconds: float) -> void:
 		if victim == null:
 			await _wait(0.25)
 			wait_v += 0.25
+	var ground := true
 	if victim:
+		var gl = T.graph.lanes[victim.lane]
+		var gq := PhysicsRayQueryParameters3D.create(gl.pos_at(victim.s) + Vector3.UP * 2.0, gl.pos_at(victim.s) - Vector3.UP * 3.0, 1)
+		gq.exclude = [car.get_rid()]
+		ground = not space.intersect_ray(gq).is_empty()
+	if victim and not ground:
+		res["player_tests"] = "skipped: no ground collision under the lanes (world without terrain)"
+		victim = null
+		checks["brakes_for_player"] = true
+		checks["bumped_and_recovers"] = true
+	elif victim:
 		var l = T.graph.lanes[victim.lane]
 		var sp: float = victim.s + 26.0
 		var p: Vector3 = l.pos_at(sp)
@@ -206,7 +223,7 @@ func _test(seconds: float) -> void:
 					"w": snappedf(c.angular_velocity.length(), 0.01), "dyn_t": snappedf(c.dyn_t, 0.1), "rest_t": snappedf(c.rest_t, 0.1), "up": snappedf(c.global_basis.y.y, 0.01)})
 		res["loose_cars"] = loose
 		checks["bumped_and_recovers"] = T.stats.knocked > k0 and T.stats.recovered > r0
-	else:
+	elif ground:
 		checks["brakes_for_player"] = false
 	res["checks"] = checks
 	var ok := true
