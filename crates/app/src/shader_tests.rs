@@ -44,3 +44,4 @@ fn folder() {
     check("composite.wgsl + folder.wgsl", &[include_str!("shaders/composite.wgsl"), include_str!("shaders/gen_weather.wgsl"), include_str!("shaders/folder.wgsl")].concat());
 }
 shader_test!(decal_box, "decal_box.wgsl");
+shader_test!(foliage, "foliage.wgsl");

@@ -28,6 +28,7 @@ pub mod automation;
 mod folders_ui;
 mod bridge;
 mod decals;
+mod foliage;
 mod tour;
 #[cfg(test)]
 mod image_fill_tests;
@@ -168,6 +169,8 @@ pub struct PigmentApp {
     wrap_mesh: Option<Mesh>,
     /// Interface state (preferences, dock, tools, dialogs, jobs).
     ui: ui::UiState,
+    /// Foliage: generated layers, card atlases, the foliage brush.
+    foliage: foliage::FoliageState,
 }
 
 impl PigmentApp {
@@ -238,6 +241,7 @@ impl PigmentApp {
             anchors: Default::default(),
             wrap_mesh: None,
             ui: ui::UiState::new(prefs),
+            foliage: Default::default(),
         };
         app.new_project(rs, Mesh::demo_crate(96), None, Document::demo());
         app.export_name = "DemoCrate".into();
@@ -320,6 +324,8 @@ impl PigmentApp {
     }
 
     fn reset_state(&mut self, rs: &RenderState, doc: Document) {
+        // generated layers loaded with their pixels are not redrawn
+        self.foliage.mark_generated(&doc);
         let (d, q) = (&rs.device, &rs.queue);
         let _ = self.history.clear();
         self.ts = TexSet::new(d, q, doc.resolution);
@@ -977,6 +983,8 @@ impl PigmentApp {
     fn ensure_composited(&mut self, rs: &RenderState) {
         self.ts.tiles.bases = self.image_bases();
         self.ts.ensure_resources(&rs.device, &rs.queue, &self.doc);
+        self.sync_generated(rs);
+        self.sync_foliage_gpu(rs);
         if self.composited.as_ref() != Some(&self.doc) {
             self.ts.composite(&rs.device, &rs.queue, &self.doc, None);
             self.composited = Some(self.doc.clone());

@@ -1,5 +1,6 @@
 pub mod bake;
 pub mod env;
+pub mod foliage;
 pub mod gpu;
 pub mod io;
 pub mod paint;
