@@ -1,0 +1,10 @@
+{"tool": "new_project", "args": {"tile": {"size_m": [1, 1], "name": "bridge_cable"}, "resolution": 1024, "material": "Concrete"}}
+{"tool": "delete_layer", "args": {"layer": "Paint"}}
+{"tool": "update_layer", "args": {"layer": "Base", "values": {"base_color": [0.7, 0.7, 0.68], "roughness": 0.35, "metallic": 0.0}}}
+{"tool": "add_layer", "args": {"name": "Helical rib", "values": {"base_color": [0.64, 0.64, 0.62], "height": 0.8}, "opacity": 0.45, "mask": {"generator": "stripes", "amount": 0.25, "scale": 6.0, "softness": 0.3, "seed": 501}}}
+{"tool": "add_layer", "args": {"name": "UV chalking", "values": {"base_color": [0.78, 0.78, 0.76], "roughness": 0.6}, "opacity": 0.5, "mask": {"generator": "grunge", "amount": 0.35, "scale": 2.0, "softness": 0.4, "seed": 503}}}
+{"tool": "add_layer", "args": {"name": "Grime runs", "material": "Grime", "opacity": 0.55, "mask": {"generator": "streaks", "amount": 0.3, "scale": 6.0, "softness": 0.2, "seed": 505}}}
+{"tool": "add_layer", "args": {"name": "Soot", "values": {"base_color": [0.2, 0.2, 0.2], "roughness": 0.6}, "opacity": 0.35, "channels": {"height": false}, "mask": {"generator": "grunge", "amount": 0.25, "scale": 4.0, "softness": 0.4, "seed": 507}}}
+{"tool": "render", "args": {"yaw": 0, "pitch": 89.9, "zoom": 1.0, "width": 600, "height": 600, "background": false, "path": "C:/Users/kiera/Documents/Workspaces/Vibe Projects/are-senior-graphics-engineer-who/.claude/worktrees/agent-bridges/.citycache/bridges/bridge_cable.png"}}
+{"tool": "export_textures", "args": {"dir": "scenes/town/textures/bridge_cable", "name": "bridge_cable", "preset": "separate"}}
+{"tool": "save_project", "args": {"path": "scenes/town/projects/bridges/bridge_cable.pigment"}}

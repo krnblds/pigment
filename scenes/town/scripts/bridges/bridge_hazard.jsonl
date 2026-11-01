@@ -1,0 +1,9 @@
+{"tool": "new_project", "args": {"tile": {"size_m": [2, 2], "name": "bridge_hazard"}, "resolution": 1024, "material": "Concrete"}}
+{"tool": "delete_layer", "args": {"layer": "Paint"}}
+{"tool": "update_layer", "args": {"layer": "Base", "values": {"base_color": [0.03, 0.03, 0.03], "roughness": 0.6}}}
+{"tool": "add_layer", "args": {"name": "Stripes", "material": "Hazard yellow", "mask": {"generator": "stripes", "amount": 0.5, "scale": 2.0, "softness": 0.02, "seed": 701}}}
+{"tool": "add_layer", "args": {"name": "Scuffs", "values": {"base_color": [0.2, 0.2, 0.2], "roughness": 0.6, "metallic": 0.5}, "opacity": 0.7, "mask": {"generator": "scratches", "amount": 0.1, "scale": 4.0, "softness": 0.05, "seed": 703}}}
+{"tool": "add_layer", "args": {"name": "Grime", "material": "Grime", "opacity": 0.45, "mask": {"generator": "streaks", "amount": 0.3, "scale": 3.0, "softness": 0.2, "seed": 705}}}
+{"tool": "render", "args": {"yaw": 0, "pitch": 89.9, "zoom": 1.0, "width": 600, "height": 600, "background": false, "path": "C:/Users/kiera/Documents/Workspaces/Vibe Projects/are-senior-graphics-engineer-who/.claude/worktrees/agent-bridges/.citycache/bridges/bridge_hazard.png"}}
+{"tool": "export_textures", "args": {"dir": "scenes/town/textures/bridge_hazard", "name": "bridge_hazard", "preset": "separate"}}
+{"tool": "save_project", "args": {"path": "scenes/town/projects/bridges/bridge_hazard.pigment"}}

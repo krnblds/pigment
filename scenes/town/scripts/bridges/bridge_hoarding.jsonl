@@ -1,0 +1,17 @@
+{"tool": "new_project", "args": {"tile": {"size_m": [6.0, 3.0], "name": "bridge_hoarding"}, "resolution": 2048, "material": "Concrete"}}
+{"tool": "delete_layer", "args": {"layer": "Paint"}}
+{"tool": "update_layer", "args": {"layer": "Base", "values": {"base_color": [0.035, 0.05, 0.09], "roughness": 0.55}}}
+{"tool": "add_layer", "args": {"name": "Panel tone", "values": {"base_color": [0.045, 0.06, 0.1]}, "opacity": 0.6, "mask": {"generator": "grunge", "amount": 0.4, "scale": 0.8, "softness": 0.4, "seed": 601}}}
+{"tool": "add_layer", "args": {"kind": "paint", "name": "Panel seams"}}
+{"tool": "add_layer", "args": {"kind": "paint", "name": "Graphics"}}
+{"tool": "project_decal", "args": {"image": "assets/decals/roads/bar.png", "layer": "Panel seams", "position": [-1.5, 0, 0], "normal": [0, 1, 0], "size": [0.03, 3.02], "tint": [0.02, 0.025, 0.04], "values": {"roughness": 0.6}, "height": -0.6}}
+{"tool": "project_decal", "args": {"image": "assets/decals/roads/bar.png", "layer": "Panel seams", "position": [1.5, 0, 0], "normal": [0, 1, 0], "size": [0.03, 3.02], "tint": [0.02, 0.025, 0.04], "values": {"roughness": 0.6}, "height": -0.6}}
+{"tool": "project_decal", "args": {"image": "assets/decals/roads/bar.png", "layer": "Graphics", "position": [0, 0, 1.38], "normal": [0, 1, 0], "size": [6.02, 0.16], "tint": [0.75, 0.55, 0.12], "values": {"roughness": 0.4}}}
+{"tool": "project_decal", "args": {"image": "assets/decals/logo_hoshikawa_dynamics.png", "layer": "Graphics", "position": [-1.5, 0, 0.35], "normal": [0, 1, 0], "size": [2.4, 0.9], "tint": [1.0, 1.0, 1.0], "values": {"roughness": 0.4}}}
+{"tool": "project_decal", "args": {"image": "assets/decals/bridges/sign_works.png", "layer": "Graphics", "position": [1.5, 0, 0.1], "normal": [0, 1, 0], "size": [1.6, 1.0], "tint": [1.0, 1.0, 1.0], "values": {"roughness": 0.5}}}
+{"tool": "project_decal", "args": {"image": "assets/decals/story/sign_hoshikawa_security.png", "layer": "Graphics", "position": [-1.5, 0, -0.65], "normal": [0, 1, 0], "size": [2.6, 0.34], "tint": [1.0, 1.0, 1.0], "values": {"roughness": 0.4}}}
+{"tool": "add_layer", "args": {"name": "Grime", "material": "Grime", "opacity": 0.55, "mask": {"generator": "streaks", "amount": 0.3, "scale": 2.0, "softness": 0.2, "seed": 603}}}
+{"tool": "add_layer", "args": {"name": "Splash", "material": "Grime", "opacity": 0.6, "mask": {"generator": "grunge", "amount": 0.25, "scale": 1.5, "softness": 0.3, "seed": 605}}}
+{"tool": "render", "args": {"yaw": 0, "pitch": 89.9, "zoom": 1.0, "width": 600, "height": 600, "background": false, "path": "C:/Users/kiera/Documents/Workspaces/Vibe Projects/are-senior-graphics-engineer-who/.claude/worktrees/agent-bridges/.citycache/bridges/bridge_hoarding.png"}}
+{"tool": "export_textures", "args": {"dir": "scenes/town/textures/bridge_hoarding", "name": "bridge_hoarding", "preset": "separate"}}
+{"tool": "save_project", "args": {"path": "scenes/town/projects/bridges/bridge_hoarding.pigment"}}

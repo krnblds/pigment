@@ -1,0 +1,10 @@
+{"tool": "new_project", "args": {"tile": {"size_m": [2, 2], "name": "bridge_steel_grey"}, "resolution": 1024, "material": "Concrete"}}
+{"tool": "delete_layer", "args": {"layer": "Paint"}}
+{"tool": "update_layer", "args": {"layer": "Base", "values": {"base_color": [0.33, 0.35, 0.36], "roughness": 0.5, "metallic": 0.35}}}
+{"tool": "add_layer", "args": {"name": "Tone", "values": {"base_color": [0.28, 0.3, 0.31]}, "opacity": 0.6, "mask": {"generator": "grunge", "amount": 0.4, "scale": 1.0, "softness": 0.4, "seed": 401}}}
+{"tool": "add_layer", "args": {"name": "Worn to zinc", "values": {"base_color": [0.55, 0.56, 0.56], "roughness": 0.35, "metallic": 0.8}, "opacity": 0.5, "mask": {"generator": "scratches", "amount": 0.05, "scale": 5.0, "softness": 0.05, "seed": 403}}}
+{"tool": "add_layer", "args": {"name": "Rust", "material": "Rust", "opacity": 0.6, "mask": {"generator": "spots", "amount": 0.03, "scale": 10.0, "softness": 0.15, "seed": 405}}}
+{"tool": "add_layer", "args": {"name": "Grime runs", "material": "Grime", "opacity": 0.5, "mask": {"generator": "streaks", "amount": 0.35, "scale": 4.0, "softness": 0.2, "seed": 407}}}
+{"tool": "render", "args": {"yaw": 0, "pitch": 89.9, "zoom": 1.0, "width": 600, "height": 600, "background": false, "path": "C:/Users/kiera/Documents/Workspaces/Vibe Projects/are-senior-graphics-engineer-who/.claude/worktrees/agent-bridges/.citycache/bridges/bridge_steel_grey.png"}}
+{"tool": "export_textures", "args": {"dir": "scenes/town/textures/bridge_steel_grey", "name": "bridge_steel_grey", "preset": "separate"}}
+{"tool": "save_project", "args": {"path": "scenes/town/projects/bridges/bridge_steel_grey.pigment"}}
