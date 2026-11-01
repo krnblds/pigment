@@ -28,7 +28,9 @@
             0.0,
             0.0
           ],
-          "emissive_strength": 0.0
+          "emissive_strength": 0.0,
+          "opacity": 1.0,
+          "transmission": 0.0
         }
       },
       "channels": {
@@ -58,6 +60,16 @@
           "opacity": 1.0
         },
         "emissive": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "opacity": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "transmission": {
           "enabled": false,
           "blend": "normal",
           "opacity": 1.0
@@ -89,7 +101,9 @@
             0.0,
             0.0
           ],
-          "emissive_strength": 0.0
+          "emissive_strength": 0.0,
+          "opacity": 1.0,
+          "transmission": 0.0
         }
       },
       "channels": {
@@ -119,6 +133,16 @@
           "opacity": 1.0
         },
         "emissive": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "opacity": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "transmission": {
           "enabled": false,
           "blend": "normal",
           "opacity": 1.0
@@ -173,7 +197,9 @@
             0.0,
             0.0
           ],
-          "emissive_strength": 0.0
+          "emissive_strength": 0.0,
+          "opacity": 1.0,
+          "transmission": 0.0
         }
       },
       "channels": {
@@ -203,6 +229,16 @@
           "opacity": 1.0
         },
         "emissive": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "opacity": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "transmission": {
           "enabled": false,
           "blend": "normal",
           "opacity": 1.0
@@ -275,6 +311,16 @@
           "opacity": 1.0
         },
         "emissive": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "opacity": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "transmission": {
           "enabled": true,
           "blend": "normal",
           "opacity": 1.0

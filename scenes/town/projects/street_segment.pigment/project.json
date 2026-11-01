@@ -28,7 +28,9 @@
             0.0,
             0.0
           ],
-          "emissive_strength": 0.0
+          "emissive_strength": 0.0,
+          "opacity": 1.0,
+          "transmission": 0.0
         }
       },
       "channels": {
@@ -58,6 +60,16 @@
           "opacity": 1.0
         },
         "emissive": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "opacity": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "transmission": {
           "enabled": false,
           "blend": "normal",
           "opacity": 1.0
@@ -89,7 +101,9 @@
             0.0,
             0.0
           ],
-          "emissive_strength": 0.0
+          "emissive_strength": 0.0,
+          "opacity": 1.0,
+          "transmission": 0.0
         }
       },
       "channels": {
@@ -119,6 +133,16 @@
           "opacity": 1.0
         },
         "emissive": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "opacity": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "transmission": {
           "enabled": false,
           "blend": "normal",
           "opacity": 1.0
@@ -145,6 +169,97 @@
     },
     {
       "id": 9,
+      "name": "Wet rim",
+      "visible": true,
+      "opacity": 0.6,
+      "kind": {
+        "type": "fill",
+        "values": {
+          "base_color": [
+            0.1,
+            0.1,
+            0.105
+          ],
+          "roughness": 0.12,
+          "metallic": 0.0,
+          "height": 0.0,
+          "normal": [
+            0.0,
+            0.0
+          ],
+          "emissive": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "emissive_strength": 0.0,
+          "opacity": 1.0,
+          "transmission": 0.0
+        }
+      },
+      "channels": {
+        "base_color": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "roughness": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "metallic": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "height": {
+          "enabled": false,
+          "blend": "add",
+          "opacity": 1.0
+        },
+        "normal": {
+          "enabled": false,
+          "blend": "normal_combine",
+          "opacity": 1.0
+        },
+        "emissive": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "opacity": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "transmission": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        }
+      },
+      "mask": {
+        "res": 10,
+        "generator": {
+          "kind": "puddles",
+          "amount": 0.5,
+          "softness": 0.12,
+          "noise_scale": 0.35,
+          "noise_amount": 0.5,
+          "seed": 1,
+          "ao_influence": 0.5,
+          "curvature_weight": 1.5
+        },
+        "invert": false,
+        "enabled": true,
+        "parts": [
+          0
+        ]
+      }
+    },
+    {
+      "id": 11,
       "name": "Puddles",
       "visible": true,
       "opacity": 1.0,
@@ -168,7 +283,9 @@
             0.0,
             0.0
           ],
-          "emissive_strength": 0.0
+          "emissive_strength": 0.0,
+          "opacity": 1.0,
+          "transmission": 0.0
         }
       },
       "channels": {
@@ -201,19 +318,29 @@
           "enabled": false,
           "blend": "normal",
           "opacity": 1.0
+        },
+        "opacity": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "transmission": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
         }
       },
       "mask": {
-        "res": 10,
+        "res": 12,
         "generator": {
-          "kind": "grunge",
-          "amount": 0.45,
+          "kind": "puddles",
+          "amount": 0.33,
           "softness": 0.04,
-          "noise_scale": 0.3,
-          "noise_amount": 0.0,
+          "noise_scale": 0.35,
+          "noise_amount": 0.5,
           "seed": 1,
-          "ao_influence": 0.2,
-          "curvature_weight": 1.0
+          "ao_influence": 0.5,
+          "curvature_weight": 1.5
         },
         "invert": false,
         "enabled": true,
@@ -223,7 +350,7 @@
       }
     },
     {
-      "id": 11,
+      "id": 13,
       "name": "Curbs",
       "visible": true,
       "opacity": 1.0,
@@ -247,7 +374,9 @@
             0.0,
             0.0
           ],
-          "emissive_strength": 0.0
+          "emissive_strength": 0.0,
+          "opacity": 1.0,
+          "transmission": 0.0
         }
       },
       "channels": {
@@ -280,10 +409,20 @@
           "enabled": false,
           "blend": "normal",
           "opacity": 1.0
+        },
+        "opacity": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "transmission": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
         }
       },
       "mask": {
-        "res": 12,
+        "res": 14,
         "invert": false,
         "enabled": true,
         "parts": [
@@ -293,7 +432,7 @@
       }
     },
     {
-      "id": 13,
+      "id": 15,
       "name": "Paving",
       "visible": true,
       "opacity": 1.0,
@@ -317,7 +456,9 @@
             0.0,
             0.0
           ],
-          "emissive_strength": 0.0
+          "emissive_strength": 0.0,
+          "opacity": 1.0,
+          "transmission": 0.0
         }
       },
       "channels": {
@@ -350,10 +491,20 @@
           "enabled": false,
           "blend": "normal",
           "opacity": 1.0
+        },
+        "opacity": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "transmission": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
         }
       },
       "mask": {
-        "res": 14,
+        "res": 16,
         "invert": false,
         "enabled": true,
         "parts": [
@@ -363,7 +514,7 @@
       }
     },
     {
-      "id": 15,
+      "id": 17,
       "name": "Paving joints",
       "visible": true,
       "opacity": 1.0,
@@ -387,7 +538,9 @@
             0.0,
             0.0
           ],
-          "emissive_strength": 0.0
+          "emissive_strength": 0.0,
+          "opacity": 1.0,
+          "transmission": 0.0
         }
       },
       "channels": {
@@ -420,10 +573,20 @@
           "enabled": false,
           "blend": "normal",
           "opacity": 1.0
+        },
+        "opacity": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "transmission": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
         }
       },
       "mask": {
-        "res": 16,
+        "res": 18,
         "generator": {
           "kind": "panel_lines",
           "amount": 0.02,
@@ -443,7 +606,7 @@
       }
     },
     {
-      "id": 17,
+      "id": 19,
       "name": "Paving grime",
       "visible": true,
       "opacity": 0.6,
@@ -467,7 +630,9 @@
             0.0,
             0.0
           ],
-          "emissive_strength": 0.0
+          "emissive_strength": 0.0,
+          "opacity": 1.0,
+          "transmission": 0.0
         }
       },
       "channels": {
@@ -500,10 +665,20 @@
           "enabled": false,
           "blend": "normal",
           "opacity": 1.0
+        },
+        "opacity": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "transmission": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
         }
       },
       "mask": {
-        "res": 18,
+        "res": 20,
         "generator": {
           "kind": "grunge",
           "amount": 0.4,
@@ -525,7 +700,7 @@
       }
     },
     {
-      "id": 19,
+      "id": 21,
       "name": "Iron covers",
       "visible": true,
       "opacity": 1.0,
@@ -549,7 +724,9 @@
             0.0,
             0.0
           ],
-          "emissive_strength": 0.0
+          "emissive_strength": 0.0,
+          "opacity": 1.0,
+          "transmission": 0.0
         }
       },
       "channels": {
@@ -582,10 +759,20 @@
           "enabled": false,
           "blend": "normal",
           "opacity": 1.0
+        },
+        "opacity": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "transmission": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
         }
       },
       "mask": {
-        "res": 20,
+        "res": 22,
         "invert": false,
         "enabled": true,
         "parts": [
@@ -598,7 +785,7 @@
       }
     },
     {
-      "id": 21,
+      "id": 23,
       "name": "Cover rust",
       "visible": true,
       "opacity": 1.0,
@@ -622,7 +809,9 @@
             0.0,
             0.0
           ],
-          "emissive_strength": 0.0
+          "emissive_strength": 0.0,
+          "opacity": 1.0,
+          "transmission": 0.0
         }
       },
       "channels": {
@@ -655,10 +844,20 @@
           "enabled": false,
           "blend": "normal",
           "opacity": 1.0
+        },
+        "opacity": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "transmission": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
         }
       },
       "mask": {
-        "res": 22,
+        "res": 24,
         "generator": {
           "kind": "spots",
           "amount": 0.35,
@@ -681,7 +880,7 @@
       }
     },
     {
-      "id": 23,
+      "id": 25,
       "name": "Wet grime",
       "visible": true,
       "opacity": 0.5,
@@ -705,7 +904,9 @@
             0.0,
             0.0
           ],
-          "emissive_strength": 0.0
+          "emissive_strength": 0.0,
+          "opacity": 1.0,
+          "transmission": 0.0
         }
       },
       "channels": {
@@ -738,10 +939,20 @@
           "enabled": false,
           "blend": "normal",
           "opacity": 1.0
+        },
+        "opacity": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "transmission": {
+          "enabled": false,
+          "blend": "normal",
+          "opacity": 1.0
         }
       },
       "mask": {
-        "res": 24,
+        "res": 26,
         "generator": {
           "kind": "grunge",
           "amount": 0.35,
@@ -798,6 +1009,16 @@
           "enabled": true,
           "blend": "normal",
           "opacity": 1.0
+        },
+        "opacity": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
+        },
+        "transmission": {
+          "enabled": true,
+          "blend": "normal",
+          "opacity": 1.0
         }
       }
     }
@@ -809,5 +1030,5 @@
     "ao_distance": 0.1
   },
   "export_preset": "separate",
-  "next_id": 25
+  "next_id": 27
 }

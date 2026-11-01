@@ -1,7 +1,8 @@
 {"tool": "new_project", "args": {"mesh": "assets/town/crossroad.glb", "resolution": 4096, "material": "Asphalt"}}
 {"tool": "bake", "args": {"curvature_radius": 0.004, "ao_distance": 0.1}}
 {"tool": "add_layer", "args": {"name": "Cracks", "material": "Grime", "mask": {"parts": [0], "generator": "scratches", "amount": 0.1, "scale": 1.2}, "opacity": 0.8}}
-{"tool": "add_layer", "args": {"name": "Puddles", "mask": {"parts": [0], "generator": "grunge", "amount": 0.45, "scale": 0.3, "softness": 0.04}, "values": {"base_color": [0.07, 0.07, 0.075], "roughness": 0.015, "height": -0.05}}}
+{"tool": "add_layer", "args": {"name": "Wet rim", "mask": {"parts": [0], "generator": "puddles", "amount": 0.5, "scale": 0.35, "breakup": 0.5, "curvature_weight": 1.5, "softness": 0.12}, "values": {"base_color": [0.1, 0.1, 0.105], "roughness": 0.12}, "opacity": 0.6, "channels": {"height": false, "metallic": false}}}
+{"tool": "add_layer", "args": {"name": "Puddles", "mask": {"parts": [0], "generator": "puddles", "amount": 0.33, "scale": 0.35, "breakup": 0.5, "curvature_weight": 1.5, "softness": 0.04}, "values": {"base_color": [0.07, 0.07, 0.075], "roughness": 0.015, "height": -0.05}}}
 {"tool": "add_layer", "args": {"name": "Curbs", "material": "Concrete", "mask": {"parts": []}}}
 {"tool": "add_layer", "args": {"name": "Paving", "material": "Concrete", "mask": {"parts": [1, 2, 3, 4, 5, 6, 7, 8]}}}
 {"tool": "add_layer", "args": {"name": "Paving joints", "material": "Panel seam", "mask": {"parts": [1, 2, 3, 4, 5, 6, 7, 8], "generator": "panel_lines", "amount": 0.02, "scale": 1.5}}}

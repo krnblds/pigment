@@ -1210,7 +1210,7 @@ def build(root=None, export_junctions=False, quick=False):
         return min(xs_), max(xs_), min(ys_), max(ys_)
 
     kinds = {k: bounds(K[k]) for k in ("building_a", "building_b", "building_c")}
-    variants = {k: variant_materials(root, k, K[k]) for k in kinds}
+    variants = {k: variant_materials(root, k, K[k]) for k in list(kinds) + ["overhead_sign"]}
     for k, v in variants.items():
         print(f"{k}: {len(v)} texture variants")
     plinth_me = bpy.data.meshes.get("PlinthBox")
@@ -1289,7 +1289,10 @@ def build(root=None, export_junctions=False, quick=False):
         pl = put(plinth_me, ((xmin + xmax) / 2, (ymin + ymax) / 2 + 0.6, -depth / 2 + 0.02), name="Footing", parent=b)
         pl.scale = (xmax - xmin - 0.1, ymax - ymin - 1.4, depth)
         if sign and rng.random() < 0.65:
-            put(K["overhead_sign"].data, (rng.uniform(xmin + 1.2, xmax - 1.2), ymin + 1.2, rng.uniform(4.0, 7.5)), name="HangingSign", parent=b)
+            sg = put(K["overhead_sign"].data, (rng.uniform(xmin + 1.2, xmax - 1.2), ymin + 1.2, rng.uniform(4.0, 7.5)), name="HangingSign", parent=b)
+            if variants.get("overhead_sign"):      # one of the story signs, never the plain kit look
+                sg.material_slots[0].link = "OBJECT"
+                sg.material_slots[0].material = rng.choice(variants["overhead_sign"])
         n_build += 1
         return b
 
