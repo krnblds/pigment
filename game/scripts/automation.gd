@@ -54,6 +54,8 @@ func _ready() -> void:
 		_autoshot.call_deferred(String(a.autoshot))
 	elif a.has("bench-spots"):
 		_bench_spots.call_deferred(String(a["bench-spots"]))
+	elif a.has("bridge-shots"):
+		_bridge_shots.call_deferred(String(a["bridge-shots"]))
 	elif a.has("bench-matrix"):
 		_bench_matrix.call_deferred()
 	elif a.has("bench"):
@@ -354,6 +356,54 @@ func _bench_spots(dir: String) -> void:
 	f.store_string(JSON.stringify(out, "  "))
 	f.close()
 	print("SPOTS ", JSON.stringify(out))
+	_quit()
+
+
+# ------------------------------------------------------------------ bridge proof (tools/world/bridge_cams.py --godot)
+## --bridge-shots=<dir> --bridge-cams=<json>: fixed views (shore / water, Blender coords) and drives: the
+## player car is placed on a deck lane and the autopilot drives it across with the chase camera; one PNG
+## per view (drives: three along the crossing) and bridge_shots.json (fps, frame times, draw calls).
+func _bridge_shots(dir: String) -> void:
+	DirAccess.make_dir_recursive_absolute(dir)
+	_video_setup()
+	var spec = JSON.parse_string(FileAccess.get_file_as_string(String(main.args.get("bridge-cams", dir.path_join("godot_cams.json")))))
+	var out := {"gpu": RenderingServer.get_video_adapter_name()}
+	await _wait(5.0)
+	await _settle()
+	main.hud.visible = not main.args.has("clean")
+	var cam = main.cam
+	for v in spec:
+		if v.get("kind", "cam") == "cam":
+			cam.manual = true
+			cam.fov = float(v.get("fov_y", 50.0))
+			cam.global_position = _g(v.loc)
+			cam.look_at(_g(v.target), Vector3.UP)
+			main.stream_now(cam.global_position)
+			await _wait(4.0)
+			out[v.name] = await _measure_for(float(main.args.get("spot-secs", "4")))
+			await _shot(dir, v.name)
+		else:
+			# drive: car on the lane at loc heading to target, autopilot at ~60 km/h, chase camera
+			var p := _g(v.loc)
+			var d := _g(v.target) - p
+			main.car.place(TownLoader.car_transform(p, d))
+			main.stream_now(p)
+			cam.manual = false
+			cam.snap()
+			main.ap_speed = float(v.get("speed", 17.0))
+			_drive(true)
+			await _wait(1.5)
+			var m := {}
+			for k in 3:
+				m["leg%d" % k] = await _measure_for(float(v.get("secs", 4.0)))
+				await _shot(dir, "%s_%d" % [v.name, k])
+			out[v.name] = m
+			_drive(false)
+			main.car.autopilot = false
+	var f := FileAccess.open(dir.path_join("bridge_shots.json"), FileAccess.WRITE)
+	f.store_string(JSON.stringify(out, "  "))
+	f.close()
+	print("BRIDGE_SHOTS ", JSON.stringify(out))
 	_quit()
 
 
