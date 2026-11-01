@@ -1,0 +1,588 @@
+{
+ "name": "cctv_pole",
+ "bounds_gl": {
+  "min": [
+   -0.7438,
+   0.0,
+   -0.4581
+  ],
+  "max": [
+   0.7438,
+   5.7042,
+   0.32
+  ]
+ },
+ "size_m": [
+  1.488,
+  5.704,
+  0.778
+ ],
+ "tris": 1526,
+ "texels_per_m": 178.8,
+ "nodes": [],
+ "pieces": [
+  {
+   "piece": "bolt_0",
+   "group": "steel",
+   "node": null,
+   "center": [
+    0.1018,
+    0.045,
+    -0.1018
+   ],
+   "size": [
+    0.0208,
+    0.04,
+    0.024
+   ],
+   "tris": 20
+  },
+  {
+   "piece": "base_collar",
+   "group": "dark_metal",
+   "node": null,
+   "center": [
+    0.0,
+    0.135,
+    -0.0
+   ],
+   "size": [
+    0.2992,
+    0.22,
+    0.2992
+   ],
+   "tris": 236
+  },
+  {
+   "piece": "base_plate",
+   "group": "dark_metal",
+   "node": null,
+   "center": [
+    0.0,
+    0.0125,
+    -0.0
+   ],
+   "size": [
+    0.378,
+    0.025,
+    0.378
+   ],
+   "tris": 44
+  },
+  {
+   "piece": "bolt_1",
+   "group": "steel",
+   "node": null,
+   "center": [
+    -0.1018,
+    0.045,
+    -0.1018
+   ],
+   "size": [
+    0.0208,
+    0.04,
+    0.024
+   ],
+   "tris": 20
+  },
+  {
+   "piece": "crossarm",
+   "group": "galv",
+   "node": null,
+   "center": [
+    0.0,
+    5.2,
+    -0.0
+   ],
+   "size": [
+    1.2,
+    0.08,
+    0.08
+   ],
+   "tris": 44
+  },
+  {
+   "piece": "bolt_3",
+   "group": "steel",
+   "node": null,
+   "center": [
+    0.1018,
+    0.045,
+    0.1018
+   ],
+   "size": [
+    0.0208,
+    0.04,
+    0.024
+   ],
+   "tris": 20
+  },
+  {
+   "piece": "pole",
+   "group": "galv",
+   "node": null,
+   "center": [
+    0.0,
+    2.85,
+    -0.0
+   ],
+   "size": [
+    0.18,
+    5.3,
+    0.18
+   ],
+   "tris": 60
+  },
+  {
+   "piece": "arm_clamp",
+   "group": "dark_metal",
+   "node": null,
+   "center": [
+    0.0,
+    5.2,
+    -0.0
+   ],
+   "size": [
+    0.2,
+    0.16,
+    0.2
+   ],
+   "tris": 60
+  },
+  {
+   "piece": "bolt_2",
+   "group": "steel",
+   "node": null,
+   "center": [
+    -0.1018,
+    0.045,
+    0.1018
+   ],
+   "size": [
+    0.0208,
+    0.04,
+    0.024
+   ],
+   "tris": 20
+  },
+  {
+   "piece": "pole_cap",
+   "group": "dark_metal",
+   "node": null,
+   "center": [
+    0.0,
+    5.525,
+    -0.0
+   ],
+   "size": [
+    0.17,
+    0.05,
+    0.17
+   ],
+   "tris": 60
+  },
+  {
+   "piece": "cam_0_body",
+   "group": "white_plastic",
+   "node": null,
+   "center": [
+    -0.5923,
+    5.05,
+    0.0906
+   ],
+   "size": [
+    0.2326,
+    0.1756,
+    0.3341
+   ],
+   "tris": 108
+  },
+  {
+   "piece": "cam_0_shield",
+   "group": "white_plastic",
+   "node": null,
+   "center": [
+    -0.5923,
+    5.125,
+    0.0906
+   ],
+   "size": [
+    0.3031,
+    0.0907,
+    0.4068
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "cam_0_mount",
+   "group": "dark_metal",
+   "node": null,
+   "center": [
+    -0.55,
+    5.1,
+    -0.0
+   ],
+   "size": [
+    0.04,
+    0.12,
+    0.04
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "cam_1_body",
+   "group": "white_plastic",
+   "node": null,
+   "center": [
+    0.5923,
+    5.05,
+    0.0906
+   ],
+   "size": [
+    0.2326,
+    0.1756,
+    0.3341
+   ],
+   "tris": 108
+  },
+  {
+   "piece": "cam_0_lens",
+   "group": "cam_eye",
+   "node": null,
+   "center": [
+    -0.6661,
+    5.0129,
+    0.249
+   ],
+   "size": [
+    0.0808,
+    0.0824,
+    0.0547
+   ],
+   "tris": 60
+  },
+  {
+   "piece": "cam_1_shield",
+   "group": "white_plastic",
+   "node": null,
+   "center": [
+    0.5923,
+    5.125,
+    0.0906
+   ],
+   "size": [
+    0.3031,
+    0.0907,
+    0.4068
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "cam_1_mount",
+   "group": "dark_metal",
+   "node": null,
+   "center": [
+    0.55,
+    5.1,
+    -0.0
+   ],
+   "size": [
+    0.04,
+    0.12,
+    0.04
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "cam_2_body",
+   "group": "white_plastic",
+   "node": null,
+   "center": [
+    0.0,
+    5.05,
+    -0.1
+   ],
+   "size": [
+    0.12,
+    0.1756,
+    0.3296
+   ],
+   "tris": 108
+  },
+  {
+   "piece": "cam_1_lens",
+   "group": "cam_eye",
+   "node": null,
+   "center": [
+    0.6661,
+    5.0129,
+    0.249
+   ],
+   "size": [
+    0.0808,
+    0.0824,
+    0.0547
+   ],
+   "tris": 60
+  },
+  {
+   "piece": "cam_2_shield",
+   "group": "white_plastic",
+   "node": null,
+   "center": [
+    0.0,
+    5.125,
+    -0.1
+   ],
+   "size": [
+    0.16,
+    0.0907,
+    0.3742
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "cam_2_mount",
+   "group": "dark_metal",
+   "node": null,
+   "center": [
+    0.0,
+    5.1,
+    -0.0
+   ],
+   "size": [
+    0.04,
+    0.12,
+    0.04
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "dome",
+   "group": "white_plastic",
+   "node": null,
+   "center": [
+    0.0,
+    4.77,
+    0.2
+   ],
+   "size": [
+    0.24,
+    0.18,
+    0.24
+   ],
+   "tris": 118
+  },
+  {
+   "piece": "cam_2_lens",
+   "group": "cam_eye",
+   "node": null,
+   "center": [
+    0.0,
+    5.0129,
+    -0.2748
+   ],
+   "size": [
+    0.08,
+    0.0824,
+    0.0362
+   ],
+   "tris": 60
+  },
+  {
+   "piece": "dome_glass",
+   "group": "smoke_glass",
+   "node": null,
+   "center": [
+    0.0,
+    4.655,
+    0.2
+   ],
+   "size": [
+    0.196,
+    0.07,
+    0.196
+   ],
+   "tris": 80
+  },
+  {
+   "piece": "dome_arm",
+   "group": "dark_metal",
+   "node": null,
+   "center": [
+    0.0,
+    4.86,
+    0.11
+   ],
+   "size": [
+    0.05,
+    0.05,
+    0.16
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "meridian_plate",
+   "group": "sign",
+   "node": null,
+   "center": [
+    0.0,
+    2.71,
+    0.273
+   ],
+   "size": [
+    0.3,
+    0.18,
+    0.006
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "junction_box",
+   "group": "paint",
+   "node": null,
+   "center": [
+    0.0,
+    2.65,
+    0.17
+   ],
+   "size": [
+    0.34,
+    0.5,
+    0.2
+   ],
+   "tris": 108
+  },
+  {
+   "piece": "box_led",
+   "group": "led",
+   "node": null,
+   "center": [
+    0.12,
+    2.5,
+    0.272
+   ],
+   "size": [
+    0.04,
+    0.02,
+    0.006
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "solar",
+   "group": "solar",
+   "node": null,
+   "center": [
+    0.0,
+    5.6,
+    -0.25
+   ],
+   "size": [
+    0.7,
+    0.2083,
+    0.4163
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "solar_arm",
+   "group": "dark_metal",
+   "node": null,
+   "center": [
+    0.0,
+    5.48,
+    -0.12
+   ],
+   "size": [
+    0.04,
+    0.04,
+    0.3
+   ],
+   "tris": 12
+  }
+ ],
+ "lights": [
+  {
+   "name": "Light_Eye_0",
+   "pos": [
+    -0.6747,
+    5.01,
+    0.2674
+   ],
+   "type": "omni",
+   "color": [
+    1.0,
+    0.08,
+    0.08
+   ],
+   "energy": 0.25,
+   "range": 0.8,
+   "dir": null,
+   "shadow": false
+  },
+  {
+   "name": "Light_Eye_1",
+   "pos": [
+    0.6747,
+    5.01,
+    0.2674
+   ],
+   "type": "omni",
+   "color": [
+    1.0,
+    0.08,
+    0.08
+   ],
+   "energy": 0.25,
+   "range": 0.8,
+   "dir": null,
+   "shadow": false
+  },
+  {
+   "name": "Light_Eye_2",
+   "pos": [
+    0.0,
+    5.01,
+    -0.295
+   ],
+   "type": "omni",
+   "color": [
+    1.0,
+    0.08,
+    0.08
+   ],
+   "energy": 0.25,
+   "range": 0.8,
+   "dir": null,
+   "shadow": false
+  }
+ ],
+ "sockets": [],
+ "collider": [
+  {
+   "type": "cylinder",
+   "center": [
+    0,
+    2.775,
+    0
+   ],
+   "radius": 0.16,
+   "height": 5.55
+  },
+  {
+   "type": "box",
+   "center": [
+    0,
+    2.65,
+    0.17
+   ],
+   "size": [
+    0.34,
+    0.5,
+    0.22
+   ]
+  }
+ ],
+ "meta": {}
+}

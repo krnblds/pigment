@@ -1,0 +1,10 @@
+{
+ "lod0": "bench.glb",
+ "lod0_bytes": 140776,
+ "lod0_tris": 672,
+ "texture": 512,
+ "lod1": "bench_lod1.glb",
+ "lod1_bytes": 60036,
+ "lod1_tris": 336,
+ "lod1_texture": 256
+}

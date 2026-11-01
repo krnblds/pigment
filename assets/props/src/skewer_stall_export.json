@@ -1,0 +1,10 @@
+{
+ "lod0": "skewer_stall.glb",
+ "lod0_bytes": 455008,
+ "lod0_tris": 1964,
+ "texture": 1024,
+ "lod1": "skewer_stall_lod1.glb",
+ "lod1_bytes": 188232,
+ "lod1_tris": 883,
+ "lod1_texture": 512
+}

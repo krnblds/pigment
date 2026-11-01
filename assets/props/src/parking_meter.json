@@ -1,0 +1,200 @@
+{
+ "name": "parking_meter",
+ "bounds_gl": {
+  "min": [
+   -0.13,
+   0.0,
+   -0.096
+  ],
+  "max": [
+   0.13,
+   1.5104,
+   0.105
+  ]
+ },
+ "size_m": [
+  0.26,
+  1.51,
+  0.201
+ ],
+ "tris": 408,
+ "texels_per_m": 333.9,
+ "nodes": [],
+ "pieces": [
+  {
+   "piece": "post",
+   "group": "galv",
+   "node": null,
+   "center": [
+    0.0,
+    0.51,
+    -0.0
+   ],
+   "size": [
+    0.07,
+    1.02,
+    0.07
+   ],
+   "tris": 44
+  },
+  {
+   "piece": "foot",
+   "group": "dark_metal",
+   "node": null,
+   "center": [
+    0.0,
+    0.03,
+    -0.0
+   ],
+   "size": [
+    0.14,
+    0.06,
+    0.14
+   ],
+   "tris": 60
+  },
+  {
+   "piece": "collar",
+   "group": "dark_metal",
+   "node": null,
+   "center": [
+    0.0,
+    1.03,
+    -0.0
+   ],
+   "size": [
+    0.12,
+    0.06,
+    0.12
+   ],
+   "tris": 44
+  },
+  {
+   "piece": "screen_bezel",
+   "group": "dark_plastic",
+   "node": null,
+   "center": [
+    0.0,
+    1.36,
+    0.093
+   ],
+   "size": [
+    0.2,
+    0.14,
+    0.01
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "head",
+   "group": "paint",
+   "node": null,
+   "center": [
+    0.0,
+    1.27,
+    -0.0
+   ],
+   "size": [
+    0.26,
+    0.42,
+    0.18
+   ],
+   "tris": 188
+  },
+  {
+   "piece": "screen",
+   "group": "screen",
+   "node": null,
+   "center": [
+    0.0,
+    1.36,
+    0.099
+   ],
+   "size": [
+    0.17,
+    0.11,
+    0.006
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "card_slot",
+   "group": "dark_plastic",
+   "node": null,
+   "center": [
+    0.0,
+    1.24,
+    0.095
+   ],
+   "size": [
+    0.1,
+    0.025,
+    0.02
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "keypad",
+   "group": "dark_plastic",
+   "node": null,
+   "center": [
+    0.0,
+    1.15,
+    0.095
+   ],
+   "size": [
+    0.12,
+    0.07,
+    0.012
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "solar",
+   "group": "solar",
+   "node": null,
+   "center": [
+    0.0,
+    1.49,
+    -0.0
+   ],
+   "size": [
+    0.22,
+    0.0408,
+    0.1394
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "sticker_plate",
+   "group": "sign",
+   "node": null,
+   "center": [
+    0.0,
+    1.32,
+    -0.093
+   ],
+   "size": [
+    0.16,
+    0.06,
+    0.006
+   ],
+   "tris": 12
+  }
+ ],
+ "lights": [],
+ "sockets": [],
+ "collider": [
+  {
+   "type": "cylinder",
+   "center": [
+    0,
+    0.75,
+    0
+   ],
+   "radius": 0.13,
+   "height": 1.5
+  }
+ ],
+ "meta": {}
+}

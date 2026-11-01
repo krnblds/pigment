@@ -1,0 +1,10 @@
+{
+ "lod0": "palm_tree.glb",
+ "lod0_bytes": 213232,
+ "lod0_tris": 2680,
+ "texture": 512,
+ "lod1": "palm_tree_lod1.glb",
+ "lod1_bytes": 88952,
+ "lod1_tris": 937,
+ "lod1_texture": 256
+}

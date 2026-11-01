@@ -1,0 +1,10 @@
+{
+ "lod0": "bicycle.glb",
+ "lod0_bytes": 511652,
+ "lod0_tris": 3504,
+ "texture": 512,
+ "lod1": "bicycle_lod1.glb",
+ "lod1_bytes": 205060,
+ "lod1_tris": 1401,
+ "lod1_texture": 256
+}

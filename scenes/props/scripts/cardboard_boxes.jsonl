@@ -1,0 +1,17 @@
+{"tool": "new_project", "args": {"mesh": "assets/props/src/cardboard_boxes.glb", "resolution": 1024, "material": "Gunmetal"}}
+{"tool": "add_layer", "args": {"name": "tape", "values": {"base_color": [0.72, 0.56, 0.32], "roughness": 0.3, "metallic": 0.0}, "mask": {"parts": [0, 3]}}}
+{"tool": "add_layer", "args": {"name": "cardboard", "values": {"base_color": [0.56, 0.41, 0.25], "roughness": 0.88, "metallic": 0.0}, "mask": {"parts": [1, 4, 7, 8, 9]}}}
+{"tool": "add_layer", "args": {"name": "sign", "values": {"base_color": [0.85, 0.85, 0.83], "roughness": 0.45, "metallic": 0.0}, "mask": {"parts": [2, 5, 6]}}}
+{"tool": "add_layer", "args": {"name": "Water damage", "values": {"base_color": [0.32, 0.22, 0.13], "roughness": 0.7, "metallic": 0.0}, "mask": {"parts": [1, 4, 7, 8, 9], "generator": "gradient", "amount": 0.18, "softness": 0.15, "breakup": 0.7, "scale": 6.0}, "opacity": 0.8, "channels": {"height": false}}}
+{"tool": "add_layer", "args": {"name": "Grime", "material": "Grime", "mask": {"parts": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], "generator": "dirt", "amount": 0.5, "softness": 0.25, "breakup": 0.5}, "opacity": 0.75, "channels": {"height": false}}}
+{"tool": "add_layer", "args": {"name": "Ground dirt", "material": "Grime", "mask": {"parts": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], "generator": "gradient", "amount": 0.6487549148099607, "softness": 0.12, "breakup": 0.6, "scale": 4.0, "effects": [{"generator": "grunge", "op": "multiply", "amount": 0.75, "scale": 3.0, "softness": 0.3}]}, "opacity": 0.7, "channels": {"height": false}}}
+{"tool": "add_layer", "args": {"name": "Rain streaks", "material": "Grime", "mask": {"parts": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], "generator": "streaks", "amount": 0.275, "scale": 3.0, "softness": 0.2}, "opacity": 0.4, "channels": {"height": false}}}
+{"tool": "add_layer", "args": {"name": "Wet sheen", "values": {"roughness": 0.08}, "mask": {"parts": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], "generator": "grunge", "amount": 0.43, "scale": 1.8, "softness": 0.3}, "opacity": 0.6, "channels": {"base_color": false, "metallic": false, "height": false}}}
+{"tool": "add_layer", "args": {"kind": "paint", "name": "Story decals"}}
+{"tool": "project_decal", "args": {"image": "assets/decals/props/box_fragile.png", "layer": "Story decals", "position": [-0.12, 0.21, 0.184], "normal": [0, 0, 1], "size": [0.258, 0.1613], "depth": 0.01}}
+{"tool": "project_decal", "args": {"image": "assets/decals/props/box_logistics.png", "layer": "Story decals", "position": [-0.0415, 0.59, 0.1441], "normal": [0, 0, 1], "size": [0.2089, 0.1306], "depth": 0.01}}
+{"tool": "project_decal", "args": {"image": "assets/decals/props/box_fragile.png", "layer": "Story decals", "position": [0.3638, 0.15, 0.2675], "normal": [0, 0, 1], "size": [0.1843, 0.1152], "depth": 0.01}}
+{"tool": "project_decal", "args": {"image": "assets/decals/props/box_logistics.png", "layer": "Story decals", "position": [-0.12, 0.25, 0.282], "normal": [0, 0, 1], "size": 0.35, "tint": [0.2, 0.15, 0.1], "fade": 0.3}}
+{"tool": "render", "args": {"yaw": 30, "pitch": 14, "width": 720, "height": 720, "exposure": -0.3, "lighting": "night", "bloom": true, "path": "C:/Users/kiera/AppData/Local/Temp/pig_props/cardboard_boxes.png"}}
+{"tool": "export_textures", "args": {"dir": "scenes/props/textures/cardboard_boxes", "preset": "separate", "name": "cardboard_boxes"}}
+{"tool": "save_project", "args": {"path": "scenes/props/projects/cardboard_boxes.pigment"}}
