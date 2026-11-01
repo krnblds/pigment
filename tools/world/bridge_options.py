@@ -176,7 +176,8 @@ def main():
                 ob.hide_render = True
     shots = []
     for (d, o), (c, ro, dt) in results.items():
-        cv = cams.get(f"{d}_dusk_wide")
+        view = {"expressway": "close", "kagero": "close"}.get(d, "dusk_wide") if sheet else "dusk_wide"
+        cv = cams.get(f"{d}_{view}")
         if cv is None:
             continue
         for (d2, o2), (c2, _, _) in results.items():

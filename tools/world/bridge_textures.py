@@ -69,6 +69,34 @@ def _decal(image, layer, x, z, w, h, tint, values=None, height=None, channels=No
     return {"tool": "project_decal", "args": a}
 
 
+def _runs(D, layer, opacity, n, seed, size, tint, w=(0.04, 0.2), length=(0.4, 2.2), starts=None, jitter=0.12, values=None):
+    """Rain / rust / salt runs as decals of the run stencil (strong at the top, fading down): a paint
+    layer plus n decals, deterministic. On a flat sheet the streaks generator has no geometry to
+    drip from, so the runs are placed: below `starts` [(x, z)] (tie holes, joints, bolts) or at
+    random. Kept inside the tile (no wrap)."""
+    import random
+    rng = random.Random(seed)
+    sx, sz = (size, size) if not isinstance(size, (list, tuple)) else size
+    steps = [{"name": layer, "kind": "paint", "opacity": opacity}]
+    for k in range(n):
+        ww = rng.uniform(*w)
+        L = rng.uniform(*length)
+        if starts:
+            x0, z0 = starts[rng.randrange(len(starts))]
+            x0 += rng.uniform(-0.03, 0.03)
+        else:
+            x0 = rng.uniform(-sx / 2 + ww, sx / 2 - ww)
+            z0 = rng.uniform(-sz / 2 + L * 0.6, sz / 2)
+        L = min(L, z0 + sz / 2 - 0.02)
+        if L <= 0.05:
+            continue
+        tt = [max(0.0, c * (1 + rng.uniform(-jitter, jitter))) for c in tint]
+        # the sheet's z runs down the model (sheet +z = image bottom = model bottom with bridge_kit's
+        # UVs), so a run from z0 down by L is centred at -(z0 - L / 2) in sheet coordinates
+        steps.append(_decal(D["run"], layer, x0, -(z0 - L / 2), ww, L, tt, values))
+    return steps
+
+
 def _sheet(name, size, res, material, base, steps):
     """Flat tile project -> steps -> preview, export (separate maps), save."""
     size = list(size) if isinstance(size, (list, tuple)) else [size, size]
@@ -125,7 +153,9 @@ def make_decals():
             for x in range(w):
                 u = abs((x + 0.5) / w - 0.5) * 2
                 a = math.exp(-3.2 * f) * max(0.0, 1.0 - u ** 2.2) * (0.25 + 0.75 * min(1.0, f * 12))
-                img.putpixel((x, y), (*rgb, int(255 * min(1.0, a))))
+                a = min(1.0, a)
+                # premultiplied: the colour (= the emission in Blender and Godot) fades with the alpha
+                img.putpixel((x, y), (int(rgb[0] * a), int(rgb[1] * a), int(rgb[2] * a), int(255 * a)))
         p = d / f"{key}.png"
         img.save(p)
         out[key] = p
@@ -183,10 +213,10 @@ def make_decals():
 def concrete(D):
     S = 4.8
     steps = [
-        {"name": "Tone", "values": {"base_color": [0.47, 0.46, 0.43]}, "opacity": 0.7, "mask": _g("grunge", amount=0.45, scale=0.5, softness=0.35, seed=101)},
-        {"name": "Pour lifts", "values": {"base_color": [0.37, 0.36, 0.34]}, "opacity": 0.5, "mask": _g("grunge", amount=0.4, scale=1.6, softness=0.4, seed=103)},
-        {"name": "Aggregate", "values": {"base_color": [0.55, 0.54, 0.51], "height": 0.15}, "opacity": 0.5, "mask": _g("spots", amount=0.25, scale=120.0, softness=0.05, seed=105)},
-        {"name": "Pitting", "values": {"base_color": [0.22, 0.21, 0.2], "height": -0.6}, "opacity": 0.8, "mask": _g("spots", amount=0.05, scale=40.0, softness=0.05, seed=107)},
+        {"name": "Tone", "values": {"base_color": [0.5, 0.49, 0.46]}, "opacity": 0.35, "mask": _g("grunge", amount=0.45, scale=0.35, softness=0.5, seed=101)},
+        {"name": "Pour lifts", "values": {"base_color": [0.42, 0.41, 0.39]}, "opacity": 0.3, "mask": _g("grunge", amount=0.4, scale=1.6, softness=0.4, seed=103)},
+        {"name": "Aggregate", "values": {"base_color": [0.56, 0.55, 0.52], "height": 0.1}, "opacity": 0.2, "mask": _g("spots", amount=0.25, scale=120.0, softness=0.05, seed=105)},
+        {"name": "Pitting", "values": {"base_color": [0.3, 0.29, 0.28], "height": -0.6}, "opacity": 0.6, "mask": _g("spots", amount=0.025, scale=40.0, softness=0.05, seed=107)},
         {"kind": "paint", "name": "Form joints"},
         {"kind": "paint", "name": "Tie holes"},
         {"kind": "paint", "name": "Patch repairs"},
@@ -208,12 +238,15 @@ def concrete(D):
         dec.append(_decal(img, "Patch repairs", x, z, w, h, [0.5, 0.49, 0.465], {"roughness": 0.82}, height=0.12))
     weather = [
         {"name": "Tie hole rust", "material": "Rust", "opacity": 0.5, "mask": _g("leaks", amount=0.25, scale=6.0, softness=0.2, seed=109, drip_length=0.8)},
-        {"name": "Rain streaks", "material": "Grime", "opacity": 0.85, "mask": _g("streaks", amount=0.5, scale=2.2, softness=0.2, seed=111)},
-        {"name": "Leaks", "values": {"base_color": [0.18, 0.17, 0.15], "roughness": 0.7}, "opacity": 0.55, "mask": _g("leaks", amount=0.35, scale=1.5, softness=0.25, seed=113, drip_length=2.5)},
-        {"name": "Efflorescence", "values": {"base_color": [0.78, 0.77, 0.72], "roughness": 0.95}, "opacity": 0.6, "mask": _g("streaks", amount=0.22, scale=3.0, softness=0.3, seed=115)},
-        {"name": "Grime", "material": "Grime", "opacity": 0.3, "channels": {"height": False}, "mask": _g("grunge", amount=0.3, scale=0.7, softness=0.4, seed=117)},
+        {"name": "Leaks", "values": {"base_color": [0.3, 0.29, 0.27], "roughness": 0.7}, "opacity": 0.35, "mask": _g("leaks", amount=0.3, scale=1.5, softness=0.25, seed=113, drip_length=2.5)},
+    ] + _runs(D, "Rain streaks", 0.4, 45, 111, S, [0.2, 0.19, 0.17], w=(0.05, 0.3), length=(0.5, 2.6), values={"roughness": 0.75})       + _runs(D, "Joint runs", 0.45, 22, 112, S, [0.24, 0.23, 0.21], w=(0.08, 0.25), length=(0.3, 1.1),
+              starts=[(x, z) for z in (-1.8, -0.6, 0.6, 1.8) for x in (-2.0, -1.6, -0.9, -0.3, 0.4, 0.9, 1.5, 2.0)])       + _runs(D, "Tie hole bleed", 0.7, 20, 114, S, [0.32, 0.16, 0.07], w=(0.025, 0.05), length=(0.15, 0.6),
+              starts=[(x, z) for x in (-1.8, -0.6, 0.6, 1.8) for z in (-1.2, 0.0, 1.2)], values={"roughness": 0.85})       + _runs(D, "Efflorescence", 0.3, 12, 115, S, [0.74, 0.73, 0.7], w=(0.15, 0.4), length=(0.15, 0.4),
+              starts=[(x, z) for z in (-1.8, -0.6, 0.6, 1.8) for x in (-1.9, -0.7, 0.3, 1.1, 1.9)], values={"roughness": 0.95}) + [
+
+        {"name": "Grime", "material": "Grime", "opacity": 0.15, "channels": {"height": False}, "mask": _g("grunge", amount=0.3, scale=0.4, softness=0.5, seed=117)},
     ]
-    return _sheet("bridge_concrete", [S, S], 2048, "Concrete", {"base_color": [0.43, 0.42, 0.4], "roughness": 0.88}, steps + dec + weather)
+    return _sheet("bridge_concrete", [S, S], 2048, "Concrete", {"base_color": [0.5, 0.49, 0.465], "roughness": 0.88}, steps + dec + weather)
 
 
 def _bolted(D, paint, rough, bleed, metal=0.0):
@@ -242,8 +275,9 @@ def steel_white(D):
         {"kind": "paint", "name": "Rust runs"},
     ] + _bolted(D, paint, 0.45, True) + [
         {"name": "Chipped paint", "values": {"base_color": [0.32, 0.33, 0.34], "roughness": 0.5, "metallic": 0.6}, "opacity": 0.6, "mask": _g("scratches", amount=0.035, scale=3.0, softness=0.05, seed=203)},
-        {"name": "Rust spots", "material": "Rust", "opacity": 0.7, "mask": _g("spots", amount=0.018, scale=8.0, softness=0.15, seed=205)},
-        {"name": "Salt grime", "material": "Grime", "opacity": 0.45, "mask": _g("streaks", amount=0.33, scale=2.5, softness=0.2, seed=207)},
+        {"name": "Rust spots", "values": {"base_color": [0.3, 0.14, 0.06], "roughness": 0.85}, "opacity": 0.7, "mask": _g("spots", amount=0.018, scale=8.0, softness=0.15, seed=205)},
+    ] + _runs(D, "Salt grime", 0.4, 40, 207, 4.0, [0.32, 0.31, 0.28], w=(0.05, 0.25), length=(0.4, 2.0)) + [
+
         {"name": "Dust", "values": {"base_color": [0.5, 0.49, 0.46], "roughness": 0.8}, "opacity": 0.35, "channels": {"height": False}, "mask": _g("grunge", amount=0.3, scale=1.2, softness=0.4, seed=209)},
     ]
     return _sheet("bridge_steel_white", [4, 4], 2048, "Concrete", {"base_color": paint, "roughness": 0.45, "metallic": 0.0}, steps)
@@ -260,7 +294,8 @@ def steel_weather(D):
         {"kind": "paint", "name": "Rust runs"},
     ] + _bolted(D, base, 0.8, False) + [
         {"name": "Scale flakes", "values": {"base_color": [0.1, 0.05, 0.03], "height": 0.4, "roughness": 0.95}, "opacity": 0.6, "mask": _g("spots", amount=0.06, scale=30.0, softness=0.05, seed=305)},
-        {"name": "Runoff streaks", "values": {"base_color": [0.12, 0.06, 0.035]}, "opacity": 0.5, "mask": _g("streaks", amount=0.35, scale=2.0, softness=0.25, seed=307)},
+    ] + _runs(D, "Runoff streaks", 0.5, 40, 307, 4.0, [0.11, 0.055, 0.03], w=(0.05, 0.25), length=(0.4, 2.2)) + [
+
     ]
     return _sheet("bridge_steel_weather", [4, 4], 2048, "Concrete", {"base_color": base, "roughness": 0.82, "metallic": 0.15}, steps)
 
@@ -271,7 +306,8 @@ def steel_grey(D):
         {"name": "Tone", "values": {"base_color": [0.28, 0.3, 0.31]}, "opacity": 0.6, "mask": _g("grunge", amount=0.4, scale=1.0, softness=0.4, seed=401)},
         {"name": "Worn to zinc", "values": {"base_color": [0.55, 0.56, 0.56], "roughness": 0.35, "metallic": 0.8}, "opacity": 0.5, "mask": _g("scratches", amount=0.05, scale=5.0, softness=0.05, seed=403)},
         {"name": "Rust", "material": "Rust", "opacity": 0.6, "mask": _g("spots", amount=0.03, scale=10.0, softness=0.15, seed=405)},
-        {"name": "Grime runs", "material": "Grime", "opacity": 0.5, "mask": _g("streaks", amount=0.35, scale=4.0, softness=0.2, seed=407)},
+    ] + _runs(D, "Grime runs", 0.45, 24, 407, 2.0, [0.14, 0.12, 0.1], w=(0.03, 0.12), length=(0.2, 1.2)) + [
+
     ]
     return _sheet("bridge_steel_grey", [2, 2], 1024, "Concrete", {"base_color": base, "roughness": 0.5, "metallic": 0.35}, steps)
 
@@ -281,7 +317,8 @@ def cable(D):
     steps = [
         {"name": "Helical rib", "values": {"base_color": [0.64, 0.64, 0.62], "height": 0.8}, "opacity": 0.45, "mask": _g("stripes", amount=0.25, scale=6.0, softness=0.3, seed=501)},
         {"name": "UV chalking", "values": {"base_color": [0.78, 0.78, 0.76], "roughness": 0.6}, "opacity": 0.5, "mask": _g("grunge", amount=0.35, scale=2.0, softness=0.4, seed=503)},
-        {"name": "Grime runs", "material": "Grime", "opacity": 0.55, "mask": _g("streaks", amount=0.3, scale=6.0, softness=0.2, seed=505)},
+    ] + _runs(D, "Grime runs", 0.3, 12, 505, 1.0, [0.3, 0.29, 0.27], w=(0.03, 0.1), length=(0.2, 0.9)) + [
+
         {"name": "Soot", "values": {"base_color": [0.2, 0.2, 0.2], "roughness": 0.6}, "opacity": 0.35, "channels": {"height": False}, "mask": _g("grunge", amount=0.25, scale=4.0, softness=0.4, seed=507)},
     ]
     return _sheet("bridge_cable", [1, 1], 1024, "Concrete", {"base_color": base, "roughness": 0.35, "metallic": 0.0}, steps)
@@ -301,7 +338,8 @@ def hoarding(D):
     dec.append(_decal(D["sign_works"], "Graphics", 1.5, 0.1, 1.6, 1.0, [1.0, 1.0, 1.0], {"roughness": 0.5}))
     dec.append(_decal("assets/decals/story/sign_hoshikawa_security.png", "Graphics", -1.5, -0.65, 2.6, 0.34, [1.0, 1.0, 1.0], {"roughness": 0.4}))
     weather = [
-        {"name": "Grime", "material": "Grime", "opacity": 0.55, "mask": _g("streaks", amount=0.3, scale=2.0, softness=0.2, seed=603)},
+    ] + _runs(D, "Grime", 0.5, 24, 603, (6.0, 3.0), [0.12, 0.11, 0.1], w=(0.05, 0.2), length=(0.3, 1.4)) + [
+
         {"name": "Splash", "material": "Grime", "opacity": 0.6, "mask": _g("grunge", amount=0.25, scale=1.5, softness=0.3, seed=605)},
     ]
     return _sheet("bridge_hoarding", [W, H], 2048, "Concrete", {"base_color": navy, "roughness": 0.55}, steps + dec + weather)
@@ -311,7 +349,8 @@ def hazard(D):
     steps = [
         {"name": "Stripes", "material": "Hazard yellow", "mask": _g("stripes", amount=0.5, scale=2.0, softness=0.02, seed=701)},
         {"name": "Scuffs", "values": {"base_color": [0.2, 0.2, 0.2], "roughness": 0.6, "metallic": 0.5}, "opacity": 0.7, "mask": _g("scratches", amount=0.1, scale=4.0, softness=0.05, seed=703)},
-        {"name": "Grime", "material": "Grime", "opacity": 0.45, "mask": _g("streaks", amount=0.3, scale=3.0, softness=0.2, seed=705)},
+    ] + _runs(D, "Grime", 0.4, 16, 705, 2.0, [0.12, 0.11, 0.1], w=(0.04, 0.15), length=(0.2, 1.0)) + [
+
     ]
     return _sheet("bridge_hazard", [2, 2], 1024, "Concrete", {"base_color": [0.03, 0.03, 0.03], "roughness": 0.6}, steps)
 

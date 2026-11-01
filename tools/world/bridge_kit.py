@@ -254,10 +254,7 @@ class BM:
     def finish(self, name, mats):
         """mats: key -> material. UVs are divided by each material's tile (v up = up the
         Pigment sheet image, so decal text on the sheets reads upright)."""
-        me = bpy.data.meshes.get(name)
-        if me is not None:
-            bpy.data.meshes.remove(me)
-        me = bpy.data.meshes.new(name)
+        me = bpy.data.meshes.new(name)          # a clash gets Blender's .001 suffix (option sheets)
         tiles = [tile_of(k) for k in self.keys]
         used = sorted({f.material_index for f in self.bm.faces})
         remap = {m: i for i, m in enumerate(used)}
@@ -434,7 +431,7 @@ def wash_images(root):
     return {k: os.path.join(root, "assets", "decals", "bridges", f"{k}.png") for k in WASH}
 
 
-def wash_material(root, key, strength=1.6):
+def wash_material(root, key, strength=1.0):
     mname = "Bridge_" + key
     if bpy.data.materials.get(mname):
         return bpy.data.materials[mname]

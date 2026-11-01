@@ -117,13 +117,14 @@ def pier_frames(br, path, s0, s1):
     for p in br["piers"]:
         s, d = station_of(path, p["pos"])
         P, t, n = frame_at(path, min(max(s, s0), s1))
+        z = P.z
         if d > 4.0:
             t = Vector((p["dir"][0], p["dir"][1], 0)).normalized()
             n = Vector((-t.y, t.x, 0))
-            P = Vector((p["pos"][0], p["pos"][1], p["top"] + br.get("depth", 2.4) + 0.2))
-        else:
-            P = Vector((P.x, P.y, P.z))
-        out.append({"s": s, "off": d, "P": P, "t": t, "n": n, "data": p})
+            P = Vector((p["pos"][0], p["pos"][1], 0.0))
+            z = p["top"] + br.get("depth", 2.4) + 0.2
+        # P is the plan position (z = 0: piers are built in absolute heights), z the path level
+        out.append({"s": s, "off": d, "P": Vector((P.x, P.y, 0.0)), "z": z, "t": t, "n": n, "data": p})
     return out
 
 
@@ -333,7 +334,7 @@ def expressway(ctx, br, path, cls, option="tulip"):
     pfs = pier_frames(br, path, s0, s1)
     for k, pf in enumerate(pfs):
         p = pf["data"]
-        top_z = pf["P"].z - D - 0.32
+        top_z = pf["z"] - D - 0.32
         bottom = p["bottom"]
         P, t, n = pf["P"], pf["t"], pf["n"]
         if option == "tulip":
@@ -356,7 +357,7 @@ def expressway(ctx, br, path, cls, option="tulip"):
         pb.box(P + UP * (top_z + 0.35), t, n, UP, (0.8, 1.2, 0.7), "concrete")         # seismic shear key
         # downpipe from the longitudinal drain to the ground along the column face
         if k % 2 == 0:
-            a = P + n * 6.9 + t * 1.9 + UP * (P.z - 0.95)
+            a = P + n * 6.9 + t * 1.9 + UP * (pf["z"] - 0.95)
             m = P + n * 1.2 + t * 1.75 + UP * (top_z - 0.4)
             det.tube(a, m, 0.12, "steel_grey", seg=6, smooth=False)
             det.tube(m, P + n * 1.2 + t * 1.75 + UP * (bottom + 1.0), 0.12, "steel_grey", seg=6, smooth=False)
@@ -375,7 +376,7 @@ def expressway(ctx, br, path, cls, option="tulip"):
             sub = Rail(path, pf["s"] - 0.06, pf["s"] + 0.06, s=[pf["s"] - 0.06, pf["s"] + 0.06])
             det.sweep(sub, [(y * 1.006, z * 1.01 + (0.005 if z > 0 else 0)) for y, z in box_section(E, D)], "rubber", closed=True)
         # inspection hatch in the soffit near every pier
-        hp = P + t * 5.0 + UP * (P.z - D - 0.01)
+        hp = P + t * 5.0 + UP * (pf["z"] - D - 0.01)
         det.box(hp, t, n, UP, (0.9, 0.9, 0.04), "steel_grey")
     ctx.emit(f"Bridge_{name}_piers", pb)
     ctx.emit(f"BridgeDetail_{name}", det)
@@ -400,7 +401,7 @@ def small_deck(ctx, br, path, cls):
     pb = BM(list(ctx.M))
     for pf in pier_frames(br, path, s0, s1):
         p = pf["data"]
-        top_z = pf["P"].z - min(D, Dm) - 0.32
+        top_z = pf["z"] - min(D, Dm) - 0.32
         if top_z - p["bottom"] < 0.5:
             continue
         tulip_pier(ctx, pb, pf, top_z, p["bottom"], min(3.6, E * 0.4), ax=1.0, ay=1.3)
@@ -422,7 +423,7 @@ def kagero(ctx, br, path, cls, option="haunched"):
     hz = np.zeros(rail.n)
     for s in sp:
         hz = np.maximum(hz, np.cos(np.clip(np.abs(rail.s - s) / 15.0, 0, 1) * math.pi / 2) ** 2)
-    want = 2.1 + (1.5 * hz if option == "haunched" else 0.0)
+    want = 2.1 + (2.0 if option == "haunched" else 0.0) * hz
     d = clamp_depth(ctx, rail, want, E, margin=0.6, top=0.3, dmin=1.4)
     G = [-8.4, -2.8, 2.8, 8.4]
     slab = BM(list(ctx.M))
@@ -501,7 +502,7 @@ def kagero(ctx, br, path, cls, option="haunched"):
         P, t, n = pf["P"], pf["t"], pf["n"]
         i = int(np.argmin(np.abs(rail.s - pf["s"])))
         dd = d[i] if pf["off"] < 4.0 else 2.1
-        top_z = P.z - 0.3 - dd - 0.45
+        top_z = pf["z"] - 0.3 - dd - 0.45
         bottom = p["bottom"]
         if option == "deck_arch" and 1 < k < 5:
             bottom = max(bottom, SEA + 4.0)
@@ -541,7 +542,7 @@ def kagero(ctx, br, path, cls, option="haunched"):
             caged_ladder(det, P + n * 6.4 + t * 1.45 + UP * cb, P + n * 6.4 + t * 1.45 + UP * (top_z - 0.1), t, n)
             sign_board(det, P + n * 6.4 + t * 1.32 + UP * (cb + 2.2), t, 0.9, 0.32, "sign_clearance")
         # downpipes
-        a = P + n * 9.4 + t * 1.6 + UP * (P.z - 0.9)
+        a = P + n * 9.4 + t * 1.6 + UP * (pf["z"] - 0.9)
         det.tube(a, P + n * 7.6 + t * 1.6 + UP * (top_z - 2.4), 0.11, "steel_grey", seg=6, smooth=False)
         det.tube(P + n * 7.6 + t * 1.6 + UP * (top_z - 2.4), P + n * 7.6 + t * 1.6 + UP * (cb + 0.3), 0.11, "steel_grey", seg=6, smooth=False)
     # the travelling maintenance gantry under one mid span
@@ -661,7 +662,7 @@ def port(ctx, br, path, cls, option="H_truss"):
         P, t, n = pf["P"], pf["t"], pf["n"]
         i = int(np.argmin(np.abs(rail.s - pf["s"])))
         dd = Dt[i] if pf["off"] < 4 else 2.4
-        top_z = P.z - 0.35 - dd - 0.4
+        top_z = pf["z"] - 0.35 - dd - 0.4
         bottom = p["bottom"]
         if top_z - bottom < 1.0:
             continue
@@ -682,6 +683,7 @@ def port(ctx, br, path, cls, option="H_truss"):
     for k, (sp, py) in enumerate(pyl):
         P, t, n = frame_at(path, sp)
         zd = P.z
+        P = Vector((P.x, P.y, 0.0))             # absolute heights below
         zt = py["top"]
         bottom = py["bottom"]
         i = int(np.argmin(np.abs(rail.s - sp)))
@@ -1101,11 +1103,24 @@ def tenjin(ctx, br, path, cls, option="basket"):
             barrier_railing(det, r, cls)
     for side in sides:
         rib = ribs[side]
-        for k in (6, 12, N - 12, N - 6):
-            p = rib[k]
-            P, t, n = frame_at(path, sa + (sb - sa) * k / N)
-            a = Vector((p.x, p.y, P.z + 1.0))
-            wash(wb, a + n * ((side or 1) * 0.0) - (n * (side or 1)) * 1.4, p - (n * (side or 1)) * 1.4 + UP * 6.0, 1.6, -n * (side or 1), "wash_cool")
+        # uplight washes running up the inner face of each rib from both springings (cool white)
+        for ks in (range(0, 15), range(N, N - 15, -1)):
+            ks = list(ks)
+            for j in range(len(ks) - 1):
+                k0, k1 = ks[j], ks[j + 1]
+                p0, p1 = rib[k0], rib[k1]
+                c = Vector((0, 0, 0))
+                P0, t0, n0 = frame_at(path, sa + (sb - sa) * k0 / N)
+                inward = -n0 * (side or 1)
+                T = (p1 - p0).normalized()
+                L = (inward - T * T.dot(inward)).normalized()
+                U = T.cross(L).normalized()
+                taper0 = 1 - 0.32 * math.sin(math.pi * k0 / N)
+                taper1 = 1 - 0.32 * math.sin(math.pi * k1 / N)
+                q0, q1 = p0 + L * (1.25 * taper0 + 0.04), p1 + L * (1.25 * taper1 + 0.04)
+                h0, h1 = 1.15 * taper0, 1.15 * taper1
+                v0, v1 = 1.0 - j / (len(ks) - 1), 1.0 - (j + 1) / (len(ks) - 1)
+                wb.face([q0 - U * h0, q0 + U * h0, q1 + U * h1, q1 - U * h1], "wash_cool", [(0, 1 - v0), (1, 1 - v0), (1, 1 - v1), (0, 1 - v1)], L)
         for k in range(4, N - 3, 8):
             P, t, n = frame_at(path, sa + (sb - sa) * k / N)
             det.box(P + n * ((side or 1) * (Ytie - 0.66)) + UP * 0.75, t, n, UP, (0.5, 0.12, 0.12), "lamp_cool")
@@ -1115,7 +1130,7 @@ def tenjin(ctx, br, path, cls, option="basket"):
         p = pf["data"]
         P, t, n = pf["P"], pf["t"], pf["n"]
         in_main = sa - 8 < pf["s"] < sb + 8
-        top_z = P.z - (2.0 if in_main or p.get("heavy") else Da) - 0.35
+        top_z = pf["z"] - (2.0 if in_main or p.get("heavy") else Da) - 0.35
         bottom = p["bottom"]
         if top_z - bottom < 1.0:
             continue
