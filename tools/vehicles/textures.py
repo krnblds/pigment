@@ -637,6 +637,9 @@ def load_spec(vid):
 def texture(vid, what, no_run=False):
     pt = paths(vid)
     fv = dict(F.VEHICLES[vid])
+    if os.environ.get("FLEET_RES"):
+        # e.g. FLEET_RES=2048 when the GPU is shared and a 4K body runs out of memory
+        fv["res"] = min(fv["res"], int(os.environ["FLEET_RES"]))
     spec = load_spec(vid)
     fv["id"] = vid
     parts = json.loads((pt["src"] / f"{vid}_parts.json").read_text())

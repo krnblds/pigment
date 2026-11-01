@@ -222,7 +222,7 @@ def chassis(p):
     out = []
     y1 = BOX["y1"]
     for sx, side in ((1, "L"), (-1, "R")):
-        r = box(f"frame_rail_{side}", (sx * 0.42, -0.40, 0.66), (0.08, 6.0, 0.20), bevel=0.01)
+        r = box(f"frame_rail_{side}", (sx * 0.42, 0.05, 0.66), (0.08, 5.4, 0.20), bevel=0.01)
         out.append((r.name, "underbody_metal", r))
     for i, y in enumerate((-2.5, -1.40, -0.30, 0.95, 1.90, 2.70)):
         c = box(f"frame_cross_{i}", (0, y, 0.66), (0.84, 0.08, 0.14), bevel=0.01)
