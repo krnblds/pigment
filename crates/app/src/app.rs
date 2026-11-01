@@ -25,7 +25,10 @@ use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 pub mod automation;
+mod folders_ui;
 mod tour;
+#[cfg(test)]
+mod image_fill_tests;
 mod ui;
 
 /// Things the quick-start guide watches for.
@@ -592,6 +595,18 @@ impl PigmentApp {
         }
         self.commit_doc_changes();
         let res = self.doc.mint();
+        if self.doc.layers[i].is_folder() {
+            // a folder starts fully shown: painting hides parts of it
+            self.ts.new_mask(&rs.device, &rs.queue, res, true);
+            self.doc.layers[i].mask = Some(Mask::new(res));
+            self.paint_mask = true;
+            self.brush.mask_white = false;
+            self.brush.erase = false;
+            self.commit_doc_changes();
+            let name = self.doc.layers[i].name.clone();
+            self.set_status(format!("Added a white mask to folder {name}: painting hides it"), false);
+            return;
+        }
         self.ts.new_mask(&rs.device, &rs.queue, res, false);
         self.doc.layers[i].mask = Some(Mask { res, generator: None, invert: false, enabled: true, parts: Vec::new(), effects: Vec::new() });
         self.paint_mask = true;
@@ -759,6 +774,12 @@ impl PigmentApp {
     /// enabled channels (roughness, metallic, height, emission) are painted
     /// wherever the image is opaque. One undo step.
     pub(super) fn project_decal(&mut self, rs: &RenderState, image: &Path, rect: [f32; 4], viewport_px: Vec2, luminance_alpha: bool) -> Result<(), String> {
+        self.project_decal_ex(rs, image, rect, viewport_px, luminance_alpha, true)
+    }
+
+    /// `project_decal`, optionally without an undo step (variant export
+    /// replays decals onto scratch layers that never enter the history).
+    pub(super) fn project_decal_ex(&mut self, rs: &RenderState, image: &Path, rect: [f32; 4], viewport_px: Vec2, luminance_alpha: bool, record_history: bool) -> Result<(), String> {
         if self.stroke.is_some() {
             return Err("finish the current stroke first".into());
         }
@@ -789,7 +810,7 @@ impl PigmentApp {
             let (depth, mg) = (self.viewport.paint_depth().unwrap(), self.mesh_gpu.as_ref().unwrap());
             self.painter.decal(&rs.device, &rs.queue, &self.ts, mg, depth, view, tex, decal, &brush, texels);
         }
-        if let Some(snap) = self.painter.end(&rs.device, &rs.queue, &tiles) {
+        if let Some(snap) = self.painter.end(&rs.device, &rs.queue, &tiles).filter(|_| record_history) {
             self.ts.unsaved.insert(target.res());
             let name = image.file_stem().map(|s| s.to_string_lossy().to_string()).unwrap_or_default();
             self.counters.strokes += 1;
@@ -825,7 +846,13 @@ impl PigmentApp {
         self.brush.size * 0.5 * self.ppp
     }
 
+    /// Where image fills' relative paths are looked up (each and its parents).
+    pub(super) fn image_bases(&self) -> Vec<PathBuf> {
+        self.project_dir.iter().cloned().chain(self.mesh_source.as_ref().and_then(|m| m.parent()).map(Path::to_path_buf)).collect()
+    }
+
     fn ensure_composited(&mut self, rs: &RenderState) {
+        self.ts.tiles.bases = self.image_bases();
         self.ts.ensure_resources(&rs.device, &rs.queue, &self.doc);
         if self.composited.as_ref() != Some(&self.doc) {
             self.ts.composite(&rs.device, &rs.queue, &self.doc, None);

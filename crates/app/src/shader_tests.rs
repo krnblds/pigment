@@ -21,6 +21,7 @@ macro_rules! shader_test {
 }
 
 shader_test!(viewport, "viewport.wgsl");
+shader_test!(post, "post.wgsl");
 shader_test!(env, "env.wgsl");
 shader_test!(mip, "mip.wgsl");
 shader_test!(texspace, "texspace.wgsl");
@@ -36,3 +37,9 @@ shader_test!(bake_ao, "bake_ao.wgsl");
 shader_test!(bake_curv, "bake_curv.wgsl");
 shader_test!(bake_resolve, "bake_resolve.wgsl");
 shader_test!(bake_blur, "bake_blur.wgsl");
+
+/// The folder pass is appended to the compositor (it reuses its bindings).
+#[test]
+fn folder() {
+    check("composite.wgsl + folder.wgsl", &[include_str!("shaders/composite.wgsl"), include_str!("shaders/gen_weather.wgsl"), include_str!("shaders/folder.wgsl")].concat());
+}

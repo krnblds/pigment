@@ -502,5 +502,94 @@ fn render_demo() {
     }
 }
 
+/// Folders composite as sub-stacks: their opacity and mask multiply their
+/// children's, they nest, hidden folders hide their contents, and a partial
+/// (painting) composite agrees with a full one.
+#[test]
+fn folders_composite_as_sub_stacks() {
+    let Some(mut s) = Scene::new() else { return };
+    let (d, q) = (&s.g.device, &s.g.queue);
+    // roughness 0 below, a roughness-1 fill inside the folders (only roughness on)
+    let mut doc = Document::default();
+    doc.resolution = RES;
+    let mut base = doc.new_fill_layer("base");
+    if let LayerKind::Fill { values } = &mut base.kind {
+        values.roughness = 0.0;
+    }
+    doc.layers.push(base);
+    let outer = doc.new_folder("outer");
+    let oid = outer.id;
+    doc.layers.push(outer);
+    let mut child = doc.new_fill_layer("child");
+    for c in Channel::ALL {
+        child.channels.get_mut(c).enabled = c == Channel::Roughness;
+    }
+    if let LayerKind::Fill { values } = &mut child.kind {
+        values.roughness = 1.0;
+    }
+    let cid = child.id;
+    doc.layers.push(child);
+    doc.move_layer(cid, Some(oid), None).unwrap();
+
+    let rough = |ts: &mut TexSet, doc: &Document, rect: Option<[u32; 4]>| -> f32 {
+        ts.ensure_resources(d, q, doc);
+        ts.composite(d, q, doc, rect);
+        let m = io::read_material(d, q, ts);
+        m.orm.chunks_exact(4).map(|p| p[1] as f32 / 255.0).sum::<f32>() / (m.orm.len() / 4) as f32
+    };
+    assert!((rough(&mut s.ts, &doc, None) - 1.0).abs() < 0.01, "full-opacity folder is a plain group");
+    doc.layer_mut(oid).unwrap().opacity = 0.5;
+    assert!((rough(&mut s.ts, &doc, None) - 0.5).abs() < 0.01);
+
+    // nest: outer 0.5 > inner 0.5 > child
+    let inner = doc.new_folder("inner");
+    let iid = inner.id;
+    doc.layers.push(inner);
+    doc.move_layer(iid, Some(oid), None).unwrap();
+    doc.move_layer(cid, Some(iid), None).unwrap();
+    doc.layer_mut(iid).unwrap().opacity = 0.5;
+    assert_eq!(doc.depth(cid), 2);
+    let nested = rough(&mut s.ts, &doc, None);
+    assert!((nested - 0.25).abs() < 0.01, "nested opacity multiplies: {nested}");
+
+    // a partial composite (as while painting) leaves the rest of the result intact
+    let part = rough(&mut s.ts, &doc, Some([0, 0, 64, 64]));
+    assert!((part - nested).abs() < 0.002, "partial composite changed the result: {part} vs {nested}");
+
+    // the folder's mask multiplies the child's mask: 0.5 x 0.5 (with opacities 1)
+    doc.layer_mut(oid).unwrap().opacity = 1.0;
+    doc.layer_mut(iid).unwrap().opacity = 1.0;
+    let half = vec![128u8; (RES * RES) as usize];
+    for id in [oid, cid] {
+        let res = doc.mint();
+        io::upload_mask(d, q, &mut s.ts, res, &half);
+        doc.layer_mut(id).unwrap().mask = Some(Mask::new(res));
+    }
+    let masked = rough(&mut s.ts, &doc, None);
+    assert!((masked - 0.25).abs() < 0.02, "folder mask x child mask: {masked}");
+
+    // a disabled folder channel drops its children's effect on that channel
+    doc.layer_mut(iid).unwrap().channels.roughness.enabled = false;
+    assert!(rough(&mut s.ts, &doc, None) < 0.01);
+    doc.layer_mut(iid).unwrap().channels.roughness.enabled = true;
+
+    // hidden folder hides everything inside
+    doc.layer_mut(oid).unwrap().visible = false;
+    assert!(rough(&mut s.ts, &doc, None) < 0.01);
+    doc.layer_mut(oid).unwrap().visible = true;
+    // and a folder-less stack still composites exactly as before
+    let flat: Vec<LayerId> = doc.layers.iter().filter(|l| l.is_folder()).map(|l| l.id).collect();
+    for f in flat {
+        let kids: Vec<LayerId> = doc.children_of(Some(f)).iter().map(|i| doc.layers[*i].id).collect();
+        for k in kids {
+            doc.move_layer(k, None, None).unwrap();
+        }
+        doc.remove_layer_tree(f);
+    }
+    assert!(doc.layers.iter().all(|l| !l.is_folder()));
+    let m = rough(&mut s.ts, &doc, None);
+    assert!((m - 0.5).abs() < 0.02, "child mask alone: {m}");
+}
+
 #[path = "gpu_tests_weather.rs"]
 mod weather;

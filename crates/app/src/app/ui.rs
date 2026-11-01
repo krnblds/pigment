@@ -588,6 +588,14 @@ impl PigmentApp {
                         self.insert_layer(l);
                         ui.close();
                     }
+                    if ui.button("Folder").on_hover_text("Group layers: the folder's opacity and mask apply to everything inside").clicked() {
+                        self.add_folder();
+                        ui.close();
+                    }
+                    if ui.button("Smart material from file...").on_hover_text("Apply a saved .pigsmart folder").clicked() {
+                        self.load_smart_dialog();
+                        ui.close();
+                    }
                     ui.separator();
                     ui.label(RichText::new("Smart materials (several layers)").size(11.0).color(MUTED));
                     for name in smart_material_names() {
@@ -622,6 +630,13 @@ impl PigmentApp {
         let n = self.doc.layers.len();
         let mut select: Option<(LayerId, bool)> = None;
         for i in (0..n).rev() {
+            let lid = self.doc.layers[i].id;
+            if self.doc.is_hidden_in_panel(lid) {
+                continue; // inside a collapsed folder
+            }
+            let depth = self.doc.depth(lid);
+            let kids = self.doc.children_of(Some(lid)).len();
+            let shown = self.doc.effectively_visible(lid);
             let selected = self.selected == Some(self.doc.layers[i].id);
             let paint_mask = self.paint_mask;
             let l = &mut self.doc.layers[i];
@@ -634,6 +649,27 @@ impl PigmentApp {
                 .show(ui, |ui| {
                     ui.set_width(ui.available_width());
                     ui.horizontal(|ui| {
+                        // folder nesting
+                        if depth > 0 {
+                            let (r, _) = ui.allocate_exact_size(egui::vec2(14.0 * depth as f32 - 4.0, 30.0), egui::Sense::hover());
+                            for k in 0..depth {
+                                let x = r.left() + 5.0 + 14.0 * k as f32;
+                                ui.painter().line_segment([egui::pos2(x, r.top() - 4.0), egui::pos2(x, r.bottom() + 4.0)], Stroke::new(1.0, Color32::from_gray(70)));
+                            }
+                        }
+                        if let LayerKind::Folder { collapsed } = &mut l.kind {
+                            let (r, resp) = ui.allocate_exact_size(egui::vec2(12.0, 16.0), egui::Sense::click());
+                            let c = r.center();
+                            let pts = if *collapsed {
+                                vec![egui::pos2(c.x - 3.0, c.y - 5.0), egui::pos2(c.x + 4.0, c.y), egui::pos2(c.x - 3.0, c.y + 5.0)]
+                            } else {
+                                vec![egui::pos2(c.x - 5.0, c.y - 3.0), egui::pos2(c.x + 5.0, c.y - 3.0), egui::pos2(c.x, c.y + 4.0)]
+                            };
+                            ui.painter().add(egui::Shape::convex_polygon(pts, Color32::from_gray(190), Stroke::NONE));
+                            if resp.on_hover_text(if *collapsed { "Expand folder" } else { "Collapse folder" }).clicked() {
+                                *collapsed = !*collapsed;
+                            }
+                        }
                         // visibility
                         let (r, resp) = ui.allocate_exact_size(egui::vec2(16.0, 16.0), egui::Sense::click());
                         if l.visible {
@@ -656,6 +692,14 @@ impl PigmentApp {
                                     p.line_segment([egui::pos2(r.left() + 6.0, y + 4.0), egui::pos2(r.right() - 6.0, y - 2.0)], Stroke::new(2.0, Color32::from_gray(150 + k * 30)));
                                 }
                             }
+                            LayerKind::Folder { .. } => {
+                                let p = ui.painter();
+                                let body = egui::Rect::from_min_max(egui::pos2(r.left() + 2.0, r.top() + 9.0), egui::pos2(r.right() - 2.0, r.bottom() - 4.0));
+                                let tab = egui::Rect::from_min_max(egui::pos2(r.left() + 2.0, r.top() + 5.0), egui::pos2(r.left() + 13.0, r.top() + 11.0));
+                                p.rect_filled(tab, CornerRadius::same(2), ACCENT_DIM);
+                                p.rect_filled(body, CornerRadius::same(3), ACCENT_DIM);
+                                p.rect_stroke(body, CornerRadius::same(3), Stroke::new(1.0, ACCENT), egui::StrokeKind::Inside);
+                            }
                         }
                         if resp.clicked() {
                             select = Some((id, false));
@@ -669,10 +713,11 @@ impl PigmentApp {
                                 None => "Fill · painted mask".to_string(),
                             },
                             (LayerKind::Fill { .. }, None) => "Fill · everywhere".to_string(),
+                            (LayerKind::Folder { .. }, m) => format!("Folder · {kids} item{}{}", if kids == 1 { "" } else { "s" }, if m.is_some() { " · masked" } else { "" }),
                         };
                         let resp = ui
                             .vertical(|ui| {
-                                let name = RichText::new(&l.name).strong().color(if l.visible { Color32::WHITE } else { MUTED });
+                                let name = RichText::new(&l.name).strong().color(if shown { Color32::WHITE } else { MUTED });
                                 ui.add(egui::Label::new(name).selectable(false));
                                 ui.add(egui::Label::new(RichText::new(sub).size(11.0).color(MUTED)).selectable(false));
                             })
@@ -713,26 +758,41 @@ impl PigmentApp {
             self.select(Some(id), mask);
         }
 
-        ui.horizontal(|ui| {
+        ui.horizontal_wrapped(|ui| {
             let sel = self.selected.and_then(|id| self.doc.index_of(id));
-            if ui.add_enabled(sel.is_some_and(|i| i + 1 < self.doc.layers.len()), egui::Button::new("Up")).clicked() {
-                let i = sel.unwrap();
-                self.doc.layers.swap(i, i + 1);
+            // up / down move among siblings, so folders stay intact
+            if ui.add_enabled(self.can_nudge(1), egui::Button::new("Up")).clicked() {
+                self.nudge_selected(1);
             }
-            if ui.add_enabled(sel.is_some_and(|i| i > 0), egui::Button::new("Down")).clicked() {
-                let i = sel.unwrap();
-                self.doc.layers.swap(i, i - 1);
+            if ui.add_enabled(self.can_nudge(-1), egui::Button::new("Down")).clicked() {
+                self.nudge_selected(-1);
             }
             if ui.add_enabled(sel.is_some(), egui::Button::new("Duplicate")).clicked() {
                 self.duplicate_selected(rs);
             }
-            if ui.add_enabled(sel.is_some(), egui::Button::new("Delete")).clicked() {
-                if let Some(i) = sel {
-                    self.doc.layers.remove(i);
-                    let next = self.doc.layers.get(i.min(self.doc.layers.len().saturating_sub(1))).map(|l| l.id);
-                    self.select(next, false);
-                }
+            if ui.add_enabled(sel.is_some(), egui::Button::new("Delete")).on_hover_text("A folder is deleted with its contents").clicked() {
+                self.delete_selected();
             }
+        });
+        ui.horizontal_wrapped(|ui| {
+            let sel = self.selected.and_then(|id| self.doc.layer(id)).map(|l| l.parent.is_some());
+            if ui.add_enabled(sel.is_some(), egui::Button::new("Group")).on_hover_text("Put the selection in a new folder").clicked() {
+                self.group_selected();
+            }
+            if ui.add_enabled(sel == Some(true), egui::Button::new("Out of folder")).clicked() {
+                self.move_selected_out();
+            }
+            let targets = self.folder_targets();
+            ui.add_enabled_ui(sel.is_some() && !targets.is_empty(), |ui| {
+                ui.menu_button("Into folder", |ui| {
+                    for (fid, path) in targets {
+                        if ui.button(path).clicked() {
+                            self.move_selected_into(fid);
+                            ui.close();
+                        }
+                    }
+                });
+            });
         });
 
         ui.add_space(8.0);
@@ -759,15 +819,23 @@ impl PigmentApp {
         self.insert_layer(l);
     }
 
-    pub(super) fn insert_layer(&mut self, l: Layer) {
+    pub(super) fn insert_layer(&mut self, mut l: Layer) {
         let at = self.selected.and_then(|id| self.doc.index_of(id)).map(|i| i + 1).unwrap_or(self.doc.layers.len());
         let id = l.id;
+        // lands next to the selection, in the same folder
+        l.parent = self.selected.and_then(|s| self.doc.layer(s)).and_then(|s| s.parent);
         self.doc.layers.insert(at, l);
+        self.doc.normalize_folders();
         self.select(Some(id), false);
     }
 
     pub(super) fn duplicate_selected(&mut self, rs: &RenderState) {
         let Some(i) = self.selected.and_then(|id| self.doc.index_of(id)) else { return };
+        if self.doc.layers[i].is_folder() {
+            let id = self.doc.layers[i].id;
+            self.duplicate_tree(rs, id);
+            return;
+        }
         let mut l = self.doc.layers[i].clone();
         l.id = self.doc.mint();
         l.name = format!("{} copy", l.name);
@@ -830,12 +898,27 @@ impl PigmentApp {
     }
 
     fn layer_tab(&mut self, ui: &mut egui::Ui, i: usize) {
+        let image_bases = self.image_bases();
+        let mut save_smart = false;
+        let seed = &mut self.doc.variants.seed;
         let l = &mut self.doc.layers[i];
+        let is_folder = l.is_folder();
         card(ui, CARD, |ui| {
             ui.horizontal(|ui| {
                 ui.label("Opacity");
                 ui.add(egui::Slider::new(&mut l.opacity, 0.0..=1.0).custom_formatter(|v, _| format!("{:.0}%", v * 100.0)));
             });
+            // texture variants (export_variants over MCP): group tag, recorded decals, live seed preview
+            ui.horizontal(|ui| {
+                ui.label("Variant group").on_hover_text("Variants can switch every layer and decal of a group on or off");
+                ui.add(egui::TextEdit::singleline(&mut l.variant.group).desired_width(110.0).hint_text("none"));
+                ui.label("Seed").on_hover_text("Preview a variant seed: random part subsets (lit windows) and generator noise follow it. 0 = authored look");
+                ui.add(egui::DragValue::new(seed).range(0..=99999));
+            });
+            if !l.variant.decals.is_empty() {
+                let list: Vec<String> = l.variant.decals.iter().map(|d| format!("{}{}{}", if d.enabled { "" } else { "(off) " }, d.name, if d.group.is_empty() { String::new() } else { format!(" [{}]", d.group) })).collect();
+                ui.label(RichText::new(format!("Decals: {}", list.join(", "))).size(11.5).color(MUTED));
+            }
         });
         match &mut l.kind {
             LayerKind::Fill { values } => {
@@ -851,11 +934,22 @@ impl PigmentApp {
                     ui.add_space(4.0);
                     material_grid(ui, "fill values", values, None);
                 });
+                section(ui, "Image fill");
+                card(ui, CARD, |ui| image_fill_editor(ui, &mut l.image, &mut l.channels, &image_bases));
             }
             LayerKind::Paint { .. } => {
                 card(ui, CARD, |ui| {
                     ui.label(RichText::new("Paint layer").strong());
                     ui.label(RichText::new("Holds whatever you paint. Choose the brush material on the left.").color(MUTED));
+                });
+            }
+            LayerKind::Folder { .. } => {
+                card(ui, CARD, |ui| {
+                    ui.label(RichText::new("Folder").strong());
+                    ui.label(RichText::new("Its contents are composited as a group, then blended onto the layers below with the folder's opacity, channels and mask (the mask multiplies every layer inside).").color(MUTED));
+                    if ui.button("Save as smart material...").on_hover_text("Write this folder to a .pigsmart file you can apply to other models").clicked() {
+                        save_smart = true;
+                    }
                 });
             }
         }
@@ -867,7 +961,8 @@ impl PigmentApp {
                     let s = l.channels.get_mut(c);
                     ui.checkbox(&mut s.enabled, c.label());
                     egui::ComboBox::from_id_salt(("blend", c.index())).width(120.0).selected_text(s.blend.label()).show_ui(ui, |ui| {
-                        for m in c.blend_modes() {
+                        let modes = if is_folder { pigment_core::folders::folder_blend_modes(c) } else { c.blend_modes() };
+                        for m in modes {
                             ui.selectable_value(&mut s.blend, *m, m.label());
                         }
                     });
@@ -876,6 +971,9 @@ impl PigmentApp {
                 }
             });
         });
+        if save_smart {
+            self.save_smart_dialog();
+        }
     }
 
     fn mask_tab(&mut self, ui: &mut egui::Ui, rs: &RenderState, i: usize) {
@@ -1271,13 +1369,34 @@ impl PigmentApp {
                     });
                     ui.checkbox(&mut self.view.show_env, "Show environment as background");
                     ui.separator();
+                    ui.checkbox(&mut self.view.bloom.enabled, "Bloom (glow from emission and highlights)");
+                    ui.add_enabled_ui(self.view.bloom.enabled, |ui| {
+                        egui::Grid::new("bloom").num_columns(2).show(ui, |ui| {
+                            ui.label("Threshold");
+                            ui.add(egui::Slider::new(&mut self.view.bloom.threshold, 0.0..=4.0));
+                            ui.end_row();
+                            ui.label("Intensity");
+                            ui.add(egui::Slider::new(&mut self.view.bloom.intensity, 0.0..=2.0));
+                            ui.end_row();
+                            ui.label("Radius");
+                            ui.add(egui::Slider::new(&mut self.view.bloom.radius, 0.0..=1.0));
+                            ui.end_row();
+                        });
+                    });
+                    ui.separator();
+                    ui.horizontal(|ui| {
+                        for (id, label) in pigment_core::envmath::PRESETS {
+                            if ui.selectable_label(self.env.source == id, label).clicked() && self.env.source != id {
+                                if let Some(e) = Environment::preset(&rs.device, &rs.queue, id) {
+                                    self.env = e;
+                                }
+                            }
+                        }
+                    });
                     if ui.button("Load HDRI (.hdr / .exr)…").clicked() {
                         if let Some(p) = rfd::FileDialog::new().add_filter("HDR images", &["hdr", "exr"]).pick_file() {
                             self.load_env(rs, &p);
                         }
-                    }
-                    if ui.button("Built-in studio").clicked() {
-                        self.env = Environment::studio(&rs.device, &rs.queue);
                     }
                 });
             });
@@ -1372,5 +1491,122 @@ fn weather_slider_labels(kind: GeneratorKind) -> SliderLabels {
         GeneratorKind::Tiles => (Some("Rows per metre"), Some("Mortar width"), 0.0..=0.5, Some("Cell aspect (w/h)"), 0.25..=6.0),
         GeneratorKind::WindowGrid => (Some("Cell height (m)"), Some("Frame width"), 0.0..=0.45, Some("Cell aspect (w/h)"), 0.1..=4.0),
         _ => (None, None, 0.0..=1.5, None, 0.0..=2.0),
+    }
+}
+
+// ------------------------------------------------------------------ image fills
+
+/// Tiling images for a fill layer: tile set picker, projection, transform and
+/// one image per channel.
+fn image_fill_editor(ui: &mut egui::Ui, image: &mut Option<ImageFill>, channels: &mut Channels<ChannelSettings>, bases: &[PathBuf]) {
+    use pigment_core::image_fill::{list_tile_sets, ImageChannel};
+    let mut pick: Option<String> = None;
+    ui.horizontal(|ui| {
+        let text = if image.is_some() { "Change tile set" } else { "Use a tile set..." };
+        egui::ComboBox::from_id_salt("tile set").width(160.0).selected_text(text).show_ui(ui, |ui| {
+            for s in list_tile_sets(Path::new("assets/tiles")) {
+                if ui.selectable_label(false, &s).clicked() {
+                    pick = Some(format!("assets/tiles/{s}"));
+                }
+            }
+            if ui.button("Browse folder...").clicked() {
+                if let Some(d) = rfd::FileDialog::new().set_title("Tile set folder (base_color, roughness, height, normal)").pick_folder() {
+                    pick = Some(d.to_string_lossy().to_string());
+                }
+            }
+        });
+        if image.is_some() && ui.button("Remove").on_hover_text("Back to flat values").clicked() {
+            *image = None;
+        }
+    });
+    if let Some(dir) = pick {
+        match ImageFill::from_tile_set(&dir, bases) {
+            Ok(imgs) => {
+                let f = image.get_or_insert_with(ImageFill::default);
+                f.images = imgs;
+                for (c, _) in f.images.iter() {
+                    channels.get_mut(c.channel()).enabled = true;
+                }
+            }
+            Err(e) => log::warn!("{e}"),
+        }
+    }
+    let Some(f) = image else {
+        ui.label(RichText::new("Drive base colour, roughness, height and normal from tiling images (brick, concrete...) instead of the flat values above.").size(11.5).color(MUTED));
+        return;
+    };
+    ui.horizontal(|ui| {
+        ui.label("Projection");
+        ui.selectable_value(&mut f.projection, Projection::Uv, "UV");
+        ui.selectable_value(&mut f.projection, Projection::Triplanar, "Triplanar").on_hover_text("World-space box projection: ignores UVs, sized in metres");
+    });
+    egui::Grid::new("image fill").num_columns(2).spacing([8.0, 6.0]).show(ui, |ui| {
+        match f.projection {
+            Projection::Uv => {
+                ui.label("Tiling");
+                ui.horizontal(|ui| {
+                    ui.add(egui::DragValue::new(&mut f.tiling[0]).speed(0.05).range(0.01..=512.0).prefix("u "));
+                    ui.add(egui::DragValue::new(&mut f.tiling[1]).speed(0.05).range(0.01..=512.0).prefix("v "));
+                });
+                ui.end_row();
+            }
+            Projection::Triplanar => {
+                ui.label("Tile size");
+                ui.add(egui::DragValue::new(&mut f.tile_size).speed(0.01).range(0.01..=100.0).suffix(" m"));
+                ui.end_row();
+                ui.label("Blend sharpness");
+                ui.add(egui::Slider::new(&mut f.blend_sharpness, 1.0..=16.0));
+                ui.end_row();
+            }
+        }
+        ui.label("Offset");
+        ui.horizontal(|ui| {
+            ui.add(egui::DragValue::new(&mut f.offset[0]).speed(0.01).prefix("u "));
+            ui.add(egui::DragValue::new(&mut f.offset[1]).speed(0.01).prefix("v "));
+        });
+        ui.end_row();
+        ui.label("Rotation");
+        ui.add(egui::Slider::new(&mut f.rotation, -180.0..=180.0).suffix("°"));
+        ui.end_row();
+        ui.label("Tint");
+        srgb_edit(ui, &mut f.tint);
+        ui.end_row();
+        ui.label("Roughness range");
+        ui.horizontal(|ui| {
+            ui.add(egui::DragValue::new(&mut f.roughness_range[0]).speed(0.01).range(0.0..=1.0));
+            ui.add(egui::DragValue::new(&mut f.roughness_range[1]).speed(0.01).range(0.0..=1.0));
+        });
+        ui.end_row();
+        ui.label("Height scale");
+        ui.add(egui::DragValue::new(&mut f.height_scale).speed(0.01).range(-4.0..=4.0));
+        ui.end_row();
+        ui.label("Normal strength");
+        ui.add(egui::Slider::new(&mut f.normal_strength, 0.0..=3.0));
+        ui.end_row();
+    });
+    ui.add_space(4.0);
+    egui::Grid::new("image fill channels").num_columns(3).spacing([6.0, 4.0]).show(ui, |ui| {
+        for c in ImageChannel::ALL {
+            ui.label(c.label());
+            let slot = f.images.get_mut(c);
+            let name = slot.as_deref().map(|p| Path::new(p).iter().rev().take(2).collect::<Vec<_>>().into_iter().rev().map(|s| s.to_string_lossy()).collect::<Vec<_>>().join("/"));
+            ui.label(RichText::new(name.clone().unwrap_or_else(|| "flat value".into())).color(if name.is_some() { Color32::WHITE } else { MUTED })).on_hover_text(slot.clone().unwrap_or_default());
+            ui.horizontal(|ui| {
+                if ui.small_button("...").on_hover_text("Choose image").clicked() {
+                    if let Some(p) = rfd::FileDialog::new().add_filter("Images", &["png", "jpg", "jpeg", "exr", "hdr"]).pick_file() {
+                        *slot = Some(p.to_string_lossy().to_string());
+                        channels.get_mut(c.channel()).enabled = true;
+                    }
+                }
+                if slot.is_some() && ui.small_button("x").on_hover_text("Use the flat value").clicked() {
+                    *slot = None;
+                }
+            });
+            ui.end_row();
+        }
+    });
+    let missing = f.missing(bases);
+    if !missing.is_empty() {
+        ui.label(RichText::new(format!("Not found: {}", missing.join(", "))).size(11.5).color(WARN));
     }
 }

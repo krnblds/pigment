@@ -1,6 +1,7 @@
 //! Offscreen 3D viewport: PBR shading of the composited material under the
-//! environment, rendered into MSAA targets and handed to egui as an image.
-//! Also renders a single-sample depth buffer the brush uses for occlusion.
+//! environment, rendered into an HDR MSAA target, then bloomed and tone
+//! mapped (`post.wgsl`) into an 8-bit image handed to egui. Also renders a
+//! single-sample depth buffer the brush uses for occlusion.
 
 use super::env::{Environment, ENV_MIPS};
 use super::gpu::{self, Tex};
@@ -12,7 +13,11 @@ use pigment_core::OrbitCamera;
 
 pub const COLOR_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
 pub const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
+/// Scene-referred radiance before tone mapping.
+pub const HDR_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
 const MSAA: u32 = 4;
+/// Bloom mip chain depth (from half resolution down).
+const MAX_BLOOM_MIPS: u32 = 6;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ViewMode {
@@ -71,9 +76,24 @@ struct Globals {
     sh: [[f32; 4]; 9],
 }
 
+#[repr(C)]
+#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+struct PostParams {
+    bloom: [f32; 4],
+    flags: [f32; 4],
+}
+
 struct Targets {
     size: [u32; 2],
+    /// HDR multisampled colour, resolved into `hdr`.
     msaa: Tex,
+    hdr: Tex,
+    /// Bloom mip chain at half resolution, one view per mip.
+    bloom_views: Vec<wgpu::TextureView>,
+    down_bgs: Vec<wgpu::BindGroup>,
+    up_bgs: Vec<wgpu::BindGroup>,
+    composite_bg: wgpu::BindGroup,
+    /// Final tone-mapped 8-bit image.
     resolve: Tex,
     /// Raw (non-sRGB) view of `resolve` for egui, which treats texture values
     /// as already gamma-encoded. Sampling through the sRGB view would decode
@@ -90,11 +110,30 @@ pub struct ViewSettings {
     pub show_env: bool,
     /// Multiplier on painted emission in the viewport.
     pub emission: f32,
+    pub bloom: BloomSettings,
 }
 
 impl Default for ViewSettings {
     fn default() -> Self {
-        Self { mode: ViewMode::Material, exposure: 0.0, env_rotation: 0.0, show_env: true, emission: 1.0 }
+        Self { mode: ViewMode::Material, exposure: 0.0, env_rotation: 0.0, show_env: true, emission: 1.0, bloom: BloomSettings::default() }
+    }
+}
+
+/// Glow around emissive surfaces and HDR highlights (material view only).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct BloomSettings {
+    pub enabled: bool,
+    /// Brightness (after exposure) where blooming starts; 1.0 = display white.
+    pub threshold: f32,
+    /// How much of the blurred light is added back.
+    pub intensity: f32,
+    /// 0..1: how far the glow spreads (weight of the wider mips).
+    pub radius: f32,
+}
+
+impl Default for BloomSettings {
+    fn default() -> Self {
+        Self { enabled: true, threshold: 0.8, intensity: 1.0, radius: 0.6 }
     }
 }
 
@@ -102,6 +141,13 @@ pub struct Viewport {
     mesh_pipe: wgpu::RenderPipeline,
     bg_pipe: wgpu::RenderPipeline,
     depth_pipe: wgpu::RenderPipeline,
+    post_bgl: wgpu::BindGroupLayout,
+    down_first_pipe: wgpu::RenderPipeline,
+    down_pipe: wgpu::RenderPipeline,
+    up_pipe: wgpu::RenderPipeline,
+    composite_pipe: wgpu::RenderPipeline,
+    post_sampler: wgpu::Sampler,
+    post_buf: wgpu::Buffer,
     env_bgl: wgpu::BindGroupLayout,
     mat_bgl: wgpu::BindGroupLayout,
     globals: wgpu::Buffer,
@@ -143,7 +189,7 @@ impl Viewport {
             stencil: Default::default(),
             bias: Default::default(),
         };
-        let ct = [gpu::target(COLOR_FORMAT, None)];
+        let ct = [gpu::target(HDR_FORMAT, None)];
         let mesh_pipe = gpu::pipeline(
             device,
             gpu::PipeDesc {
@@ -197,7 +243,52 @@ impl Viewport {
             anisotropy_clamp: 16,
             ..Default::default()
         });
-        Self { mesh_pipe, bg_pipe, depth_pipe, env_bgl, mat_bgl, globals, g_bg, sampler, targets: None, texture_id: None }
+        // post: bloom chain + tone map
+        let post_module = gpu::shader(device, "post.wgsl", &[include_str!("../shaders/common.wgsl"), include_str!("../shaders/post.wgsl")].concat());
+        let post_bgl = gpu::bgl(
+            device,
+            "post",
+            &[gpu::ftex(0), gpu::sampler_entry(1, wgpu::SamplerBindingType::Filtering), gpu::uniform_entry(2, false), gpu::ftex(3)],
+        );
+        let post_layout = gpu::layout(device, "post", &[&post_bgl]);
+        let mix_blend = wgpu::BlendComponent { src_factor: wgpu::BlendFactor::Constant, dst_factor: wgpu::BlendFactor::OneMinusConstant, operation: wgpu::BlendOperation::Add };
+        let down_first_pipe = gpu::fullscreen(device, "bloom down first", &post_module, "fs_down_first", &post_layout, &[gpu::target(HDR_FORMAT, None)]);
+        let down_pipe = gpu::fullscreen(device, "bloom down", &post_module, "fs_down", &post_layout, &[gpu::target(HDR_FORMAT, None)]);
+        let up_pipe = gpu::fullscreen(
+            device,
+            "bloom up",
+            &post_module,
+            "fs_up",
+            &post_layout,
+            &[gpu::target(HDR_FORMAT, Some(wgpu::BlendState { color: mix_blend, alpha: mix_blend }))],
+        );
+        let composite_pipe = gpu::fullscreen(device, "tone map", &post_module, "fs_composite", &post_layout, &[gpu::target(COLOR_FORMAT, None)]);
+        let post_sampler = gpu::linear_sampler(device, 1);
+        let post_buf = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("post params"),
+            size: std::mem::size_of::<PostParams>() as u64,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        Self {
+            mesh_pipe,
+            bg_pipe,
+            depth_pipe,
+            post_bgl,
+            down_first_pipe,
+            down_pipe,
+            up_pipe,
+            composite_pipe,
+            post_sampler,
+            post_buf,
+            env_bgl,
+            mat_bgl,
+            globals,
+            g_bg,
+            sampler,
+            targets: None,
+            texture_id: None,
+        }
     }
 
     /// (Re)create the render targets for `size`. Returns true if they changed.
@@ -218,9 +309,36 @@ impl Viewport {
         });
         let display = resolve_tex.create_view(&wgpu::TextureViewDescriptor { format: Some(wgpu::TextureFormat::Rgba8Unorm), ..Default::default() });
         let resolve = Tex { view: resolve_tex.create_view(&Default::default()), tex: resolve_tex, size: size[0], height: size[1], format: COLOR_FORMAT, mips: 1 };
+        let hdr = Tex::new(d, "viewport hdr", size[0], size[1], HDR_FORMAT, att | wgpu::TextureUsages::TEXTURE_BINDING, 1);
+        let (bw, bh) = ((size[0] / 2).max(1), (size[1] / 2).max(1));
+        let bloom_mips = (1..MAX_BLOOM_MIPS).take_while(|i| (bw.min(bh) >> i) >= 4).count() as u32 + 1;
+        let bloom = Tex::new(d, "bloom", bw, bh, HDR_FORMAT, att | wgpu::TextureUsages::TEXTURE_BINDING, bloom_mips);
+        let bloom_views: Vec<wgpu::TextureView> = (0..bloom_mips).map(|i| bloom.mip_view(i)).collect();
+        let post_bg = |src: &wgpu::TextureView, extra: &wgpu::TextureView| {
+            gpu::bind_group(
+                d,
+                "post",
+                &self.post_bgl,
+                &[
+                    wgpu::BindingResource::TextureView(src),
+                    wgpu::BindingResource::Sampler(&self.post_sampler),
+                    self.post_buf.as_entire_binding(),
+                    wgpu::BindingResource::TextureView(extra),
+                ],
+            )
+        };
+        // down i reads hdr (i = 0) or mip i-1; up i reads mip i+1 into mip i
+        let down_bgs = (0..bloom_mips as usize).map(|i| post_bg(if i == 0 { &hdr.view } else { &bloom_views[i - 1] }, &hdr.view)).collect();
+        let up_bgs = (0..bloom_mips as usize - 1).map(|i| post_bg(&bloom_views[i + 1], &hdr.view)).collect();
+        let composite_bg = post_bg(&hdr.view, &bloom_views[0]);
         self.targets = Some(Targets {
             size,
-            msaa: Tex::new_ms(d, "viewport msaa", size, COLOR_FORMAT, att, MSAA),
+            msaa: Tex::new_ms(d, "viewport msaa", size, HDR_FORMAT, att, MSAA),
+            hdr,
+            bloom_views,
+            down_bgs,
+            up_bgs,
+            composite_bg,
             resolve,
             display,
             depth: Tex::new_ms(d, "viewport depth", size, DEPTH_FORMAT, att, MSAA),
@@ -290,10 +408,17 @@ impl Viewport {
             inv_view_proj: vp.inverse().to_cols_array_2d(),
             eye: [eye.x, eye.y, eye.z, 1.0],
             params: [settings.mode as u32 as f32, settings.exposure, settings.env_rotation, ENV_MIPS as f32],
-            params2: [settings.show_env as u32 as f32, 2.5, ts.baked as u32 as f32, settings.emission],
+            params2: [settings.show_env as u32 as f32, 0.0, ts.baked as u32 as f32, settings.emission],
             sh,
         };
         queue.write_buffer(&self.globals, 0, bytemuck::bytes_of(&globals));
+        let b = settings.bloom;
+        let bloom_on = b.enabled && b.intensity > 0.0 && settings.mode == ViewMode::Material;
+        let post = PostParams {
+            bloom: [b.threshold.max(0.0), (b.threshold * 0.5).max(0.05), b.intensity.max(0.0), b.radius.clamp(0.0, 1.0)],
+            flags: [bloom_on as u32 as f32, 0.0, 0.0, 0.0],
+        };
+        queue.write_buffer(&self.post_buf, 0, bytemuck::bytes_of(&post));
 
         let env_bg = gpu::bind_group(
             device,
@@ -328,7 +453,7 @@ impl Viewport {
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: &t.msaa.view,
                     depth_slice: None,
-                    resolve_target: Some(&t.resolve.view),
+                    resolve_target: Some(&t.hdr.view),
                     ops: wgpu::Operations { load: wgpu::LoadOp::Clear(wgpu::Color::BLACK), store: wgpu::StoreOp::Discard },
                 })],
                 depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
@@ -372,6 +497,29 @@ impl Viewport {
                 pass.set_index_buffer(m.indices.slice(..), wgpu::IndexFormat::Uint32);
                 pass.draw_indexed(0..m.index_count, 0, 0..1);
             }
+        }
+        if bloom_on {
+            let n = t.bloom_views.len();
+            for i in 0..n {
+                let mut pass = gpu::pass(&mut enc, "bloom down", &[&t.bloom_views[i]], Some(wgpu::Color::BLACK));
+                pass.set_pipeline(if i == 0 { &self.down_first_pipe } else { &self.down_pipe });
+                pass.set_bind_group(0, &t.down_bgs[i], &[]);
+                pass.draw(0..3, 0..1);
+            }
+            let r = b.radius.clamp(0.0, 1.0) as f64;
+            for i in (0..n - 1).rev() {
+                let mut pass = gpu::pass(&mut enc, "bloom up", &[&t.bloom_views[i]], None);
+                pass.set_pipeline(&self.up_pipe);
+                pass.set_blend_constant(wgpu::Color { r, g: r, b: r, a: r });
+                pass.set_bind_group(0, &t.up_bgs[i], &[]);
+                pass.draw(0..3, 0..1);
+            }
+        }
+        {
+            let mut pass = gpu::pass(&mut enc, "tone map", &[&t.resolve.view], None);
+            pass.set_pipeline(&self.composite_pipe);
+            pass.set_bind_group(0, &t.composite_bg, &[]);
+            pass.draw(0..3, 0..1);
         }
         queue.submit([enc.finish()]);
     }

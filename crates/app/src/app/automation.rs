@@ -6,6 +6,7 @@
 
 use super::*;
 use crate::render::viewport::ViewMode;
+use pigment_core::variants::{resolve, validate_defs, DecalRecord, PartSubset, VariantDef};
 use serde_json::{json, Value};
 
 type Res<T> = Result<T, String>;
@@ -170,6 +171,8 @@ impl Session {
             "blend_modes": ["normal", "multiply", "screen", "overlay", "add", "subtract", "darken", "lighten", "replace", "combine"],
             "export_presets": export::presets().iter().map(|p| json!({ "id": p.id, "label": p.label })).collect::<Vec<_>>(),
             "views": ViewMode::ALL.iter().map(|m| m.label()).collect::<Vec<_>>(),
+            "tile_sets": pigment_core::image_fill::list_tile_sets(Path::new("assets/tiles")).iter().map(|n| format!("assets/tiles/{n}")).collect::<Vec<_>>(),
+            "image_projections": ["uv", "triplanar"],
         })
     }
 
@@ -184,13 +187,17 @@ impl Session {
                     let mut o = json!({
                         "index": i,
                         "name": l.name,
-                        "kind": if l.is_paint() { "paint" } else { "fill" },
+                        "kind": if l.is_folder() { "folder" } else if l.is_paint() { "paint" } else { "fill" },
                         "visible": l.visible,
                         "opacity": l.opacity,
                         "channels": Channel::ALL.iter().filter(|c| l.channels.get(**c).enabled).map(|c| c.file_stem()).collect::<Vec<_>>(),
                     });
+                    self.folder_fields(l, &mut o);
                     if let LayerKind::Fill { values } = &l.kind {
                         o["material"] = json!(material_presets().into_iter().find(|(_, v)| v == values).map(|(n, _)| n).unwrap_or("custom"));
+                    }
+                    if let Some(img) = &l.image {
+                        o["image"] = serde_json::to_value(img).unwrap_or(Value::Null);
                     }
                     if let Some(m) = &l.mask {
                         o["mask"] = json!({
@@ -204,13 +211,86 @@ impl Session {
                             "invert": m.invert,
                         });
                     }
+                    if !l.variant.is_empty() {
+                        o["variant"] = json!({
+                            "group": l.variant.group,
+                            "part_subset": l.variant.part_subset,
+                            "decals": l.variant.decals.iter().map(|d| json!({ "name": d.name, "group": d.group, "enabled": d.enabled, "image": d.args.get("image") })).collect::<Vec<_>>(),
+                        });
+                    }
                     o
                 })
                 .collect(),
         )
     }
 
+    /// Folder info for `list_layers`: id, depth, parent index, path, and for
+    /// folders their child count and collapsed state.
+    fn folder_fields(&self, l: &Layer, o: &mut Value) {
+        let doc = &self.app.doc;
+        if !doc.layers.iter().any(|x| x.is_folder() || x.parent.is_some()) {
+            return; // folder-less stacks list exactly as before
+        }
+        o["id"] = json!(l.id);
+        o["depth"] = json!(doc.depth(l.id));
+        o["parent"] = json!(doc.ancestors(l.id).first().and_then(|p| doc.index_of(*p)));
+        o["path"] = json!(doc.layer_path(l.id));
+        if let LayerKind::Folder { collapsed } = l.kind {
+            o["children"] = json!(doc.children_of(Some(l.id)).len());
+            o["collapsed"] = json!(collapsed);
+        }
+    }
+
+    /// The stack as a tree: top-level items bottom to top, folders with
+    /// their contents nested under `layers` (same fields as the flat list).
+    pub fn layer_tree(&self) -> Value {
+        fn build(doc: &Document, flat: &Value, parent: Option<LayerId>) -> Value {
+            Value::Array(
+                doc.children_of(parent)
+                    .into_iter()
+                    .map(|i| {
+                        let mut o = flat[i].clone();
+                        if doc.layers[i].is_folder() {
+                            o["layers"] = build(doc, flat, Some(doc.layers[i].id));
+                        }
+                        o
+                    })
+                    .collect(),
+            )
+        }
+        build(&self.app.doc, &self.layers(), None)
+    }
+
+    /// `list_layers`: flat (bottom to top) or, with `tree: true`, nested.
+    pub fn list_layers(&self, a: &Value) -> Value {
+        if a.get("tree").and_then(Value::as_bool).unwrap_or(false) {
+            self.layer_tree()
+        } else {
+            self.layers()
+        }
+    }
+
+    /// A folder reference (name, "A/B" path or index) that must be a folder.
+    fn find_folder(&self, r: &Value) -> Res<LayerId> {
+        let i = self.find_layer(r)?;
+        let l = &self.app.doc.layers[i];
+        if !l.is_folder() {
+            return Err(format!("`{}` is not a folder", l.name));
+        }
+        Ok(l.id)
+    }
+
     fn find_layer(&self, r: &Value) -> Res<usize> {
+        if let Value::String(path) = r {
+            // "Folder/Sub/Layer" paths pick a layer inside folders
+            if path.contains('/') {
+                let p = path.to_ascii_lowercase();
+                let doc = &self.app.doc;
+                if let Some(i) = doc.layers.iter().rposition(|l| doc.layer_path(l.id).to_ascii_lowercase() == p) {
+                    return Ok(i);
+                }
+            }
+        }
         match r {
             Value::Number(n) => {
                 let i = n.as_u64().ok_or("layer index must be >= 0")? as usize;
@@ -296,6 +376,9 @@ impl Session {
                 app.doc.layers[i].channels.get_mut(c).blend = blend_mode(m.as_str().unwrap_or("normal"))?;
             }
         }
+        if let Some(img) = a.get("image") {
+            configure_image(app, i, img)?;
+        }
         match a.get("mask") {
             None => {}
             Some(Value::Null) => app.doc.layers[i].mask = None,
@@ -354,6 +437,30 @@ impl Session {
                 }
             }
         }
+        match a.get("variant") {
+            None => {}
+            Some(Value::Null) => app.doc.layers[i].variant.group.clear(),
+            Some(Value::String(g)) => app.doc.layers[i].variant.group = g.clone(),
+            Some(_) => return Err("`variant` is a group name or null".into()),
+        }
+        match a.get("part_subset") {
+            None => {}
+            Some(Value::Null) => app.doc.layers[i].variant.part_subset = None,
+            Some(v) => {
+                let from = f(v, "from").unwrap_or(0.0);
+                let to = f(v, "to").ok_or("`part_subset` needs `to` (0..1)")?;
+                if !(0.0..=1.0).contains(&from) || !(from..=1.0).contains(&to) {
+                    return Err("`part_subset` needs 0 <= from <= to <= 1".into());
+                }
+                let salt = v.get("salt").and_then(Value::as_u64).unwrap_or(0) as u32;
+                if app.doc.layers[i].mask.is_none() {
+                    let res = app.doc.mint();
+                    app.ts.new_mask(&rs.device, &rs.queue, res, true);
+                    app.doc.layers[i].mask = Some(Mask::new(res));
+                }
+                app.doc.layers[i].variant.part_subset = Some(PartSubset { from, to, salt });
+            }
+        }
         Ok(())
     }
 
@@ -396,6 +503,7 @@ impl Session {
         for (k, l) in layers.into_iter().enumerate() {
             self.app.doc.layers.insert(at + k, l);
         }
+        self.app.doc.normalize_folders();
         self.settle();
         Ok(json!({ "layers": self.layers() }))
     }
@@ -403,17 +511,47 @@ impl Session {
     pub fn add_layer(&mut self, a: &Value) -> Res<Value> {
         let kind = s(a, "kind").unwrap_or("fill");
         let name = s(a, "name").unwrap_or(if kind == "paint" { "Paint" } else { "Fill" }).to_string();
+        let parent = match a.get("parent") {
+            None | Some(Value::Null) => None,
+            Some(r) => Some(self.find_folder(r)?),
+        };
         let l = match kind {
             "paint" => self.app.doc.new_paint_layer(&name),
             "fill" => self.app.doc.fill_with(&name, s(a, "material").unwrap_or("White plastic"), None),
-            _ => return Err("`kind` must be \"fill\" or \"paint\"".into()),
+            "folder" => self.app.doc.new_folder(if s(a, "name").is_some() { &name } else { "Folder" }),
+            _ => return Err("`kind` must be \"fill\", \"paint\" or \"folder\"".into()),
         };
+        if let Some(p) = parent {
+            // inside a folder: `index` is the position among its children
+            let id = l.id;
+            self.app.doc.layers.push(l);
+            let pos = a.get("index").and_then(Value::as_u64).map(|i| i as usize);
+            if let Err(e) = self.app.doc.move_layer(id, Some(p), pos) {
+                self.app.doc.remove_layer_tree(id);
+                return Err(e);
+            }
+            let at = self.app.doc.index_of(id).unwrap();
+            let mut cfg = a.clone();
+            if let Some(o) = cfg.as_object_mut() {
+                o.remove("name");
+            }
+            if let Err(e) = self.configure(at, &cfg) {
+                self.app.doc.remove_layer_tree(id);
+                return Err(e);
+            }
+            self.settle();
+            return Ok(json!({ "added": self.app.doc.index_of(id), "path": self.app.doc.layer_path(id), "layers": self.layers() }));
+        }
         let at = match a.get("index").and_then(Value::as_u64) {
             Some(i) => (i as usize).min(self.app.doc.layers.len()),
             None if kind == "paint" => self.app.doc.layers.len(),
             None => self.app.doc.layers.iter().rposition(|l| l.is_paint()).unwrap_or(self.app.doc.layers.len()),
         };
+        let id = l.id;
         self.app.doc.layers.insert(at, l);
+        // a flat index inside a folder's range still means "top level"
+        self.app.doc.normalize_folders();
+        let at = self.app.doc.index_of(id).unwrap();
         let mut cfg = a.clone();
         if let Some(o) = cfg.as_object_mut() {
             o.remove("name");
@@ -428,11 +566,37 @@ impl Session {
 
     pub fn update_layer(&mut self, a: &Value) -> Res<Value> {
         let i = self.find_layer(a.get("layer").ok_or("missing `layer`")?)?;
+        let id = self.app.doc.layers[i].id;
+        // resolve the target folder before anything changes
+        let parent = match a.get("parent") {
+            None => None,
+            Some(Value::Null) => Some(None),
+            Some(r) => Some(Some(self.find_folder(r)?)),
+        };
         self.configure(i, a)?;
-        if let Some(to) = a.get("move_to").and_then(Value::as_u64) {
-            let l = self.app.doc.layers.remove(i);
-            let to = (to as usize).min(self.app.doc.layers.len());
-            self.app.doc.layers.insert(to, l);
+        if let Some(c) = a.get("collapsed").and_then(Value::as_bool) {
+            match &mut self.app.doc.layers[i].kind {
+                LayerKind::Folder { collapsed } => *collapsed = c,
+                _ => return Err("`collapsed` applies to folders".into()),
+            }
+        }
+        let to = a.get("move_to").and_then(Value::as_u64).map(|t| t as usize);
+        match parent {
+            // into / out of a folder; `move_to` is then the position among its children
+            Some(p) => self.app.doc.move_layer(id, p, to)?,
+            None => {
+                if let Some(to) = to {
+                    match self.app.doc.layers[i].parent {
+                        Some(cur) => self.app.doc.move_layer(id, Some(cur), Some(to))?,
+                        None => {
+                            let l = self.app.doc.layers.remove(i);
+                            let to = to.min(self.app.doc.layers.len());
+                            self.app.doc.layers.insert(to, l);
+                            self.app.doc.normalize_folders();
+                        }
+                    }
+                }
+            }
         }
         self.settle();
         Ok(json!({ "layers": self.layers() }))
@@ -440,9 +604,46 @@ impl Session {
 
     pub fn delete_layer(&mut self, a: &Value) -> Res<Value> {
         let i = self.find_layer(a.get("layer").ok_or("missing `layer`")?)?;
-        self.app.doc.layers.remove(i);
+        // a folder goes with everything inside it
+        let id = self.app.doc.layers[i].id;
+        self.app.doc.remove_layer_tree(id);
         self.settle();
         Ok(json!({ "layers": self.layers() }))
+    }
+
+    /// Save a folder (or fill layer) as a part-agnostic `.pigsmart` file.
+    pub fn save_smart_material(&mut self, a: &Value) -> Res<Value> {
+        let i = self.find_layer(a.get("layer").ok_or("missing `layer` (the folder to save)")?)?;
+        let id = self.app.doc.layers[i].id;
+        let mut path = PathBuf::from(req(a, "path")?);
+        if path.extension().is_none() {
+            path.set_extension(pigment_core::smart::SMART_EXTENSION);
+        }
+        let name = s(a, "name").map(String::from).unwrap_or_else(|| self.app.doc.layers[i].name.clone());
+        let sm = self.app.save_smart(id, &name, &path)?;
+        Ok(json!({ "saved": path, "name": sm.name, "layers": sm.layers.len(), "warnings": sm.warnings }))
+    }
+
+    /// Instance a `.pigsmart` file at the top level below the top paint
+    /// layer, or inside folder `parent`; `parts` limits it to those mesh parts.
+    pub fn apply_smart_material(&mut self, a: &Value) -> Res<Value> {
+        let path = PathBuf::from(req(a, "path")?);
+        let parts: Vec<u32> = a.get("parts").and_then(Value::as_array).map(|ps| ps.iter().filter_map(|p| p.as_u64().map(|x| x as u32)).collect()).unwrap_or_default();
+        let parent = match a.get("parent") {
+            None | Some(Value::Null) => None,
+            Some(r) => Some(self.find_folder(r)?),
+        };
+        let root = self.app.apply_smart(&path, &parts, parent)?;
+        let i = self.app.doc.index_of(root).ok_or("smart material didn't land")?;
+        // optional overrides on the new folder: name, opacity, visible, blend, channels
+        let cfg: serde_json::Map<String, Value> =
+            a.as_object().map(|o| o.iter().filter(|(k, _)| ["name", "opacity", "visible", "blend", "channels"].contains(&k.as_str())).map(|(k, v)| (k.clone(), v.clone())).collect()).unwrap_or_default();
+        if let Err(e) = self.configure(i, &Value::Object(cfg)) {
+            self.app.doc.remove_layer_tree(root);
+            return Err(e);
+        }
+        self.settle();
+        Ok(json!({ "applied": self.app.doc.layer_path(root), "index": self.app.doc.index_of(root), "layers": self.layers() }))
     }
 
     pub fn undo(&mut self, redo: bool) -> Res<Value> {
@@ -495,14 +696,34 @@ impl Session {
     /// thinnest axis, on the side away from the model's centre) and return the
     /// viewport rect (0..1) covering it, shrunk to the image's aspect for
     /// `fit = "contain"` or stretched for `"fill"`.
-    fn aim_at_part(&mut self, part: u32, image: &Path, fit: &str, margin: f32) -> Res<Vec<f32>> {
+    fn aim_at_part(&mut self, part: u32, image: &Path, fit: &str, margin: f32, facing: Option<&str>) -> Res<Vec<f32>> {
         let info = *self.app.parts.info.get(part as usize).ok_or_else(|| format!("no part {part}"))?;
-        let (lo, hi) = (glam::Vec3::from(info.min), glam::Vec3::from(info.max));
+        self.aim_at_box(glam::Vec3::from(info.min), glam::Vec3::from(info.max), image, fit, margin, facing)
+    }
+
+    /// `aim_at_part` for any world-space box (e.g. an area of a big wall that
+    /// is one part with the rest of the building). `facing` ("+x", "-z", ...)
+    /// overrides the side the camera looks from.
+    fn aim_at_box(&mut self, lo: glam::Vec3, hi: glam::Vec3, image: &Path, fit: &str, margin: f32, facing: Option<&str>) -> Res<Vec<f32>> {
         let c = (lo + hi) * 0.5;
         let size = hi - lo;
-        let axis = if size.x <= size.y && size.x <= size.z { 0 } else if size.y <= size.z { 1 } else { 2 };
         let (mc, _) = self.app.mesh.bounding_sphere();
-        let outward = if c[axis] >= mc[axis] { 1.0 } else { -1.0 };
+        let (axis, outward) = match facing {
+            Some(f) => {
+                let f = f.to_ascii_lowercase();
+                let axis = match f.trim_start_matches(['+', '-']) {
+                    "x" => 0,
+                    "y" => 1,
+                    "z" => 2,
+                    _ => return Err(format!("facing `{f}`: use +x, -x, +y, -y, +z or -z")),
+                };
+                (axis, if f.starts_with('-') { -1.0 } else { 1.0 })
+            }
+            None => {
+                let axis = if size.x <= size.y && size.x <= size.z { 0 } else if size.y <= size.z { 1 } else { 2 };
+                (axis, if c[axis] >= mc[axis] { 1.0 } else { -1.0 })
+            }
+        };
         let cam = &mut self.app.camera;
         cam.target = c;
         // OrbitCamera: eye = target + (sin yaw cos p, sin p, cos yaw cos p) * d
@@ -627,11 +848,31 @@ impl Session {
     /// Project an image (decal) onto the model from a camera view, over a
     /// viewport rectangle `rect` = [x0, y0, x1, y1] in 0..1.
     pub fn project_decal(&mut self, a: &Value) -> Res<Value> {
+        self.decal_impl(a, false)
+    }
+
+    /// `replay`: re-project a recorded decal during variant export (no
+    /// record, no undo step, no history commit).
+    fn decal_impl(&mut self, a: &Value, replay: bool) -> Res<Value> {
         let image = PathBuf::from(req(a, "image")?);
-        let rect: Vec<f32> = match a.get("part").and_then(Value::as_u64) {
+        let (fit, margin, facing) = (s(a, "fit").unwrap_or("contain"), f(a, "margin").unwrap_or(0.05), s(a, "facing"));
+        let rect: Vec<f32> = match (a.get("part").and_then(Value::as_u64), a.get("box")) {
             // aim at a mesh part's outward face and fit the image to it
-            Some(part) => self.aim_at_part(part as u32, &image, s(a, "fit").unwrap_or("contain"), f(a, "margin").unwrap_or(0.05))?,
-            None => {
+            (Some(part), _) => self.aim_at_part(part as u32, &image, fit, margin, facing)?,
+            // or at a world-space box: {min, max} or {center, size}
+            (None, Some(b)) => {
+                let v3 = |k: &str| -> Option<glam::Vec3> {
+                    let a = b.get(k)?.as_array()?;
+                    (a.len() == 3).then(|| glam::Vec3::new(a[0].as_f64().unwrap_or(0.0) as f32, a[1].as_f64().unwrap_or(0.0) as f32, a[2].as_f64().unwrap_or(0.0) as f32))
+                };
+                let (lo, hi) = match (v3("min"), v3("max"), v3("center"), v3("size")) {
+                    (Some(lo), Some(hi), _, _) => (lo.min(hi), lo.max(hi)),
+                    (_, _, Some(c), Some(sz)) => (c - sz.abs() * 0.5, c + sz.abs() * 0.5),
+                    _ => return Err("`box` needs {min: [x,y,z], max: [x,y,z]} or {center, size}".into()),
+                };
+                self.aim_at_box(lo, hi, &image, fit, margin, facing)?
+            }
+            (None, None) => {
                 let r: Vec<f32> = a.get("rect").and_then(Value::as_array).ok_or("missing `rect` ([x0, y0, x1, y1] in 0..1) or `part`")?.iter().filter_map(|v| v.as_f64().map(|x| x as f32)).collect();
                 if r.len() != 4 {
                     return Err("`rect` needs 4 numbers".into());
@@ -652,8 +893,38 @@ impl Session {
             },
         };
         let id = self.app.doc.layers[i].id;
-        self.app.select(Some(id), a.get("mask").and_then(Value::as_bool).unwrap_or(false));
-        self.settle();
+        let on_mask = a.get("mask").and_then(Value::as_bool).unwrap_or(false);
+        let enabled = a.get("enabled").and_then(Value::as_bool).unwrap_or(true);
+        if !replay {
+            // record it on the layer, so variants can switch it or swap its image
+            if !on_mask && self.app.doc.layers[i].is_paint() {
+                let mut args = a.clone();
+                if let Some(o) = args.as_object_mut() {
+                    for k in ["layer", "name", "variant", "enabled"] {
+                        o.remove(k);
+                    }
+                }
+                let name = s(a, "name").map(String::from).unwrap_or_else(|| image.file_stem().map(|x| x.to_string_lossy().to_string()).unwrap_or_default());
+                let group = s(a, "variant").unwrap_or("").to_string();
+                self.app.doc.layers[i].variant.decals.push(DecalRecord { name, group, enabled, args });
+            } else if !enabled || a.get("variant").is_some() {
+                return Err("only decals on a paint layer (not its mask) can be tagged or disabled for variants".into());
+            }
+            if !enabled {
+                if !image.exists() {
+                    self.app.doc.layers[i].variant.decals.pop();
+                    return Err(format!("no image {}", image.display()));
+                }
+                self.settle();
+                return Ok(json!({ "decal": image, "on": self.app.doc.layers[i].name, "painted": false }));
+            }
+        }
+        self.app.select(Some(id), on_mask);
+        if replay {
+            self.app.ensure_composited(&self.rs);
+        } else {
+            self.settle();
+        }
         let b = &mut self.app.brush;
         b.values = match s(a, "material") {
             Some(m) => material_preset(m),
@@ -687,13 +958,180 @@ impl Session {
         let px = Vec2::new(self.size[0] as f32, self.size[1] as f32);
         let r = [rect[0] * px.x, rect[1] * px.y, rect[2] * px.x, rect[3] * px.y];
         let lum = a.get("alpha_from_luminance").and_then(Value::as_bool).unwrap_or(false);
-        self.app.project_decal(&self.rs, &image, r, px, lum)?;
-        self.settle();
+        if let Err(e) = self.app.project_decal_ex(&self.rs, &image, r, px, lum, !replay) {
+            if !replay && !on_mask && self.app.doc.layers[i].is_paint() {
+                self.app.doc.layers[i].variant.decals.pop();
+            }
+            return Err(e);
+        }
+        if !replay {
+            self.settle();
+        }
         Ok(json!({ "decal": image, "on": self.app.doc.layers[i].name }))
     }
 
-    pub fn render(&mut self, a: &Value) -> Res<Image> {
+    /// Lighting and post settings shared by `render`, `render_turntable` and
+    /// `render(views)`. Every setting persists for later renders until changed.
+    ///   lighting: studio | night | overcast    hdri: path to .hdr / .exr
+    ///   exposure (EV), env_rotation (degrees), background (bool)
+    ///   bloom: true | false | {enabled, threshold, intensity, radius}
+    pub fn apply_look(&mut self, a: &Value) -> Res<()> {
+        let (d, q) = (&self.rs.device, &self.rs.queue);
+        if let Some(p) = s(a, "hdri") {
+            if self.app.env.source != p {
+                self.app.env = Environment::load(d, q, Path::new(p)).map_err(|e| format!("couldn't load HDRI `{p}`: {e:#}"))?;
+                self.app.env.source = p.to_string();
+            }
+        } else if let Some(l) = s(a, "lighting") {
+            let id = pigment_core::envmath::preset_id(l).ok_or_else(|| format!("unknown lighting `{l}` (studio, night, overcast)"))?;
+            if self.app.env.source != id {
+                self.app.env = Environment::preset(d, q, id).ok_or("lighting preset failed")?;
+            }
+        }
+        if let Some(x) = f(a, "exposure") {
+            self.app.view.exposure = x;
+        }
+        if let Some(x) = f(a, "env_rotation") {
+            self.app.view.env_rotation = x.to_radians();
+        }
+        if let Some(bg) = a.get("background").and_then(Value::as_bool) {
+            self.app.view.show_env = bg;
+        }
+        let b = &mut self.app.view.bloom;
+        match a.get("bloom") {
+            Some(Value::Bool(on)) => b.enabled = *on,
+            Some(o @ Value::Object(_)) => {
+                b.enabled = o.get("enabled").and_then(Value::as_bool).unwrap_or(true);
+                if let Some(x) = f(o, "threshold") {
+                    b.threshold = x.max(0.0);
+                }
+                if let Some(x) = f(o, "intensity") {
+                    b.intensity = x.max(0.0);
+                }
+                if let Some(x) = f(o, "radius") {
+                    b.radius = x.clamp(0.0, 1.0);
+                }
+            }
+            Some(Value::Null) | None => {}
+            Some(other) => return Err(format!("`bloom` must be true/false or {{threshold, intensity, radius}}, got {other}")),
+        }
+        Ok(())
+    }
+
+    /// Draw the current camera/view and read the 8-bit image back.
+    fn grab(&mut self) -> Res<Vec<u8>> {
+        self.draw();
+        Ok(crate::render::gpu::readback(&self.rs.device, &self.rs.queue, self.app.viewport.color().ok_or("no viewport")?))
+    }
+
+    fn save_png(rgba: &[u8], w: u32, h: u32, path: Option<&str>) -> Res<Image> {
+        let mut png = Vec::new();
+        image::codecs::png::PngEncoder::new(&mut png).write_image(rgba, w, h, image::ExtendedColorType::Rgba8).map_err(|e| e.to_string())?;
+        let path = match path {
+            Some(p) => PathBuf::from(p),
+            None => std::env::temp_dir().join("pigment-mcp").join(format!("render-{}.png", std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis()).unwrap_or(0))),
+        };
+        if let Some(d) = path.parent() {
+            std::fs::create_dir_all(d).map_err(|e| e.to_string())?;
+        }
+        std::fs::write(&path, &png).map_err(|e| e.to_string())?;
+        Ok(Image { png, path })
+    }
+
+    /// Render several (label, yaw, pitch) views into one labelled contact sheet.
+    fn contact_sheet(&mut self, a: &Value, views: &[(String, f32, f32)], default_cols: usize) -> Res<Image> {
         self.settle();
+        self.apply_look(a)?;
+        self.app.view.mode = match s(a, "view") {
+            Some(v) => view_mode(v)?,
+            None => ViewMode::Material,
+        };
+        let mut tile_args = a.clone();
+        tile_args["width"] = json!(a.get("width").and_then(Value::as_u64).unwrap_or(384));
+        tile_args["height"] = json!(a.get("height").and_then(Value::as_u64).unwrap_or(384));
+        let mut tiles = Vec::with_capacity(views.len());
+        for (label, yaw, pitch) in views {
+            tile_args["yaw"] = json!(yaw);
+            tile_args["pitch"] = json!(pitch);
+            self.set_camera(&tile_args);
+            let rgba = self.grab()?;
+            tiles.push(pigment_core::sheet::Tile { rgba, w: self.size[0], h: self.size[1], label: label.clone() });
+        }
+        let cols = a.get("columns").and_then(Value::as_u64).map(|c| c as usize).unwrap_or(default_cols);
+        let (img, w, h) = pigment_core::sheet::contact_sheet(&tiles, cols);
+        Self::save_png(&img, w, h, s(a, "path"))
+    }
+
+    /// `frames` views evenly spaced around the model (from `start_yaw`, at
+    /// `pitch`), as one contact-sheet PNG.
+    pub fn render_turntable(&mut self, a: &Value) -> Res<Image> {
+        let n = a.get("frames").and_then(Value::as_u64).unwrap_or(8).clamp(1, 36) as usize;
+        let pitch = f(a, "pitch").unwrap_or(15.0);
+        let start = f(a, "start_yaw").unwrap_or(0.0);
+        let views: Vec<(String, f32, f32)> = (0..n)
+            .map(|i| {
+                let yaw = start + 360.0 * i as f32 / n as f32;
+                (format!("YAW {}", yaw.rem_euclid(360.0).round()), yaw, pitch)
+            })
+            .collect();
+        self.contact_sheet(a, &views, n.min(4))
+    }
+
+    /// Named views (front, back, left, right, top, bottom; or "all") as one
+    /// contact sheet. Front looks at the model's +Z face (glTF front, Blender
+    /// -Y), right from +X: the same as Blender's numpad views.
+    pub fn render_views(&mut self, a: &Value) -> Res<Image> {
+        let names: Vec<String> = match a.get("views") {
+            Some(Value::String(x)) if x == "all" => ["front", "back", "left", "right", "top"].map(String::from).to_vec(),
+            Some(Value::String(x)) => x.split(',').map(|v| v.trim().to_string()).collect(),
+            Some(Value::Array(v)) => v.iter().filter_map(Value::as_str).map(String::from).collect(),
+            _ => return Err("`views` must be a list like [\"front\", \"left\", \"top\"] or \"all\"".into()),
+        };
+        let pitch = f(a, "pitch").unwrap_or(0.0);
+        let mut views = Vec::new();
+        for n in &names {
+            let (yaw, p) = match n.to_ascii_lowercase().as_str() {
+                "front" => (0.0, pitch),
+                "back" => (180.0, pitch),
+                "right" => (90.0, pitch),
+                "left" => (-90.0, pitch),
+                "top" => (0.0, 89.0),
+                "bottom" => (0.0, -89.0),
+                other => return Err(format!("unknown view `{other}` (front, back, left, right, top, bottom)")),
+            };
+            views.push((n.to_ascii_uppercase(), yaw, p));
+        }
+        if views.is_empty() {
+            return Err("no views given".into());
+        }
+        let cols = if views.len() == 5 { 3 } else { views.len().min(4) };
+        self.contact_sheet(a, &views, cols)
+    }
+
+    /// Write a lighting preset as an equirectangular Radiance .hdr, e.g. to
+    /// light a Blender world exactly like Pigment's viewport.
+    pub fn export_lighting(&mut self, a: &Value) -> Res<Value> {
+        let name = s(a, "lighting").unwrap_or("night");
+        let path = PathBuf::from(req(a, "path")?);
+        let width = a.get("width").and_then(Value::as_u64).unwrap_or(2048).clamp(64, 8192) as u32;
+        let env = pigment_core::envmath::EnvImage::preset(name, width).ok_or_else(|| format!("unknown lighting `{name}` (studio, night, overcast)"))?;
+        env.write_hdr(&path).map_err(|e| e.to_string())?;
+        Ok(json!({ "lighting": pigment_core::envmath::preset_id(name), "path": path, "width": width, "height": width / 2,
+                   "note": "equirectangular, +Y up. Blender: Environment Texture behind a Mapping node rotated -90 degrees about Z (tools/blender_lookdev.py does this)" }))
+    }
+
+    pub fn render(&mut self, a: &Value) -> Res<Image> {
+        if a.get("views").is_some_and(|v| !v.is_null()) {
+            return self.render_views(a);
+        }
+        self.settle();
+        self.render_now(a)
+    }
+
+    /// `render` without committing pending document changes.
+    fn render_now(&mut self, a: &Value) -> Res<Image> {
+        self.app.ensure_composited(&self.rs);
+        self.apply_look(a)?;
         self.set_camera(a);
         if let Some(v) = s(a, "view") {
             self.app.view.mode = view_mode(v)?;
@@ -745,9 +1183,230 @@ impl Session {
             .collect();
         Ok(json!({ "status": msg, "files": files, "emissive_scale": scale }))
     }
+
+    // ------------------------------------------------------------------ variants
+
+    /// Export one texture set per variant: `<dir>/<name>__<variant>/<name>_<map>.png`.
+    /// `variants` (optional) replaces the definitions stored in the project.
+    pub fn export_variants(&mut self, a: &Value) -> Res<Value> {
+        self.settle();
+        if let Some(v) = a.get("variants") {
+            let defs: Vec<VariantDef> = serde_json::from_value(v.clone()).map_err(|e| format!("bad `variants`: {e}"))?;
+            validate_defs(&defs)?;
+            for d in &defs {
+                resolve(&self.app.doc, d)?; // check every selector before storing anything
+            }
+            self.app.doc.variants.defs = defs;
+            self.settle();
+        }
+        let mut defs = self.app.doc.variants.defs.clone();
+        if defs.is_empty() {
+            return Err("no variants: pass `variants` (they are stored in the project for next time)".into());
+        }
+        if let Some(only) = a.get("only").and_then(Value::as_array) {
+            let only: Vec<&str> = only.iter().filter_map(Value::as_str).collect();
+            defs.retain(|d| only.iter().any(|o| o.eq_ignore_ascii_case(&d.name)));
+        }
+        if a.get("dry_run").and_then(Value::as_bool).unwrap_or(false) {
+            let mut out = Vec::new();
+            for d in &defs {
+                let r = resolve(&self.app.doc, d)?;
+                out.push(json!({
+                    "name": d.name,
+                    "seed": d.seed,
+                    "hidden_layers": r.doc.layers.iter().filter(|l| !l.visible).map(|l| l.name.clone()).collect::<Vec<_>>(),
+                    "decals": r.doc.layers.iter().flat_map(|l| l.variant.decals.iter().filter(|x| x.enabled).map(|x| json!([x.name, x.args.get("image")]))).collect::<Vec<_>>(),
+                    "replayed_layers": r.replay.len(),
+                }));
+            }
+            return Ok(json!({ "dry_run": true, "variants": out }));
+        }
+        let dir = PathBuf::from(req(a, "dir")?);
+        let preset = s(a, "preset").unwrap_or("separate").to_string();
+        if export::preset(&preset).is_none() {
+            return Err(format!("unknown preset `{preset}`: unreal, unity, godot, separate"));
+        }
+        let name = s(a, "name").map(String::from).unwrap_or_else(|| self.app.mesh.name.clone());
+        let pattern = s(a, "folder").unwrap_or("{name}__{variant}").to_string();
+        let preview = a.get("preview").cloned();
+
+        let doc0 = self.app.doc.clone();
+        let saved = (self.app.export_dir.clone(), self.app.export_name.clone());
+        let mut out = Vec::new();
+        let mut next_id = doc0.next_id;
+        let mut result = Ok(());
+        for v in &defs {
+            let folder = dir.join(pattern.replace("{name}", &name).replace("{variant}", &v.name));
+            let r = self.export_one(&doc0, v, &preset, &folder, &name, preview.as_ref());
+            next_id = next_id.max(self.app.doc.next_id);
+            // back to the authored state; free the scratch layers
+            self.app.doc = doc0.clone();
+            let live = self.app.live_resources();
+            self.app.ts.retain(&live);
+            self.app.ts.unsaved.retain(|r| live.contains(r));
+            match r {
+                Ok(x) => out.push(x),
+                Err(e) => {
+                    result = Err(e);
+                    break;
+                }
+            }
+        }
+        // scratch ids are never reused
+        self.app.doc.next_id = next_id;
+        self.app.committed.next_id = self.app.committed.next_id.max(next_id);
+        (self.app.export_dir, self.app.export_name) = saved;
+        self.app.composited = None;
+        self.app.ensure_composited(&self.rs);
+        result?;
+        Ok(json!({ "dir": dir, "variants": out }))
+    }
+
+    fn export_one(&mut self, doc0: &Document, v: &VariantDef, preset: &str, folder: &Path, name: &str, preview: Option<&Value>) -> Res<Value> {
+        let r = resolve(doc0, v)?;
+        self.app.doc = r.doc;
+        self.app.doc.export_preset = preset.to_string();
+        // decals changed on these layers: start them blank and replay
+        for id in &r.replay {
+            let res = self.app.doc.mint();
+            if let Some(l) = self.app.doc.layer_mut(*id) {
+                l.kind = LayerKind::Paint { res };
+            }
+        }
+        self.app.ensure_composited(&self.rs);
+        let mut painted = 0;
+        for id in &r.replay {
+            let i = self.app.doc.index_of(*id).ok_or("layer vanished")?;
+            let recs: Vec<Value> = self.app.doc.layers[i].variant.decals.iter().filter(|d| d.enabled).map(|d| d.args.clone()).collect();
+            for mut args in recs {
+                args["layer"] = json!(i);
+                self.decal_impl(&args, true).map_err(|e| format!("variant `{}`: {e}", v.name))?;
+                painted += 1;
+            }
+        }
+        self.app.ensure_composited(&self.rs);
+        self.app.export_dir = Some(folder.to_path_buf());
+        self.app.export_name = name.to_string();
+        self.app.status = None;
+        self.app.export(&self.rs);
+        self.status().map_err(|e| format!("variant `{}`: {e}", v.name))?;
+        let mut o = json!({ "name": v.name, "folder": folder, "seed": v.seed, "decals_replayed": painted, "emissive_scale": self.app.last_emissive_scale });
+        // sidecar for consumers (Blender): the emission map is normalised per
+        // variant, so its strength travels with it
+        let shown: Vec<Value> = self.app.doc.layers.iter().filter(|l| l.visible).flat_map(|l| l.variant.decals.iter().filter(|d| d.enabled)).map(|d| json!({ "name": d.name, "group": d.group, "image": d.args.get("image") })).collect();
+        let hidden: Vec<&str> = self.app.doc.layers.iter().filter(|l| !l.visible).map(|l| l.name.as_str()).collect();
+        let side = json!({ "asset": name, "variant": v.name, "seed": v.seed, "preset": preset, "emissive_scale": self.app.last_emissive_scale, "decals": shown, "hidden_layers": hidden });
+        std::fs::write(folder.join("variant.json"), serde_json::to_string_pretty(&side).unwrap_or_default()).map_err(|e| e.to_string())?;
+        if let Some(p) = preview {
+            let mut pa = p.clone();
+            let path = match s(p, "dir") {
+                Some(d) => Path::new(d).join(format!("{name}__{}.png", v.name)),
+                None => folder.join("preview.png"),
+            };
+            pa["path"] = json!(path);
+            let img = self.render_now(&pa)?;
+            o["preview"] = json!(img.path);
+        }
+        Ok(o)
+    }
 }
 
 use image::ImageEncoder;
+
+fn f2(v: &Value, k: &str) -> Res<Option<[f32; 2]>> {
+    match v.get(k) {
+        None => Ok(None),
+        Some(Value::Number(n)) => {
+            let x = n.as_f64().unwrap_or(1.0) as f32;
+            Ok(Some([x, x]))
+        }
+        Some(Value::Array(a)) if a.len() == 2 => Ok(Some([a[0].as_f64().unwrap_or(0.0) as f32, a[1].as_f64().unwrap_or(0.0) as f32])),
+        Some(_) => Err(format!("`{k}` must be a number or [x, y]")),
+    }
+}
+
+/// The `image` argument of add_layer / update_layer: tiling images for a fill
+/// layer. A string is a tile set folder; an object edits the current settings
+/// (only the given fields change); null removes the image fill.
+fn configure_image(app: &mut PigmentApp, i: usize, m: &Value) -> Res<()> {
+    use pigment_core::image_fill::ImageFill;
+    if m.is_null() {
+        app.doc.layers[i].image = None;
+        return Ok(());
+    }
+    if app.doc.layers[i].is_paint() {
+        return Err("`image` applies to fill layers".into());
+    }
+    let bases = app.image_bases();
+    let mut fill = app.doc.layers[i].image.clone().unwrap_or_default();
+    let set = match m {
+        Value::String(d) => Some(d.as_str()),
+        Value::Object(_) => s(m, "tile_set"),
+        _ => return Err("`image` must be a tile set folder, an object or null".into()),
+    };
+    if let Some(dir) = set {
+        fill.images = ImageFill::from_tile_set(dir, &bases)?;
+    }
+    if m.is_object() {
+        for c in ImageChannel::ALL {
+            match m.get(c.id()) {
+                None => {}
+                Some(Value::Null) => *fill.images.get_mut(c) = None,
+                Some(Value::String(p)) => *fill.images.get_mut(c) = Some(p.clone()),
+                Some(_) => return Err(format!("`image.{}` must be a path or null", c.id())),
+            }
+        }
+        if let Some(p) = s(m, "projection") {
+            fill.projection = Projection::from_id(p).ok_or_else(|| format!("unknown projection `{p}` (uv, triplanar)"))?;
+        }
+        if let Some(t) = f2(m, "tiling")? {
+            fill.tiling = t;
+        }
+        if let Some(o) = f2(m, "offset")? {
+            fill.offset = o;
+        }
+        if let Some(x) = f(m, "rotation") {
+            fill.rotation = x;
+        }
+        if let Some(x) = f(m, "tile_size") {
+            if x <= 0.0 {
+                return Err("`tile_size` must be > 0 (metres per repeat)".into());
+            }
+            fill.tile_size = x;
+        }
+        if let Some(x) = f(m, "blend_sharpness").or_else(|| f(m, "sharpness")) {
+            fill.blend_sharpness = x.clamp(0.1, 64.0);
+        }
+        if let Some(c) = m.get("tint").and_then(Value::as_array) {
+            for (k, x) in c.iter().take(3).enumerate() {
+                fill.tint[k] = x.as_f64().unwrap_or(1.0).max(0.0) as f32;
+            }
+        }
+        if let Some(r) = f2(m, "roughness_range")? {
+            fill.roughness_range = r.map(|x| x.clamp(0.0, 1.0));
+        }
+        if let Some(x) = f(m, "height_scale") {
+            fill.height_scale = x;
+        }
+        if let Some(x) = f(m, "normal_strength") {
+            fill.normal_strength = x;
+        }
+    }
+    if fill.images.is_empty() {
+        return Err("an image fill needs at least one image (tile_set, base_color, roughness, height or normal)".into());
+    }
+    let missing = fill.missing(&bases);
+    if !missing.is_empty() {
+        return Err(format!("image not found: {}", missing.join(", ")));
+    }
+    let l = &mut app.doc.layers[i];
+    for (c, _) in fill.images.iter() {
+        l.channels.get_mut(c.channel()).enabled = true;
+    }
+    l.image = Some(fill);
+    app.ts.tiles.retry_missing();
+    Ok(())
+}
 
 fn apply_generator_fields(g: &mut Generator, m: &Value) {
     if let Some(x) = f(m, "amount") {
@@ -913,5 +1572,202 @@ mod tests {
         assert!(everything > only_body + 1000, "whole model glows more than one part ({everything} vs {only_body})");
         let layers = s.layers();
         assert!(layers.to_string().contains("\"parts\":[]"));
+    }
+
+    #[test]
+    fn folders_and_saved_smart_materials_over_mcp() {
+        let Ok(mut s) = Session::new() else { return };
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let out = std::env::temp_dir().join(format!("pigment-folders-{}", std::process::id()));
+        s.new_project(&json!({ "mesh": root.join("assets/ammo_box.glb"), "resolution": 512, "material": "Olive drab" })).unwrap();
+        // flat list keeps its old shape until a folder exists
+        assert!(s.layers()[0].get("depth").is_none());
+        s.add_layer(&json!({ "kind": "folder", "name": "Weathering", "opacity": 0.9 })).unwrap();
+        s.add_layer(&json!({ "name": "Grime", "material": "Grime", "parent": "Weathering", "mask": { "generator": "dirt", "amount": 0.6 } })).unwrap();
+        s.add_layer(&json!({ "kind": "folder", "name": "Rust", "parent": "Weathering" })).unwrap();
+        s.add_layer(&json!({ "name": "Spots", "material": "Rust", "parent": "Weathering/Rust", "mask": { "generator": "spots" } })).unwrap();
+        s.add_layer(&json!({ "name": "Wear", "material": "Steel", "mask": { "generator": "edge_wear" } })).unwrap();
+        // move a top-level layer into a folder, then a nested one out
+        s.update_layer(&json!({ "layer": "Wear", "parent": "Weathering", "move_to": 0 })).unwrap();
+        assert_eq!(s.app.doc.layer_path(s.app.doc.layers[s.find_layer(&json!("Wear")).unwrap()].id), "Weathering/Wear");
+        s.update_layer(&json!({ "layer": "Weathering/Rust", "collapsed": true })).unwrap();
+        assert!(s.update_layer(&json!({ "layer": "Grime", "collapsed": true })).is_err());
+        assert!(s.add_layer(&json!({ "name": "x", "parent": "Grime" })).is_err(), "parent must be a folder");
+        let tree = s.list_layers(&json!({ "tree": true }));
+        let w = tree.as_array().unwrap().iter().find(|l| l["name"] == "Weathering").expect("folder at top level");
+        assert_eq!(w["kind"], "folder");
+        assert_eq!(w["layers"].as_array().unwrap().len(), 3, "{w}");
+        assert_eq!(w["layers"][2]["layers"][0]["path"], "Weathering/Rust/Spots");
+        let flat = s.layers();
+        assert!(flat.as_array().unwrap().iter().any(|l| l["depth"] == 2));
+
+        // save the folder, reopen the project: folders persist
+        let sm = out.join("weathering.pigsmart");
+        let r = s.save_smart_material(&json!({ "layer": "Weathering", "path": sm })).unwrap();
+        assert_eq!(r["layers"], 5, "{r}");
+        s.save_project(&json!({ "path": out.join("a.pigment") })).unwrap();
+        let before = s.render(&json!({ "width": 160, "height": 120 })).unwrap().png;
+        s.open_project(&json!({ "path": out.join("a.pigment") })).unwrap();
+        assert_eq!(s.layer_tree(), tree);
+        let after = s.render(&json!({ "width": 160, "height": 120 })).unwrap().png;
+        assert_eq!(before, after, "reopened project renders the same");
+
+        // apply to another model, limited to two parts
+        s.new_project(&json!({ "mesh": root.join("assets/vending_machine.glb"), "resolution": 512, "material": "Teal paint" })).unwrap();
+        let a = s.apply_smart_material(&json!({ "path": sm, "parts": [0, 1], "opacity": 0.8 })).unwrap();
+        assert_eq!(a["applied"], "Weathering");
+        let i = s.find_layer(&json!("Weathering")).unwrap();
+        let f = &s.app.doc.layers[i];
+        assert_eq!(f.mask.as_ref().unwrap().parts, vec![0, 1]);
+        assert!((f.opacity - 0.8).abs() < 1e-6);
+        assert!(s.layers().as_array().unwrap().last().unwrap()["kind"] == "paint", "paint layer stays on top");
+        // deleting the folder removes its contents
+        let n = s.app.doc.layers.len();
+        s.delete_layer(&json!({ "layer": "Weathering" })).unwrap();
+        assert_eq!(s.app.doc.layers.len(), n - 5);
+        s.undo(false).unwrap();
+        assert_eq!(s.app.doc.layers.len(), n);
+        std::fs::remove_dir_all(out).ok();
+    }
+    /// Variants: seeded part subsets, decal enable/disable and image swaps
+    /// export as separate texture sets and leave the authored project intact.
+    #[test]
+    fn export_variants_makes_distinct_sets_and_restores_the_project() {
+        let Ok(mut s) = Session::new() else { return };
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        s.new_project(&json!({ "mesh": root.join("assets/ammo_box.glb"), "resolution": 512, "material": "Matte black" })).unwrap();
+        let n = s.list_parts().as_array().unwrap().len() as u64;
+        let all: Vec<u64> = (0..n).collect();
+        s.add_layer(&json!({ "name": "Glow", "material": "Neon green", "mask": { "parts": all }, "part_subset": { "from": 0.0, "to": 0.5, "salt": 3 } })).unwrap();
+        s.add_layer(&json!({ "kind": "paint", "name": "Signs" })).unwrap();
+        let decal = |img: &str| root.join("assets/decals").join(img);
+        s.project_decal(&json!({ "layer": "Signs", "image": decal("neon_open.png"), "rect": [0.25, 0.3, 0.75, 0.6], "tint": [1.0, 0.2, 0.7], "emissive_strength": 5.0, "variant": "shop" })).unwrap();
+        s.project_decal(&json!({ "layer": "Signs", "image": decal("neon_bar.png"), "rect": [0.25, 0.3, 0.75, 0.6], "tint": [0.2, 0.9, 1.0], "emissive_strength": 5.0, "variant": "shop", "enabled": false })).unwrap();
+        let layers = s.layers().to_string();
+        assert!(layers.contains("\"neon_bar\"") && layers.contains("\"part_subset\""), "{layers}");
+        let signs_res = s.app.doc.layers.iter().find(|l| l.name == "Signs").unwrap().paint_res().unwrap();
+        let signs_px = io::read_layer(&s.rs.device, &s.rs.queue, &s.app.ts, signs_res).unwrap();
+        let doc_before = s.app.doc.clone();
+
+        // a typo is an error and stores nothing
+        let bad = s.export_variants(&json!({ "dir": "x", "variants": [{ "name": "a", "enable": ["neon_baar"] }] }));
+        assert!(bad.unwrap_err().contains("neon_baar"));
+        assert!(s.app.doc.variants.defs.is_empty());
+
+        let out = std::env::temp_dir().join(format!("pigment-variants-{}", std::process::id()));
+        std::fs::remove_dir_all(&out).ok();
+        let r = s
+            .export_variants(&json!({ "dir": out, "name": "Box", "variants": [
+                { "name": "open", "seed": 1 },
+                { "name": "bar", "seed": 2, "disable": ["neon_open"], "enable": ["neon_bar"] },
+                { "name": "swapped", "seed": 1, "swaps": { "neon_open": { "image": decal("neon_ramen.png"), "tint": [1.0, 0.5, 0.1] } } },
+                { "name": "dark", "seed": 1, "disable": ["*", "Glow"] }
+            ], "preview": { "width": 160, "height": 120, "dir": out.join("previews") } }))
+            .unwrap();
+        assert_eq!(r["variants"].as_array().unwrap().len(), 4, "{r}");
+        let emis = |v: &str| image::open(out.join(format!("Box__{v}/Box_Emissive.png"))).unwrap().to_rgb8();
+        for v in ["open", "bar", "swapped", "dark"] {
+            assert!(out.join(format!("Box__{v}/Box_BaseColor.png")).exists(), "{v}");
+            assert!(out.join(format!("previews/Box__{v}.png")).exists(), "{v}");
+        }
+        let lit = |img: &image::RgbImage| img.pixels().filter(|p| p.0.iter().any(|&c| c > 40)).count();
+        let (open, bar, swapped, dark) = (emis("open"), emis("bar"), emis("swapped"), emis("dark"));
+        assert!(lit(&open) > 1000, "open glows");
+        assert_eq!(lit(&dark), 0, "everything off is dark");
+        assert_ne!(open, bar, "seed + decal switch change the emission");
+        assert_ne!(open, swapped, "image swap changes the emission");
+        // the replay reproduces the authored decal exactly: same seed, same decal
+        let again = s.export_variants(&json!({ "dir": out, "name": "Box", "only": ["open"] })).unwrap();
+        assert_eq!(again["variants"][0]["decals_replayed"], 0, "untouched layer isn't replayed");
+        assert_eq!(emis("open"), open);
+
+        // the authored project is untouched, and the definitions are stored
+        let mut doc_after = s.app.doc.clone();
+        assert_eq!(doc_after.variants.defs.len(), 4);
+        doc_after.variants.defs.clear();
+        doc_after.next_id = doc_before.next_id;
+        assert_eq!(doc_after, doc_before);
+        assert_eq!(io::read_layer(&s.rs.device, &s.rs.queue, &s.app.ts, signs_res).unwrap(), signs_px);
+        let dry = s.export_variants(&json!({ "dry_run": true })).unwrap();
+        assert_eq!(dry["variants"][1]["decals"][0][0], "neon_bar", "{dry}");
+        s.save_project(&json!({ "path": out.join("box.pigment") })).unwrap();
+        let manifest = std::fs::read_to_string(out.join("box.pigment/project.json")).unwrap();
+        assert!(manifest.contains("\"swapped\"") && manifest.contains("\"decals\""));
+        std::fs::remove_dir_all(out).ok();
+    }
+
+    /// Decals aimed at a world-space box (an area of a wall that is part of a bigger piece).
+    #[test]
+    fn decal_on_a_world_box() {
+        let Ok(mut s) = Session::new() else { return };
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        s.new_project(&json!({ "mesh": root.join("assets/ammo_box.glb"), "resolution": 512, "material": "Matte black" })).unwrap();
+        s.add_layer(&json!({ "kind": "paint", "name": "Signs" })).unwrap();
+        let (c, r) = s.app.mesh.bounding_sphere();
+        let img = root.join("assets/decals/neon_open.png");
+        let glow = |s: &mut Session| -> usize {
+            let im = s.render(&json!({ "view": "emission", "width": 256, "height": 256 })).unwrap();
+            image::load_from_memory(&im.png).unwrap().to_luma8().pixels().filter(|p| p.0[0] > 60).count()
+        };
+        let e = s.project_decal(&json!({ "image": img, "box": { "center": [c.x, c.y, c.z], "size": [r, r, r] }, "facing": "up" }));
+        assert!(e.unwrap_err().contains("facing"));
+        s.project_decal(&json!({ "image": img, "box": { "center": [c.x, c.y, c.z], "size": [r, r, r] }, "facing": "+y", "emissive_strength": 5.0 })).unwrap();
+        assert!(glow(&mut s) > 300, "decal from above landed on the top");
+        assert!(s.project_decal(&json!({ "image": img, "box": { "min": [0, 0] } })).is_err());
+    }
+
+    #[test]
+    fn bloom_lighting_presets_and_contact_sheets() {
+        let Ok(mut s) = Session::new() else { return };
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let tmp = std::env::temp_dir().join(format!("pigment-look-{}", std::process::id()));
+        s.new_project(&json!({ "mesh": root.join("assets/neon_tubes.glb"), "resolution": 512, "material": "Neon pink" })).unwrap();
+        let shot = |s: &mut Session, extra: Value| -> image::RgbaImage {
+            let mut a = json!({ "yaw": 0, "pitch": 5, "width": 320, "height": 240, "background": false, "path": tmp.join("shot.png") });
+            a.as_object_mut().unwrap().extend(extra.as_object().unwrap().clone());
+            image::load_from_memory(&s.render(&a).unwrap().png).unwrap().to_rgba8()
+        };
+        // bloom spreads the neon's light into the (dark) surroundings
+        let off = shot(&mut s, json!({ "lighting": "night", "bloom": false }));
+        let on = shot(&mut s, json!({ "bloom": { "intensity": 0.8, "radius": 0.8 } }));
+        let pinkish = |img: &image::RgbaImage| img.pixels().filter(|p| p.0[0] as i32 > p.0[1] as i32 + 25).count();
+        let (p_off, p_on) = (pinkish(&off), pinkish(&on));
+        assert!(p_on > p_off + p_off / 4, "bloom should add a pink halo ({p_off} -> {p_on} pixels)");
+        let sum = |img: &image::RgbaImage| img.pixels().map(|p| p.0[0] as u64 + p.0[1] as u64 + p.0[2] as u64).sum::<u64>();
+        assert!(sum(&on) > sum(&off));
+        // channel views never bloom
+        let e1 = shot(&mut s, json!({ "view": "emission" }));
+        let e2 = shot(&mut s, json!({ "view": "emission", "bloom": false }));
+        assert_eq!(e1.as_raw(), e2.as_raw());
+
+        // night is much darker than studio on a non-emissive material
+        s.new_project(&json!({ "mesh": root.join("assets/ammo_box.glb"), "resolution": 512, "material": "Olive drab" })).unwrap();
+        // (measured on the box only, not the gradient background)
+        let sum = |img: &image::RgbaImage| sum(&image::imageops::crop_imm(img, 110, 95, 100, 50).to_image());
+        let studio = sum(&shot(&mut s, json!({ "lighting": "studio" })));
+        let night = sum(&shot(&mut s, json!({ "lighting": "night" })));
+        let overcast = sum(&shot(&mut s, json!({ "lighting": "overcast" })));
+        assert!(night * 2 < studio && night * 2 < overcast, "night {night}, studio {studio}, overcast {overcast}");
+        assert!(s.render(&json!({ "lighting": "disco" })).is_err());
+        assert!(s.render(&json!({ "hdri": tmp.join("missing.hdr") })).is_err());
+
+        // a preset written to .hdr loads back as an HDRI
+        let hdr = tmp.join("night.hdr");
+        let r = s.export_lighting(&json!({ "lighting": "night", "path": hdr, "width": 256 })).unwrap();
+        assert_eq!(r["height"], 128);
+        let via_hdri = sum(&shot(&mut s, json!({ "hdri": hdr })));
+        assert!(via_hdri * 2 < studio, "HDRI night {via_hdri} vs studio {studio}");
+        assert_eq!(s.app.env.source, hdr.to_string_lossy());
+
+        // contact sheets: turntable and named views, tile size = width x height
+        let t = s.render_turntable(&json!({ "frames": 6, "width": 128, "height": 96, "columns": 3, "lighting": "studio", "path": tmp.join("turn.png") })).unwrap();
+        let img = image::load_from_memory(&t.png).unwrap();
+        assert_eq!((img.width(), img.height()), (3 * 128 + 16, 2 * 96 + 12));
+        let v = s.render(&json!({ "views": "all", "width": 128, "height": 128, "path": tmp.join("views.png") })).unwrap();
+        let img = image::load_from_memory(&v.png).unwrap();
+        assert_eq!((img.width(), img.height()), (3 * 128 + 16, 2 * 128 + 12));
+        assert!(v.path.exists());
+        assert!(s.render(&json!({ "views": ["front", "sideways"] })).is_err());
+        std::fs::remove_dir_all(tmp).ok();
     }
 }

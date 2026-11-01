@@ -55,8 +55,16 @@ struct LayerParams {
     pbits0: vec4<u32>,        // selected parts bitset, ids 0..127
     pbits1: vec4<u32>,        // ids 128..255
     misc: vec4<u32>,          // x = part selection on
+    img: vec4<u32>,           // image fill: channel bits (1 colour, 2 rough, 4 height, 8 normal), projection (0 uv, 1 triplanar)
+    img_xf: vec4<f32>,        // tiling u, v, offset u, v
+    img_xf2: vec4<f32>,       // cos, sin (rotation), 1 / tile size (m), blend sharpness
+    img_tint: vec4<f32>,      // linear tint rgb, height scale
+    img_amt: vec4<f32>,       // roughness lo, hi, normal strength
 };
 @group(2) @binding(7) var<uniform> lp: LayerParams;
+// Image fills bind their tiling images in the channel slots above
+// (l_color, l_rough, l_height, l_normal) and sample them with this.
+@group(2) @binding(8) var img_samp: sampler;
 
 struct Acc {
     @location(0) color: vec4<f32>,
@@ -183,6 +191,122 @@ fn part_selected(t: vec2<i32>) -> f32 {
     return f32((w >> (k % 32u)) & 1u);
 }
 
+// ---------- image fills ----------
+// Tiling images projected in UV space or triplanar in world space. Sampled
+// with analytic gradients (texel -> image coordinates), so mips and
+// anisotropic filtering work in this fullscreen texture-space pass.
+
+struct ImgTap {
+    c: vec3<f32>,   // linear colour
+    r: f32,
+    h: f32,
+    n: vec3<f32>,   // decoded normal, image frame (+y up the image)
+};
+
+fn img_rot(v: vec2<f32>) -> vec2<f32> {
+    return vec2<f32>(lp.img_xf2.x * v.x - lp.img_xf2.y * v.y, lp.img_xf2.y * v.x + lp.img_xf2.x * v.y);
+}
+fn img_unrot(v: vec2<f32>) -> vec2<f32> {
+    return vec2<f32>(lp.img_xf2.x * v.x + lp.img_xf2.y * v.y, -lp.img_xf2.y * v.x + lp.img_xf2.x * v.y);
+}
+
+fn img_tap(q: vec2<f32>, gx: vec2<f32>, gy: vec2<f32>) -> ImgTap {
+    var o: ImgTap;
+    o.c = vec3<f32>(1.0);
+    o.r = 0.5;
+    o.h = 0.5;
+    o.n = vec3<f32>(0.0, 0.0, 1.0);
+    let bits = lp.img.x;
+    if ((bits & 1u) != 0u) { o.c = textureSampleGrad(l_color, img_samp, q, gx, gy).rgb; }
+    if ((bits & 2u) != 0u) { o.r = textureSampleGrad(l_rough, img_samp, q, gx, gy).r; }
+    if ((bits & 4u) != 0u) { o.h = textureSampleGrad(l_height, img_samp, q, gx, gy).r; }
+    if ((bits & 8u) != 0u) { o.n = textureSampleGrad(l_normal, img_samp, q, gx, gy).xyz * 2.0 - 1.0; }
+    return o;
+}
+
+// World-space change of the surface position per texel step `d`.
+fn pos_step(s: vec2<i32>, d: vec2<i32>) -> vec3<f32> {
+    let p = covered(s + d);
+    let m = covered(s - d);
+    let c = textureLoad(position, s, 0).xyz;
+    if (p && m) { return (textureLoad(position, s + d, 0).xyz - textureLoad(position, s - d, 0).xyz) * 0.5; }
+    if (p) { return textureLoad(position, s + d, 0).xyz - c; }
+    if (m) { return c - textureLoad(position, s - d, 0).xyz; }
+    return vec3<f32>(0.0);
+}
+
+// An image normal (image frame) turned into a direction in the projection
+// plane's (u, v-down) coordinates, before rotation.
+fn img_normal_dir(n: vec3<f32>) -> vec2<f32> {
+    return img_unrot(vec2<f32>(n.x, -n.y)) * lp.img_amt.z;
+}
+
+fn image_fill(t: vec2<i32>) -> ImgTap {
+    let res = sh.res.x;
+    if (lp.img.y == 0u) {
+        // UV: repeats `tiling` times over the texture
+        let uv = (vec2<f32>(t) + 0.5) / res;
+        let tl = lp.img_xf.xy;
+        let q = img_rot(uv * tl) + lp.img_xf.zw;
+        var o = img_tap(q, img_rot(vec2<f32>(tl.x / res, 0.0)), img_rot(vec2<f32>(0.0, tl.y / res)));
+        // texel frame: +x along +u, +y towards -v (OpenGL)
+        let d = img_normal_dir(o.n);
+        o.n = normalize(vec3<f32>(d.x, -d.y, max(o.n.z, 1e-3)));
+        return o;
+    }
+    // triplanar in world space
+    var o: ImgTap;
+    o.c = vec3<f32>(0.0);
+    o.r = 0.0;
+    o.h = 0.0;
+    o.n = vec3<f32>(0.0, 0.0, 1.0);
+    let pw = textureLoad(position, t, 0);
+    let nl = length(textureLoad(wnormal, t, 0).xyz);
+    if (pw.w == 0.0 || nl < 1e-5) { return img_tap(vec2<f32>(0.0), vec2<f32>(0.0), vec2<f32>(0.0)); }
+    let p = pw.xyz;
+    let nrm = textureLoad(wnormal, t, 0).xyz / nl;
+    let dx = pos_step(t, vec2<i32>(1, 0));
+    let dy = pos_step(t, vec2<i32>(0, 1));
+    var w = pow(max(abs(nrm), vec3<f32>(1e-4)), vec3<f32>(lp.img_xf2.w));
+    w = w / max(w.x + w.y + w.z, 1e-6);
+    let sg = select(vec3<f32>(-1.0), vec3<f32>(1.0), nrm >= vec3<f32>(0.0));
+    let inv = lp.img_xf2.z;
+    var pert = vec3<f32>(0.0);
+    for (var i = 0; i < 3; i++) {
+        var wi = w.x;
+        // plane axes: ua = direction of +u, va = direction of +v (image down);
+        // ua x -va = the plane's outward normal, so images are never mirrored
+        var ua = vec3<f32>(0.0, 0.0, -sg.x);
+        var va = vec3<f32>(0.0, -1.0, 0.0);
+        if (i == 1) {
+            wi = w.y;
+            ua = vec3<f32>(1.0, 0.0, 0.0);
+            va = vec3<f32>(0.0, 0.0, sg.y);
+        } else if (i == 2) {
+            wi = w.z;
+            ua = vec3<f32>(sg.z, 0.0, 0.0);
+            va = vec3<f32>(0.0, -1.0, 0.0);
+        }
+        if (wi < 0.002) { continue; }
+        let q = img_rot(vec2<f32>(dot(p, ua), dot(p, va)) * inv) + lp.img_xf.zw;
+        let gx = img_rot(vec2<f32>(dot(dx, ua), dot(dx, va)) * inv);
+        let gy = img_rot(vec2<f32>(dot(dy, ua), dot(dy, va)) * inv);
+        let s = img_tap(q, gx, gy);
+        o.c += s.c * wi;
+        o.r += s.r * wi;
+        o.h += s.h * wi;
+        let d = img_normal_dir(s.n);
+        pert += (ua * d.x + va * d.y) * wi;
+    }
+    // world normal -> this texel's tangent frame (from the position map)
+    let nw = normalize(nrm + pert);
+    let tx = dx - nrm * dot(nrm, dx);
+    let ty = -(dy - nrm * dot(nrm, dy));
+    if (dot(tx, tx) < 1e-20 || dot(ty, ty) < 1e-20) { return o; }
+    o.n = normalize(vec3<f32>(dot(nw, normalize(tx)), dot(nw, normalize(ty)), max(dot(nw, nrm), 1e-3)));
+    return o;
+}
+
 @fragment
 fn fs_layer(f: FullOut) -> Acc {
     let t = vec2<i32>(f.pos.xy);
@@ -205,6 +329,14 @@ fn fs_layer(f: FullOut) -> Acc {
         let ln = textureLoad(l_normal, t, 0);
         n = vec4<f32>(normalize(ln.xyz * 2.0 - 1.0 + vec3<f32>(0.0, 0.0, 1e-4)), ln.a);
         e = textureLoad(l_emissive, t, 0);
+    }
+
+    if (lp.flags.x == 1u && lp.img.x != 0u) {
+        let im = image_fill(t);
+        if ((lp.img.x & 1u) != 0u) { c = vec4<f32>(im.c * lp.img_tint.rgb, 1.0); }
+        if ((lp.img.x & 2u) != 0u) { r.x = mix(lp.img_amt.x, lp.img_amt.y, im.r); }
+        if ((lp.img.x & 4u) != 0u) { h.x = (im.h - 0.5) * lp.img_tint.w; }
+        if ((lp.img.x & 8u) != 0u) { n = vec4<f32>(im.n, 1.0); }
     }
 
     var mask = 1.0;
