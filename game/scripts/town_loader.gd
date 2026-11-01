@@ -23,10 +23,13 @@ const REGION := 256.0          ## merged geometry / proxies / collision cells
 
 ## visibility range end (m) per category, 0 = always
 const VIS_END := {"sign": 220.0, "decal": 150.0, "lamp": 260.0, "pole": 260.0, "rail": 170.0,
-		"wire": 200.0, "footing": 260.0, "other": 150.0}
+		"wire": 200.0, "footing": 260.0, "other": 150.0,
+		"bridge_detail": 700.0, "bridge_near": 450.0}
+## categories drawn only beyond a distance (far LOD stand-ins: bridge stays as flat ribbons)
+const VIS_BEGIN := {"bridge_far": 450.0}
 const CAST_SHADOWS := {"building": true, "footing": true, "wall": true, "stairs": true, "lamp": true,
 		"pole": true, "sign": true, "terrain": true, "road": false, "decal": false, "wire": false, "rail": true,
-		"other": true, "water": false}
+		"other": true, "water": false, "bridge_wash": false, "bridge_far": false}
 const HEAVY_TRIS := 3000       ## buildings above this get far proxies
 const PROXY_NEAR := 330.0      ## a region switches from detailed buildings to proxies this far from its centre
 const MERGE_TRIS := 3000       ## meshes up to this size may be merged / region-instanced
@@ -451,7 +454,7 @@ func _group_instances() -> Array:
 func _policy(info: Dictionary, n: int) -> String:
 	var cat: String = info.get("cat", "other")
 	var tris: int = int(info.get("tris", 0))
-	if cat in ["terrain", "water", "bridge", "wire"]:
+	if cat in ["terrain", "water", "bridge", "wire", "bridge_detail", "bridge_near", "bridge_far", "bridge_wash"]:
 		return "single"
 	if cat == "building" and tris > HEAVY_TRIS:
 		return "heavy"
@@ -542,6 +545,9 @@ func _build_groups(groups: Array) -> void:
 					mi.mesh = mesh
 					mi.transform = x
 					_dress(mi, vis_end, shadows)
+					if VIS_BEGIN.has(cat):
+						mi.visibility_range_begin = VIS_BEGIN[cat]
+						mi.visibility_range_begin_margin = 10.0
 					_visuals.add_child(mi)
 					stats.mesh_instances += 1
 			"region":

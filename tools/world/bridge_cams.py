@@ -78,8 +78,8 @@ def cams(w, H, t, only=None):
             c = np.array(py["pos"] + [py["deck"]])
             sg = low_side(mid, 300)
             wide = mid[:2] + side * sg * 420 - along * 150
-            out += [dict(name=f"{tag}_night_wide", loc=[*wide, sea + 9.0], target=[*mid[:2], 45.0], fov_y=32, sky="night", exposure=1.0, fog=0.0002),
-                    dict(name=f"{tag}_dusk_wide", loc=[*wide, sea + 9.0], target=[*mid[:2], 45.0], fov_y=32, sky="dusk", exposure=0.4, fog=0.0002)]
+            out += [dict(name=f"{tag}_night_wide", loc=[*wide, sea + 9.0], target=[*mid[:2], 45.0], fov_y=32, sky="night", exposure=1.0, fog=0.0),
+                    dict(name=f"{tag}_dusk_wide", loc=[*wide, sea + 9.0], target=[*mid[:2], 45.0], fov_y=32, sky="dusk", exposure=0.4, fog=0.0)]
             cl = c[:2] + side * sg * 55 - along * 38
             out.append(dict(name=f"{tag}_close", loc=[*cl, sea + 3.0], target=[*c[:2], py["deck"] + 6.0], fov_y=55, sky="dusk", exposure=0.6, fog=0.0))
             top = c[:2] + side * sg * 70 + along * 25
@@ -92,8 +92,8 @@ def cams(w, H, t, only=None):
             sd = np.array([-a[1], a[0]])
             sg = low_side(p, 60)
             wide = p[:2] + sd * sg * 70 - a * 120
-            out += [dict(name=f"{tag}_night_wide", loc=[*wide, p[2] + 14.0], target=[*(p[:2] + a * 40), p[2] - 2.0], fov_y=45, sky="night", exposure=0.6, fog=0.0006),
-                    dict(name=f"{tag}_dusk_wide", loc=[*wide, p[2] + 14.0], target=[*(p[:2] + a * 40), p[2] - 2.0], fov_y=45, sky="dusk", exposure=0.4, fog=0.0006)]
+            out += [dict(name=f"{tag}_night_wide", loc=[*wide, p[2] + 14.0], target=[*(p[:2] + a * 40), p[2] - 2.0], fov_y=45, sky="night", exposure=0.6, fog=0.0),
+                    dict(name=f"{tag}_dusk_wide", loc=[*wide, p[2] + 14.0], target=[*(p[:2] + a * 40), p[2] - 2.0], fov_y=45, sky="dusk", exposure=0.4, fog=0.0)]
             cl = p[:2] + sd * sg * 16 - a * 14
             g = ground(H, t, *cl)
             out.append(dict(name=f"{tag}_close", loc=[*cl, g + 1.7], target=[*(p[:2] + a * 4), pi["top"] - 0.5], fov_y=62, sky="dusk", exposure=0.8, fog=0.0))
@@ -102,8 +102,8 @@ def cams(w, H, t, only=None):
             p, a = station(road, pi["s"])
             sg = low_side(mid, 200)
             wide = mid[:2] + side * sg * 300 + along * 60
-            out += [dict(name=f"{tag}_night_wide", loc=[*wide, sea + 8.0], target=[*mid[:2], 6.0], fov_y=30, sky="night", exposure=1.0, fog=0.0002),
-                    dict(name=f"{tag}_dusk_wide", loc=[*wide, sea + 8.0], target=[*mid[:2], 6.0], fov_y=30, sky="dusk", exposure=0.4, fog=0.0002)]
+            out += [dict(name=f"{tag}_night_wide", loc=[*wide, sea + 8.0], target=[*mid[:2], 6.0], fov_y=30, sky="night", exposure=1.0, fog=0.0),
+                    dict(name=f"{tag}_dusk_wide", loc=[*wide, sea + 8.0], target=[*mid[:2], 6.0], fov_y=30, sky="dusk", exposure=0.4, fog=0.0)]
             sd = np.array([-a[1], a[0]])
             cl = p[:2] + sd * sg * 30 - a * 26
             out.append(dict(name=f"{tag}_close", loc=[*cl, sea + 2.5], target=[*(p[:2] + a * 6), pi["top"] - 1.0], fov_y=58, sky="dusk", exposure=0.6, fog=0.0))
@@ -112,8 +112,8 @@ def cams(w, H, t, only=None):
             crown = rib[len(rib) // 2]
             sg = low_side(crown, 250)
             wide = crown[:2] + side * sg * 380 - along * 120
-            out += [dict(name=f"{tag}_night_wide", loc=[*wide, sea + 10.0], target=[*crown[:2], 30.0], fov_y=30, sky="night", exposure=1.0, fog=0.0002),
-                    dict(name=f"{tag}_dusk_wide", loc=[*wide, sea + 10.0], target=[*crown[:2], 30.0], fov_y=30, sky="dusk", exposure=0.4, fog=0.0002)]
+            out += [dict(name=f"{tag}_night_wide", loc=[*wide, sea + 10.0], target=[*crown[:2], 30.0], fov_y=30, sky="night", exposure=1.0, fog=0.0),
+                    dict(name=f"{tag}_dusk_wide", loc=[*wide, sea + 10.0], target=[*crown[:2], 30.0], fov_y=30, sky="dusk", exposure=0.4, fog=0.0)]
             # on the sidewalk at the arch springing, looking up the rib and the hangers
             spring = rib[3]
             P = np.array(road["points"], dtype=float)

@@ -65,13 +65,16 @@ def verify(world, built, out, log, samples=60000, seed=5):
         if path is None:
             continue
         s0, s1 = br["s"]
+        # the built structure's depth below the path where the builder recorded it (bridge_designs.py)
+        bd = built.get("bridge_depth", {}).get(br["name"])
         for s in np.linspace(s0 + 15, s1 - 15, max(2, int((s1 - s0) / 3))):
             p, t = path.at(s)
+            depth = float(np.interp(s, bd[0], bd[1])) if bd else br.get("depth", 2.4)
             for y in (-1.0, 0.0, 1.0):
                 q = p.to_2d() + Vector((-t.y, t.x)) * y * br["half"] * 0.9
                 g = float(hf.sample_tri(np.array([q.x]), np.array([q.y]))[0])
                 gsamp += 1
-                if g > p.z - br.get("depth", 2.4) - 0.1:
+                if g > p.z - depth - 0.1:
                     gviol += 1
     res["terrain_through_bridges"] = {"samples": gsamp, "violations": gviol}
     # 3. floating / buried street furniture and buildings

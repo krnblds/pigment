@@ -53,7 +53,7 @@ EMIT = {
     "lamp_cool": ((0.85, 0.92, 1.0), 14.0),
     "plaque": ((1.0, 0.8, 0.45), 2.5),
 }
-WASH = {"wash_warm": (255, 214, 168), "wash_cool": (196, 220, 255)}
+WASH = ("wash_warm", "wash_cool")      # assets/decals/bridges/<key>.png
 
 
 def tile_of(key):
@@ -194,8 +194,9 @@ class BM:
 
     def sweep(self, rail, prof, key, i0=0, i1=None, closed=False, out=None, smooth=False):
         """Sweep a cross-section (y lateral +left, z up, both relative to the path point) along
-        rail stations i0..i1. Faces face away from the profile centroid (closed) or towards
-        `out` (a (y, z) direction in the section, for open strips). UVs: u = along the path,
+        rail stations i0..i1. Faces of a closed section face outwards (from the polygon's
+        winding); open strips face `out` (a (y, z) direction in the section) or, without it,
+        the side the winding would put outwards. UVs: u = along the path,
         v = distance across the section, signed so v grows upwards on webs."""
         i1 = rail.n - 1 if i1 is None else i1
         pts = list(prof) + ([prof[0]] if closed else [])
@@ -203,14 +204,13 @@ class BM:
         for (y0, z0), (y1, z1) in zip(pts, pts[1:]):
             L = math.hypot(y1 - y0, z1 - z0)
             acc.append(acc[-1] + (L if abs(z1 - z0) <= abs(y1 - y0) else math.copysign(L, z1 - z0)))
-        cy = sum(p[0] for p in prof) / len(prof)
-        cz = sum(p[1] for p in prof) / len(prof)
+        orient = _orient(prof)
         for k in range(len(pts) - 1):
             (y0, z0), (y1, z1) = pts[k], pts[k + 1]
             if out is not None:
                 oy, oz = out
             else:
-                oy, oz = (y0 + y1) / 2 - cy, (z0 + z1) / 2 - cz
+                oy, oz = (z1 - z0) * orient, -(y1 - y0) * orient
             for i in range(i0, i1):
                 j = i + 1
                 q = [rail.P(i, y0, z0), rail.P(j, y0, z0), rail.P(j, y1, z1), rail.P(i, y1, z1)]
@@ -228,8 +228,7 @@ class BM:
             cur = prof_fn(i + 1)
             A = list(prev) + ([prev[0]] if closed else [])
             B = list(cur) + ([cur[0]] if closed else [])
-            cy = sum(p[0] for p in prev) / len(prev)
-            cz = sum(p[1] for p in prev) / len(prev)
+            orient = _orient(prev)
             v = 0.0
             for k in range(m - 1):
                 (y0, z0), (y1, z1) = A[k], A[k + 1]
@@ -237,7 +236,7 @@ class BM:
                 L = math.hypot(y1 - y0, z1 - z0)
                 dv = L if abs(z1 - z0) <= abs(y1 - y0) else math.copysign(L, z1 - z0)
                 q = [rail.P(i, y0, z0), rail.P(i + 1, y2, z2), rail.P(i + 1, y3, z3), rail.P(i, y1, z1)]
-                oy, oz = (y0 + y1) / 2 - cy, (z0 + z1) / 2 - cz
+                oy, oz = (z1 - z0) * orient, -(y1 - y0) * orient
                 o = Vector((rail.nrm[i][0] * oy, rail.nrm[i][1] * oy, oz))
                 ua, ub = rail.u[i], rail.u[i + 1]
                 self.face(q, key, [(ua, v), (ub, v), (ub, v + dv), (ua, v + dv)], o, smooth)
@@ -260,17 +259,29 @@ class BM:
             bpy.data.meshes.remove(me)
         me = bpy.data.meshes.new(name)
         tiles = [tile_of(k) for k in self.keys]
+        used = sorted({f.material_index for f in self.bm.faces})
+        remap = {m: i for i, m in enumerate(used)}
         for f in self.bm.faces:
             tu, tv = tiles[f.material_index]
             for lp in f.loops:
                 u, v = lp[self.uv].uv
                 lp[self.uv].uv = (u / tu, v / tv)
+            f.material_index = remap[f.material_index]
         self.bm.to_mesh(me)
         self.bm.free()
-        for k in self.keys:
-            me.materials.append(mats[k])
+        for m in used:                   # only the materials in use (one glb primitive each)
+            me.materials.append(mats[self.keys[m]])
         me.update()
         return me
+
+
+def _orient(prof):
+    """+1 when the (y, z) polygon runs counter-clockwise: its outward normal of a segment
+    (dy, dz) is then (dz, -dy)."""
+    a = 0.0
+    for (y0, z0), (y1, z1) in zip(prof, list(prof[1:]) + [prof[0]]):
+        a += y0 * z1 - y1 * z0
+    return 1.0 if a > 0 else -1.0
 
 
 class Rail:
@@ -418,26 +429,9 @@ def emit_material(key):
 
 
 def wash_images(root):
-    """Uplight wash cards: a soft cone of light, full at the bottom edge (v = 0), fading up and to
-    the sides. Colour baked into the PNG (Godot's image material uses it as the emission)."""
-    from PIL import Image
-    d = os.path.join(root, "assets", "decals", "bridges")
-    os.makedirs(d, exist_ok=True)
-    out = {}
-    for key, rgb in WASH.items():
-        p = os.path.join(d, f"{key}.png")
-        if not os.path.isfile(p):
-            w, h = 64, 256
-            img = Image.new("RGBA", (w, h))
-            for y in range(h):
-                f = 1.0 - y / (h - 1)            # image row 0 = top of the card
-                for x in range(w):
-                    u = abs((x + 0.5) / w - 0.5) * 2
-                    a = (1.0 - f) ** 0.0 * math.exp(-3.2 * f) * max(0.0, 1.0 - u ** 2.2) * (0.25 + 0.75 * min(1.0, f * 12))
-                    img.putpixel((x, y), (*rgb, int(255 * min(1.0, a))))
-            img.save(p)
-        out[key] = p
-    return out
+    """Uplight wash card images (written by tools/world/bridge_textures.py make_decals: a soft cone
+    of light, full at the bottom edge, colour baked in for Godot's image material)."""
+    return {k: os.path.join(root, "assets", "decals", "bridges", f"{k}.png") for k in WASH}
 
 
 def wash_material(root, key, strength=1.6):
@@ -459,15 +453,19 @@ def wash_material(root, key, strength=1.6):
     return m
 
 
-def sign_material(root, name):
+def sign_material(root, name, path=None, emission=0.0):
     mname = "Bridge_" + name
     if bpy.data.materials.get(mname):
         return bpy.data.materials[mname]
-    p = os.path.join(root, "assets", "decals", "bridges", f"{name}.png")
+    p = path or os.path.join(root, "assets", "decals", "bridges", f"{name}.png")
     m, nt, bsdf = _nodes(mname)
     if os.path.isfile(p):
         t = _img(nt, p, True)
         nt.links.new(t.outputs["Color"], bsdf.inputs["Base Color"])
+        if emission > 0:
+            nt.links.new(t.outputs["Color"], bsdf.inputs["Emission Color"])
+            nt.links.new(t.outputs["Alpha"], bsdf.inputs["Alpha"])
+    bsdf.inputs["Emission Strength"].default_value = emission
     bsdf.inputs["Roughness"].default_value = 0.5
     return m
 
@@ -481,6 +479,7 @@ def materials(root, red_light=None):
     M.update({k: wash_material(root, k) for k in WASH})
     for s in ("sign_works", "sign_no_access", "sign_clearance", "sign_bridge_id"):
         M[s] = sign_material(root, s)
+    M["logo"] = sign_material(root, "logo", os.path.join(root, "assets", "decals", "logo_hoshikawa_dynamics.png"), emission=1.5)
     return M
 
 

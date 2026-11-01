@@ -116,6 +116,20 @@ def make_decals():
     img.save(p)
     out["run"] = p
 
+    # uplight wash cards (bridge_kit.py): light full at the bottom edge, fading up and to the sides
+    for key, rgb in (("wash_warm", (255, 214, 168)), ("wash_cool", (196, 220, 255))):
+        w, h = 64, 256
+        img = Image.new("RGBA", (w, h))
+        for y in range(h):
+            f = 1.0 - y / (h - 1)                # image row 0 = top of the card (f = 1)
+            for x in range(w):
+                u = abs((x + 0.5) / w - 0.5) * 2
+                a = math.exp(-3.2 * f) * max(0.0, 1.0 - u ** 2.2) * (0.25 + 0.75 * min(1.0, f * 12))
+                img.putpixel((x, y), (*rgb, int(255 * min(1.0, a))))
+        p = d / f"{key}.png"
+        img.save(p)
+        out[key] = p
+
     def font(sz, bold=True):
         for f in (["arialbd.ttf", "seguisb.ttf"] if bold else ["arial.ttf", "segoeui.ttf"]):
             try:
