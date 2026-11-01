@@ -142,64 +142,92 @@ def build(world_dir):
     shore = smooth(6.0, 1.5, H - sea) * (H > sea - 3.0) * (1 - smooth(0.2, 0.5, U)) * (1 - smooth(0.4, 0.8, slope)) * (1 - near_city)
     m1 = np.stack([urban, forest, scree, verge], -1)
     m2 = np.stack([lot, hollow, oldtown, shore], -1)
-    spots = ground_spots(w, H, T, {"forest": forest, "shore": shore, "rough": np.maximum(scree, steep)})
+    spots = ground_spots(w, H, T, {"forest": forest, "shore": shore, "rough": np.maximum(scree, steep), "urban": blur(U, 20.0, cell),
+                                       "road_m": ndimage.distance_transform_edt(occ < 0.5) * cell})
     return [(np.clip(m, 0, 1) * 255 + 0.5).astype(np.uint8) for m in (m1, m2)], T, spots
 
 
 def ground_spots(w, H, T, M):
     """Camera spots that show the ground sets (Blender coords, eye / target):
-    a forest floor beside the mountain road, a beach from the shore road, a
-    scree / rock slope seen from the mountain road. The game's --bench-spots
-    picks them up (game/scripts/automation.gd) and writes cams.json for Cycles."""
+    a forest floor, a beach and a scree / rock slope, each as close to a lamp
+    as the world allows (the game runs at night), seen from 1.8 m a few metres
+    away. The game's --bench-spots picks them up (game/scripts/automation.gd)
+    and writes cams.json for Cycles (tools/world/world_render.py --cams)."""
+    from scipy.spatial import cKDTree
     n, cell = T["n"], T["cell_m"]
     ox, oy = T["origin"]
+    L = np.array([l["pos"][:2] for l in w.get("lights", []) if l.get("kind") in ("lamp", "alley", "mast")] or [[1e9, 1e9]])
+    tree = cKDTree(L)
+    gy, gx = np.gradient(H, cell)
 
     def h(x, y):
         i = int(np.clip(round((x - ox) / cell), 0, n - 1))
         j = int(np.clip(round((y - oy) / cell), 0, n - 1))
         return float(H[j, i])
-
-    def m(key, x, y, r=12.0):
+    spots = []
+    for name, key, need, zr, slope_max, back in (("ground_forest", "forest", 0.85, (3.0, 400.0), 0.5, 7.0),
+                                                  ("ground_beach", "shore", 0.75, (0.3, 2.2), 0.3, 9.0),
+                                                  ("ground_slope", "rough", 0.6, (8.0, 400.0), 1.2, 16.0)):
         a = M[key]
-        i0, i1 = int((x - r - ox) / cell), int((x + r - ox) / cell) + 1
-        j0, j1 = int((y - r - oy) / cell), int((y + r - oy) / cell) + 1
-        return float(a[max(j0, 0):max(j1, 1), max(i0, 0):max(i1, 1)].mean()) if i1 > 0 and j1 > 0 else 0.0
-    best = {}
+        jj, ii = np.nonzero((a[::2, ::2] > need))
+        jj, ii = jj * 2, ii * 2
+        if not len(jj):
+            continue
+        z = H[jj, ii]
+        sl = np.hypot(gx[jj, ii], gy[jj, ii])
+        ok = (z > zr[0]) & (z < zr[1]) & (sl < slope_max) & (M["urban"][jj, ii] < 0.03) & (M["road_m"][jj, ii] > 7.0)
+        jj, ii = jj[ok], ii[ok]
+        if not len(jj):
+            continue
+        X, Y = ox + ii * cell, oy + jj * cell
+        d, k = tree.query(np.stack([X, Y], -1))
+        # a lamp 6..14 m away lights the spot without standing in the view
+        score = -np.abs(d - 11.0) + a[jj, ii] * 4.0
+        # nothing built in the view: the ground 20 m beyond the spot is clear of roads too
+        lv = np.stack([X - L[k][:, 0], Y - L[k][:, 1]], -1)
+        lv /= np.maximum(np.linalg.norm(lv, axis=-1, keepdims=True), 1e-3)
+        bi = np.clip(np.round((X + lv[:, 0] * 20 - ox) / cell).astype(int), 0, n - 1)
+        bj = np.clip(np.round((Y + lv[:, 1] * 20 - oy) / cell).astype(int), 0, n - 1)
+        score = score - 10.0 * (M["road_m"][bj, bi] < 8.0)
+        b = int(np.argmax(score))
+        x, y = float(X[b]), float(Y[b])
+        lx, ly = L[k[b]]
+        if name == "ground_beach":
+            # look along the downhill (towards the water) with the beach in front
+            g = np.array([gx[jj[b], ii[b]], gy[jj[b], ii[b]]])
+            v = -g / (np.linalg.norm(g) + 1e-6)
+        else:
+            v = np.array([x - lx, y - ly]) / max(math.hypot(x - lx, y - ly), 1e-3)
+            # stand between the lamp and the spot, looking away from the lamp: lit ground in front
+        ex, ey = x - v[0] * back, y - v[1] * back
+        eye = [ex, ey, h(ex, ey) + 1.8]
+        at = [x, y, h(x, y)]
+        spots.append({"name": name, "eye": [round(float(c), 2) for c in eye], "at": [round(float(c), 2) for c in at], "fov": 55.0,
+                      "lamp_m": round(float(d[b]), 1)})
+    # the mountain: from the mountain road, across at the roughest slope 40..90 m away
+    rough = ndimage.uniform_filter(M["rough"], size=int(30 / cell))
+    best = None
     for r in w["roads"]:
+        if r["class"] != "mountain":
+            continue
         pts = r["points"]
-        for k in range(2, len(pts) - 2, 3):
-            x, y = pts[k][0], pts[k][1]
+        deck = r.get("deck", [False] * len(pts))
+        for k in range(2, len(pts) - 2, 2):
+            if deck[k]:
+                continue
+            x, y, z = pts[k][0], pts[k][1], pts[k][2]
             tx, ty = pts[k + 1][0] - pts[k - 1][0], pts[k + 1][1] - pts[k - 1][1]
             ln = math.hypot(tx, ty) or 1.0
-            sx, sy = -ty / ln, tx / ln
-            deck = any(r.get("deck", [False] * len(pts))[max(0, k - 2):k + 3])
             for sgn in (1, -1):
-                ax, ay = x + sx * sgn * 18, y + sy * sgn * 18
-                for key, name, need in (("forest", "ground_forest", 0.6), ("shore", "ground_beach", 0.2), ("rough", "ground_slope", 0.35)):
-                    v = m(key, ax, ay)
-                    if name in ("ground_slope", "ground_forest") and r["class"] != "mountain":
-                        continue
-                    if name == "ground_beach" and not (0.3 < h(x, y) < 8.0):
-                        continue
-                    if deck and name != "ground_beach":
-                        continue
-                    if v > need and v > best.get(name, (0,))[0]:
-                        best[name] = (v, x, y, pts[k][2] if len(pts[k]) > 2 else h(x, y), sx * sgn, sy * sgn)
-    spots = []
-    for name, (v, x, y, z, sx, sy) in sorted(best.items()):
-        if name == "ground_forest":
-            ex, ey = x + sx * 9, y + sy * 9
-            eye, at = [ex, ey, h(ex, ey) + 1.7], [x + sx * 19, y + sy * 19, h(x + sx * 19, y + sy * 19) + 0.2]
-        elif name == "ground_beach":
-            ex, ey = x + sx * 2, y + sy * 2
-            d = 6.0
-            while d < 80 and h(x + sx * d, y + sy * d) > 0.6:
-                d += 2.0
-            tx, ty = x + sx * max(d - 6, 8), y + sy * max(d - 6, 8)
-            eye, at = [ex, ey, max(h(ex, ey), z) + 1.8], [tx, ty, h(tx, ty)]
-        else:
-            eye, at = [x, y, z + 2.6], [x + sx * 45, y + sy * 45, h(x + sx * 45, y + sy * 45) + 2.0]
-        spots.append({"name": name, "eye": [round(c, 2) for c in eye], "at": [round(c, 2) for c in at], "fov": 55.0, "score": round(v, 2)})
+                for dd in (40.0, 60.0, 90.0):
+                    ax, ay = x - ty / ln * sgn * dd, y + tx / ln * sgn * dd
+                    i = int(np.clip(round((ax - ox) / cell), 0, n - 1))
+                    j = int(np.clip(round((ay - oy) / cell), 0, n - 1))
+                    v = float(rough[j, i]) + 0.002 * (h(ax, ay) - z)       # rather looking up at it
+                    if best is None or v > best[0]:
+                        best = (v, [x, y, z + 2.4], [ax, ay, h(ax, ay) + 2.0])
+    if best:
+        spots.append({"name": "ground_mountain", "eye": [round(float(c), 2) for c in best[1]], "at": [round(float(c), 2) for c in best[2]], "fov": 55.0})
     return spots
 
 
