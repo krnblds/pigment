@@ -257,6 +257,8 @@ pub struct TexSet {
     center_radius: [f32; 4],
     /// Tiling images used by image fills.
     pub tiles: super::tile_images::TileImages,
+    /// Flat tile projects: world wrap period along x / z in metres (0 = none).
+    pub tile_period: [f32; 2],
 }
 
 struct Pipes {
@@ -456,6 +458,7 @@ impl TexSet {
             mipgen: MipGen::new(device),
             center_radius: [0.0, 0.0, 0.0, 1.0],
             tiles: super::tile_images::TileImages::new(device),
+            tile_period: [0.0; 2],
         };
         // neutral bakes until the first real bake: AO 1, curvature 0.5
         let mut enc = device.create_command_encoder(&Default::default());
@@ -553,7 +556,7 @@ impl TexSet {
             pass.set_vertex_buffer(0, mesh.vertices.slice(..));
             pass.set_vertex_buffer(1, mesh.parts.slice(..));
             pass.set_index_buffer(mesh.indices.slice(..), wgpu::IndexFormat::Uint32);
-            pass.draw_indexed(0..mesh.index_count, 0, 0..1);
+            pass.draw_indexed(0..mesh.uv_index_count, 0, 0..1);
         }
         // Jump flood: init, then steps res/2 .. 1, plus one extra step of 1 (JFA+1).
         let tmp = Tex::target(device, "jfa tmp", self.res, NEAREST);
@@ -605,7 +608,7 @@ impl TexSet {
     /// `rect` (texels) limits the work to a region, used while painting.
     pub fn composite(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, doc: &Document, rect: Option<[u32; 4]>) {
         let res = self.res;
-        let shared = [self.center_radius, [res as f32, res as f32 / 256.0, 0.0, 0.0], self.bounds[0], self.bounds[1]];
+        let shared = [self.center_radius, [res as f32, res as f32 / 256.0, self.tile_period[0], self.tile_period[1]], self.bounds[0], self.bounds[1]];
         queue.write_buffer(&self.shared_buf, 0, bytemuck::cast_slice(&shared));
 
         // Folders are sub-stacks: the plan brackets each visible folder's

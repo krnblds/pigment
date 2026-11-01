@@ -59,6 +59,14 @@ pub struct TileSpec {
     /// Strips / atlas cells; one part each, in order. Empty for a plain tile.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub cells: Vec<SheetCell>,
+    /// World position of the sheet's centre (x, z). Moving a seamless tile
+    /// by part of its period scrolls the pattern (used to prove periodicity).
+    #[serde(default, skip_serializing_if = "is_zero2")]
+    pub offset_m: [f32; 2],
+}
+
+fn is_zero2(v: &[f32; 2]) -> bool {
+    *v == [0.0, 0.0]
 }
 
 fn both() -> [bool; 2] {
@@ -71,7 +79,7 @@ const GRID: f32 = 32.0;
 impl TileSpec {
     /// A seamless tile of `w x h` metres.
     pub fn tile(w: f32, h: f32) -> TileSpec {
-        TileSpec { size_m: [w, h], wrap: [true, true], kind: SheetKind::Tile, cells: vec![] }
+        TileSpec { size_m: [w, h], wrap: [true, true], kind: SheetKind::Tile, cells: vec![], offset_m: [0.0; 2] }
     }
 
     /// A trim sheet `width` metres wide: strips (name, height in metres)
@@ -93,7 +101,7 @@ impl TileSpec {
                 SheetCell { name: name.clone(), uv: [0.0, v0, 1.0, v / total] }
             })
             .collect();
-        Ok(TileSpec { size_m: [width, total], wrap: [true, false], kind: SheetKind::Trim, cells })
+        Ok(TileSpec { size_m: [width, total], wrap: [true, false], kind: SheetKind::Trim, cells, offset_m: [0.0; 2] })
     }
 
     /// A decal atlas: cells (name, [w, h] metres) shelf-packed into a square
@@ -113,7 +121,7 @@ impl TileSpec {
         for _ in 0..400 {
             if let Some(rects) = shelf_pack(cells, side, pad) {
                 let cells = cells.iter().zip(rects).map(|((n, _), uv)| SheetCell { name: n.clone(), uv }).collect();
-                return Ok(TileSpec { size_m: [side, side], wrap: [false, false], kind: SheetKind::Atlas, cells });
+                return Ok(TileSpec { size_m: [side, side], wrap: [false, false], kind: SheetKind::Atlas, cells, offset_m: [0.0; 2] });
             }
             side *= 1.02;
         }
@@ -134,7 +142,7 @@ impl TileSpec {
     }
 
     pub fn world_of(&self, u: f32, v: f32) -> [f32; 3] {
-        [(u - 0.5) * self.size_m[0], 0.0, (v - 0.5) * self.size_m[1]]
+        [(u - 0.5) * self.size_m[0] + self.offset_m[0], 0.0, (v - 0.5) * self.size_m[1] + self.offset_m[1]]
     }
 
     /// World rectangle of a cell: [x0, z0, x1, z1].

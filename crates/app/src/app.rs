@@ -31,6 +31,8 @@ mod decals;
 mod tour;
 #[cfg(test)]
 mod image_fill_tests;
+#[cfg(test)]
+mod tile_tests;
 mod ui;
 
 /// Things the quick-start guide watches for.
@@ -151,6 +153,9 @@ pub struct PigmentApp {
     counters: Counters,
     /// Screen rects of UI elements the guide can point at, rebuilt every frame.
     anchors: std::collections::HashMap<&'static str, egui::Rect>,
+    /// Flat tile projects: the mesh plus its copies one period away, which
+    /// strokes and decals are tracked against so they wrap.
+    wrap_mesh: Option<Mesh>,
 }
 
 impl PigmentApp {
@@ -209,6 +214,7 @@ impl PigmentApp {
             tour: Default::default(),
             counters: Counters::default(),
             anchors: Default::default(),
+            wrap_mesh: None,
         };
         app.new_project(rs, Mesh::demo_crate(96), None, Document::demo());
         app.export_name = "DemoCrate".into();
@@ -277,7 +283,12 @@ impl PigmentApp {
     fn load_mesh_gpu(&mut self, rs: &RenderState, mesh: Mesh) {
         let (c, r) = mesh.bounding_sphere();
         self.camera.frame(c, r);
-        let mg = MeshGpu::new(&rs.device, &mesh);
+        self.wrap_mesh = self.doc.tile.as_ref().filter(|t| t.copies() > 1).map(|t| t.wrap_mesh(&mesh));
+        let mg = match &self.wrap_mesh {
+            Some(w) => MeshGpu::with_wrap(&rs.device, &mesh, w),
+            None => MeshGpu::new(&rs.device, &mesh),
+        };
+        self.ts.tile_period = self.doc.tile.as_ref().map(|t| t.period()).unwrap_or([0.0; 2]);
         self.parts = mesh.parts();
         self.ts.prepare_mesh(&rs.device, &rs.queue, &mg, c, r);
         self.mesh_gpu = Some(mg);
@@ -756,7 +767,7 @@ impl PigmentApp {
             eye: [eye.x, eye.y, eye.z, 1.0],
             viewport: [viewport_px.x, viewport_px.y, self.camera.near(), 0.0],
         };
-        let bins = ScreenBins::build(&self.mesh, vp, viewport_px, Some(eye));
+        let bins = ScreenBins::build(self.wrap_mesh.as_ref().unwrap_or(&self.mesh), vp, viewport_px, Some(eye));
         let mut s = Stroke { sampler: StrokeSampler::default(), bins, tiles: TileSet::default(), target, view };
         let stamps = s.sampler.begin(pos_px);
         self.stroke = Some(s);
@@ -877,7 +888,7 @@ impl PigmentApp {
         let vp = self.camera.view_proj(aspect);
         let eye = self.camera.eye();
         let view = ViewGpu { view_proj: vp.to_cols_array_2d(), eye: [eye.x, eye.y, eye.z, 1.0], viewport: [viewport_px.x, viewport_px.y, self.camera.near(), 0.0] };
-        let bins = ScreenBins::build(&self.mesh, vp, viewport_px, Some(eye));
+        let bins = ScreenBins::build(self.wrap_mesh.as_ref().unwrap_or(&self.mesh), vp, viewport_px, Some(eye));
         let mut tiles = TileSet::default();
         let c = Vec2::new((rect[0] + rect[2]) * 0.5, (rect[1] + rect[3]) * 0.5);
         let half = Vec2::new((rect[2] - rect[0]).abs(), (rect[3] - rect[1]).abs()) * 0.5;

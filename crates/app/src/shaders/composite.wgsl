@@ -79,6 +79,84 @@ struct Acc {
     @location(3) emissive: vec4<f32>,
 };
 
+
+// ---------- seamless tile mode ----------
+// Flat tile / trim sheet projects set sh.res.z / sh.res.w to the world period
+// along x / z in metres (0 = that axis doesn't wrap). Every world-space noise
+// then becomes periodic over the tile: the scale is snapped so a whole number
+// of lattice cells fits the period, and the lattice hash wraps (a periodic
+// hash lattice). Outside tile mode all of this is the identity, so ordinary
+// projects composite exactly as before.
+
+fn tile_len() -> vec3<f32> { return vec3<f32>(sh.res.z, 0.0, sh.res.w); }
+fn tile_on() -> bool { return sh.res.z > 0.0 || sh.res.w > 0.0; }
+
+// World -> noise scale (per axis), snapped to whole cells per period.
+fn tscale(s: vec3<f32>) -> vec3<f32> {
+    let l = tile_len();
+    let snapped = max(round(abs(s) * l), vec3<f32>(1.0)) / max(l, vec3<f32>(1e-6)) * sign(s);
+    return select(s, snapped, l > vec3<f32>(0.0) & abs(s) > vec3<f32>(0.0));
+}
+// Lattice period in cells for a snapped scale (0 = no wrap on that axis).
+fn tper(s: vec3<f32>) -> vec3<f32> {
+    return round(abs(s) * tile_len());
+}
+
+fn lwrap(i: vec3<f32>, per: vec3<f32>) -> vec3<f32> {
+    let m = i - per * floor(i / max(per, vec3<f32>(1.0)));
+    return select(i, m, per > vec3<f32>(0.5));
+}
+
+fn vnoise_p(p: vec3<f32>, per: vec3<f32>) -> f32 {
+    let i = floor(p);
+    let f = fract(p);
+    let u = f * f * (3.0 - 2.0 * f);
+    let a = mix(mix(hash3(lwrap(i, per)), hash3(lwrap(i + vec3<f32>(1.0, 0.0, 0.0), per)), u.x),
+                mix(hash3(lwrap(i + vec3<f32>(0.0, 1.0, 0.0), per)), hash3(lwrap(i + vec3<f32>(1.0, 1.0, 0.0), per)), u.x), u.y);
+    let b = mix(mix(hash3(lwrap(i + vec3<f32>(0.0, 0.0, 1.0), per)), hash3(lwrap(i + vec3<f32>(1.0, 0.0, 1.0), per)), u.x),
+                mix(hash3(lwrap(i + vec3<f32>(0.0, 1.0, 1.0), per)), hash3(lwrap(i + vec3<f32>(1.0, 1.0, 1.0), per)), u.x), u.y);
+    return mix(a, b, u.z);
+}
+
+// fbm whose input has lattice period `per` (cells; 0 = none): each octave
+// multiplies the period by ~2.03, rounded so it stays whole.
+fn fbm_p(p: vec3<f32>, per: vec3<f32>) -> f32 {
+    if (all(per < vec3<f32>(0.5))) { return fbm(p); }
+    var s = 0.0;
+    var amp = 0.5;
+    var q = p;
+    var pr = per;
+    for (var i = 0; i < 5; i++) {
+        s += vnoise_p(q, pr) * amp;
+        let np = max(round(pr * 2.03), vec3<f32>(1.0));
+        let wrapped = pr > vec3<f32>(0.5);
+        q = q * select(vec3<f32>(2.03), np / max(pr, vec3<f32>(1.0)), wrapped) + vec3<f32>(17.1, 3.7, 9.2);
+        pr = select(vec3<f32>(0.0), np, wrapped);
+        amp *= 0.5;
+    }
+    return s / 0.96875;
+}
+
+// fbm(q) where q = pw * s + c. Outside tile mode this is exactly fbm(q) (q is
+// passed as written, so results are bit-identical); in tile mode it is
+// periodic over the tile.
+fn fbm_s(q: vec3<f32>, pw: vec3<f32>, s: vec3<f32>, c: vec3<f32>) -> f32 {
+    if (!tile_on()) { return fbm(q); }
+    let k = tscale(s);
+    return fbm_p(pw * k + c, tper(k));
+}
+fn ridged_s(q: vec3<f32>, pw: vec3<f32>, s: vec3<f32>, c: vec3<f32>) -> f32 {
+    return 1.0 - abs(fbm_s(q, pw, s, c) * 2.0 - 1.0);
+}
+// Wrap a texel coordinate around the texture on tiling axes.
+fn twrap(t: vec2<i32>) -> vec2<i32> {
+    let size = i32(sh.res.x);
+    var o = t;
+    if (sh.res.z > 0.0) { o.x = ((t.x % size) + size) % size; }
+    if (sh.res.w > 0.0) { o.y = ((t.y % size) + size) % size; }
+    return o;
+}
+
 // Ridged fbm: 1 at the noise's zero crossings, falling off around them.
 fn ridged(p: vec3<f32>) -> f32 {
     return 1.0 - abs(fbm(p) * 2.0 - 1.0);
@@ -93,7 +171,7 @@ fn gen_eval(t: vec2<i32>, kind: u32, gp: vec4<f32>, gp2: vec4<f32>) -> f32 {
     let p = (pw - sh.center_radius.xyz) / max(sh.center_radius.w, 1e-6);  // object-relative
     let seed = vec3<f32>(gp2.x * 7.31, gp2.x * 3.17, gp2.x * 5.53);
     let s = gp.z;
-    let n = fbm(p * s + seed);
+    let n = fbm_s(p * s + seed, pw, vec3<f32>(s / max(sh.center_radius.w, 1e-6)), seed);
     let threshold = 1.0 - gp.x;
     let soft = max(gp.y, 0.003);
     let occl = 1.0 - ao;
@@ -111,34 +189,43 @@ fn gen_eval(t: vec2<i32>, kind: u32, gp: vec4<f32>, gp2: vec4<f32>) -> f32 {
         }
         case 3u: {
             // grunge: two octaves of blotches, in world space
-            v = fbm(pw * s + seed) * 0.65 + fbm(pw * s * 4.3 + seed.zxy) * 0.35 + occl * gp2.y;
+            v = fbm_s(pw * s + seed, pw, vec3<f32>(s), seed) * 0.65 + fbm_s(pw * s * 4.3 + seed.zxy, pw, vec3<f32>(s * 4.3), seed.zxy) * 0.35 + occl * gp2.y;
         }
         case 4u: {
             // streaks: noise stretched along world up, more under overhangs
             let q = vec3<f32>(pw.x * s, pw.y * s * 0.07, pw.z * s);
-            v = fbm(q + seed) * 0.8 + fbm(q * 3.0 + seed.yzx) * 0.2 + occl * gp2.y;
+            let sq = vec3<f32>(s, s * 0.07, s);
+            v = fbm_s(q + seed, pw, sq, seed) * 0.8 + fbm_s(q * 3.0 + seed.yzx, pw, sq * 3.0, seed.yzx) * 0.2 + occl * gp2.y;
         }
         case 5u: {
             // hazard stripes: diagonal triangle wave in world space (amount = stripe width)
-            let d = (pw.x + pw.y + pw.z) * s;
-            v = abs(fract(d) - 0.5) * 2.0 + (fbm(pw * 8.0 + seed) - 0.5) * gp.w * 0.3;
+            var d = (pw.x + pw.y + pw.z) * s;
+            if (tile_on()) { d = dot(pw, tscale(vec3<f32>(s))); }
+            v = abs(fract(d) - 0.5) * 2.0 + (fbm_s(pw * 8.0 + seed, pw, vec3<f32>(8.0), seed) - 0.5) * gp.w * 0.3;
         }
         case 6u: {
             // spots: domain-warped blobs
-            let w = pw * s + vec3<f32>(fbm(pw * s * 0.7 + seed), fbm(pw * s * 0.7 + seed.yzx), fbm(pw * s * 0.7 + seed.zxy)) * 2.0;
-            v = smoothstep(0.35, 0.75, fbm(w + seed * 1.3)) + occl * gp2.y;
+            let s7 = vec3<f32>(s * 0.7);
+            let warp = vec3<f32>(fbm_s(pw * s * 0.7 + seed, pw, s7, seed), fbm_s(pw * s * 0.7 + seed.yzx, pw, s7, seed.yzx), fbm_s(pw * s * 0.7 + seed.zxy, pw, s7, seed.zxy)) * 2.0;
+            if (tile_on()) {
+                let k = tscale(vec3<f32>(s));
+                v = smoothstep(0.35, 0.75, fbm_p(pw * k + warp + seed * 1.3, tper(k))) + occl * gp2.y;
+            } else {
+                let w = pw * s + warp;
+                v = smoothstep(0.35, 0.75, fbm(w + seed * 1.3)) + occl * gp2.y;
+            }
         }
         case 7u: {
             // scratches: sharp ridges of strongly stretched noise, two directions
-            let a = ridged(vec3<f32>(pw.x * s, pw.y * s * 9.0, pw.z * s) + seed);
-            let b = ridged(vec3<f32>(pw.x * s * 9.0, pw.y * s, pw.z * s * 9.0) + seed.zyx);
-            v = pow(max(a, b), 10.0) * smoothstep(0.35, 0.6, fbm(pw * s * 0.5 + seed));
+            let a = ridged_s(vec3<f32>(pw.x * s, pw.y * s * 9.0, pw.z * s) + seed, pw, vec3<f32>(s, s * 9.0, s), seed);
+            let b = ridged_s(vec3<f32>(pw.x * s * 9.0, pw.y * s, pw.z * s * 9.0) + seed.zyx, pw, vec3<f32>(s * 9.0, s, s * 9.0), seed.zyx);
+            v = pow(max(a, b), 10.0) * smoothstep(0.35, 0.6, fbm_s(pw * s * 0.5 + seed, pw, vec3<f32>(s * 0.5), seed));
         }
         case 8u: {
             // panel lines: distance to a world grid, measured on the two axes
             // that lie in the surface (the axis along the normal is skipped)
             let nrm = abs(normalize(textureLoad(wnormal, t, 0).xyz));
-            let g = fract(pw * s);
+            let g = fract(pw * tscale(vec3<f32>(s)));
             let dist = min(g, vec3<f32>(1.0) - g);
             var dmin = 1.0;
             if (nrm.x < 0.75) { dmin = min(dmin, dist.x); }
@@ -243,7 +330,9 @@ fn image_fill(t: vec2<i32>) -> ImgTap {
     if (lp.img.y == 0u) {
         // UV: repeats `tiling` times over the texture
         let uv = (vec2<f32>(t) + 0.5) / res;
-        let tl = lp.img_xf.xy;
+        var tl = lp.img_xf.xy;
+        if (sh.res.z > 0.0) { tl.x = max(round(tl.x), 1.0); }
+        if (sh.res.w > 0.0) { tl.y = max(round(tl.y), 1.0); }
         let q = img_rot(uv * tl) + lp.img_xf.zw;
         var o = img_tap(q, img_rot(vec2<f32>(tl.x / res, 0.0)), img_rot(vec2<f32>(0.0, tl.y / res)));
         // texel frame: +x along +u, +y towards -v (OpenGL)
@@ -285,7 +374,12 @@ fn image_fill(t: vec2<i32>) -> ImgTap {
             va = vec3<f32>(0.0, -1.0, 0.0);
         }
         if (wi < 0.002) { continue; }
-        let q = img_rot(vec2<f32>(dot(p, ua), dot(p, va)) * inv) + lp.img_xf.zw;
+        var invs = vec2<f32>(inv);
+        if (i == 1 && tile_on()) {
+            let k = tscale(vec3<f32>(inv));
+            invs = vec2<f32>(k.x, k.z);
+        }
+        let q = img_rot(vec2<f32>(dot(p, ua), dot(p, va)) * invs) + lp.img_xf.zw;
         let gx = img_rot(vec2<f32>(dot(dx, ua), dot(dx, va)) * inv);
         let gy = img_rot(vec2<f32>(dot(dy, ua), dot(dy, va)) * inv);
         let s = img_tap(q, gx, gy);
@@ -409,13 +503,14 @@ fn src_texel(t: vec2<i32>) -> vec2<i32> {
 
 fn height_at(t: vec2<i32>) -> f32 {
     let size = i32(sh.res.x);
-    let c = clamp(t, vec2<i32>(0), vec2<i32>(size - 1));
+    let c = clamp(twrap(t), vec2<i32>(0), vec2<i32>(size - 1));
     return textureLoad(acc_rmh, src_texel(c), 0).z;
 }
 
 // Is texel t inside a UV island (rather than padding)?
-fn covered(t: vec2<i32>) -> bool {
+fn covered(t0: vec2<i32>) -> bool {
     let size = i32(sh.res.x);
+    let t = twrap(t0);
     if (any(t < vec2<i32>(0)) || any(t >= vec2<i32>(size))) { return false; }
     let s = textureLoad(nearest, t, 0).xy;
     return s.x != 65535u && all(vec2<i32>(s) == t);

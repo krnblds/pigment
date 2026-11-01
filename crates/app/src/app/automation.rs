@@ -12,6 +12,7 @@ use serde_json::{json, Value};
 type Res<T> = Result<T, String>;
 
 mod decal_tools;
+mod sheet_tools;
 
 /// A GPU device without a window.
 pub fn headless_render_state() -> Option<RenderState> {
@@ -126,7 +127,10 @@ impl Session {
     // ------------------------------------------------------------------ projects
 
     pub fn new_project(&mut self, a: &Value) -> Res<Value> {
-        let mesh = PathBuf::from(req(a, "mesh")?);
+        if a.get("tile").is_some_and(|t| !t.is_null()) {
+            return self.new_sheet_project(a);
+        }
+        let mesh = PathBuf::from(req(a, "mesh").map_err(|_| "missing argument `mesh` (or `tile` for a flat seamless tile / trim sheet / decal atlas)".to_string())?);
         self.app.status = None;
         if let Some(r) = a.get("resolution").and_then(Value::as_u64) {
             if !RESOLUTIONS.contains(&(r as u32)) {
@@ -1276,6 +1280,8 @@ impl Session {
             .filter(|p| p.exists())
             .map(|p| p.to_string_lossy().to_string())
             .collect();
+        let mut files = files;
+        files.extend(self.export_sheet_extras(&dir)?);
         Ok(json!({ "status": msg, "files": files, "emissive_scale": scale, "compression": compression.id(),
                    "timing_ms": { "gpu_finish": wait_ms, "read_back": read_ms, "encode": encode_ms, "total": total_ms } }))
     }
