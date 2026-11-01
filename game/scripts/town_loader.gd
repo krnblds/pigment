@@ -1241,6 +1241,14 @@ func _stream_cells(p: Vector2, sync: bool) -> void:
 # ------------------------------------------------------------------ lights (streamed)
 ## The world export names its lights Light_<what>; the town uses LampLight / AlleyLight.
 const LIGHT_KINDS := {"Light_lamp": "LampLight", "Light_alley": "AlleyLight", "Light_mast": "MastLight"}
+## [fade begin, fade length] (m) per light kind. Street lamps are real lights only within ~60 m (their
+## pools on the road); beyond that a glow sprite (_lamp_glows) stands in for the lamp in the rain.
+const LIGHT_FADE := {"LampLight": [45.0, 15.0], "MastLight": [70.0, 30.0], "": [35.0, 15.0]}
+const GLOW_SHADER := preload("res://scripts/lamp_glow.gdshader")
+
+
+static func _light_fade(kind: String) -> Array:
+	return LIGHT_FADE.get(kind, LIGHT_FADE[""])
 
 
 func _index_lights() -> void:
@@ -1251,13 +1259,47 @@ func _index_lights() -> void:
 		var i := _lights.size()
 		var p := Vector3(d.pos[0], d.pos[1], d.pos[2])
 		var kind: String = d.get("kind", "")
-		var fade: float = 70.0 if kind in ["LampLight", "MastLight"] else 50.0
-		_lights.append({"d": d, "p": p, "r": fade + 30.0 + LIGHT_MARGIN})
+		var f := _light_fade(kind)
+		_lights.append({"d": d, "p": p, "r": f[0] + f[1] + LIGHT_MARGIN})
 		var k := _key(p, CELL)
 		if not _light_grid.has(k):
 			_light_grid[k] = []
 		_light_grid[k].append(i)
 	stats.lights = _lights.size()
+	_lamp_glows()
+
+
+## Every street lamp as a camera-facing glow sprite (one MultiMesh, additive, no lighting): it fades in
+## where the lamp's OmniLight fades out, so a street keeps its row of lamp halos to the horizon.
+func _lamp_glows() -> void:
+	var lamps := []
+	for l in _lights:
+		if l.d.get("kind", "") == "LampLight":
+			lamps.append(l)
+	if lamps.is_empty():
+		return
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.use_colors = true
+	var q := QuadMesh.new()
+	q.size = Vector2(1, 1)
+	mm.mesh = q
+	mm.instance_count = lamps.size()
+	var f: Array = _light_fade("LampLight")
+	for i in lamps.size():
+		var c: Array = lamps[i].d.color
+		mm.set_instance_transform(i, Transform3D(Basis(), lamps[i].p))
+		mm.set_instance_color(i, Color(c[0], c[1], c[2]))
+	var mat := ShaderMaterial.new()
+	mat.shader = GLOW_SHADER
+	mat.set_shader_parameter("fade_in", Vector2(f[0], f[0] + f[1]))
+	var mmi := MultiMeshInstance3D.new()
+	mmi.name = "LampGlows"
+	mmi.multimesh = mm
+	mmi.material_override = mat
+	mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	mmi.custom_aabb = AABB(Vector3(-1e5, -1e3, -1e5), Vector3(2e5, 2e3, 2e5))
+	_lights_root.add_child(mmi)
 
 
 func _make_light(i: int) -> Light3D:
@@ -1308,8 +1350,9 @@ func _make_light(i: int) -> Light3D:
 	l.light_color = col
 	l.shadow_enabled = false
 	l.distance_fade_enabled = true
-	l.distance_fade_begin = 70.0 if kind in ["LampLight", "MastLight"] else 50.0
-	l.distance_fade_length = 30.0
+	var fd := _light_fade(kind)
+	l.distance_fade_begin = fd[0]
+	l.distance_fade_length = fd[1]
 	l.distance_fade_shadow = 40.0
 	return l
 
@@ -1318,7 +1361,7 @@ func _stream_lights(p: Vector3) -> void:
 	if _lights.is_empty():
 		return
 	var want := {}
-	var reach := 140.0 + LIGHT_MARGIN + CELL
+	var reach := 100.0 + LIGHT_MARGIN + CELL
 	var k0 := _key(p - Vector3(reach, 0, reach), CELL)
 	var k1 := _key(p + Vector3(reach, 0, reach), CELL)
 	for x in range(k0.x, k1.x + 1):
