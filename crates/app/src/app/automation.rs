@@ -1084,7 +1084,8 @@ impl Session {
 
     /// Lighting and post settings shared by `render`, `render_turntable` and
     /// `render(views)`. Every setting persists for later renders until changed.
-    ///   lighting: studio | night | overcast    hdri: path to .hdr / .exr
+    ///   lighting: studio | night | overcast, or a game sky: night_rain | night_moon | dusk | predawn
+    ///   (assets/sky/<id>_2k.hdr from tools/sky/make_sky.py)    hdri: path to .hdr / .exr
     ///   exposure (EV), env_rotation (degrees), background (bool)
     ///   bloom: true | false | {enabled, threshold, intensity, radius}
     pub fn apply_look(&mut self, a: &Value) -> Res<()> {
@@ -1095,9 +1096,9 @@ impl Session {
                 self.app.env.source = p.to_string();
             }
         } else if let Some(l) = s(a, "lighting") {
-            let id = pigment_core::envmath::preset_id(l).ok_or_else(|| format!("unknown lighting `{l}` (studio, night, overcast)"))?;
+            let id = pigment_core::envmath::lighting_id(l).ok_or_else(|| format!("unknown lighting `{l}` ({})", pigment_core::envmath::lighting_names()))?;
             if self.app.env.source != id {
-                self.app.env = Environment::preset(d, q, id).ok_or("lighting preset failed")?;
+                self.app.env = Environment::lighting(d, q, id).map_err(|e| format!("{e:#}"))?;
             }
         }
         if let Some(x) = f(a, "exposure") {
@@ -1226,9 +1227,9 @@ impl Session {
         let name = s(a, "lighting").unwrap_or("night");
         let path = PathBuf::from(req(a, "path")?);
         let width = a.get("width").and_then(Value::as_u64).unwrap_or(2048).clamp(64, 8192) as u32;
-        let env = pigment_core::envmath::EnvImage::preset(name, width).ok_or_else(|| format!("unknown lighting `{name}` (studio, night, overcast)"))?;
+        let env = pigment_core::envmath::EnvImage::lighting(name, width).map_err(|e| format!("{e:#}"))?;
         env.write_hdr(&path).map_err(|e| e.to_string())?;
-        Ok(json!({ "lighting": pigment_core::envmath::preset_id(name), "path": path, "width": width, "height": width / 2,
+        Ok(json!({ "lighting": pigment_core::envmath::lighting_id(name), "path": path, "width": width, "height": width / 2,
                    "note": "equirectangular, +Y up. Blender: Environment Texture behind a Mapping node rotated -90 degrees about Z (tools/blender_lookdev.py does this)" }))
     }
 
@@ -1609,8 +1610,8 @@ impl Session {
             return Ok(env);
         }
         let l = s(p, "lighting").unwrap_or("studio");
-        let id = pigment_core::envmath::preset_id(l).ok_or_else(|| format!("unknown preview lighting `{l}` (studio, night, overcast)"))?;
-        Environment::preset(d, q, id).ok_or_else(|| "lighting preset failed".into())
+        let id = pigment_core::envmath::lighting_id(l).ok_or_else(|| format!("unknown preview lighting `{l}` ({})", pigment_core::envmath::lighting_names()))?;
+        Environment::lighting(d, q, id).map_err(|e| format!("{e:#}"))
     }
 
     fn export_one(&mut self, doc0: &Document, v: &VariantDef, preset: &str, folder: &Path, name: &str, preview: Option<&Value>) -> Res<Value> {
@@ -2244,6 +2245,47 @@ mod tests {
         s.project_decal(&json!({ "image": img, "box": { "center": [c.x, c.y, c.z], "size": [r, r, r] }, "facing": "+y", "emissive_strength": 5.0 })).unwrap();
         assert!(glow(&mut s) > 300, "decal from above landed on the top");
         assert!(s.project_decal(&json!({ "image": img, "box": { "min": [0, 0] } })).is_err());
+    }
+
+    #[test]
+    fn game_sky_lighting() {
+        let _gpu = gpu_lock();
+        let Ok(mut s) = Session::new() else { return };
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let tmp = std::env::temp_dir().join(format!("pigment-sky-{}", std::process::id()));
+        s.new_project(&json!({ "mesh": root.join("assets/ammo_box.glb"), "resolution": 512, "material": "Olive drab" })).unwrap();
+        let shot = |s: &mut Session, a: Value| image::load_from_memory(&s.render(&a).unwrap().png).unwrap().to_rgba8();
+        let base = json!({ "yaw": 0, "pitch": 5, "width": 160, "height": 120, "bloom": false });
+        let with = |extra: Value| {
+            let mut a = base.clone();
+            a.as_object_mut().unwrap().extend(extra.as_object().unwrap().clone());
+            a
+        };
+        let sum = |img: &image::RgbaImage| img.pixels().map(|p| p.0[0] as u64 + p.0[1] as u64 + p.0[2] as u64).sum::<u64>();
+        // every baked sky loads by name (and by alias) and becomes the session environment
+        for (id, _) in pigment_core::envmath::SKIES {
+            shot(&mut s, with(json!({ "lighting": id, "exposure": 2.0 })));
+            assert_eq!(s.app.env.source, id);
+        }
+        shot(&mut s, with(json!({ "lighting": "sky:dusk" })));
+        assert_eq!(s.app.env.source, "dusk");
+        // the background shows the sky: a warm horizon under a dark zenith (camera level, so the
+        // horizon is mid-frame); dusk is brighter than the night rain sky
+        let bg = |s: &mut Session, sky: &str| shot(s, with(json!({ "lighting": sky, "exposure": 0.0, "background": true, "zoom": 0.05, "pitch": 0 })));
+        let night = bg(&mut s, "night_rain");
+        let dusk = bg(&mut s, "dusk");
+        assert!(sum(&dusk) > sum(&night), "dusk {} vs night {}", sum(&dusk), sum(&night));
+        let row = |img: &image::RgbaImage, y: u32| (0..img.width()).map(|x| img.get_pixel(x, y).0).fold([0u64; 3], |a, p| [a[0] + p[0] as u64, a[1] + p[1] as u64, a[2] + p[2] as u64]);
+        let (top, mid) = (row(&night, 2), row(&night, 57));
+        assert!(mid[0] > top[0] && mid[0] > mid[2], "night horizon should be warm and brighter than the top: top {top:?} mid {mid:?}");
+        // a sky exports like a preset and reloads through `hdri`
+        let hdr = tmp.join("predawn.hdr");
+        let r = s.export_lighting(&json!({ "lighting": "predawn", "path": hdr, "width": 256 })).unwrap();
+        assert_eq!(r["lighting"], "predawn");
+        shot(&mut s, with(json!({ "hdri": hdr })));
+        assert_eq!(s.app.env.source, hdr.to_string_lossy());
+        assert!(s.render(&with(json!({ "lighting": "sky:disco" }))).is_err());
+        std::fs::remove_dir_all(&tmp).ok();
     }
 
     #[test]
