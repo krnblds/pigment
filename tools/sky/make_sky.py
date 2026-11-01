@@ -1,15 +1,19 @@
 """Night sky for the rainy megacity: procedural world shader, equirect HDR bake
 and a reusable Blender world setup (headless Blender 5.2, Cycles).
 
-Bake (writes assets/sky/<preset>_2k.hdr + docs/agents/sky/<preset>_equirect.png):
+Bake (writes assets/sky/<preset>_2k.hdr, docs/agents/sky/<preset>_{equirect,view}.png and the
+Godot side in game/sky/: <preset>_2k.hdr copies, sky_<preset>.tres, sky_presets.json, sky_night.tscn):
 
     blender -b --factory-startup --python tools/sky/make_sky.py -- [options]
 
 Options (after "--"):
     --presets a,b       subset of PRESETS (default: all)
-    --res 2k|4k|8k      HDR size (2k = 2048x1024, committed; 4k / 8k are git-ignored)
+    --res 2k|4k|8k      HDR size (2k = 2048x1024, committed; 4k / 8k are git-ignored:
+                        regenerate with `--res 8k`, also copied to game/sky/, where
+                        city_sky.gd prefers the largest one that is imported)
     --samples N         Cycles AA samples per pixel (default 16; the sky is analytic)
-    --no-preview        skip the tone-mapped PNG preview
+    --no-preview        skip the tone-mapped PNG previews (docs/agents/sky/<preset>_{equirect,view}.png)
+    --no-godot          don't copy the HDRs to game/sky/ or rewrite the Godot sky resources
     --check             also re-render the baked HDR through apply_sky() and report
                         the mean error against the procedural sky (orientation check)
 
@@ -88,7 +92,7 @@ PRESETS = {
         searchlights=[dict(az=48, lean=-14, width=0.9, gain=0.10, top=0.42), dict(az=71, lean=10, width=0.7, gain=0.07, top=0.36),
                       dict(az=-128, lean=6, width=0.8, gain=0.05, top=0.30)],
         eye=dict(az=75, el=24, r=0.9, gain=0.55, color=_c(0.15, 0.85, 1.0), pupil=_c(1.0, 0.08, 0.10)),
-        fog=dict(color=_c(0.62, 0.42, 0.40), density=0.0045, emission=_c(0.022, 0.010, 0.008)),
+        fog=dict(color=_c(0.62, 0.42, 0.40), density=0.0045, glow=_c(0.030, 0.016, 0.013)),
         world_light=0.6,
         key=dict(az=-120, el=55, energy=0.05, color=(0.6, 0.7, 1.0)),
         exposure=1.0,
@@ -99,13 +103,14 @@ PRESETS["night_moon"] = dict(
     PRESETS["night_rain"],
     label="Night, hazy moon",
     layers=[
-        dict(h=1.0, scale=1.5, stretch=2.8, lo=0.40, hi=0.70, alpha=0.88, gain=0.9, warp=1.0, wind=25, seed=3.0),
-        dict(h=2.6, scale=0.8, stretch=4.0, lo=0.36, hi=0.66, alpha=0.55, gain=0.5, warp=1.3, wind=40, seed=9.0),
+        dict(h=1.0, scale=0.8, stretch=1.6, lo=0.40, hi=0.68, alpha=0.9, gain=0.9, warp=0.4, wind=25, seed=3.0),
+        dict(h=2.6, scale=0.45, stretch=2.0, lo=0.40, hi=0.68, alpha=0.6, gain=0.5, warp=0.5, wind=-30, seed=9.0),
     ],
     breaks=dict(scale=0.25, lo=0.25, hi=0.45, amount=0.9),
     stars=dict(density=0.025, gain=1.0),
-    moon=dict(az=-115, el=38, size=0.55, gain=60.0, color=(0.85, 0.9, 1.0), halo=0.35),
+    moon=dict(az=-115, el=38, size=1.1, gain=60.0, color=(0.85, 0.9, 1.0), halo=0.35),
     key=dict(az=-115, el=38, energy=0.12, color=(0.65, 0.75, 1.0)),
+    view_az=-100,
 )
 
 PRESETS["dusk"] = dict(
@@ -114,12 +119,12 @@ PRESETS["dusk"] = dict(
           (0.30, _c(0.26, 0.10, 0.26)), (0.55, _c(0.12, 0.07, 0.17)), (1.0, _c(0.07, 0.05, 0.12))],
     clear=[(0.0, _c(0.9, 0.42, 0.25)), (0.12, _c(0.22, 0.14, 0.28)), (1.0, _c(0.045, 0.06, 0.14))],
     haze=_c(1.6, 0.70, 0.36), haze_height=0.06, haze_amount=1.0,
-    ground=_c(0.10, 0.05, 0.05),
+    ground=_c(0.03, 0.016, 0.016),
     downtown=dict(az=60.0, width=55.0, gain=0.35),
     az_vary=0.25,
     layers=[
-        dict(h=1.2, scale=1.5, stretch=3.0, lo=0.36, hi=0.66, alpha=0.95, gain=1.0, warp=1.0, wind=-20, seed=2.0),
-        dict(h=3.0, scale=0.8, stretch=4.5, lo=0.40, hi=0.72, alpha=0.75, gain=0.8, warp=1.2, wind=-5, seed=5.0),
+        dict(h=1.2, scale=0.8, stretch=1.8, lo=0.34, hi=0.64, alpha=0.95, gain=1.0, warp=0.45, wind=-20, seed=2.0),
+        dict(h=3.0, scale=0.45, stretch=2.2, lo=0.40, hi=0.70, alpha=0.75, gain=0.8, warp=0.5, wind=-5, seed=5.0),
     ],
     breaks=dict(scale=0.2, lo=0.28, hi=0.44, amount=0.85),
     shade=1.8,
@@ -128,10 +133,11 @@ PRESETS["dusk"] = dict(
     sun=dict(az=-160, el=-2.5, color=_c(3.2, 0.95, 0.35), width=0.9, horizon=6.0, under=2.6),
     searchlights=[],
     eye=dict(az=75, el=24, r=0.9, gain=0.25, color=_c(0.15, 0.85, 1.0), pupil=_c(1.0, 0.08, 0.10)),
-    fog=dict(color=_c(0.80, 0.55, 0.50), density=0.0035, emission=_c(0.05, 0.025, 0.022)),
+    fog=dict(color=_c(0.80, 0.55, 0.50), density=0.0035, glow=_c(0.06, 0.032, 0.03)),
     world_light=0.8,
     key=dict(az=-160, el=4, energy=0.35, color=(1.0, 0.55, 0.35)),
     exposure=0.6,
+    view_az=-150,
 )
 
 PRESETS["predawn"] = dict(
@@ -140,12 +146,12 @@ PRESETS["predawn"] = dict(
           (0.30, _c(0.075, 0.075, 0.14)), (0.55, _c(0.045, 0.055, 0.11)), (1.0, _c(0.03, 0.04, 0.085))],
     clear=[(0.0, _c(0.30, 0.22, 0.24)), (0.12, _c(0.07, 0.09, 0.17)), (1.0, _c(0.012, 0.022, 0.06))],
     haze=_c(0.50, 0.36, 0.34), haze_height=0.06, haze_amount=0.9,
-    ground=_c(0.05, 0.04, 0.045),
+    ground=_c(0.015, 0.013, 0.016),
     downtown=dict(az=60.0, width=55.0, gain=0.5),
     az_vary=0.25,
     layers=[
-        dict(h=1.4, scale=1.3, stretch=3.5, lo=0.46, hi=0.74, alpha=0.85, gain=0.8, warp=1.1, wind=60, seed=4.0),
-        dict(h=4.0, scale=0.7, stretch=5.0, lo=0.42, hi=0.72, alpha=0.6, gain=0.8, warp=1.4, wind=70, seed=8.0),
+        dict(h=1.4, scale=0.8, stretch=1.8, lo=0.44, hi=0.72, alpha=0.85, gain=0.8, warp=0.45, wind=-40, seed=4.0),
+        dict(h=4.0, scale=0.4, stretch=2.2, lo=0.42, hi=0.70, alpha=0.6, gain=0.8, warp=0.5, wind=-60, seed=8.0),
     ],
     breaks=dict(scale=0.22, lo=0.20, hi=0.50, amount=0.95),
     shade=1.4,
@@ -154,10 +160,11 @@ PRESETS["predawn"] = dict(
     sun=dict(az=20, el=-9.0, color=_c(1.1, 0.55, 0.30), width=1.3, horizon=3.0, under=1.6),
     searchlights=[],
     eye=dict(az=75, el=24, r=0.9, gain=0.3, color=_c(0.15, 0.85, 1.0), pupil=_c(1.0, 0.08, 0.10)),
-    fog=dict(color=_c(0.50, 0.50, 0.58), density=0.004, emission=_c(0.016, 0.016, 0.022)),
+    fog=dict(color=_c(0.50, 0.50, 0.58), density=0.004, glow=_c(0.025, 0.025, 0.033)),
     world_light=0.8,
     key=dict(az=20, el=6, energy=0.12, color=(0.75, 0.75, 1.0)),
     exposure=1.0,
+    view_az=25,
 )
 
 DEFAULT = "night_rain"
@@ -320,7 +327,7 @@ def build_sky_nodes(nt, P, direction=None):
         lobe = g.math("EXPONENT", g.mul(g.sub(sdot, 1.0), s["width"]))        # broad, ~cos lobe
         tight = g.math("EXPONENT", g.mul(g.sub(sdot, 1.0), s["horizon"] * 4))  # bright seam near the sun
         fall = g.math("EXPONENT", g.mul(ez, -s["horizon"]))                    # strongest low down
-        sun_amt = g.mul(g.add(g.mul(lobe, fall), g.mul(tight, 0.6)), s["under"])
+        sun_amt = g.mul(g.add(g.mul(lobe, fall), g.mul(tight, 1.4)), s["under"])
         glow = g.cadd(glow, g.scale_color(s["color"], sun_amt))
 
     # cloud-plane coordinates: hz never reaches 0, so the deck converges smoothly
@@ -569,7 +576,7 @@ def view(preset, sc=None, az=None, pitch=16.0, lens=12.0, path=None):
     P = PRESETS[preset]
     sc = sc or _pano_scene("SkyBake", sky_world("SkyProc_" + preset, preset), RES["2k"], 16)
     cam = sc.camera
-    az = P["downtown"]["az"] if az is None else az
+    az = P.get("view_az", P["downtown"]["az"]) if az is None else az
     old = (cam.data.type, tuple(cam.rotation_euler), sc.render.resolution_x, sc.render.resolution_y)
     cam.data.type = "PERSP"
     cam.data.lens = lens
@@ -693,7 +700,6 @@ def _fog_box(scene, F, bounds=None):
     out = nt.nodes.new("ShaderNodeOutputMaterial")
     vol = nt.nodes.new("ShaderNodeVolumePrincipled")
     vol.inputs["Color"].default_value = F["color"]
-    vol.inputs["Emission Color"].default_value = F["emission"]
     vol.inputs["Emission Strength"].default_value = 1.0
     vol.inputs["Anisotropy"].default_value = 0.35
     # denser near the ground: density * exp(-(z - z0) / 35 m)
@@ -714,9 +720,9 @@ def _fog_box(scene, F, bounds=None):
     m3.inputs[2].default_value = F["density"] * 0.3
     nt.links.new(m2.outputs[0], m3.inputs[0])
     nt.links.new(m3.outputs[0], vol.inputs["Density"])
-    # emission scales with density too (glowing city haze)
+    # self-glow of the city haze: emission = glow * density, so thick fog tends to `glow` radiance
     nt.links.new(m3.outputs[0], vol.inputs["Emission Strength"])
-    vol.inputs["Emission Color"].default_value = tuple(c / max(F["density"], 1e-6) for c in F["emission"][:3]) + (1.0,)
+    vol.inputs["Emission Color"].default_value = F["glow"]
     nt.links.new(vol.outputs[0], out.inputs["Volume"])
     me.materials.clear()
     me.materials.append(mat)
@@ -746,6 +752,140 @@ def check(preset, res="1k"):
     return err
 
 
+# ---------------------------------------------------------------- Godot
+GODOT_DIR = os.path.join(ROOT, "game", "sky")
+
+
+def hdr_stats(path):
+    """Mean radiance of a baked HDR by elevation band (degrees, glTF convention)."""
+    import numpy as np
+    img = bpy.data.images.load(path, check_existing=False)
+    w, h = img.size
+    a = np.empty(w * h * 4, np.float32)
+    img.pixels.foreach_get(a)
+    bpy.data.images.remove(img)
+    a = a.reshape(h, w, 4)[::-1, :, :3]          # Blender rows are bottom-up
+
+    def band(e0, e1):
+        r0 = int((90 - e1) / 180 * h)
+        r1 = max(int((90 - e0) / 180 * h), r0 + 1)
+        return [round(float(v), 5) for v in a[r0:r1].reshape(-1, 3).mean(0)]
+    return {"zenith": band(70, 90), "upper": band(35, 70), "mid": band(12, 35), "low": band(3, 12),
+            "horizon": band(0, 3), "ground": band(-30, -5)}
+
+
+def _key_rotation(k):
+    """Godot rotation_degrees (YXZ) for a DirectionalLight3D shining from the key direction."""
+    az = math.radians(k["az"])
+    return (-max(k["el"], 1.0), math.degrees(math.atan2(math.cos(az), -math.sin(az))), 0.0)
+
+
+def _gc(c, k=1.0):
+    return "Color(%.4f, %.4f, %.4f, 1)" % tuple(min(max(v * k, 0.0), 64.0) for v in c[:3])
+
+
+def write_godot(presets, res="2k"):
+    """Copy the baked HDRs into game/sky/ and write the Godot side: one Sky resource per
+    preset (city_sky.gdshader sampling the panorama in the shared convention),
+    sky_presets.json (horizon-matched fog colours, key light) and sky_night.tscn."""
+    import json
+    import shutil
+    os.makedirs(GODOT_DIR, exist_ok=True)
+    meta = {}
+    jpath = os.path.join(GODOT_DIR, "sky_presets.json")
+    if os.path.isfile(jpath):
+        meta = json.load(open(jpath, encoding="utf-8"))
+    for preset in presets:
+        P = PRESETS[preset]
+        src = hdr_path(preset, res)
+        if not os.path.isfile(src):
+            print("godot: missing", src)
+            continue
+        shutil.copyfile(src, os.path.join(GODOT_DIR, os.path.basename(src)))
+        if res != "2k":
+            continue
+        st = hdr_stats(src)
+        # fog: the horizon colour (what the far fog must blend into), kept dim so lamps dominate
+        hz = st["horizon"]
+        k = P["key"]
+        meta[preset] = {
+            "label": P["label"],
+            "panorama": f"res://sky/{preset}_2k.hdr",
+            "sky": f"res://sky/sky_{preset}.tres",
+            "stats": st,
+            "fog_light_color": [round(v, 4) for v in hz],
+            "fog_light_energy": 1.0,
+            "volumetric_fog_albedo": [round(v, 4) for v in P["fog"]["color"][:3]],
+            "volumetric_fog_emission": [round(v, 4) for v in P["fog"]["glow"][:3]],
+            "ambient_light_energy": round(P["world_light"] * 1.5, 3),
+            "key": {"rotation_degrees": [round(v, 2) for v in _key_rotation(k)], "color": list(k["color"]),
+                    "energy": round(k["energy"] * 2.0, 3)},
+        }
+        with open(os.path.join(GODOT_DIR, f"sky_{preset}.tres"), "w", encoding="utf-8", newline="\n") as f:
+            f.write(f'''[gd_resource type="Sky" load_steps=4 format=3]
+
+[ext_resource type="Shader" path="res://sky/city_sky.gdshader" id="1_shader"]
+[ext_resource type="Texture2D" path="res://sky/{preset}_2k.hdr" id="2_pano"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_sky"]
+shader = ExtResource("1_shader")
+shader_parameter/panorama = ExtResource("2_pano")
+shader_parameter/energy = 1.0
+shader_parameter/rotation_degrees = 0.0
+
+[resource]
+sky_material = SubResource("ShaderMaterial_sky")
+radiance_size = 3
+''')
+    with open(jpath, "w", encoding="utf-8", newline="\n") as f:
+        json.dump(meta, f, indent=1)
+    n = meta.get(DEFAULT)
+    if n:
+        rx, ry, rz = n["key"]["rotation_degrees"]
+        with open(os.path.join(GODOT_DIR, "sky_night.tscn"), "w", encoding="utf-8", newline="\n") as f:
+            f.write(f'''[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Sky" path="res://sky/sky_{DEFAULT}.tres" id="1_sky"]
+
+[sub_resource type="Environment" id="Environment_night"]
+background_mode = 2
+sky = ExtResource("1_sky")
+ambient_light_source = 3
+ambient_light_energy = {n["ambient_light_energy"]}
+reflected_light_source = 2
+tonemap_mode = 4
+tonemap_exposure = 1.25
+glow_enabled = true
+glow_blend_mode = 1
+glow_hdr_threshold = 0.9
+fog_enabled = true
+fog_mode = 0
+fog_light_color = {_gc(n["fog_light_color"])}
+fog_light_energy = 1.0
+fog_density = 0.006
+fog_sky_affect = 0.25
+fog_aerial_perspective = 0.2
+volumetric_fog_enabled = true
+volumetric_fog_density = 0.018
+volumetric_fog_albedo = {_gc(n["volumetric_fog_albedo"])}
+volumetric_fog_emission = {_gc(n["volumetric_fog_emission"])}
+volumetric_fog_emission_energy = 1.0
+volumetric_fog_anisotropy = 0.45
+volumetric_fog_length = 110.0
+volumetric_fog_sky_affect = 0.3
+
+[node name="SkyNight" type="WorldEnvironment"]
+environment = SubResource("Environment_night")
+
+[node name="Moon" type="DirectionalLight3D" parent="."]
+rotation_degrees = Vector3({rx}, {ry}, {rz})
+light_color = {_gc(n["key"]["color"])}
+light_energy = {n["key"]["energy"]}
+light_volumetric_fog_energy = 0.4
+''')
+    print("godot: wrote", GODOT_DIR)
+
+
 def main(args):
     def opt(name, default=None):
         if name in args:
@@ -757,6 +897,8 @@ def main(args):
     samples = int(opt("--samples", 16))
     for p in presets:
         bake(p, res, samples, preview=not opt("--no-preview") and res == "2k")
+    if not opt("--no-godot"):
+        write_godot(presets, res)
     if opt("--check"):
         for p in presets:
             check(p)
