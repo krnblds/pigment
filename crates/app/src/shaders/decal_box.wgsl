@@ -91,8 +91,11 @@ fn fs_box(i: BoxOut) -> BoxDecalOut {
     // tear: eaten from the edges (and more from the bottom, where people pull)
     if (d.wear.x > 0.0) {
         let n = wear_noise(p, style);
-        let edge = min(min(uv.x, 1.0 - uv.x) * aspect, min(uv.y, 1.0 - uv.y));
-        let keep = n + smoothstep(0.0, 0.35, edge) * 0.55 - uv.y * 0.15;
+        // distance to the nearest edge as a fraction of the shorter side (0..0.5)
+        let ex = min(uv.x, 1.0 - uv.x) * d.right.w;
+        let ey = min(uv.y, 1.0 - uv.y) * d.up.w;
+        let edge = min(ex, ey) / max(min(d.right.w, d.up.w), 1e-5);
+        let keep = n + smoothstep(0.0, 0.3, edge) * 0.55 - uv.y * 0.15;
         let thr = d.wear.x * 1.05;
         a = a * smoothstep(thr, thr + 0.012, keep);
         let rim = d.wear2.y;
