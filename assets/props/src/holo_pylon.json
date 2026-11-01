@@ -1,0 +1,283 @@
+{
+ "name": "holo_pylon",
+ "bounds_gl": {
+  "min": [
+   -0.6615,
+   -0.0,
+   -0.7638
+  ],
+  "max": [
+   0.6615,
+   3.61,
+   0.3819
+  ]
+ },
+ "size_m": [
+  1.323,
+  3.61,
+  1.146
+ ],
+ "tris": 304,
+ "texels_per_m": 168.6,
+ "nodes": [],
+ "pieces": [
+  {
+   "piece": "plinth_led",
+   "group": "led",
+   "node": null,
+   "center": [
+    0.0,
+    0.38,
+    -0.191
+   ],
+   "size": [
+    1.323,
+    0.03,
+    1.1458
+   ],
+   "tris": 8
+  },
+  {
+   "piece": "plinth",
+   "group": "dark_metal",
+   "node": null,
+   "center": [
+    0.0,
+    0.225,
+    -0.1797
+   ],
+   "size": [
+    1.285,
+    0.45,
+    1.1128
+   ],
+   "tris": 32
+  },
+  {
+   "piece": "cap_led",
+   "group": "led",
+   "node": null,
+   "center": [
+    0.0,
+    3.455,
+    -0.1585
+   ],
+   "size": [
+    1.098,
+    0.02,
+    0.9509
+   ],
+   "tris": 8
+  },
+  {
+   "piece": "cap",
+   "group": "dark_metal",
+   "node": null,
+   "center": [
+    0.0,
+    3.53,
+    -0.1494
+   ],
+   "size": [
+    1.065,
+    0.16,
+    0.9223
+   ],
+   "tris": 32
+  },
+  {
+   "piece": "emitter_1",
+   "group": "led",
+   "node": null,
+   "center": [
+    -0.2423,
+    0.46,
+    -0.1399
+   ],
+   "size": [
+    0.4433,
+    0.03,
+    0.7178
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "emitter_0",
+   "group": "led",
+   "node": null,
+   "center": [
+    0.0,
+    0.46,
+    0.2798
+   ],
+   "size": [
+    0.8,
+    0.03,
+    0.05
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "core",
+   "group": "dark_metal",
+   "node": null,
+   "center": [
+    0.0,
+    1.95,
+    -0.0
+   ],
+   "size": [
+    0.12,
+    3.0,
+    0.12
+   ],
+   "tris": 44
+  },
+  {
+   "piece": "holo_1",
+   "group": "holo",
+   "node": null,
+   "center": [
+    -0.225,
+    1.95,
+    -0.1299
+   ],
+   "size": [
+    0.4404,
+    3.0,
+    0.7508
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "holo_0",
+   "group": "holo",
+   "node": null,
+   "center": [
+    0.0,
+    1.95,
+    0.2598
+   ],
+   "size": [
+    0.86,
+    3.0,
+    0.012
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "holo_2",
+   "group": "holo",
+   "node": null,
+   "center": [
+    0.225,
+    1.95,
+    -0.1299
+   ],
+   "size": [
+    0.4404,
+    3.0,
+    0.7508
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "emitter_2",
+   "group": "led",
+   "node": null,
+   "center": [
+    0.2423,
+    0.46,
+    -0.1399
+   ],
+   "size": [
+    0.4433,
+    0.03,
+    0.7178
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "edge_1",
+   "group": "steel",
+   "node": null,
+   "center": [
+    0.0,
+    1.95,
+    -0.5196
+   ],
+   "size": [
+    0.0476,
+    3.0,
+    0.05
+   ],
+   "tris": 36
+  },
+  {
+   "piece": "edge_0",
+   "group": "steel",
+   "node": null,
+   "center": [
+    0.45,
+    1.95,
+    0.2598
+   ],
+   "size": [
+    0.0476,
+    3.0,
+    0.05
+   ],
+   "tris": 36
+  },
+  {
+   "piece": "edge_2",
+   "group": "steel",
+   "node": null,
+   "center": [
+    -0.45,
+    1.95,
+    0.2598
+   ],
+   "size": [
+    0.0476,
+    3.0,
+    0.05
+   ],
+   "tris": 36
+  }
+ ],
+ "lights": [
+  {
+   "name": "Light_Holo",
+   "pos": [
+    0,
+    2.0,
+    0
+   ],
+   "type": "omni",
+   "color": [
+    0.6,
+    0.4,
+    1.0
+   ],
+   "energy": 60,
+   "range": 7.0,
+   "dir": null,
+   "shadow": false
+  }
+ ],
+ "sockets": [],
+ "collider": [
+  {
+   "type": "cylinder",
+   "center": [
+    0,
+    1.8,
+    0
+   ],
+   "radius": 0.75,
+   "height": 3.6
+  }
+ ],
+ "meta": {}
+}

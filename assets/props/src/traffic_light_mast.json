@@ -1,0 +1,1192 @@
+{
+ "name": "traffic_light_mast",
+ "bounds_gl": {
+  "min": [
+   -0.28,
+   0.0,
+   -0.273
+  ],
+  "max": [
+   6.67,
+   6.36,
+   0.635
+  ]
+ },
+ "size_m": [
+  6.95,
+  6.36,
+  0.908
+ ],
+ "tris": 4032,
+ "texels_per_m": 271.7,
+ "nodes": [
+  "Lamp_A_Amber",
+  "Lamp_A_Green",
+  "Lamp_A_Red",
+  "Lamp_B_Amber",
+  "Lamp_B_Green",
+  "Lamp_B_Red",
+  "Lamp_C_Amber",
+  "Lamp_C_Green",
+  "Lamp_C_Red"
+ ],
+ "pieces": [
+  {
+   "piece": "base_collar",
+   "group": "dark_metal",
+   "node": null,
+   "center": [
+    0.0,
+    0.175,
+    -0.0
+   ],
+   "size": [
+    0.435,
+    0.3,
+    0.435
+   ],
+   "tris": 236
+  },
+  {
+   "piece": "pole_cap",
+   "group": "dark_metal",
+   "node": null,
+   "center": [
+    0.0,
+    6.32,
+    -0.0
+   ],
+   "size": [
+    0.22,
+    0.08,
+    0.22
+   ],
+   "tris": 76
+  },
+  {
+   "piece": "bolt_1",
+   "group": "steel",
+   "node": null,
+   "center": [
+    -0.1471,
+    0.045,
+    -0.1471
+   ],
+   "size": [
+    0.0208,
+    0.04,
+    0.024
+   ],
+   "tris": 20
+  },
+  {
+   "piece": "base_plate",
+   "group": "dark_metal",
+   "node": null,
+   "center": [
+    0.0,
+    0.0125,
+    -0.0
+   ],
+   "size": [
+    0.546,
+    0.025,
+    0.546
+   ],
+   "tris": 44
+  },
+  {
+   "piece": "bolt_0",
+   "group": "steel",
+   "node": null,
+   "center": [
+    0.1471,
+    0.045,
+    -0.1471
+   ],
+   "size": [
+    0.0208,
+    0.04,
+    0.024
+   ],
+   "tris": 20
+  },
+  {
+   "piece": "bolt_2",
+   "group": "steel",
+   "node": null,
+   "center": [
+    -0.1471,
+    0.045,
+    0.1471
+   ],
+   "size": [
+    0.0208,
+    0.04,
+    0.024
+   ],
+   "tris": 20
+  },
+  {
+   "piece": "bolt_3",
+   "group": "steel",
+   "node": null,
+   "center": [
+    0.1471,
+    0.045,
+    0.1471
+   ],
+   "size": [
+    0.0208,
+    0.04,
+    0.024
+   ],
+   "tris": 20
+  },
+  {
+   "piece": "arm_clamp",
+   "group": "dark_metal",
+   "node": null,
+   "center": [
+    0.0,
+    5.75,
+    -0.0
+   ],
+   "size": [
+    0.3,
+    0.42,
+    0.3
+   ],
+   "tris": 108
+  },
+  {
+   "piece": "pole",
+   "group": "galv",
+   "node": null,
+   "center": [
+    0.0,
+    3.28,
+    -0.0
+   ],
+   "size": [
+    0.26,
+    6.0,
+    0.26
+   ],
+   "tris": 76
+  },
+  {
+   "piece": "arm",
+   "group": "galv",
+   "node": null,
+   "center": [
+    3.3696,
+    5.8254,
+    -0.0
+   ],
+   "size": [
+    6.5038,
+    0.3164,
+    0.17
+   ],
+   "tris": 136
+  },
+  {
+   "piece": "tie_rod",
+   "group": "galv",
+   "node": null,
+   "center": [
+    1.85,
+    6.0,
+    -0.0
+   ],
+   "size": [
+    3.5043,
+    0.3498,
+    0.05
+   ],
+   "tris": 28
+  },
+  {
+   "piece": "hanger_B",
+   "group": "dark_metal",
+   "node": null,
+   "center": [
+    3.3,
+    5.6414,
+    -0.0
+   ],
+   "size": [
+    0.06,
+    0.32,
+    0.06
+   ],
+   "tris": 44
+  },
+  {
+   "piece": "arm_cap",
+   "group": "dark_metal",
+   "node": null,
+   "center": [
+    6.645,
+    5.93,
+    -0.0
+   ],
+   "size": [
+    0.05,
+    0.117,
+    0.12
+   ],
+   "tris": 52
+  },
+  {
+   "piece": "name_blade_hanger",
+   "group": "dark_metal",
+   "node": null,
+   "center": [
+    1.2,
+    5.6,
+    -0.0
+   ],
+   "size": [
+    0.04,
+    0.25,
+    0.04
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "Lamp_B_Green",
+   "group": "lens_green",
+   "node": "Lamp_B_Green",
+   "center": [
+    2.98,
+    5.3114,
+    0.165
+   ],
+   "size": [
+    0.22,
+    0.22,
+    0.02
+   ],
+   "tris": 76
+  },
+  {
+   "piece": "Lamp_B_Green_ring",
+   "group": "dark_metal",
+   "node": null,
+   "center": [
+    2.98,
+    5.3114,
+    0.152
+   ],
+   "size": [
+    0.26,
+    0.26,
+    0.012
+   ],
+   "tris": 76
+  },
+  {
+   "piece": "Lamp_B_Green_visor",
+   "group": "paint",
+   "node": null,
+   "center": [
+    2.98,
+    5.3692,
+    0.24
+   ],
+   "size": [
+    0.2757,
+    0.1643,
+    0.17
+   ],
+   "tris": 84
+  },
+  {
+   "piece": "Head_B_housing",
+   "group": "paint",
+   "node": null,
+   "center": [
+    3.3,
+    5.3114,
+    0.02
+   ],
+   "size": [
+    1.02,
+    0.34,
+    0.26
+   ],
+   "tris": 108
+  },
+  {
+   "piece": "Head_B_backplate",
+   "group": "backplate",
+   "node": null,
+   "center": [
+    3.3,
+    5.3114,
+    -0.125
+   ],
+   "size": [
+    1.22,
+    0.5,
+    0.02
+   ],
+   "tris": 44
+  },
+  {
+   "piece": "Lamp_B_Amber",
+   "group": "lens_amber",
+   "node": "Lamp_B_Amber",
+   "center": [
+    3.3,
+    5.3114,
+    0.165
+   ],
+   "size": [
+    0.22,
+    0.22,
+    0.02
+   ],
+   "tris": 76
+  },
+  {
+   "piece": "Lamp_B_Amber_visor",
+   "group": "paint",
+   "node": null,
+   "center": [
+    3.3,
+    5.3692,
+    0.24
+   ],
+   "size": [
+    0.2757,
+    0.1643,
+    0.17
+   ],
+   "tris": 84
+  },
+  {
+   "piece": "Lamp_B_Red_ring",
+   "group": "dark_metal",
+   "node": null,
+   "center": [
+    3.62,
+    5.3114,
+    0.152
+   ],
+   "size": [
+    0.26,
+    0.26,
+    0.012
+   ],
+   "tris": 76
+  },
+  {
+   "piece": "Lamp_B_Red",
+   "group": "lens_red",
+   "node": "Lamp_B_Red",
+   "center": [
+    3.62,
+    5.3114,
+    0.165
+   ],
+   "size": [
+    0.22,
+    0.22,
+    0.02
+   ],
+   "tris": 76
+  },
+  {
+   "piece": "Lamp_B_Amber_ring",
+   "group": "dark_metal",
+   "node": null,
+   "center": [
+    3.3,
+    5.3114,
+    0.152
+   ],
+   "size": [
+    0.26,
+    0.26,
+    0.012
+   ],
+   "tris": 76
+  },
+  {
+   "piece": "Lamp_B_Red_visor",
+   "group": "paint",
+   "node": null,
+   "center": [
+    3.62,
+    5.3692,
+    0.24
+   ],
+   "size": [
+    0.2757,
+    0.1643,
+    0.17
+   ],
+   "tris": 84
+  },
+  {
+   "piece": "hanger_C",
+   "group": "dark_metal",
+   "node": null,
+   "center": [
+    5.7,
+    5.7078,
+    -0.0
+   ],
+   "size": [
+    0.06,
+    0.32,
+    0.06
+   ],
+   "tris": 44
+  },
+  {
+   "piece": "Lamp_C_Amber_ring",
+   "group": "dark_metal",
+   "node": null,
+   "center": [
+    5.7,
+    5.3778,
+    0.152
+   ],
+   "size": [
+    0.26,
+    0.26,
+    0.012
+   ],
+   "tris": 76
+  },
+  {
+   "piece": "Lamp_C_Green_visor",
+   "group": "paint",
+   "node": null,
+   "center": [
+    5.38,
+    5.4357,
+    0.24
+   ],
+   "size": [
+    0.2757,
+    0.1643,
+    0.17
+   ],
+   "tris": 84
+  },
+  {
+   "piece": "Lamp_C_Green",
+   "group": "lens_green",
+   "node": "Lamp_C_Green",
+   "center": [
+    5.38,
+    5.3778,
+    0.165
+   ],
+   "size": [
+    0.22,
+    0.22,
+    0.02
+   ],
+   "tris": 76
+  },
+  {
+   "piece": "Head_C_housing",
+   "group": "paint",
+   "node": null,
+   "center": [
+    5.7,
+    5.3778,
+    0.02
+   ],
+   "size": [
+    1.02,
+    0.34,
+    0.26
+   ],
+   "tris": 108
+  },
+  {
+   "piece": "Head_C_backplate",
+   "group": "backplate",
+   "node": null,
+   "center": [
+    5.7,
+    5.3778,
+    -0.125
+   ],
+   "size": [
+    1.22,
+    0.5,
+    0.02
+   ],
+   "tris": 44
+  },
+  {
+   "piece": "Lamp_C_Amber",
+   "group": "lens_amber",
+   "node": "Lamp_C_Amber",
+   "center": [
+    5.7,
+    5.3778,
+    0.165
+   ],
+   "size": [
+    0.22,
+    0.22,
+    0.02
+   ],
+   "tris": 76
+  },
+  {
+   "piece": "Lamp_C_Green_ring",
+   "group": "dark_metal",
+   "node": null,
+   "center": [
+    5.38,
+    5.3778,
+    0.152
+   ],
+   "size": [
+    0.26,
+    0.26,
+    0.012
+   ],
+   "tris": 76
+  },
+  {
+   "piece": "Lamp_C_Amber_visor",
+   "group": "paint",
+   "node": null,
+   "center": [
+    5.7,
+    5.4357,
+    0.24
+   ],
+   "size": [
+    0.2757,
+    0.1643,
+    0.17
+   ],
+   "tris": 84
+  },
+  {
+   "piece": "Lamp_C_Red_ring",
+   "group": "dark_metal",
+   "node": null,
+   "center": [
+    6.02,
+    5.3778,
+    0.152
+   ],
+   "size": [
+    0.26,
+    0.26,
+    0.012
+   ],
+   "tris": 76
+  },
+  {
+   "piece": "Lamp_C_Red",
+   "group": "lens_red",
+   "node": "Lamp_C_Red",
+   "center": [
+    6.02,
+    5.3778,
+    0.165
+   ],
+   "size": [
+    0.22,
+    0.22,
+    0.02
+   ],
+   "tris": 76
+  },
+  {
+   "piece": "Lamp_C_Red_visor",
+   "group": "paint",
+   "node": null,
+   "center": [
+    6.02,
+    5.4357,
+    0.24
+   ],
+   "size": [
+    0.2757,
+    0.1643,
+    0.17
+   ],
+   "tris": 84
+  },
+  {
+   "piece": "Head_A_housing",
+   "group": "paint",
+   "node": null,
+   "center": [
+    0.0,
+    3.0,
+    0.33
+   ],
+   "size": [
+    0.34,
+    0.98,
+    0.26
+   ],
+   "tris": 108
+  },
+  {
+   "piece": "Lamp_A_Red_visor",
+   "group": "paint",
+   "node": null,
+   "center": [
+    0.0,
+    3.3537,
+    0.55
+   ],
+   "size": [
+    0.2561,
+    0.1526,
+    0.17
+   ],
+   "tris": 84
+  },
+  {
+   "piece": "Lamp_A_Amber_ring",
+   "group": "dark_metal",
+   "node": null,
+   "center": [
+    0.0,
+    3.0,
+    0.462
+   ],
+   "size": [
+    0.24,
+    0.24,
+    0.012
+   ],
+   "tris": 76
+  },
+  {
+   "piece": "Lamp_A_Red",
+   "group": "lens_red",
+   "node": "Lamp_A_Red",
+   "center": [
+    0.0,
+    3.3,
+    0.475
+   ],
+   "size": [
+    0.2,
+    0.2,
+    0.02
+   ],
+   "tris": 76
+  },
+  {
+   "piece": "Head_A_backplate",
+   "group": "backplate",
+   "node": null,
+   "center": [
+    0.0,
+    3.0,
+    0.185
+   ],
+   "size": [
+    0.56,
+    1.2,
+    0.02
+   ],
+   "tris": 44
+  },
+  {
+   "piece": "Lamp_A_Amber",
+   "group": "lens_amber",
+   "node": "Lamp_A_Amber",
+   "center": [
+    0.0,
+    3.0,
+    0.475
+   ],
+   "size": [
+    0.2,
+    0.2,
+    0.02
+   ],
+   "tris": 76
+  },
+  {
+   "piece": "Lamp_A_Red_ring",
+   "group": "dark_metal",
+   "node": null,
+   "center": [
+    0.0,
+    3.3,
+    0.462
+   ],
+   "size": [
+    0.24,
+    0.24,
+    0.012
+   ],
+   "tris": 76
+  },
+  {
+   "piece": "Lamp_A_Amber_visor",
+   "group": "paint",
+   "node": null,
+   "center": [
+    0.0,
+    3.0537,
+    0.55
+   ],
+   "size": [
+    0.2561,
+    0.1526,
+    0.17
+   ],
+   "tris": 84
+  },
+  {
+   "piece": "Lamp_A_Green_ring",
+   "group": "dark_metal",
+   "node": null,
+   "center": [
+    0.0,
+    2.7,
+    0.462
+   ],
+   "size": [
+    0.24,
+    0.24,
+    0.012
+   ],
+   "tris": 76
+  },
+  {
+   "piece": "Lamp_A_Green",
+   "group": "lens_green",
+   "node": "Lamp_A_Green",
+   "center": [
+    0.0,
+    2.7,
+    0.475
+   ],
+   "size": [
+    0.2,
+    0.2,
+    0.02
+   ],
+   "tris": 76
+  },
+  {
+   "piece": "Lamp_A_Green_visor",
+   "group": "paint",
+   "node": null,
+   "center": [
+    0.0,
+    2.7537,
+    0.55
+   ],
+   "size": [
+    0.2561,
+    0.1526,
+    0.17
+   ],
+   "tris": 84
+  },
+  {
+   "piece": "head_bracket_2.7",
+   "group": "dark_metal",
+   "node": null,
+   "center": [
+    0.0,
+    2.7,
+    0.13
+   ],
+   "size": [
+    0.06,
+    0.05,
+    0.22
+   ],
+   "tris": 44
+  },
+  {
+   "piece": "head_bracket_3.3",
+   "group": "dark_metal",
+   "node": null,
+   "center": [
+    0.0,
+    3.3,
+    0.13
+   ],
+   "size": [
+    0.06,
+    0.05,
+    0.22
+   ],
+   "tris": 44
+  },
+  {
+   "piece": "name_blade",
+   "group": "sign",
+   "node": null,
+   "center": [
+    1.6,
+    5.32,
+    0.02
+   ],
+   "size": [
+    1.7,
+    0.4,
+    0.05
+   ],
+   "tris": 44
+  },
+  {
+   "piece": "name_blade_hanger2",
+   "group": "dark_metal",
+   "node": null,
+   "center": [
+    2.0,
+    5.62,
+    -0.0
+   ],
+   "size": [
+    0.04,
+    0.25,
+    0.04
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "cam_shield",
+   "group": "white_plastic",
+   "node": null,
+   "center": [
+    6.45,
+    5.775,
+    0.06
+   ],
+   "size": [
+    0.16,
+    0.015,
+    0.36
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "cam_body",
+   "group": "white_plastic",
+   "node": null,
+   "center": [
+    6.45,
+    5.7,
+    0.05
+   ],
+   "size": [
+    0.12,
+    0.12,
+    0.3
+   ],
+   "tris": 108
+  },
+  {
+   "piece": "button_box",
+   "group": "paint2",
+   "node": null,
+   "center": [
+    0.0,
+    1.1,
+    0.17
+   ],
+   "size": [
+    0.12,
+    0.2,
+    0.1
+   ],
+   "tris": 108
+  },
+  {
+   "piece": "cam_lens",
+   "group": "cam_eye",
+   "node": null,
+   "center": [
+    6.45,
+    5.7,
+    0.21
+   ],
+   "size": [
+    0.07,
+    0.07,
+    0.02
+   ],
+   "tris": 60
+  },
+  {
+   "piece": "button",
+   "group": "steel",
+   "node": null,
+   "center": [
+    0.0,
+    1.07,
+    0.23
+   ],
+   "size": [
+    0.05,
+    0.05,
+    0.02
+   ],
+   "tris": 60
+  },
+  {
+   "piece": "cam_mount",
+   "group": "dark_metal",
+   "node": null,
+   "center": [
+    6.45,
+    5.82,
+    -0.0
+   ],
+   "size": [
+    0.04,
+    0.12,
+    0.04
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "button_plate",
+   "group": "sign",
+   "node": null,
+   "center": [
+    0.0,
+    1.15,
+    0.222
+   ],
+   "size": [
+    0.1,
+    0.07,
+    0.006
+   ],
+   "tris": 12
+  }
+ ],
+ "lights": [
+  {
+   "name": "Light_Cam",
+   "pos": [
+    6.45,
+    5.7,
+    0.22
+   ],
+   "type": "omni",
+   "color": [
+    1,
+    0.1,
+    0.1
+   ],
+   "energy": 0.3,
+   "range": 1.0,
+   "dir": null,
+   "shadow": false
+  }
+ ],
+ "sockets": [
+  {
+   "name": "Lamp_B_Green",
+   "pos": [
+    2.98,
+    5.3114,
+    0.17
+   ],
+   "kind": "signal_lamp",
+   "dir": [
+    0,
+    0,
+    1
+   ],
+   "color": "green",
+   "head": "B"
+  },
+  {
+   "name": "Lamp_B_Amber",
+   "pos": [
+    3.3,
+    5.3114,
+    0.17
+   ],
+   "kind": "signal_lamp",
+   "dir": [
+    0,
+    0,
+    1
+   ],
+   "color": "amber",
+   "head": "B"
+  },
+  {
+   "name": "Lamp_B_Red",
+   "pos": [
+    3.62,
+    5.3114,
+    0.17
+   ],
+   "kind": "signal_lamp",
+   "dir": [
+    0,
+    0,
+    1
+   ],
+   "color": "red",
+   "head": "B"
+  },
+  {
+   "name": "Lamp_C_Green",
+   "pos": [
+    5.38,
+    5.3778,
+    0.17
+   ],
+   "kind": "signal_lamp",
+   "dir": [
+    0,
+    0,
+    1
+   ],
+   "color": "green",
+   "head": "C"
+  },
+  {
+   "name": "Lamp_C_Amber",
+   "pos": [
+    5.7,
+    5.3778,
+    0.17
+   ],
+   "kind": "signal_lamp",
+   "dir": [
+    0,
+    0,
+    1
+   ],
+   "color": "amber",
+   "head": "C"
+  },
+  {
+   "name": "Lamp_C_Red",
+   "pos": [
+    6.02,
+    5.3778,
+    0.17
+   ],
+   "kind": "signal_lamp",
+   "dir": [
+    0,
+    0,
+    1
+   ],
+   "color": "red",
+   "head": "C"
+  },
+  {
+   "name": "Lamp_A_Red",
+   "pos": [
+    0.0,
+    3.3,
+    0.48
+   ],
+   "kind": "signal_lamp",
+   "dir": [
+    0,
+    0,
+    1
+   ],
+   "color": "red",
+   "head": "A"
+  },
+  {
+   "name": "Lamp_A_Amber",
+   "pos": [
+    0.0,
+    3.0,
+    0.48
+   ],
+   "kind": "signal_lamp",
+   "dir": [
+    0,
+    0,
+    1
+   ],
+   "color": "amber",
+   "head": "A"
+  },
+  {
+   "name": "Lamp_A_Green",
+   "pos": [
+    0.0,
+    2.7,
+    0.48
+   ],
+   "kind": "signal_lamp",
+   "dir": [
+    0,
+    0,
+    1
+   ],
+   "color": "green",
+   "head": "A"
+  }
+ ],
+ "collider": [
+  {
+   "type": "cylinder",
+   "center": [
+    0,
+    3.15,
+    0
+   ],
+   "radius": 0.25,
+   "height": 6.3
+  }
+ ],
+ "meta": {
+  "signals": {
+   "vehicle_heads": [
+    {
+     "head": "A",
+     "facing": "+Z",
+     "lamps": {
+      "red": "Lamp_A_Red",
+      "amber": "Lamp_A_Amber",
+      "green": "Lamp_A_Green"
+     }
+    },
+    {
+     "head": "B",
+     "facing": "+Z",
+     "lamps": {
+      "red": "Lamp_B_Red",
+      "amber": "Lamp_B_Amber",
+      "green": "Lamp_B_Green"
+     }
+    },
+    {
+     "head": "C",
+     "facing": "+Z",
+     "lamps": {
+      "red": "Lamp_C_Red",
+      "amber": "Lamp_C_Amber",
+      "green": "Lamp_C_Green"
+     }
+    }
+   ],
+   "ped_heads": [],
+   "arm": "+X, 6.6 m, heads at x = 3.3 and 5.7 m, 5.3 m up"
+  }
+ }
+}

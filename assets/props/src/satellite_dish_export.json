@@ -1,0 +1,10 @@
+{
+ "lod0": "satellite_dish.glb",
+ "lod0_bytes": 167696,
+ "lod0_tris": 1748,
+ "texture": 512,
+ "lod1": "satellite_dish_lod1.glb",
+ "lod1_bytes": 85568,
+ "lod1_tris": 873,
+ "lod1_texture": 256
+}

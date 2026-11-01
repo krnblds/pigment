@@ -1,0 +1,11 @@
+{"tool": "new_project", "args": {"mesh": "assets/props/src/puddle_decal.glb", "resolution": 1024, "material": "Gunmetal"}}
+{"tool": "add_layer", "args": {"name": "Cut-out", "material": "Cut-out", "channels": {"base_color": false, "roughness": false, "metallic": false, "height": false, "normal": false}}}
+{"tool": "add_layer", "args": {"kind": "paint", "name": "Story decals"}}
+{"tool": "project_decal", "args": {"image": "assets/decals/props/puddle_a.png", "layer": "Story decals", "part": 0, "facing": "+y", "fit": "fill", "margin": 0.0, "values": {"base_color": [0.02, 0.022, 0.025], "roughness": 0.02, "metallic": 0.0, "opacity": 0.92}, "channels": ["base_color", "roughness", "metallic", "opacity"]}}
+{"tool": "project_decal", "args": {"image": "assets/decals/props/puddle_b.png", "layer": "Story decals", "part": 1, "facing": "+y", "fit": "fill", "margin": 0.0, "values": {"base_color": [0.02, 0.022, 0.025], "roughness": 0.02, "metallic": 0.0, "opacity": 0.92}, "channels": ["base_color", "roughness", "metallic", "opacity"]}}
+{"tool": "project_decal", "args": {"image": "assets/decals/props/puddle_c.png", "layer": "Story decals", "part": 2, "facing": "+y", "fit": "fill", "margin": 0.0, "values": {"base_color": [0.02, 0.022, 0.025], "roughness": 0.02, "metallic": 0.0, "opacity": 0.92}, "channels": ["base_color", "roughness", "metallic", "opacity"]}}
+{"tool": "add_layer", "args": {"name": "Silt", "values": {"base_color": [0.12, 0.1, 0.08], "roughness": 0.6, "metallic": 0.0}, "mask": {"generator": "grunge", "amount": 0.35, "scale": 4.0, "softness": 0.3}, "opacity": 0.6, "channels": {"height": false}}}
+{"tool": "add_layer", "args": {"name": "Oil sheen", "values": {"base_color": [0.05, 0.03, 0.08], "roughness": 0.05, "metallic": 0.0}, "mask": {"generator": "spots", "amount": 0.2, "scale": 1.5, "softness": 0.4}, "opacity": 0.4, "channels": {"height": false}}}
+{"tool": "render", "args": {"yaw": 30, "pitch": 14, "width": 720, "height": 720, "exposure": -0.3, "lighting": "night", "bloom": true, "path": "C:/Users/kiera/AppData/Local/Temp/pig_props/puddle_decal.png"}}
+{"tool": "export_textures", "args": {"dir": "scenes/props/textures/puddle_decal", "preset": "separate", "name": "puddle_decal"}}
+{"tool": "save_project", "args": {"path": "scenes/props/projects/puddle_decal.pigment"}}
