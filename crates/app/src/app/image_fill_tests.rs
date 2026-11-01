@@ -151,3 +151,22 @@ fn glass_inside_a_folder() {
     assert!((mid("Half_Transmission.png") - 128).abs() <= 4, "transmission {}", mid("Half_Transmission.png"));
     std::fs::remove_dir_all(out).ok();
 }
+
+/// A folder's part mask (read from the part-selection storage buffer in the
+/// folder pass) limits its children to those parts.
+#[test]
+fn folder_part_mask_limits_children() {
+    let _gpu = super::automation::gpu_lock();
+    let Ok(mut s) = Session::new() else { return };
+    let r = root();
+    s.new_project(&json!({ "mesh": r.join("assets/ammo_box.glb"), "resolution": 512, "material": "Matte black" })).unwrap();
+    s.add_layer(&json!({ "kind": "folder", "name": "Lights" })).unwrap();
+    s.add_layer(&json!({ "name": "Glow", "parent": "Lights", "material": "Neon green" })).unwrap();
+    let lit = |s: &mut Session| material(s).emissive.chunks_exact(4).filter(|p| p[1] > 40).count();
+    let all = lit(&mut s);
+    assert!(all > 1000, "{all}");
+    let big = s.list_parts_query(&json!({ "sort": "area", "limit": 1, "ids_only": true })).unwrap()["parts"][0].as_u64().unwrap();
+    s.update_layer(&json!({ "layer": "Lights", "mask": { "parts": [big] } })).unwrap();
+    let some = lit(&mut s);
+    assert!(some > 100 && some < all, "part-masked folder: {some} of {all}");
+}
