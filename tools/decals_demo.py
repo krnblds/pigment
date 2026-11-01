@@ -31,11 +31,11 @@ calls += [
     # long blank east wall (+X), torn and sun-faded
     {"tool": "scatter_decals", "args": {
         "images": [S + "poster_missing_aiko.png", S + "poster_missing_mika.png", S + "poster_missing_ren.png", S + "poster_unplug.png"],
-        "count": 8, "seed": 3, "parts": [1], "region": {"min": [3.8, 0, -5.5], "max": [4.6, 5, 5.5]},
+        "count": 8, "seed": 3, "parts": [152], "region": {"min": [3.8, 0, -5.5], "max": [4.6, 5, 5.5]},
         "height": [0.5, 3.0], "size": [0.6, 0.8], "rotation_jitter": 5, "min_spacing": 0.85,
         "wear": 0.32, "fade": 0.3, "wear_scale": 3.5, "overlap_order": 0}},
     # one more round the corner by the shop front, anchored on the body's left face
-    {"tool": "project_decal", "args": {"image": S + "poster_missing_ren.png", "part": 1, "face": "left", "anchor": [0.92, 0.919], "size": 0.65, "rotation": -3, "wear": 0.4, "fade": 0.35, "wear_scale": 3.5, "wear_seed": 4, "overlap_order": 0}},
+    {"tool": "project_decal", "args": {"image": S + "poster_missing_ren.png", "part": 152, "face": "left", "anchor": [0.92, 0.595], "size": 0.65, "rotation": -3, "wear": 0.4, "fade": 0.35, "wear_scale": 3.5, "wear_seed": 4, "overlap_order": 0}},
     # resistance graffiti sprayed over some of them
     {"tool": "project_decal", "args": {"image": S + "graffiti_lying.png", "position": [4.4, 1.55, 0.6], "normal": [1, 0, 0], "size": 2.8, "rotation": 4, "fade": 0.25, "wear_style": "grunge", "paper_rim": 0, "overlap_order": 1}},
     {"tool": "project_decal", "args": {"image": S + "stencil_eye_crossed.png", "position": [4.4, 1.9, -3.2], "normal": [1, 0, 0], "size": 0.55, "rotation": -8, "fade": 0.3, "wear_style": "grunge", "paper_rim": 0, "overlap_order": 1}},
