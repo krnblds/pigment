@@ -68,15 +68,19 @@ def sky(kind, fog=0.0):
     nt.links.new(bg.outputs[0], out.inputs["Surface"])
     moon = bpy.data.objects.get("Moon")
     if kind == "night":
-        tc = nt.nodes.new("ShaderNodeTexCoord")
+        geo = nt.nodes.new("ShaderNodeNewGeometry")           # world: Incoming = view direction
         sep = nt.nodes.new("ShaderNodeSeparateXYZ")
-        nt.links.new(tc.outputs["Generated"], sep.inputs[0])
+        nt.links.new(geo.outputs["Incoming"], sep.inputs[0])
+        neg = nt.nodes.new("ShaderNodeMath")
+        neg.operation = "MULTIPLY"
+        neg.inputs[1].default_value = -1.0
+        nt.links.new(sep.outputs[2], neg.inputs[0])            # elevation of the ray (up = 1)
         ramp = nt.nodes.new("ShaderNodeValToRGB")
-        ramp.color_ramp.elements[0].position = 0.45
-        ramp.color_ramp.elements[0].color = (0.05, 0.035, 0.06, 1)       # city glow at the horizon
-        ramp.color_ramp.elements[1].position = 0.75
-        ramp.color_ramp.elements[1].color = (0.006, 0.008, 0.02, 1)
-        nt.links.new(sep.outputs[2], ramp.inputs["Fac"])
+        ramp.color_ramp.elements[0].position = 0.0
+        ramp.color_ramp.elements[0].color = (0.03, 0.018, 0.035, 1)      # city glow at the horizon
+        ramp.color_ramp.elements[1].position = 0.3
+        ramp.color_ramp.elements[1].color = (0.002, 0.003, 0.009, 1)
+        nt.links.new(neg.outputs[0], ramp.inputs["Fac"])
         nt.links.new(ramp.outputs["Color"], bg.inputs["Color"])
         bg.inputs["Strength"].default_value = 1.0
         if moon:
@@ -129,7 +133,7 @@ def shots(world, built):
     out = {}
     roads = {r["id"]: r for r in world["roads"]}
     # aerial: from over the bay south-east of the city, looking at downtown and the mountains
-    out["aerial"] = {"loc": (1450, -1650, 620), "target": (-350, 250, 60), "lens": 26, "sky": "dusk", "exposure": 0.6}
+    out["aerial"] = {"loc": (520, -1750, 380), "target": (-250, 0, 30), "lens": 28, "sky": "dusk", "exposure": 0.3}
     # bridge: the cable-stayed bridge's first pylon, seen from the water
     cs = [b for b in world["bridges"] if b["type"] == "cable_stayed" and b["pylons"]]
     if cs:
@@ -140,23 +144,34 @@ def shots(world, built):
         side = Vector((-along.y, along.x))
         cam = mid + side * 330 - along * 260
         out["bridge"] = {"loc": (cam.x, cam.y, 9.0), "target": (mid.x, mid.y, 38.0), "lens": 24, "sky": "night", "exposure": 1.0}
-    # mountain: on the summit road, ~75% of the way up, looking at the city
+    # mountain: the highest point of the summit road with a clear view down to downtown
     mr = [r for r in world["roads"] if r["class"] == "mountain"]
-    if mr:
+    if mr and built is not None:
+        import terrain as TR
+        hf = TR.Heightfield(world["size_m"], world["terrain"]["cell_m"])
+        hf.H = built["H"]
         r = max(mr, key=lambda r: r["length"])
         pts = r["points"]
+        tgt = Vector((-120.0, -150.0, 60.0))
         best = None
-        for k in range(len(pts) // 2, len(pts) - 5):
+        for k in range(int(len(pts) * 0.2), len(pts) - 3):
             p = Vector(pts[k])
-            if best is None or p.z > best.z - 0 and k > len(pts) * 0.7:
-                best = p
-                break
-        p = Vector(pts[int(len(pts) * 0.72)])
-        q = Vector(pts[int(len(pts) * 0.72) + 3])
-        t = (q - p).to_2d().normalized()
-        side = Vector((-t.y, t.x))
-        cam = p.to_2d() + side * 2.2
-        out["mountain"] = {"loc": (cam.x, cam.y, p.z + 1.6), "target": (150, -250, 20), "lens": 20, "sky": "dusk", "exposure": 0.9}
+            q = Vector(pts[k + 2])
+            t = (q - p).to_2d().normalized()
+            side = Vector((-t.y, t.x))
+            for sgn in (1, -1):
+                e2 = p.to_2d() + side * sgn * 3.2
+                eye = Vector((e2.x, e2.y, p.z + 2.2))
+                f = np.linspace(0.03, 1.0, 60)
+                xs = eye.x + (tgt.x - eye.x) * f
+                ys = eye.y + (tgt.y - eye.y) * f
+                zs = eye.z + (tgt.z - eye.z) * f
+                if np.all(hf.sample(xs, ys) < zs - 1.5):
+                    if best is None or eye.z > best[0].z:
+                        best = (eye, t)
+        if best:
+            eye, t = best
+            out["mountain"] = {"loc": tuple(eye), "target": tuple(tgt), "lens": 24, "sky": "dusk", "exposure": 0.6}
     # avenue: downtown avenue at street level (the spawn road)
     sp = world.get("spawn")
     if sp:
@@ -167,7 +182,7 @@ def shots(world, built):
         side = Vector((-t.y, t.x))
         p = Vector(sp["pos"]).to_2d() - t * 30 + side * 0.8
         out["avenue"] = {"loc": (p.x, p.y, sp["pos"][2] + 1.0), "target": (p.x + t.x * 100, p.y + t.y * 100, sp["pos"][2] + 9.0), "lens": 22,
-                         "sky": "night", "exposure": 1.0, "fog": 0.0015}
+                         "sky": "night", "exposure": 0.4, "fog": 0.0015}
     out["top"] = {"ortho": 4200, "loc": (0, 0, 2000), "sky": "day", "exposure": 0.0}
     return out
 

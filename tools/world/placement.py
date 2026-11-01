@@ -455,7 +455,7 @@ def place_all(cfg, hf, net, masks, bridges, walls, log):
                 off = H + 2.65 if side == "curb" else H + 1.6
                 p = pos.to_2d() + nout * off
                 z = pos.z + (WALK_Z if side == "curb" else ROAD_Z - 0.3)
-                if side != "curb" or not on_deck(e, s):
+                if not on_deck(e, s):
                     P.add("power_pole", (p.x, p.y, z), math.atan2(-nout.x, nout.y) + math.pi / 2, "roads", kind="pole")
                     poles.append((p, z, nout))
                 s += ps

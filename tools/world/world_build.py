@@ -85,32 +85,6 @@ def build(world, out, root, town, load_tool, region=None, log=print, trees=True,
     built = {"terrain": [], "roads": [], "junctions": [], "decals": [], "bridges": [], "piers": [], "walls": [], "instances": [],
              "lights": 0, "C": C, "region": region, "kit": kit, "road_mats": road_mats5, "R": R, "RT": RT}
 
-    # ---- terrain chunks
-    T = world["terrain"]
-    n = T["n"]
-    H = np.fromfile(os.path.join(out, T["heightfield"]), dtype="<f4").reshape(n, n)
-    upath = os.path.join(out, "masks_urban.npy")
-    U = np.load(upath).astype(np.float32) if os.path.isfile(upath) else None
-    tmat = WM.terrain_material(root)
-    per = T["chunk_cells"]
-    for ch in T["chunks"]:
-        ox, oy = ch["origin"]
-        if not inside(ox + T["chunk_m"] / 2, oy + T["chunk_m"] / 2, T["chunk_m"] / 2):
-            continue
-        me = WM.terrain_chunk("Terrain_" + ch["id"], H, T["origin"][0], T["cell_m"], ch["ix"] * per, ch["iy"] * per, per, 1, U)
-        me.materials.append(tmat)
-        built["terrain"].append(put(C["Terrain"], "Terrain_" + ch["id"], me))
-    log(f"terrain: {len(built['terrain'])} chunks")
-    # water + coarse sea floor
-    wme = bpy.data.meshes.new("Water")
-    S = world["size_m"] * 1.6
-    wme.from_pydata([(-S, -S, 0), (S, -S, 0), (S, S, 0), (-S, S, 0)], [], [(0, 1, 2, 3)])
-    wme.materials.append(WM.water_material())
-    put(C["Water"], "Water", wme, (0, 0, world["sea_level"]))
-    fme = WM.terrain_chunk("SeaFloor", H, T["origin"][0], T["cell_m"], 0, 0, n - 1, 32)
-    fme.materials.append(tmat)
-    put(C["Water"], "SeaFloor", fme, (0, 0, -0.5))
-
     # ---- roads + decals
     nodes = {j["id"]: j for j in world["junctions"]}
     classes = world["road_classes"]
@@ -153,6 +127,38 @@ def build(world, out, root, town, load_tool, region=None, log=print, trees=True,
             lookout_dressing(C, J, M, built)
     log(f"junctions: {len(built['junctions'])}")
 
+    # ---- terrain chunks
+    T = world["terrain"]
+    n = T["n"]
+    H = np.fromfile(os.path.join(out, T["heightfield"]), dtype="<f4").reshape(n, n)
+    upath = os.path.join(out, "masks_urban.npy")
+    U = np.load(upath).astype(np.float32) if os.path.isfile(upath) else None
+    # ---- final conform: no terrain vertex above a road / junction top surface
+    bpy.context.view_layer.update()          # junction objects sit at their positions (matrix_world)
+    snapped = snap_terrain(H, T, built["roads"] + built["junctions"])
+    if snapped:
+        H.astype("<f4").tofile(os.path.join(out, T["heightfield"]))      # keep world.json's field = what is built
+    log(f"terrain snapped under road surfaces: {snapped} cells")
+    tmat = WM.terrain_material(root)
+    per = T["chunk_cells"]
+    for ch in T["chunks"]:
+        ox, oy = ch["origin"]
+        if not inside(ox + T["chunk_m"] / 2, oy + T["chunk_m"] / 2, T["chunk_m"] / 2):
+            continue
+        me = WM.terrain_chunk("Terrain_" + ch["id"], H, T["origin"][0], T["cell_m"], ch["ix"] * per, ch["iy"] * per, per, 1, U)
+        me.materials.append(tmat)
+        built["terrain"].append(put(C["Terrain"], "Terrain_" + ch["id"], me))
+    log(f"terrain: {len(built['terrain'])} chunks")
+    # water + coarse sea floor
+    wme = bpy.data.meshes.new("Water")
+    S = 60000.0           # to the horizon
+    wme.from_pydata([(-S, -S, 0), (S, -S, 0), (S, S, 0), (-S, S, 0)], [], [(0, 1, 2, 3)])
+    wme.materials.append(WM.water_material())
+    put(C["Water"], "Water", wme, (0, 0, world["sea_level"]))
+    fme = WM.terrain_chunk("SeaFloor", H, T["origin"][0], T["cell_m"], 0, 0, n - 1, 32)
+    fme.materials.append(tmat)
+    put(C["Water"], "SeaFloor", fme, (0, 0, -0.5))
+
     # ---- bridges and viaducts
     for br in world["bridges"]:
         rid = f"r{br['edge']}"
@@ -167,6 +173,15 @@ def build(world, out, root, town, load_tool, region=None, log=print, trees=True,
         if not any(inside(p[0], p[1], 20) for p in w["points"]):
             continue
         built["walls"].append(put(C["SeaWalls"], f"SeaWall{k}", sea_wall(w, H, T, bridge_concrete)))
+
+    # ---- ground snap: street furniture, props, trees and container stacks stand on the
+    # built surfaces (road / sidewalk / barrier tops, else terrain); world.json is updated
+    bpy.context.view_layer.update()
+    snap_instances(world, built, H, T, region, log)
+    if region is None:
+        import json as _json
+        with open(os.path.join(out, "world.json"), "w", encoding="utf-8") as f:
+            _json.dump(world, f, separators=(",", ":"))
 
     # ---- instances
     K = {o.name[4:]: o for o in bpy.data.collections["TownKit"].objects}
@@ -294,7 +309,7 @@ def import_prop(props_dir, name):
     before = set(bpy.data.objects)
     bpy.ops.import_scene.gltf(filepath=os.path.join(props_dir, name + ".glb"))
     new = [o for o in bpy.data.objects if o not in before]
-    meshes = [o for o in new if o.type == "MESH"]
+    meshes = [o for o in new if o.type == "MESH" and not o.name.startswith("Collider")]
     if not meshes:
         return None
     for o in bpy.context.view_layer.objects:
@@ -309,8 +324,15 @@ def import_prop(props_dir, name):
     bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
     me = obj.data
     me.name = "PROP_" + name
+    names = set()
     for o in new:
-        if o.name in bpy.data.objects:
+        try:
+            names.add(o.name)
+        except ReferenceError:
+            pass
+    for nm in names:
+        o = bpy.data.objects.get(nm)
+        if o is not None:
             bpy.data.objects.remove(o)
     return me
 
@@ -465,3 +487,113 @@ def night_world():
         o = bpy.data.objects.new("Moon", moon)
         sc.collection.objects.link(o)
         o.rotation_euler = (math.radians(55), 0, math.radians(35))
+
+
+def snap_terrain(H, T, objs, clear=0.04):
+    """Lower heightfield cells around every vertex and face centre of the road
+    and junction top surfaces so the terrain stays at least `clear` below
+    them (exact final pass after the data stage's cut / fill)."""
+    pts = []
+    for o in objs:
+        me = o.data
+        mw = np.array(o.matrix_world)
+        co = np.empty(len(me.vertices) * 3)
+        me.vertices.foreach_get("co", co)
+        co = co.reshape(-1, 3)
+        nz = np.empty(len(me.polygons) * 3)
+        me.polygons.foreach_get("normal", nz)
+        nz = nz.reshape(-1, 3)[:, 2]
+        ce = np.empty(len(me.polygons) * 3)
+        me.polygons.foreach_get("center", ce)
+        ce = ce.reshape(-1, 3)
+        top = nz > 0.5
+        vi = np.empty(len(me.loops), dtype=np.int64)
+        me.loops.foreach_get("vertex_index", vi)
+        ls = np.empty(len(me.polygons), dtype=np.int64)
+        me.polygons.foreach_get("loop_start", ls)
+        lt = np.empty(len(me.polygons), dtype=np.int64)
+        me.polygons.foreach_get("loop_total", lt)
+        sel = np.concatenate([vi[a:a + b] for a, b in zip(ls[top], lt[top])]) if top.any() else np.array([], dtype=np.int64)
+        P = np.concatenate([co[np.unique(sel)], ce[top]]) if len(sel) else ce[top]
+        P = P @ mw[:3, :3].T + mw[:3, 3]
+        pts.append(P)
+    if not pts:
+        return 0
+    P = np.concatenate(pts)
+    c = T["cell_m"]
+    x0 = T["origin"][0]
+    fx = (P[:, 0] - x0) / c
+    fy = (P[:, 1] - x0) / c
+    ix = np.clip(np.floor(fx).astype(np.int64), 0, H.shape[1] - 2)
+    iy = np.clip(np.floor(fy).astype(np.int64), 0, H.shape[0] - 2)
+    before = H.copy()
+    flat = H.reshape(-1)
+    z = P[:, 2] - clear
+    for dy in (-1, 0, 1, 2):
+        for dx in (-1, 0, 1, 2):
+            jj = np.clip(iy + dy, 0, H.shape[0] - 1)
+            ii = np.clip(ix + dx, 0, H.shape[1] - 1)
+            np.minimum.at(flat, jj * H.shape[1] + ii, z)
+    return int((H != before).sum())
+
+
+def snap_instances(world, built, H, T, region, log):
+    from mathutils.bvhtree import BVHTree
+    bv, bp = [], []
+    for o in built["roads"] + built["junctions"] + built["walls"]:
+        me = o.data
+        mw = o.matrix_world
+        base = len(bv)
+        bv += [mw @ v.co for v in me.vertices]
+        bp += [tuple(i + base for i in p.vertices) for p in me.polygons]
+    bvh = BVHTree.FromPolygons(bv, bp) if bp else None
+    import terrain as TR
+    hf = TR.Heightfield(world["size_m"], T["cell_m"])
+    hf.H = H
+
+    def ground(x, y, z):
+        g = float(hf.sample_tri(np.array([x]), np.array([y]))[0])
+        if bvh is not None:
+            h = bvh.ray_cast(Vector((x, y, z + 1.2)), Vector((0, 0, -1)), 80)
+            if h[0] is not None and h[0].z > g:
+                g = h[0].z
+        return g
+    kinds = ("prop", "lamp", "pole", "signal", "mast", "tree")
+    moved = dropped = 0
+    stacks = {}
+    keep = []
+    for i in world["instances"]:
+        x, y, z = i["pos"]
+        if region and not (region[0] - 10 <= x <= region[2] + 10 and region[1] - 10 <= y <= region[3] + 10):
+            keep.append(i)
+            continue
+        k = i.get("kind")
+        if k == "container":
+            stacks.setdefault((round(x, 1), round(y, 1)), []).append(i)
+            keep.append(i)
+            continue
+        if k not in kinds or i.get("slot") == "rooftop":
+            keep.append(i)
+            continue
+        g = ground(x, y, z)
+        dz = g - z
+        if k == "tree":
+            dz = min(dz, 0.0) if dz < -0.05 else 0.0         # never hang in the air
+            dz = g - 0.2 - z if g - 0.2 < z else 0.0
+        if abs(dz) > 4.0:
+            dropped += 1
+            continue
+        if abs(dz) > 0.02:
+            i["pos"][2] = round(z + dz, 3)
+            moved += 1
+        keep.append(i)
+    for st in stacks.values():
+        st.sort(key=lambda i: i["pos"][2])
+        x, y, z = st[0]["pos"]
+        dz = ground(x, y, z) - z
+        if abs(dz) > 0.02:
+            for i in st:
+                i["pos"][2] = round(i["pos"][2] + dz, 3)
+            moved += len(st)
+    world["instances"] = keep
+    log(f"ground snap: {moved} instances moved, {dropped} dropped (more than 4 m off the ground)")

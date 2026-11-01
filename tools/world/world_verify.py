@@ -55,7 +55,8 @@ def verify(world, built, out, log, samples=60000, seed=5):
     d = tz - P[:, 2]
     bad = d > 0.002
     res["terrain_above_road"] = {"samples": len(P), "violations": int(bad.sum()), "worst_mm": round(float(max(0.0, d.max())) * 1000, 1),
-                                 "where": sorted({pts[i][1] for i in np.nonzero(bad)[0][:50]})[:10]}
+                                 "where": sorted({pts[i][1] for i in np.nonzero(bad)[0][:50]})[:10],
+                                 "examples": [[round(float(P[i, 0]), 2), round(float(P[i, 1]), 2), round(float(d[i]), 3), pts[i][1]] for i in np.nonzero(bad)[0][:12]]}
     # 2. ground under bridge girders: terrain must stay below the girder (deck - depth), except within 15 m of the abutments
     gviol, gsamp = 0, 0
     roads_by = {r["id"]: r for r in world["roads"]}
@@ -95,7 +96,7 @@ def verify(world, built, out, log, samples=60000, seed=5):
     region = built["region"]
     checked = 0
     for i in world["instances"]:
-        if i.get("kind") not in ("lamp", "pole", "signal", "mast", "crane", "container", "prop"):
+        if i.get("kind") not in ("lamp", "pole", "signal", "mast", "container", "prop") or i.get("slot") == "rooftop":
             continue
         x, y, z = i["pos"]
         if region and not (region[0] <= x <= region[2] and region[1] <= y <= region[3]):
@@ -108,7 +109,12 @@ def verify(world, built, out, log, samples=60000, seed=5):
             floating.append((i["asset"], round(z - g, 2), [round(x, 1), round(y, 1)]))
         elif g - z > 0.35:
             buried.append((i["asset"], round(g - z, 2), [round(x, 1), round(y, 1)]))
-    res["props"] = {"checked": checked, "floating": len(floating), "buried": len(buried), "examples": (floating + buried)[:8]}
+    by = {}
+    for a, dz, _ in floating:
+        c, m = by.get(a, (0, 0.0))
+        by[a] = (c + 1, max(m, dz))
+    res["props"] = {"checked": checked, "floating": len(floating), "buried": len(buried), "floating_by_asset": by,
+                    "examples": (sorted(floating, key=lambda f: -f[1]) + buried)[:8]}
     # buildings: base at the highest ground under the footprint, footing below the lowest
     nb = nf = 0
     for i in world["instances"]:
@@ -186,12 +192,12 @@ def verify(world, built, out, log, samples=60000, seed=5):
         c = cls[r["class"]]
         w = c["half"] + (3.0 if c.get("side", "curb") == "curb" else 0.5)
         Q = r["points"]
-        for a_, b_ in zip(Q, Q[1:]):
+        for a_, b_, dk in zip(Q, Q[1:], r["deck"]):
             L = math.hypot(b_[0] - a_[0], b_[1] - a_[1])
             for f in np.linspace(0, 1, max(2, int(L / 2) + 1)):
                 x = a_[0] + (b_[0] - a_[0]) * f
                 y = a_[1] + (b_[1] - a_[1]) * f
-                rh.add((x, y, w), x, y, x, y)
+                rh.add((x, y, w, dk), x, y, x, y)
     for rc, a in rects:
         cn = sum(rc, Vector((0, 0))) / 4
         ux = (rc[1] - rc[0])
@@ -201,7 +207,7 @@ def verify(world, built, out, log, samples=60000, seed=5):
         uy.normalize()
         xs = [c.x for c in rc]
         ys = [c.y for c in rc]
-        for (x, y, w) in rh.query(min(xs) - 20, min(ys) - 20, max(xs) + 20, max(ys) + 20):
+        for (x, y, w, dk) in rh.query(min(xs) - 20, min(ys) - 20, max(xs) + 20, max(ys) + 20):
             dx, dy = x - cn.x, y - cn.y
             lx = abs(dx * ux.x + dy * ux.y)
             ly = abs(dx * uy.x + dy * uy.y)
@@ -229,8 +235,9 @@ def verify(world, built, out, log, samples=60000, seed=5):
                     clear.append(float(Q[k, 2] - Q2[j, 2]))
     piers_on_road = 0
     for p in built["piers"]:
-        for (x, y, w) in rh.query(p["pos"][0] - 20, p["pos"][1] - 20, p["pos"][0] + 20, p["pos"][1] + 20):
-            if math.hypot(x - p["pos"][0], y - p["pos"][1]) < w - 3.0 + 1.5 and p.get("bottom", 0) > -1:
+        for (x, y, w, dk) in rh.query(p["pos"][0] - 20, p["pos"][1] - 20, p["pos"][0] + 20, p["pos"][1] + 20):
+            # a pier may stand under its own deck, never on a road at grade
+            if not dk and math.hypot(x - p["pos"][0], y - p["pos"][1]) < w - 3.0 + 1.5:
                 piers_on_road += 1
                 break
     res["decks"] = {"min_clearance_over_roads_m": round(min(clear), 2) if clear else None, "crossings_sampled": len(clear),

@@ -660,13 +660,15 @@ def generate(cfg, town, out_dir, log=print):
     for br in bridges:
         old = next(e for e in net.edges if e.id == br["edge"])
         if not old.alive and hasattr(old, "split_into"):
-            off = 0.0
+            off, best = 0.0, None
             for f in old.split_into:
-                if off - 1 <= br["s"][0] and br["s"][1] <= off + f.path.length + 1:
-                    br["edge"] = f.id
-                    br["s"] = [round(br["s"][0] - off, 2), round(br["s"][1] - off, 2)]
-                    break
+                a, b = max(br["s"][0], off), min(br["s"][1], off + f.path.length)
+                if best is None or b - a > best[0]:
+                    best = (b - a, f, off)
                 off += f.path.length
+            _, f, off = best
+            br["edge"] = f.id
+            br["s"] = [round(max(0.0, br["s"][0] - off), 2), round(min(f.path.length, br["s"][1] - off), 2)]
     conform_terrain(cfg, hf, net, log)
     walls = sea_walls(cfg, hf, masks, net, log)
     # plaza: flatten the summit

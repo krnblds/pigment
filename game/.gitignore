@@ -5,3 +5,5 @@ assets/town/
 # textures Godot extracts from car.glb on import
 assets/car/*.png
 assets/car/*.png.import
+# open world export (tools/world/world_driver.py --stages ...,export)
+assets/world/

@@ -298,7 +298,7 @@ def facade_material(root, style):
     wn = nt.nodes.new("ShaderNodeTexWhiteNoise")
     wn.noise_dimensions = "3D"
     nt.links.new(comb.outputs[0], wn.inputs["Vector"])
-    lit = _math(nt, "LESS_THAN", wn.outputs["Value"], 0.34 if style != "glass_dark" else 0.22)
+    lit = _math(nt, "LESS_THAN", wn.outputs["Value"], 0.2 if style != "glass_dark" else 0.12)
     ramp = nt.nodes.new("ShaderNodeValToRGB")
     els = ramp.color_ramp.elements
     els[0].position, els[0].color = 0.0, (1.0, 0.62, 0.3, 1)
@@ -312,7 +312,7 @@ def facade_material(root, style):
     sep2 = nt.nodes.new("ShaderNodeSeparateColor")
     nt.links.new(wn.outputs["Color"], sep2.inputs[0])
     nt.links.new(sep2.outputs[0], ramp.inputs["Fac"])
-    strength = _math(nt, "MULTIPLY", _math(nt, "MULTIPLY", win, lit), _math(nt, "ADD", 1.2, _math(nt, "MULTIPLY", sep2.outputs[1], 2.5)))
+    strength = _math(nt, "MULTIPLY", _math(nt, "MULTIPLY", win, lit), _math(nt, "ADD", 0.2, _math(nt, "MULTIPLY", sep2.outputs[1], 0.9)))
     nt.links.new(ramp.outputs["Color"], bsdf.inputs["Emission Color"])
     nt.links.new(strength, bsdf.inputs["Emission Strength"])
     return m
@@ -628,7 +628,7 @@ def kit_materials(root, town):
     bsdf.inputs["Metallic"].default_value = 0.85
     bsdf.inputs["Roughness"].default_value = 0.45
     M["steel_dark"] = m
-    M["cable"] = emissive("WorldCableLED", (0.55, 0.85, 1.0), 2.5)
+    M["cable"] = emissive("WorldCableLED", (0.55, 0.85, 1.0), 1.2)
     M["red_light"] = emissive("WorldAviationRed", (1.0, 0.05, 0.02), 30.0)
     M["mast_light"] = emissive("WorldMastLight", (1.0, 0.8, 0.55), 40.0)
     M["sig_red"] = emissive("WorldSignalRed", (1.0, 0.05, 0.02), 20.0)
@@ -651,5 +651,5 @@ def kit_materials(root, town):
     nt.links.new(ramp.outputs["Color"], bsdf.inputs["Base Color"])
     bsdf.inputs["Roughness"].default_value = 0.85
     M["leaves"] = m
-    M["decal_fn"] = lambda path: town["decal_material"](path, 3.0)
+    M["decal_fn"] = lambda path: town["decal_material"](path, 0.7)
     return M
