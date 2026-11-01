@@ -321,11 +321,9 @@ def main():
         aim(cam, loc, tgt, lens)
     if not opt("--no-save"):
         path = os.path.join(ROOT, "scenes", "town", "cyberpunk_town.blend")
-        try:
-            bpy.ops.file.make_paths_relative()
-        except RuntimeError:
-            pass
-        bpy.ops.wm.save_as_mainfile(filepath=path, compress=True, relative_remap=True)
+        bpy.ops.wm.save_as_mainfile(filepath=path, compress=True)
+        bpy.ops.file.make_paths_relative()      # textures as //textures/..., portable
+        bpy.ops.wm.save_mainfile(compress=True)
         print("saved", path)
 
 
