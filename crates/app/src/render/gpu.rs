@@ -274,6 +274,62 @@ pub fn upload(queue: &wgpu::Queue, t: &Tex, data: &[u8]) {
 }
 
 /// Blocking read of mip 0 into tightly packed bytes.
+/// Read several textures (mip 0) back at once: every copy goes into one
+/// command buffer, one submit, one wait, instead of a GPU round trip each.
+pub fn readback_many(device: &wgpu::Device, queue: &wgpu::Queue, texs: &[&Tex]) -> Vec<Vec<u8>> {
+    let mut enc = device.create_command_encoder(&Default::default());
+    let jobs: Vec<(wgpu::Buffer, u32, u32, u32)> = texs
+        .iter()
+        .map(|t| {
+            let bpp = t.format.block_copy_size(None).unwrap();
+            let row = t.size * bpp;
+            let padded = row.div_ceil(wgpu::COPY_BYTES_PER_ROW_ALIGNMENT) * wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;
+            let buf = device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("readback"),
+                size: padded as u64 * t.height as u64,
+                usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+                mapped_at_creation: false,
+            });
+            enc.copy_texture_to_buffer(
+                wgpu::TexelCopyTextureInfo { texture: &t.tex, mip_level: 0, origin: wgpu::Origin3d::ZERO, aspect: wgpu::TextureAspect::All },
+                wgpu::TexelCopyBufferInfo {
+                    buffer: &buf,
+                    layout: wgpu::TexelCopyBufferLayout { offset: 0, bytes_per_row: Some(padded), rows_per_image: Some(t.height) },
+                },
+                wgpu::Extent3d { width: t.size, height: t.height, depth_or_array_layers: 1 },
+            );
+            (buf, row, padded, t.height)
+        })
+        .collect();
+    queue.submit([enc.finish()]);
+    for (buf, ..) in &jobs {
+        buf.map_async(wgpu::MapMode::Read, .., |r| {
+            if let Err(e) = r {
+                log::error!("readback map failed: {e}");
+            }
+        });
+    }
+    let _ = device.poll(wgpu::PollType::Wait { submission_index: None, timeout: None });
+    jobs.into_iter()
+        .map(|(buf, row, padded, h)| {
+            let mapped = buf.get_mapped_range(..).expect("readback mapping");
+            let out = if row == padded {
+                mapped.to_vec()
+            } else {
+                let mut out = Vec::with_capacity((row * h) as usize);
+                for y in 0..h as usize {
+                    let start = y * padded as usize;
+                    out.extend_from_slice(&mapped[start..start + row as usize]);
+                }
+                out
+            };
+            drop(mapped);
+            buf.unmap();
+            out
+        })
+        .collect()
+}
+
 pub fn readback(device: &wgpu::Device, queue: &wgpu::Queue, t: &Tex) -> Vec<u8> {
     let bpp = t.format.block_copy_size(None).unwrap();
     let row = t.size * bpp;

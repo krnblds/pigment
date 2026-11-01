@@ -738,12 +738,20 @@ impl Session {
         if export::preset(preset).is_none() {
             return Err(format!("unknown preset `{preset}`: unreal, unity, godot, separate"));
         }
+        let compression = match a.get("compression") {
+            None => export::Compression::default(),
+            Some(c) => c.as_str().and_then(export::Compression::from_id).ok_or_else(|| {
+                format!("`compression` = {c}: expected one of {}", export::Compression::ALL.map(|c| c.id()).join(", "))
+            })?,
+        };
         self.app.doc.export_preset = preset.to_string();
         self.app.export_dir = Some(dir.clone());
         self.app.export_name = s(a, "name").map(String::from).unwrap_or_else(|| self.app.mesh.name.clone());
+        self.app.export_compression = compression;
         self.app.status = None;
         self.app.export(&self.rs);
         let msg = self.status()?;
+        let [wait_ms, read_ms, encode_ms, total_ms] = self.app.last_export_ms.map(|x| (x * 10.0).round() / 10.0);
         let scale = self.app.last_emissive_scale;
         let files: Vec<String> = export::preset(preset)
             .unwrap()
@@ -751,7 +759,8 @@ impl Session {
             .iter()
             .map(|o| dir.join(format!("{}_{}.png", self.app.export_name, o.suffix)).to_string_lossy().to_string())
             .collect();
-        Ok(json!({ "status": msg, "files": files, "emissive_scale": scale }))
+        Ok(json!({ "status": msg, "files": files, "emissive_scale": scale, "compression": compression.id(),
+                   "timing_ms": { "gpu_finish": wait_ms, "read_back": read_ms, "encode": encode_ms, "total": total_ms } }))
     }
 }
 

@@ -124,6 +124,11 @@ pub struct PigmentApp {
     dump_requested: bool,
     /// Brightness multiplier of the last exported emissive map.
     last_emissive_scale: f32,
+    /// PNG compression for export (MCP `export_textures.compression`).
+    export_compression: export::Compression,
+    /// Timing of the last export, ms: waiting for pending GPU work (the
+    /// composite), reading the maps back, encode + write, total.
+    last_export_ms: [f64; 4],
     /// Decal images loaded on the GPU, by path.
     decals: std::collections::HashMap<PathBuf, crate::render::gpu::Tex>,
     /// Decal tool: the image, and where the drag started.
@@ -185,6 +190,8 @@ impl PigmentApp {
             ppp: 1.0,
             dump_requested: false,
             last_emissive_scale: 1.0,
+            export_compression: Default::default(),
+            last_export_ms: [0.0; 4],
             decals: Default::default(),
             decal_tool: None,
             parts: Default::default(),
@@ -439,15 +446,34 @@ impl PigmentApp {
     fn export(&mut self, rs: &RenderState) {
         let Some(dir) = self.export_dir.clone() else { return };
         let Some(preset) = export::preset(&self.doc.export_preset) else { return };
-        self.ensure_composited(rs);
         let t0 = Instant::now();
+        self.ensure_composited(rs);
+        // finish queued GPU work (composite) first so the timings say where time goes
+        let _ = rs.device.poll(eframe::egui_wgpu::wgpu::PollType::Wait { submission_index: None, timeout: None });
+        let t_wait = t0.elapsed().as_secs_f64() * 1000.0;
         let m = io::read_material(&rs.device, &rs.queue, &self.ts);
+        let t_read = t0.elapsed().as_secs_f64() * 1000.0;
         self.last_emissive_scale = m.emissive_scale;
-        match export::export(&dir, &self.export_name, &preset, &m) {
-            Ok(files) => self.set_status(
-                format!("Exported {} maps ({}x{}) to {} in {:.0} ms", files.len(), m.size, m.size, dir.display(), t0.elapsed().as_secs_f64() * 1000.0),
-                false,
-            ),
+        let opts = export::ExportOptions { compression: self.export_compression, ..Default::default() };
+        match export::export_with(&dir, &self.export_name, &preset, &m, opts) {
+            Ok(files) => {
+                let total = t0.elapsed().as_secs_f64() * 1000.0;
+                self.last_export_ms = [t_wait, t_read - t_wait, total - t_read, total];
+                self.set_status(
+                    format!(
+                        "Exported {} maps ({}x{}) to {} in {:.0} ms (GPU finish {:.0} ms, read back {:.0} ms, PNG encode {:.0} ms)",
+                        files.len(),
+                        m.size,
+                        m.size,
+                        dir.display(),
+                        total,
+                        t_wait,
+                        t_read - t_wait,
+                        total - t_read
+                    ),
+                    false,
+                )
+            }
             Err(e) => self.set_status(format!("Export failed: {e:#}"), true),
         }
     }

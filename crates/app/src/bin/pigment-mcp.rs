@@ -87,7 +87,8 @@ fn tools() -> Value {
                   "layer": {}, "mask": { "type": "boolean" }, "alpha_from_luminance": { "type": "boolean" } }), &["image"]),
         t("render", "Render the model with its current material (PBR, studio lighting). Returns the image.", render_props, &[]),
         t("export_textures", "Export PNG texture maps. Presets: unreal, unity, godot, separate (glTF/Blender: BaseColor, Roughness, Metallic, AO, Normal_OpenGL, Height).",
-          json!({ "dir": { "type": "string" }, "preset": { "type": "string" }, "name": { "type": "string" } }), &["dir"]),
+          json!({ "dir": { "type": "string" }, "preset": { "type": "string" }, "name": { "type": "string" },
+                  "compression": { "type": "string", "enum": ["none", "fastest", "fast", "balanced", "best"], "description": "PNG compression effort (default fast). fastest/none write quickest but bigger files; maps are encoded in parallel either way" } }), &["dir"]),
         t("undo", "Undo the last action.", json!({}), &[]),
         t("redo", "Redo.", json!({}), &[]),
     ])

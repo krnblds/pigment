@@ -137,6 +137,56 @@ pub fn preset(id: &str) -> Option<Preset> {
     presets().into_iter().find(|p| p.id == id)
 }
 
+/// PNG compression effort for export.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Compression {
+    /// No deflate compression: fastest to write, biggest files.
+    None,
+    /// Fast deflate without per-row filter search (Up filter): quick, slightly bigger files.
+    Fastest,
+    /// Fast deflate with adaptive filtering (the previous default).
+    #[default]
+    Fast,
+    /// Balanced zlib compression.
+    Balanced,
+    /// Smallest files, slowest.
+    Best,
+}
+
+impl Compression {
+    pub const ALL: [Compression; 5] = [Compression::None, Compression::Fastest, Compression::Fast, Compression::Balanced, Compression::Best];
+    pub fn id(self) -> &'static str {
+        match self {
+            Compression::None => "none",
+            Compression::Fastest => "fastest",
+            Compression::Fast => "fast",
+            Compression::Balanced => "balanced",
+            Compression::Best => "best",
+        }
+    }
+    pub fn from_id(id: &str) -> Option<Compression> {
+        let id = id.to_ascii_lowercase();
+        Self::ALL.into_iter().find(|c| c.id() == id || (id == "default" && *c == Compression::Fast))
+    }
+    fn image_settings(self) -> (image::codecs::png::CompressionType, image::codecs::png::FilterType) {
+        use image::codecs::png::{CompressionType as C, FilterType as F};
+        match self {
+            Compression::None => (C::Uncompressed, F::NoFilter),
+            Compression::Fastest => (C::Fast, F::Up),
+            Compression::Fast => (C::Fast, F::Adaptive),
+            Compression::Balanced => (C::Default, F::Adaptive),
+            Compression::Best => (C::Best, F::Adaptive),
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default)]
+pub struct ExportOptions {
+    pub compression: Compression,
+    /// Encode the maps on parallel threads (default true).
+    pub serial: bool,
+}
+
 /// Value of `src` at pixel `i`, as 16-bit (0..65535).
 fn sample(m: &MaterialImages, src: Source, i: usize) -> u16 {
     let b = |v: u8| v as u16 * 257;
@@ -165,17 +215,57 @@ pub enum Packed {
     Words(Vec<u16>),
 }
 
+/// Where an 8-bit source lives: an RGBA8 buffer + channel (optionally
+/// inverted), the 16-bit height, or a constant.
+enum Plane<'a> {
+    Rgba8(&'a [u8], usize, bool),
+    Height(&'a [u16]),
+    One,
+}
+
+fn plane(m: &MaterialImages, src: Source) -> Plane<'_> {
+    use Source::*;
+    match src {
+        Red => Plane::Rgba8(&m.color, 0, false),
+        Green => Plane::Rgba8(&m.color, 1, false),
+        Blue => Plane::Rgba8(&m.color, 2, false),
+        Ao => Plane::Rgba8(&m.orm, 0, false),
+        Roughness => Plane::Rgba8(&m.orm, 1, false),
+        Smoothness => Plane::Rgba8(&m.orm, 1, true),
+        Metallic => Plane::Rgba8(&m.orm, 2, false),
+        NormalX => Plane::Rgba8(&m.normal, 0, false),
+        NormalY => Plane::Rgba8(&m.normal, 1, false),
+        NormalYFlipped => Plane::Rgba8(&m.normal, 1, true),
+        NormalZ => Plane::Rgba8(&m.normal, 2, false),
+        Height => Plane::Height(&m.height),
+        EmissiveR => Plane::Rgba8(&m.emissive, 0, false),
+        EmissiveG => Plane::Rgba8(&m.emissive, 1, false),
+        EmissiveB => Plane::Rgba8(&m.emissive, 2, false),
+        One => Plane::One,
+    }
+}
+
+/// Pack one output map. Works plane by plane (a strided copy per output
+/// channel) instead of matching on the source per pixel; same result as
+/// [`sample`] >> 8 for 8-bit outputs.
 pub fn pack(out: &OutputMap, m: &MaterialImages) -> Packed {
     let n = (m.size * m.size) as usize;
     let ch = out.format.channels();
     assert_eq!(out.sources.len(), ch, "{}: wrong number of sources", out.suffix);
     match out.format {
-        PixelFormat::L16 => Packed::Words((0..n).map(|i| sample(m, out.sources[0], i)).collect()),
+        PixelFormat::L16 => match out.sources[0] {
+            Source::Height => Packed::Words(m.height[..n].to_vec()),
+            s => Packed::Words((0..n).map(|i| sample(m, s, i)).collect()),
+        },
         _ => {
-            let mut v = Vec::with_capacity(n * ch);
-            for i in 0..n {
-                for s in &out.sources {
-                    v.push((sample(m, *s, i) >> 8) as u8);
+            let mut v = vec![0u8; n * ch];
+            for (k, s) in out.sources.iter().enumerate() {
+                let dst = v[k..].iter_mut().step_by(ch);
+                match plane(m, *s) {
+                    Plane::Rgba8(buf, off, false) => dst.zip(buf[off..].iter().step_by(4)).for_each(|(d, s)| *d = *s),
+                    Plane::Rgba8(buf, off, true) => dst.zip(buf[off..].iter().step_by(4)).for_each(|(d, s)| *d = 255 - *s),
+                    Plane::Height(h) => dst.zip(h.iter()).for_each(|(d, s)| *d = (*s >> 8) as u8),
+                    Plane::One => dst.for_each(|d| *d = 255),
                 }
             }
             Packed::Bytes(v)
@@ -184,28 +274,49 @@ pub fn pack(out: &OutputMap, m: &MaterialImages) -> Packed {
 }
 
 pub fn write_packed(path: &Path, size: u32, format: PixelFormat, data: &Packed) -> Result<()> {
+    write_packed_with(path, size, format, data, Compression::default())
+}
+
+pub fn write_packed_with(path: &Path, size: u32, format: PixelFormat, data: &Packed, compression: Compression) -> Result<()> {
     use image::ExtendedColorType as C;
-    let (bytes, color): (Vec<u8>, C) = match (format, data) {
-        (PixelFormat::L16, Packed::Words(w)) => (bytemuck::cast_slice(w).to_vec(), C::L16),
-        (PixelFormat::L8, Packed::Bytes(b)) => (b.clone(), C::L8),
-        (PixelFormat::Rgb8, Packed::Bytes(b)) => (b.clone(), C::Rgb8),
-        (PixelFormat::Rgba8, Packed::Bytes(b)) => (b.clone(), C::Rgba8),
+    use image::ImageEncoder;
+    // image's PNG encoder takes native-endian u16 bytes for 16-bit (it swaps to big-endian)
+    let (bytes, color): (&[u8], C) = match (format, data) {
+        (PixelFormat::L16, Packed::Words(w)) => (bytemuck::cast_slice(w), C::L16),
+        (PixelFormat::L8, Packed::Bytes(b)) => (b, C::L8),
+        (PixelFormat::Rgb8, Packed::Bytes(b)) => (b, C::Rgb8),
+        (PixelFormat::Rgba8, Packed::Bytes(b)) => (b, C::Rgba8),
         _ => anyhow::bail!("format/data mismatch"),
     };
-    // PNG wants 16-bit samples big-endian; image's encoder takes native-endian u16 bytes.
-    image::save_buffer(path, &bytes, size, size, color).with_context(|| format!("writing {}", path.display()))
+    let file = std::fs::File::create(path).with_context(|| format!("creating {}", path.display()))?;
+    let w = std::io::BufWriter::with_capacity(1 << 20, file);
+    let (c, f) = compression.image_settings();
+    image::codecs::png::PngEncoder::new_with_quality(w, c, f)
+        .write_image(bytes, size, size, color)
+        .with_context(|| format!("writing {}", path.display()))
 }
 
 /// Write every output of `preset` into `dir` as `<base>_<suffix>.png`.
 pub fn export(dir: &Path, base: &str, preset: &Preset, m: &MaterialImages) -> Result<Vec<PathBuf>> {
-    std::fs::create_dir_all(dir)?;
-    let mut written = Vec::new();
-    for out in &preset.outputs {
+    export_with(dir, base, preset, m, ExportOptions::default())
+}
+
+/// [`export`] with options: maps are packed and PNG-encoded on parallel
+/// threads (one per output map) unless `opts.serial`.
+pub fn export_with(dir: &Path, base: &str, preset: &Preset, m: &MaterialImages, opts: ExportOptions) -> Result<Vec<PathBuf>> {
+    std::fs::create_dir_all(dir).with_context(|| format!("creating {}", dir.display()))?;
+    let job = |out: &OutputMap| -> Result<PathBuf> {
         let path = dir.join(format!("{base}_{}.png", out.suffix));
-        write_packed(&path, m.size, out.format, &pack(out, m))?;
-        written.push(path);
+        write_packed_with(&path, m.size, out.format, &pack(out, m), opts.compression)?;
+        Ok(path)
+    };
+    if opts.serial {
+        return preset.outputs.iter().map(job).collect();
     }
-    Ok(written)
+    std::thread::scope(|s| {
+        let handles: Vec<_> = preset.outputs.iter().map(|out| s.spawn(move || job(out))).collect();
+        handles.into_iter().map(|h| h.join().unwrap_or_else(|_| Err(anyhow::anyhow!("export thread panicked")))).collect()
+    })
 }
 
 #[cfg(test)]
@@ -268,6 +379,61 @@ mod tests {
         let h = image::open(dir.join("Crate_Height.png")).unwrap().to_luma16();
         assert_eq!(h.get_pixel(0, 0).0, [40000]);
         std::fs::remove_dir_all(dir).ok();
+    }
+
+    /// A larger material with varied, non-trivial pixels.
+    fn noisy(size: u32) -> MaterialImages {
+        let n = (size * size) as usize;
+        let mut x = 12345u32;
+        let mut r = move || {
+            x ^= x << 13;
+            x ^= x >> 17;
+            x ^= x << 5;
+            x
+        };
+        let mut b = |k: usize| (0..k).map(|_| (r() >> 24) as u8).collect::<Vec<u8>>();
+        let (color, orm, normal, emissive) = (b(4 * n), b(4 * n), b(4 * n), b(4 * n));
+        let height = (0..n).map(|i| (i as u32).wrapping_mul(2654435761) as u16).collect();
+        MaterialImages { size, color, orm, normal, height, emissive, emissive_scale: 1.0 }
+    }
+
+    #[test]
+    fn plane_packing_matches_per_pixel_sampling() {
+        let m = noisy(16);
+        for p in presets() {
+            for o in &p.outputs {
+                let n = 16 * 16;
+                match pack(o, &m) {
+                    Packed::Bytes(b) => {
+                        let mr = &m;
+                        let want: Vec<u8> = (0..n).flat_map(|i| o.sources.iter().map(move |s| (sample(mr, *s, i) >> 8) as u8).collect::<Vec<_>>()).collect();
+                        assert_eq!(b, want, "{} {}", p.id, o.suffix);
+                    }
+                    Packed::Words(w) => assert_eq!(w, (0..n).map(|i| sample(&m, o.sources[0], i)).collect::<Vec<_>>()),
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn every_compression_level_round_trips_in_parallel_export() {
+        let m = noisy(64);
+        let p = preset("separate").unwrap();
+        for c in Compression::ALL {
+            assert_eq!(Compression::from_id(c.id()), Some(c));
+            let dir = std::env::temp_dir().join(format!("pigment-export-{}-{}", std::process::id(), c.id()));
+            let files = export_with(&dir, "N", &p, &m, ExportOptions { compression: c, serial: false }).unwrap();
+            assert_eq!(files.len(), p.outputs.len());
+            let base = image::open(dir.join("N_BaseColor.png")).unwrap().to_rgb8();
+            assert_eq!(base.get_pixel(5, 3).0, [m.color[4 * (3 * 64 + 5)], m.color[4 * (3 * 64 + 5) + 1], m.color[4 * (3 * 64 + 5) + 2]], "{c:?}");
+            let h = image::open(dir.join("N_Height.png")).unwrap().to_luma16();
+            assert_eq!(h.get_pixel(7, 9).0[0], m.height[9 * 64 + 7], "{c:?}");
+            let r = image::open(dir.join("N_Roughness.png")).unwrap().to_luma8();
+            assert_eq!(r.get_pixel(1, 2).0[0], m.orm[4 * (2 * 64 + 1) + 1], "{c:?}");
+            std::fs::remove_dir_all(dir).ok();
+        }
+        assert_eq!(Compression::from_id("default"), Some(Compression::Fast));
+        assert_eq!(Compression::from_id("zip"), None);
     }
 
     #[test]
