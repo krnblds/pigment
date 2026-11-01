@@ -42,7 +42,7 @@ import sys
 
 import bpy
 
-__all__ = ["apply_pigment_material", "configure_see_through", "PIGMENT_MAPS", "pigment_core"]
+__all__ = ["apply_pigment_material", "import_pigment_foliage", "configure_see_through", "PIGMENT_MAPS", "pigment_core"]
 
 # key -> (file suffix, is_color) for the "separate" preset (kept for scripts that read it)
 PIGMENT_MAPS = {
@@ -133,3 +133,10 @@ def apply_pigment_material(obj, folder, name, emission_strength=None, use_height
     obj["pigment_source"] = spec["folder"]
     obj["pigment_folder"] = spec["folder"]
     return mat
+
+
+def import_pigment_foliage(folder, name=None, collection=None, translucency=0.8):
+    """Import Pigment's foliage cards (export_foliage / send_to_blender:
+    <name>_foliage.glb + atlas maps) with a two-sided, alpha-clipped material
+    whose Translucency map feeds a Translucent BSDF. Returns the objects."""
+    return pigment_core.import_foliage(folder, name, collection, translucency)

@@ -182,6 +182,8 @@ class PIGMENT_OT_import_mesh(bpy.types.Operator):
         try:
             spec = core.discover(core.resolve_source(s.source, _exe(context)), s.material_name or None)
             objs = core.import_mesh(spec)
+            # foliage layers exported with it (moss, ivy, grass cards)
+            objs += core.import_foliage(spec["folder"])
         except (FileNotFoundError, RuntimeError) as e:
             self.report({"ERROR"}, str(e))
             return {"CANCELLED"}
