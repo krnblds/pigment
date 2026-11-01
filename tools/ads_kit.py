@@ -43,10 +43,15 @@ def has_wide(txt):
     return any(ord(c) > 0x218F and c not in "™" for c in txt)
 
 
+_FONTS = {}
+
+
 def lf(txt, size, f=None):
-    if has_wide(txt):
-        return font(JP_BOLD if f not in (JP_REG, MINCHO) else f, max(4, int(size)))
-    return font(f or BAHN, max(4, int(size)))
+    f = (JP_BOLD if f not in (JP_REG, MINCHO) else f) if has_wide(txt) else (f or BAHN)
+    key = (f, max(4, int(size)))
+    if key not in _FONTS:
+        _FONTS[key] = font(*key)
+    return _FONTS[key]
 
 
 def mix(a, b, t):
