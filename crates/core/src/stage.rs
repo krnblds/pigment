@@ -27,22 +27,25 @@ pub struct StageLook {
     pub reflection_fade: f32,
     /// 0..1: how dark the contact shadow can get.
     pub shadow: f32,
+    /// Scale on the sweep's reflection of the environment (the lights); the
+    /// model's own reflection is `reflection`.
+    pub env_reflection: f32,
 }
 
 /// The stage look for a lighting id (`lightbox`, `lightbox_dark`), or None
 /// for lighting without a stage.
 pub fn look(lighting_id: &str) -> Option<StageLook> {
     match lighting_id {
-        "lightbox" => Some(StageLook { albedo: Vec3::splat(0.78), roughness: 0.32, f0: 0.04, reflection: 0.55, reflection_fade: 0.35, shadow: 0.92 }),
-        "lightbox_dark" => Some(StageLook { albedo: Vec3::new(0.011, 0.011, 0.013), roughness: 0.1, f0: 0.05, reflection: 1.0, reflection_fade: 0.7, shadow: 0.85 }),
+        "lightbox" => Some(StageLook { albedo: Vec3::splat(0.6), roughness: 0.3, f0: 0.04, reflection: 0.55, reflection_fade: 0.35, shadow: 0.92, env_reflection: 1.0 }),
+        "lightbox_dark" => Some(StageLook { albedo: Vec3::new(0.011, 0.011, 0.013), roughness: 0.17, f0: 0.05, reflection: 1.0, reflection_fade: 0.7, shadow: 0.85, env_reflection: 0.3 }),
         _ => None,
     }
 }
 
 /// Unit-space sweep profile (model horizontal radius = 1).
 pub const FLOOR_RADIUS: f32 = 3.0;
-pub const FILLET_RADIUS: f32 = 2.0;
-pub const WALL_TOP: f32 = 7.0;
+pub const FILLET_RADIUS: f32 = 3.0;
+pub const WALL_TOP: f32 = 8.0;
 
 /// Where the stage sits for a model with these bounds.
 #[derive(Clone, Copy, Debug, PartialEq)]

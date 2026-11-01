@@ -1116,7 +1116,8 @@ impl Session {
 
     /// Lighting and post settings shared by `render`, `render_turntable` and
     /// `render(views)`. Every setting persists for later renders until changed.
-    ///   lighting: studio | night | overcast, or a game sky: night_rain | night_moon | dusk | predawn
+    ///   lighting: studio | night | overcast | lightbox | lightbox_dark, or a game sky: night_rain | night_moon | dusk | predawn
+    ///   stage (bool): the lightbox cove, contact shadow and floor reflection (lightbox lighting only)
     ///   (assets/sky/<id>_2k.hdr from tools/sky/make_sky.py)    hdri: path to .hdr / .exr
     ///   exposure (EV), env_rotation (degrees), background (bool)
     ///   bloom: true | false | {enabled, threshold, intensity, radius}
@@ -1141,6 +1142,9 @@ impl Session {
         }
         if let Some(bg) = a.get("background").and_then(Value::as_bool) {
             self.app.view.show_env = bg;
+        }
+        if let Some(on) = a.get("stage").and_then(Value::as_bool) {
+            self.app.view.stage = on;
         }
         let b = &mut self.app.view.bloom;
         match a.get("bloom") {

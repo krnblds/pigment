@@ -4,6 +4,7 @@ pub mod foliage;
 pub mod gpu;
 pub mod io;
 pub mod paint;
+pub mod stage;
 pub mod texset;
 pub mod tile_images;
 pub mod viewport;

@@ -162,14 +162,14 @@ impl EnvImage {
         let n = |x: f32, y: f32, z: f32| Vec3::new(x, y, z).normalize();
         let lights = [
             // centre, long axis, half-size (along, across) in tan units, intensity, tint
-            (n(0.0, 1.0, 0.0), Vec3::Z, Vec2::new(0.95, 0.42), 5.5, Vec3::new(1.0, 0.99, 0.97)),
-            (n(-0.55, 0.42, 0.72), Vec3::Y, Vec2::new(0.5, 0.3), 7.0, Vec3::new(1.0, 0.97, 0.93)),
-            (n(0.88, 0.3, 0.25), Vec3::Y, Vec2::new(0.45, 0.28), 2.6, Vec3::new(0.95, 0.97, 1.0)),
-            (n(1.0, 0.16, -0.25), Vec3::Z, Vec2::new(1.3, 0.035), 11.0, Vec3::ONE),
-            (n(-1.0, 0.16, -0.25), Vec3::Z, Vec2::new(1.3, 0.035), 11.0, Vec3::ONE),
-            (n(0.0, 0.32, -1.0), Vec3::X, Vec2::new(0.9, 0.05), 6.0, Vec3::ONE),
+            (n(0.0, 1.0, 0.0), Vec3::Z, Vec2::new(0.95, 0.42), 3.6, Vec3::new(1.0, 0.99, 0.97)),
+            (n(-0.55, 0.42, 0.72), Vec3::Y, Vec2::new(0.5, 0.3), 4.5, Vec3::new(1.0, 0.97, 0.93)),
+            (n(0.88, 0.3, 0.25), Vec3::Y, Vec2::new(0.45, 0.28), 1.7, Vec3::new(0.95, 0.97, 1.0)),
+            (n(1.0, 0.16, -0.25), Vec3::Z, Vec2::new(1.3, 0.035), 8.0, Vec3::ONE),
+            (n(-1.0, 0.16, -0.25), Vec3::Z, Vec2::new(1.3, 0.035), 8.0, Vec3::ONE),
+            (n(0.0, 0.32, -1.0), Vec3::X, Vec2::new(0.9, 0.05), 4.0, Vec3::ONE),
         ];
-        Self::studio_box(width, Vec3::splat(0.62), Vec3::splat(0.9), Vec3::splat(0.22), &lights)
+        Self::studio_box(width, Vec3::splat(0.5), Vec3::splat(0.7), Vec3::splat(0.16), &lights)
     }
 
     /// A black studio for a car-commercial look: near-black glossy sweep and
@@ -517,7 +517,7 @@ mod tests {
         };
         // the dark studio is black between its strips; the light one is a white cove
         assert!(at(&dark, Vec3::new(0.3, -0.5, 0.6)).max_element() < 0.01);
-        assert!(at(&light, Vec3::new(0.3, -0.5, 0.6)).min_element() > 0.4);
+        assert!(at(&light, Vec3::new(0.3, -0.5, 0.6)).min_element() > 0.3);
         // the side strips are long: lit at the side, front and back along the car
         for z in [-0.6f32, 0.0, 0.6] {
             assert!(at(&dark, Vec3::new(1.0, 0.12, z)).x > 5.0, "dark side strip at z {z}");

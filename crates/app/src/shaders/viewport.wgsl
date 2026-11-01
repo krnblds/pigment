@@ -9,6 +9,8 @@ struct Globals {
     params: vec4<f32>,   // x view mode, y exposure (EV), z env rotation (rad), w env mips
     params2: vec4<f32>,  // x show env background (0/1), y background blur lod, z bake ready, w emission scale
     sh: array<vec4<f32>, 9>,
+    // lightbox stage, see stage.wgsl ([1].w = 1: mirrored reflection pass)
+    stage: array<vec4<f32>, 6>,
 };
 @group(0) @binding(0) var<uniform> g: Globals;
 
@@ -167,7 +169,23 @@ fn fs_mesh_glass(i: VsOut, @builtin(front_facing) front: bool) -> @location(0) v
     return vec4<f32>(s.c.rgb, s.cover);
 }
 
-fn shade(i: VsOut, front: bool) -> Shaded {
+// Model mirrored in the lightbox floor (stage.wgsl): shaded as seen from the
+// mirrored eye, faded with depth below the floor; premultiplied, a = coverage.
+@fragment
+fn fs_mesh_mirror(i: VsOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f32> {
+    let s = shade(i, front);
+    if (s.cover < 0.5) { discard; }
+    let below = max(i.world.y - g.stage[0].y, 0.0);
+    let fade = exp(-below / max(g.stage[3].w, 1e-4));
+    return vec4<f32>(s.c.rgb * exp2(-g.params.y) * fade, fade);
+}
+
+fn shade(i: VsOut, front_in: bool) -> Shaded {
+    // the mirror pass flips the winding
+    let front = front_in != (g.stage[1].w > 0.5);
+    // flake cells (0.4 mm) smaller than a pixel only alias into salt noise:
+    // fade them out as the pixel footprint grows past a cell
+    let flake_fade = clamp(1.5 - length(fwidth(i.world)) * 2500.0, 0.0, 1.0);
     var ng = normalize(i.normal);
     if (!front) { ng = -ng; }
     let mode = i32(g.params.x);
@@ -210,7 +228,7 @@ fn shade(i: VsOut, front: bool) -> Shaded {
 
     // --- metallic/roughness PBR, split-sum image-based lighting ---
     let n_coat = n;
-    n = flake_normal(n, i.world, coat4.b);
+    n = flake_normal(n, i.world, coat4.b * flake_fade);
     let rough = clamp(orm.g, 0.03, 1.0);
     let metal = orm.b;
     let ao = orm.r;
