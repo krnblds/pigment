@@ -451,7 +451,7 @@ func _curb_case(s: Dictionary, ang: float, kmh: float) -> Dictionary:
 func _trace(t: float, s: Dictionary, pen: float) -> void:
 	print("   t=%.2f pen=%.2f kmh=%.1f gear=%s rpm=%d thr=%.2f brk=%.2f up=%.2f wheels=%s %s" % [t, pen, car.linear_velocity.length() * 3.6,
 		car.gear, int(car.rpm), car.input_throttle, car.input_brake, car.global_basis.y.y,
-		car.wheels.map(func(w): return [int(w.contact), snappedf(w.x, 0.01), snappedf(w.omega, 0.1)]), _contacts_desc(s)])
+		car.wheels.map(func(w): return [int(w.contact), snappedf(w.x, 0.01), snappedf(w.omega, 0.1), w.surface]), _contacts_desc(s)])
 
 
 ## Where the body touches the world (car frame: x left, y up, z forward), and which wheels have ground.
