@@ -233,6 +233,10 @@ other agents' jobs, and the run-to-run noise was ±20 %.
 | after | 172.2 / 128.7 / 137.6 (mean 146) | 85 / 61 / 49 | about 1150 |
 | no traffic, before / after | 215 / 172 vs 212 / 156 | | 770 vs 900 |
 
+A last set of three alternations, after the road surface split, ran while another agent had the GPU
+saturated. Both versions measured a flat 10 fps (the VRAM-starved state the godot NOTES describe),
+so those runs say nothing. Re-measure on an idle GPU before judging the 10 % budget.
+
 `--car-cost` measures the parked cost with a static camera:
 
 - frame rate within noise (313 with everything, 320 without the tach, 316 without the car's tick);
