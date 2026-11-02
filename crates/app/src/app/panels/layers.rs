@@ -795,6 +795,7 @@ fn generator_blurb(k: GeneratorKind) -> &'static str {
         GeneratorKind::Rock => "Ridged, warped rock with strata ledges, block-joint cracks and downhill streaks.",
         GeneratorKind::Blades => "A dense field of grass blades in clumps, leaning; Amount = density. Tips variant for dry tips.",
         GeneratorKind::Ripples => "Wind ripples in sand: asymmetric crests that curve, fork and fade.",
+        GeneratorKind::Planks => "Wood floors: boards, herringbone, chevron or basketweave. Each plank is sawn from its own log: growth rings, pores, knots. Layers in one folder share the layout.",
         GeneratorKind::Anchor => "Uses an anchor's channel (painted height, an anchor layer's mask or colour) directly as the mask. Pick the anchor under Input.",
     }
 }
@@ -813,6 +814,7 @@ fn weather_slider_labels(kind: GeneratorKind) -> SliderLabels {
         GeneratorKind::Rock => (Some("Features per metre"), Some("Strata"), 0.0..=1.0, Some("Cracks"), 0.0..=2.0),
         GeneratorKind::Blades => (Some("Blades per metre"), Some("Lean"), 0.0..=1.0, Some("Blade length (m)"), 0.005..=0.3),
         GeneratorKind::Ripples => (Some("Ripples per metre"), Some("Asymmetry"), 0.0..=1.0, Some("Defects"), 0.0..=1.0),
+        GeneratorKind::Planks => (Some("Planks per metre"), Some("Joint width (m)"), 0.0..=0.01, Some("Length / width"), 1.0..=24.0),
         _ => (None, None, 0.0..=1.5, None, 0.0..=2.0),
     }
 }
@@ -826,6 +828,7 @@ fn ground_extra_labels(kind: GeneratorKind) -> (&'static str, [Option<(&'static 
         GeneratorKind::Rock => ("Warp", [Some(("Strata bands /m", 0.2..=12.0)), Some(("Downhill streaks", 0.0..=1.5)), Some(("Crack cells /m", 0.1..=8.0)), None]),
         GeneratorKind::Blades => ("Clumping", [Some(("Blade width (m)", 0.0005..=0.02)), Some(("Swirl", 0.0..=1.0)), Some(("Tips / clumps level", 0.0..=1.0)), None]),
         GeneratorKind::Ripples => ("Irregularity", [Some(("Direction (deg)", -90.0..=90.0)), Some(("Crest sharpness", 0.0..=1.0)), None, None]),
+        GeneratorKind::Planks => ("Grain waviness", [Some(("Growth rings per cm", 0.5..=10.0)), Some(("Flat-sawn figure", 0.0..=1.0)), Some(("Knots", 0.0..=1.0)), None]),
         _ => ("Breakup", [None, None, None, None]),
     }
 }
@@ -953,14 +956,32 @@ impl Panel for MaskPanel {
                 }
                 if g.kind.is_ground() {
                     let names = g.kind.variant_names();
+                    let planks = g.kind == GeneratorKind::Planks;
                     ui.horizontal(|ui| {
-                        ds::prop_label(ui, "Output", Some("Which shape / output of the generator"));
+                        if planks {
+                            ds::prop_label(ui, "Layout", Some("How the planks are laid (shared by the layers in this folder)"));
+                        } else {
+                            ds::prop_label(ui, "Output", Some("Which shape / output of the generator"));
+                        }
                         egui::ComboBox::from_id_salt("ground variant").selected_text(names[(g.variant as usize).min(names.len() - 1)]).show_ui(ui, |ui| {
                             for (i, v) in names.iter().enumerate() {
                                 ui.selectable_value(&mut g.variant, i as u32, *v);
                             }
                         });
                     });
+                    if planks {
+                        let outs = pigment_core::ground::PLANK_OUTPUTS;
+                        let mut k = (g.extra[3].round().max(0.0) as usize).min(outs.len() - 1);
+                        ui.horizontal(|ui| {
+                            ds::prop_label(ui, "Output", Some("What this layer shows: plank faces, joints, latewood rings or pores"));
+                            egui::ComboBox::from_id_salt("plank output").selected_text(outs[k]).show_ui(ui, |ui| {
+                                for (j, v) in outs.iter().enumerate() {
+                                    ui.selectable_value(&mut k, j, *v);
+                                }
+                            });
+                        });
+                        g.extra[3] = k as f32;
+                    }
                     let (_, extra) = ground_extra_labels(g.kind);
                     for (k, e) in extra.into_iter().enumerate() {
                         if let Some((label, range)) = e {
@@ -983,6 +1004,10 @@ impl Panel for MaskPanel {
                     }
                 });
             });
+        }
+        if app.doc.layers[i].mask.as_ref().and_then(|m| m.generator.as_ref()).is_some_and(|g| g.kind == GeneratorKind::Planks) {
+            let id = app.doc.layers[i].id;
+            app.doc.sync_planks(id);
         }
         super::filters::generator_input_ui(app, ui, i);
         let gen_rect = egui::Rect::from_min_max(top, egui::pos2(ui.max_rect().right(), ui.cursor().min.y));

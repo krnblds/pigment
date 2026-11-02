@@ -236,7 +236,7 @@ fn bake_in(t: vec2<i32>) -> vec4<f32> {
 }
 
 fn gen_eval(t: vec2<i32>, kind: u32, gp: vec4<f32>, gp2: vec4<f32>, gp3: vec4<f32>) -> f32 {
-    if (kind >= 15u && kind < 20u) { return gen_ground(t, kind, gp, gp2, gp3); }  // gen_ground.wgsl
+    if ((kind >= 15u && kind < 20u) || kind == 21u) { return gen_ground(t, kind, gp, gp2, gp3); }  // gen_ground.wgsl
     if (kind >= 10u && kind < 15u) { return gen_weather(t, kind, gp, gp2); }  // gen_weather.wgsl
     let bk = bake_in(t);
     let ao = bk.r;
