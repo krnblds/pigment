@@ -23,6 +23,13 @@ pub struct Harness {
     textures: egui::TexturesDelta,
 }
 
+impl Drop for Harness {
+    fn drop(&mut self) {
+        // uploads queued after the last render() have nowhere to go
+        self.textures.clear();
+    }
+}
+
 impl Harness {
     /// A harness with a fresh app. `None` without a GPU adapter.
     pub fn new(size: [f32; 2], ppp: f32) -> Option<Harness> {
@@ -67,8 +74,9 @@ impl Harness {
         self.time += 1.0 / 60.0;
         let raw = self.raw_input();
         let (app, frame) = (&mut self.app, &mut self.frame);
-        let out = self.ctx.run_ui(raw, |ui| app.ui(ui, frame));
-        self.textures.append(out.textures_delta.clone());
+        let mut out = self.ctx.run_ui(raw, |ui| app.ui(ui, frame));
+        // move (not copy) the delta: epaint asserts that every delta is applied or cleared
+        self.textures.append(std::mem::take(&mut out.textures_delta));
         self.last_output = Some(out);
     }
 
