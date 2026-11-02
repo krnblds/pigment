@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="assets/branding/png/pigment-128.png" width="128" height="128" alt="Pigment icon: a drop of orange paint worn to bare metal at one edge">
+
 # Pigment
 
 **An open-source PBR texture painter you can drive by hand or hand to an AI agent.**
@@ -215,6 +217,14 @@ cargo test -p pigment --release perf_targets -- --ignored --nocapture
 ```
 
 - The core crate is GPU-free: document model, blend maths, undo, strokes, project files, export packing.
+- The app icon is drawn in `assets/branding/pigment-icon.svg` (with a hand-simplified
+  `pigment-icon-small.svg` for 16-32 px). After editing either, regenerate every PNG, `pigment.ico`,
+  `pigment.icns` and the contact sheet `docs/branding/icon_sizes.png` with one command:
+
+  ```bash
+  pip install resvg-py pillow
+  python tools/branding/make_icons.py
+  ```
 - The app crate:
   - validates every WGSL shader with naga;
   - runs headless GPU tests that paint, composite, bake and export on a real device;
@@ -225,8 +235,8 @@ cargo test -p pigment --release perf_targets -- --ignored --nocapture
 ```text
 crates/core      GPU-free document model, generators config, export, projects
 crates/app       the app (egui + wgpu), renderer, shaders, MCP server (src/bin/pigment-mcp.rs)
-tools/           Blender add-on, asset generators, world generator, city build
-assets/          meshes, decals, tiles, props, vehicles, trees, skies
+tools/           Blender add-on, asset generators, world generator, city build, icon export
+assets/          app icon (assets/branding), meshes, decals, tiles, props, vehicles, trees, skies
 scenes/          Pigment projects and MCP scripts for the showcase
 game/            the Godot showcase game
 docs/            guides, design system, per-feature notes (docs/agents/*)

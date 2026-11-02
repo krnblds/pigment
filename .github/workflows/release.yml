@@ -55,6 +55,12 @@ jobs:
           cp -r examples "$DIR/"
           cp -r scenes/town/projects/building_a.pigment "$DIR/scenes/town/projects/"
           cp README.md LICENSE "$DIR/"
+          if [ "${{ runner.os }}" = "Linux" ]; then
+            # desktop entry + icon; copy them to ~/.local/share/applications and
+            # ~/.local/share/icons/hicolor/256x256/apps (fix the Exec path) to install
+            cp packaging/linux/pigment.desktop "$DIR/"
+            cp assets/branding/png/pigment-256.png "$DIR/pigment.png"
+          fi
           cat > "$DIR/mcp.json" <<JSON
           {
             "mcpServers": {
