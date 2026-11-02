@@ -32,7 +32,7 @@ where they'd really be: on edges, in corners and crevices.
   piece of the model.
 - **How worn?** In **Weathering**, drag the slider or press *Brand new / Used / Worn /
   Battered*.
-- **Light it** with *Studio*, *Night city*, *Overcast* or one of the skies. Lighting only
+- **Light it** with *Studio*, *Neon night*, *Overcast* or one of the skies. Lighting only
   changes the preview, not the textures.
 
 ## 3. Paint and stick decals

@@ -77,7 +77,7 @@ Models need UVs. In Blender: select the model, press **U**, choose *Smart UV Pro
 2. **Pick a material.** In *Materials*, click e.g. *Worn painted metal*. Use *Fill part* (**G**) to put it on
    one piece only.
 3. **Make it yours.** Drag **How worn?**, paint (**B**), stick decals (**D**: stamp, box, fit-to-part or scatter
-   with tear/fade wear), and switch the lighting (Studio, Night city, the night-rain sky...).
+   with tear/fade wear), and switch the lighting (Studio, Neon night, the night-rain sky...).
 4. **Export.** Press **Ctrl+E** and choose Blender, Unreal, Unity, Godot or glTF, or press *Send to Blender*.
 
 Switch **Simple / Advanced** with **Ctrl+Tab**. **Ctrl+K** opens the command palette and **?** shows every shortcut.

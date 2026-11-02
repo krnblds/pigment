@@ -269,11 +269,15 @@ impl EnvImage {
 
 /// Built-in lighting presets: (id, display name).
 pub const PRESETS: [(&str, &str); 5] =
-    [("studio", "Studio"), ("night", "Night city"), ("overcast", "Overcast"), ("lightbox", "Lightbox"), ("lightbox_dark", "Lightbox (dark)")];
+    [("studio", "Studio"), ("night", "Neon night"), ("overcast", "Overcast"), ("lightbox", "Lightbox"), ("lightbox_dark", "Lightbox (dark)")];
 
-/// Canonical preset id for a user-facing name (`night city`, `Night`, `night_city` → `night`).
+/// Canonical preset id for a user-facing name (`Neon night`, `Night`, `neon_night` → `night`;
+/// the old label `night city` still resolves so saved scripts keep working).
 pub fn preset_id(name: &str) -> Option<&'static str> {
     let n = name.trim().to_ascii_lowercase().replace([' ', '-', '_', '(', ')'], "");
+    if n == "nightcity" {
+        return Some("night");
+    }
     PRESETS.iter().find(|(id, label)| n == id.replace('_', "") || n == label.to_ascii_lowercase().replace([' ', '(', ')'], "")).map(|(id, _)| *id)
 }
 
@@ -483,6 +487,7 @@ mod tests {
     fn lighting_presets_resolve_and_differ() {
         assert_eq!(preset_id("Night city"), Some("night"));
         assert_eq!(preset_id("night_city"), Some("night"));
+        assert_eq!(preset_id("Neon night"), Some("night"));
         assert_eq!(preset_id("OVERCAST"), Some("overcast"));
         assert_eq!(preset_id("disco"), None);
         assert_eq!(preset_id("Lightbox (dark)"), Some("lightbox_dark"));
