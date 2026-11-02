@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <!-- A: a chrome material-preview ball with orange paint poured over its crown, running in drips -->
+  <defs>
+    <clipPath id="ball"><circle cx="128" cy="124" r="100"/></clipPath>
+    <linearGradient id="chrome" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FAFAFA"/><stop offset="0.45" stop-color="#B8BCC2"/>
+      <stop offset="0.58" stop-color="#3A3D42"/><stop offset="0.66" stop-color="#6B6F75"/>
+      <stop offset="1" stop-color="#E4E2DE"/>
+    </linearGradient>
+    <radialGradient id="paint" cx="0.35" cy="0.2" r="0.8">
+      <stop offset="0" stop-color="#FFB980"/><stop offset="0.4" stop-color="#F08A3C"/><stop offset="1" stop-color="#B85A1C"/>
+    </radialGradient>
+    <radialGradient id="shade" cx="0.4" cy="0.35" r="0.65">
+      <stop offset="0.7" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity="0.35"/>
+    </radialGradient>
+  </defs>
+  <ellipse cx="128" cy="236" rx="78" ry="10" fill="#000" fill-opacity="0.22"/>
+  <g clip-path="url(#ball)">
+    <rect x="20" y="20" width="216" height="216" fill="url(#chrome)"/>
+    <path fill="url(#paint)" d="M20 20 H236 V112 C224 110 216 116 212 128 C208 140 206 160 196 160 C186 160 188 138 182 128
+      C176 118 166 120 160 132 C154 146 156 190 142 190 C128 190 132 150 126 136 C120 124 108 122 100 130
+      C92 138 96 168 84 168 C72 168 76 140 68 128 C60 116 44 112 20 118 Z"/>
+    <circle cx="128" cy="124" r="100" fill="url(#shade)"/>
+  </g>
+  <ellipse cx="92" cy="66" rx="26" ry="14" fill="#fff" fill-opacity="0.75" transform="rotate(-30 92 66)"/>
+  <circle cx="148" cy="182" r="4" fill="#fff" fill-opacity="0.9"/>
+  <circle cx="128" cy="124" r="100" fill="none" stroke="#2A2C30" stroke-opacity="0.55" stroke-width="3"/>
+</svg>

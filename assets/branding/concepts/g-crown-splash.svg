@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <!-- G: the moment a pigment bead lands: a glossy crown splash under the falling drop -->
+  <defs>
+    <linearGradient id="p" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFB070"/><stop offset="0.5" stop-color="#F08A3C"/><stop offset="1" stop-color="#B85A1C"/></linearGradient>
+    <radialGradient id="bead" cx="0.35" cy="0.3" r="0.8"><stop offset="0" stop-color="#FFD0A4"/><stop offset="0.4" stop-color="#F59448"/><stop offset="1" stop-color="#B85A1C"/></radialGradient>
+  </defs>
+  <circle cx="128" cy="52" r="30" fill="url(#bead)"/>
+  <ellipse cx="118" cy="42" rx="9" ry="6" fill="#fff" fill-opacity="0.8"/>
+  <path fill="url(#p)" d="M28 206 C28 186 40 176 48 168 L42 128 L64 160 L72 112 L90 154 L108 118 L120 150 L128 104 L136 150 L148 118 L166 154 L184 112 L192 160 L214 128 L208 168 C216 176 228 186 228 206 C228 226 184 240 128 240 C72 240 28 226 28 206 Z"/>
+  <ellipse cx="128" cy="196" rx="76" ry="16" fill="#8A4413" fill-opacity="0.55"/>
+  <ellipse cx="128" cy="194" rx="60" ry="10" fill="#D6742A"/>
+  <g fill="#fff" fill-opacity="0.75"><ellipse cx="66" cy="168" rx="4" ry="9"/><ellipse cx="102" cy="150" rx="3" ry="8"/><circle cx="42" cy="132" r="4"/><circle cx="214" cy="132" r="4"/></g>
+  <circle cx="72" cy="104" r="7" fill="url(#bead)"/><circle cx="186" cy="100" r="6" fill="url(#bead)"/>
+</svg>
