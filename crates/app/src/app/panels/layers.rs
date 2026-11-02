@@ -528,6 +528,7 @@ impl Panel for PropertiesPanel {
                 });
             }
         }
+        super::decal_objects::decal_objects_ui(app, ui, _rs, i);
         super::filters::layer_filters_ui(app, ui, i);
         if save_smart {
             app.save_smart_dialog();

@@ -722,6 +722,17 @@ impl TexSet {
         queue.submit([enc.finish()]);
     }
 
+    /// Clear a paint layer's pixels (decal layers are regenerated into it).
+    pub fn clear_layer(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, res: ResId) {
+        let Some(lt) = self.layers.get(&res) else { return };
+        let mut enc = device.create_command_encoder(&Default::default());
+        for t in &lt.ch {
+            drop(gpu::pass(&mut enc, "layer clear", &[&t.view], Some(wgpu::Color::TRANSPARENT)));
+        }
+        queue.submit([enc.finish()]);
+        self.unsaved.insert(res);
+    }
+
     /// Create a mask filled with white (1.0) or black (0.0).
     pub fn new_mask(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, res: ResId, white: bool) {
         let t = Tex::target(device, "mask", self.res, MASK_FORMAT);

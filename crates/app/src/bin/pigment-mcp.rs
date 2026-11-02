@@ -108,7 +108,7 @@ fn tools_base() -> Value {
     let mut add_props = layer_fields.clone();
     let layer_ref = |d: &str| json!({ "type": ["string", "integer"], "description": d });
     let folder_ref = |d: &str| json!({ "type": ["string", "integer", "null"], "description": d });
-    add_props["kind"] = json!({ "type": "string", "enum": ["fill", "paint", "folder", "filter", "foliage"], "description": "filter = an adjustment layer: its `filters` run on the whole stack below, inside its mask and opacity (default position: top). folder = a group with its own opacity, blend, mask and visibility; its mask multiplies its children's. foliage = cards on the model (see scatter_foliage / paint_foliage / grow_ivy)" });
+    add_props["kind"] = json!({ "type": "string", "enum": ["fill", "paint", "folder", "filter", "decal", "foliage"], "description": "decal = a decal layer: project_decal / scatter_decals / place_decal on it make editable decal objects (list_decals, update_decal, delete_decal; the layer re-composites). filter = an adjustment layer: its `filters` run on the whole stack below, inside its mask and opacity (default position: top). folder = a group with its own opacity, blend, mask and visibility; its mask multiplies its children's. foliage = cards on the model (see scatter_foliage / paint_foliage / grow_ivy)" });
     add_props["index"] = json!({ "type": "integer", "minimum": 0, "description": "stack position (0 = bottom); default: below the top paint layer. With `parent`: position among the folder's children (default: top)" });
     add_props["parent"] = folder_ref("folder to put the new layer in (name, \"Folder/Sub\" path or index); null/omitted = top level");
     let mut upd_props = layer_fields;
@@ -203,7 +203,7 @@ fn tools_base() -> Value {
         "rotation": { "type": "number", "description": "with anchor/position: degrees, counter-clockwise seen from outside" }
     });
     let scatter_props = {
-        let mut p = json!({
+        let mut p = json!({ "projection": { "type": "string", "enum": ["box", "triplanar", "wrap"], "description": "decal layers: box (planar, default), triplanar (wraps over corners in the decal frame) or wrap (conforms: the surface is unfolded from the decal centre)" },
             "images": { "type": "array", "items": { "type": "string" }, "description": "PNGs to scatter; dealt in shuffled rounds so each appears before any repeats" },
             "count": { "type": "integer", "minimum": 0, "description": "how many (default 6, max 500; fewer if the surface can't fit them)" },
             "seed": { "type": "integer", "minimum": 0 },
@@ -302,7 +302,7 @@ fn tools_base() -> Value {
         t("paint_stroke", "Paint a brush stroke projected from a camera view onto the model. Brush engine: tip (alphas), per-point pen pressure with size / flow / opacity curves, spacing, flow, angle (or follow_angle), jitter, lazy mouse, object-space symmetry (mirror x/y/z, radial), a screen-space stencil, and tools clone (clone_source) and smudge. `points` is a polyline (line / path tool).", paint_props, &["points"]),
         t("project_decal", "Project an image (PNG with alpha: sign, logo, label, poster, graffiti) onto the model like a sticker. Ways to place it: `rect` over a camera view; `part` alone (fit to the part's outward face); a world-space `box` (+ `facing`); or precisely with `anchor` [u,v] on a part's `face` (or `position` + `normal`) plus `size` in metres and `rotation`. Anchored decals can be torn / faded (`wear`, `fade`) and stacked with `overlap_order`. Colour comes from the image times `tint`; optional emission, height, opacity / transmission (`values` + `channels`). Every decal on a paint layer is recorded for export_variants (`name`, `variant`, `enabled`). Lands on the top paint layer unless `layer` / `overlap_order` is given. One undo step.",
           {
-              let mut p = json!({ "image": { "type": "string" }, "rect": { "type": "array", "items": { "type": "number" }, "description": "[x0, y0, x1, y1] viewport area in 0..1 (y down)" },
+              let mut p = json!({ "projection": { "type": "string", "enum": ["box", "triplanar", "wrap"], "description": "decal layers: box (planar, default), triplanar (wraps over corners in the decal frame) or wrap (conforms: the surface is unfolded from the decal centre)" }, "image": { "type": "string" }, "rect": { "type": "array", "items": { "type": "number" }, "description": "[x0, y0, x1, y1] viewport area in 0..1 (y down)" },
                   "part": { "type": "integer", "description": "instead of rect + camera: put the image on this mesh part's outward face (see list_parts)" },
                   "fit": { "type": "string", "enum": ["contain", "fill"], "description": "with `part`: keep the image's aspect (contain, default) or stretch (fill)" },
                   "margin": { "type": "number", "description": "with `part`: border as a fraction (default 0.05)" },
@@ -447,6 +447,35 @@ fn tools_base() -> Value {
         t("list_export_templates", "Export templates: built-in (the presets, ORM, Unreal packed, Unity HDRP mask map, Godot ORM, glTF, Arnold EXR), user (prefs) and project ones, with their outputs (file pattern, channel sources, format, bit depth, colour space, padding).", json!({}), &[]),
         t("save_export_template", "Save a custom export template: outputs -> file name pattern ({name}, {set}, {udim}) -> per-channel sources (base_color.r/g/b, opacity, roughness, smoothness, metallic, ao, height, normal.x/y/z, normal_dx.x/y/z, emissive.r/g/b, transmission, coat, coat_roughness, flake, const:<v>, '1-' prefix inverts) with format png | tga | exr, bit depth u8 | u16 | f16 | f32, colour space srgb | linear and padding dilate | none. Use it with export_textures {template: id}.",
           json!({ "template": template_schema(), "scope": { "type": "string", "enum": ["project", "user"], "description": "save with the project (default) or in the user preferences" } }), &["template"]),
+        t("list_decals", "Decal objects on decal layers (add_layer kind \"decal\"): id, name, group, layer, image, centre, normal, size, rotation, depth, projection, wear, enabled. Bottom to top per layer.",
+          json!({ "layer": { "type": ["string", "integer"], "description": "only this layer" } }), &[]),
+        t("update_decal", "Edit a decal object non-destructively (the layer re-composites): move (position snapped to the surface, or `move` [dx, dy] metres in its plane), rotate, scale / size, projection, image, tint, opacity, wear, fade, enable / hide, rename, re-order (move_to), align upright / vertical, snap to the centre or nearest edge of the flat window-free area it sits on.",
+          json!({ "decal": { "type": ["string", "integer"], "description": "decal id or name (list_decals)" }, "layer": { "type": ["string", "integer"], "description": "the decal's layer (default: search every decal layer)" },
+                  "position": { "type": "array", "items": { "type": "number" }, "description": "[x, y, z] world point, snapped onto the surface along the normal" },
+                  "normal": { "type": "array", "items": { "type": "number" } },
+                  "move": { "type": "array", "items": { "type": "number" }, "description": "[dx, dy] metres along the decal's right / up" },
+                  "size": { "type": ["number", "array"], "items": { "type": "number" }, "description": "width (keeps the aspect) or [w, h] metres" },
+                  "scale": { "type": "number" }, "rotation": { "type": "number", "description": "degrees" }, "rotate": { "type": "number", "description": "add degrees" },
+                  "depth": { "type": "number" }, "projection": { "type": "string", "enum": ["box", "triplanar", "wrap"] }, "image": { "type": "string" },
+                  "tint": { "type": "array", "items": { "type": "number" } }, "opacity": { "type": "number" }, "wear": { "type": "number" }, "fade": { "type": "number" },
+                  "wear_scale": { "type": "number" }, "wear_seed": { "type": "number" }, "paper_rim": { "type": "number" },
+                  "enabled": { "type": "boolean" }, "name": { "type": "string" }, "variant": { "type": "string", "description": "variant group" },
+                  "move_to": { "type": "integer", "minimum": 0, "description": "new position in the layer's decal order (0 = bottom)" },
+                  "align": { "type": "string", "enum": ["upright", "vertical"] }, "snap": { "type": "string", "enum": ["center", "edge"] }, "margin": { "type": "number", "description": "snap edge margin (m)" } }), &["decal"]),
+        t("delete_decal", "Delete a decal object.", json!({ "decal": { "type": ["string", "integer"], "description": "decal id or name (list_decals)" }, "layer": { "type": ["string", "integer"] } }), &["decal"]),
+        t("place_decal", "Place decal objects in the largest flat, window-free wall area: `region: \"auto\"` (optionally limited by parts / parts_where / height band / facing, `pick` the n-th largest) or {min, max} (the largest area inside a world box). One image fitted into it, or a `grid` {rows, cols, gap} of `images` (a poster wall). Goes on a decal layer (`layer`, `overlap_order`, or the top decal layer / a new one).",
+          json!({ "image": { "type": "string" }, "images": { "type": "array", "items": { "type": "string" }, "description": "for a grid: cycled over the cells" },
+                  "region": { "type": ["string", "object"], "description": "\"auto\" or {min: [x,y,z], max: [x,y,z]}" }, "pick": { "type": "integer", "minimum": 0 },
+                  "parts": { "type": "array", "items": { "type": "integer" } }, "parts_where": { "type": "object", "description": "part shape query (list_parts)" },
+                  "height": { "type": "array", "items": { "type": "number" }, "description": "[min, max] metres above the mesh's lowest point" },
+                  "facing": { "type": "string", "enum": ["walls", "any"] }, "margin": { "type": "number", "description": "kept free inside the area (m, default 0.05)" },
+                  "fill": { "type": "number", "description": "fraction of the area (or grid cell) the image fills (default 0.9)" },
+                  "grid": { "type": "object", "additionalProperties": false, "properties": { "rows": { "type": "integer" }, "cols": { "type": "integer" }, "gap": { "type": "number" } } },
+                  "layer": { "type": ["string", "integer"] }, "overlap_order": { "type": "integer" }, "name": { "type": "string" }, "variant": { "type": "string" },
+                  "projection": { "type": "string", "enum": ["box", "triplanar", "wrap"] },
+                  "tint": { "type": "array", "items": { "type": "number" } }, "material": { "type": "string" }, "emissive_strength": { "type": "number" }, "opacity": { "type": "number" },
+                  "wear": { "type": "number" }, "fade": { "type": "number" }, "wear_style": { "type": "string", "enum": ["noise", "grunge"] }, "wear_scale": { "type": "number" }, "wear_seed": { "type": "number" }, "paper_rim": { "type": "number" },
+                  "alpha_from_luminance": { "type": "boolean" }, "channels": { "type": "array", "items": { "type": "string" } }, "values": { "type": "object" } }), &[]),
         t("list_texture_sets", "The project's texture sets (one per material / UDIM tile, each with its own resolution and layer stack): name, materials, UDIM tile, resolution, triangles, layer count, which is active; plus the mesh's UDIM tiles.", json!({}), &[]),
         t("undo", "Undo the last action.", json!({}), &[]),
         t("redo", "Redo.", json!({}), &[]),
@@ -848,6 +877,10 @@ fn call(session: &mut Option<Session>, name: &str, args: &Value) -> Result<Vec<V
         "list_library" => text(s.library()),
         "list_layers" => text(s.list_layers(args)),
         "list_texture_sets" => text(s.list_texture_sets()),
+        "list_decals" => text(s.list_decals(args)?),
+        "update_decal" => text(s.update_decal(args)?),
+        "delete_decal" => text(s.delete_decal(args)?),
+        "place_decal" => text(s.place_decal_region(args)?),
         "list_export_templates" => text(s.list_export_templates()),
         "save_export_template" => text(s.save_export_template(args)?),
         "save_smart_material" => text(s.save_smart_material(args)?),

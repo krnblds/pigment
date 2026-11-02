@@ -774,6 +774,10 @@ pub struct Layer {
     /// right after this layer (height, mask, colour) in their generators.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub anchor: Option<String>,
+    /// Paint layers only: a decal layer whose pixels are generated from
+    /// these editable decal objects (see `decal_layer`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub decals: Option<crate::decal_layer::DecalSet>,
 }
 
 /// What draws a generated paint layer.
@@ -1168,6 +1172,7 @@ impl Document {
             height_gain: 1.0,
             filters: Vec::new(),
             anchor: None,
+            decals: None,
         }
     }
 
@@ -1192,6 +1197,7 @@ impl Document {
             height_gain: 1.0,
             filters: Vec::new(),
             anchor: None,
+            decals: None,
         }
     }
 
@@ -1222,6 +1228,7 @@ impl Document {
             height_gain: 1.0,
             filters: Vec::new(),
             anchor: None,
+            decals: None,
         }
     }
 

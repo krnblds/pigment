@@ -160,6 +160,8 @@ pub struct Painter {
     before_mask: Tex,
     active: Option<Target>,
     box_pipe: wgpu::RenderPipeline,
+    /// Wrap (conform) decals: per-vertex unfolded coordinates in a second buffer.
+    wrap_pipe: wgpu::RenderPipeline,
     box_bgl: wgpu::BindGroupLayout,
     box_buf: wgpu::Buffer,
 }
@@ -262,6 +264,22 @@ impl Painter {
                 cull: None,
             },
         );
+        let wrap_attrs = wgpu::vertex_attr_array![4 => Float32x3];
+        let wrap_pipe = gpu::pipeline(
+            device,
+            gpu::PipeDesc {
+                label: "wrap decal",
+                module: &bm,
+                vs: "vs_wrap",
+                fs: Some("fs_box"),
+                layout: &gpu::layout(device, "wrap decal", &[&box_bgl]),
+                buffers: &[mesh_layout[0].clone(), Some(wgpu::VertexBufferLayout { array_stride: 12, step_mode: wgpu::VertexStepMode::Vertex, attributes: &wrap_attrs })],
+                targets: &[gpu::target(wgpu::TextureFormat::R16Float, Some(gpu::MAX_BLEND)), gpu::target(wgpu::TextureFormat::Rgba16Float, None)],
+                depth: None,
+                samples: 1,
+                cull: None,
+            },
+        );
         let box_buf = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("box decal"),
             size: std::mem::size_of::<BoxDecalGpu>() as u64,
@@ -327,6 +345,7 @@ impl Painter {
             before_mask,
             active: None,
             box_pipe,
+            wrap_pipe,
             box_bgl,
             box_buf,
         };
@@ -506,7 +525,7 @@ impl Painter {
     /// Project an image as a world-space box decal (no camera), then
     /// re-apply inside `rect` (texels). `brush.enabled3[1]` must be 1.
     #[allow(clippy::too_many_arguments)]
-    pub fn box_decal(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, ts: &TexSet, mesh: &MeshGpu, image: &Tex, decal: &BoxDecalGpu, brush: &BrushGpu, rect: [u32; 4]) {
+    pub fn box_decal(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, ts: &TexSet, mesh: &MeshGpu, image: &Tex, decal: &BoxDecalGpu, brush: &BrushGpu, rect: [u32; 4], wrap: Option<&wgpu::Buffer>) {
         let Some(target) = self.active else { return };
         let Some(live) = Self::target_textures(ts, target) else { return };
         queue.write_buffer(&self.brush_buf, 0, bytemuck::bytes_of(brush));
@@ -520,9 +539,12 @@ impl Painter {
         let mut enc = device.create_command_encoder(&Default::default());
         {
             let mut pass = gpu::pass(&mut enc, "box decal", &[&self.stroke_mask.view, &self.decal_color.view], None);
-            pass.set_pipeline(&self.box_pipe);
+            pass.set_pipeline(if wrap.is_some() { &self.wrap_pipe } else { &self.box_pipe });
             pass.set_bind_group(0, &bg, &[]);
             pass.set_vertex_buffer(0, mesh.vertices.slice(..));
+            if let Some(w) = wrap {
+                pass.set_vertex_buffer(1, w.slice(..));
+            }
             pass.set_index_buffer(mesh.indices.slice(..), wgpu::IndexFormat::Uint32);
             pass.draw_indexed(0..mesh.index_count, 0, 0..1);
         }

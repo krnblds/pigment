@@ -9,6 +9,7 @@ pub mod brush;
 pub mod camera;
 pub mod curvature;
 pub mod decal;
+pub mod decal_layer;
 pub mod document;
 pub mod envmath;
 pub mod export;

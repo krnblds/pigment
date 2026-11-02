@@ -1171,9 +1171,12 @@ impl PigmentApp {
         // painting (brush tools first: stencil transform, clone source, path, line)
         let paints = matches!(tool, Tool::Paint | Tool::Erase);
         self.read_pen(ui);
-        let consumed = paints && self.stroke.is_none() && self.brush_tool_input(ui, rs, &response, rect, viewport_px, latest, click, alt);
+        // decal layers: the viewport edits their decal objects instead of painting
+        let gizmo = paints && self.stroke.is_none() && self.decal_gizmo_input(ui, &response, rect, viewport_px, latest, click, alt);
+        let consumed = gizmo || (paints && self.stroke.is_none() && self.brush_tool_input(ui, rs, &response, rect, viewport_px, latest, click, alt));
         if paints {
             self.brush_overlay(ui, rect);
+            self.decal_overlay(ui, rect);
         }
         if paints && click && !consumed && self.stroke.is_none() {
             if locked {
@@ -1204,7 +1207,8 @@ impl PigmentApp {
                 self.camera.orbit(d);
             }
         }
-        if response.hovered() {
+        // (Ctrl+wheel scales the selected decal on a decal layer instead)
+        if response.hovered() && !(gizmo && self.decal_sel.is_some() && pinch != 1.0) {
             let steps = if scroll.y != 0.0 { scroll.y / 50.0 } else if pinch != 1.0 { pinch.ln() / 0.105 } else { 0.0 };
             if steps != 0.0 {
                 self.zoom_towards(steps, self.hover.map(to_px), viewport_px);

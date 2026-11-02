@@ -15,6 +15,7 @@ mod bake_tools;
 pub mod set_tools;
 mod template_tools;
 mod brush_tools;
+mod decal_object_tools;
 mod decal_tools;
 mod filter_tools;
 mod foliage_tools;
@@ -233,7 +234,7 @@ impl Session {
                     let mut o = json!({
                         "index": i,
                         "name": l.name,
-                        "kind": if l.is_folder() { "folder" } else if l.is_paint() { "paint" } else if matches!(l.kind, LayerKind::Filter {}) { "filter" } else { "fill" },
+                        "kind": if l.is_folder() { "folder" } else if l.decals.is_some() { "decal" } else if l.is_paint() { "paint" } else if matches!(l.kind, LayerKind::Filter {}) { "filter" } else { "fill" },
                         "visible": l.visible,
                         "opacity": l.opacity,
                         "channels": Channel::ALL.iter().filter(|c| l.channels.get(**c).enabled).map(|c| c.file_stem()).collect::<Vec<_>>(),
@@ -670,8 +671,13 @@ impl Session {
             "fill" => self.app.doc.fill_with(&name, s(a, "material").unwrap_or("White plastic"), None),
             "folder" => self.app.doc.new_folder(if s(a, "name").is_some() { &name } else { "Folder" }),
             "foliage" => self.app.doc.new_foliage_layer(&name),
+            "decal" => {
+                let mut l = self.app.doc.new_paint_layer(if s(a, "name").is_some() { &name } else { "Decals" });
+                l.decals = Some(Default::default());
+                l
+            }
             "filter" => self.app.doc.new_filter_layer(if s(a, "name").is_some() { &name } else { "Filter" }, Vec::new()),
-            _ => return Err("`kind` must be \"fill\", \"paint\", \"folder\", \"filter\" or \"foliage\"".into()),
+            _ => return Err("`kind` must be \"fill\", \"paint\", \"folder\", \"filter\", \"decal\" or \"foliage\"".into()),
         };
         if let Some(p) = parent {
             // inside a folder: `index` is the position among its children
@@ -696,7 +702,7 @@ impl Session {
         }
         let at = match a.get("index").and_then(Value::as_u64) {
             Some(i) => (i as usize).min(self.app.doc.layers.len()),
-            None if kind == "paint" || kind == "filter" => self.app.doc.layers.len(),
+            None if kind == "paint" || kind == "filter" || kind == "decal" => self.app.doc.layers.len(),
             None => self.app.doc.layers.iter().rposition(|l| l.is_paint()).unwrap_or(self.app.doc.layers.len()),
         };
         let id = l.id;
@@ -954,7 +960,7 @@ impl Session {
         // target layer: given, else the topmost paint layer (created if missing)
         let i = match a.get("layer") {
             Some(r) => self.find_layer(r)?,
-            None => match self.app.doc.layers.iter().rposition(|l| l.is_paint()) {
+            None => match self.app.doc.layers.iter().rposition(|l| l.is_paint() && l.decals.is_none()) {
                 Some(i) => i,
                 None => {
                     let l = self.app.doc.new_paint_layer("Paint");
@@ -1076,7 +1082,7 @@ impl Session {
         };
         let i = match a.get("layer") {
             Some(r) => self.find_layer(r)?,
-            None => match self.app.doc.layers.iter().rposition(|l| l.is_paint()) {
+            None => match self.app.doc.layers.iter().rposition(|l| l.is_paint() && l.decals.is_none()) {
                 Some(i) => i,
                 None => {
                     let l = self.app.doc.new_paint_layer("Decals");

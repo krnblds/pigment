@@ -28,6 +28,8 @@ mod folders_ui;
 mod bridge;
 mod brush_tools;
 mod decals;
+mod decal_gizmo;
+pub(crate) mod decal_layer_app;
 pub(crate) mod hibake_app;
 pub(crate) mod templates_app;
 pub(crate) mod texsets_app;
@@ -253,6 +255,12 @@ pub struct PigmentApp {
     foliage: foliage::FoliageState,
     /// Texture sets besides the active one (None = a single-set project).
     multi: Option<Box<texsets_app::MultiSets>>,
+    /// Decal layers: a key of the objects their pixels were generated from.
+    decal_keys: std::collections::HashMap<LayerId, u64>,
+    /// Set while a decal layer is being regenerated (it may be painted then).
+    decal_regen: bool,
+    /// The decal object selected for editing (on the selected decal layer).
+    decal_sel: Option<u32>,
 }
 
 impl PigmentApp {
@@ -325,6 +333,9 @@ impl PigmentApp {
             ui: ui::UiState::new(prefs),
             foliage: Default::default(),
             multi: None,
+            decal_keys: Default::default(),
+            decal_regen: false,
+            decal_sel: None,
         };
         app.load_brush_tips(rs);
         app.new_project(rs, Mesh::demo_crate(96), None, Document::demo());
@@ -860,6 +871,9 @@ impl PigmentApp {
                 None => Err("Fill layers can't be painted directly. Add a mask to paint where the fill shows."),
             };
         }
+        if l.decals.is_some() && !self.decal_regen {
+            return Err("This is a decal layer: its pixels come from its decals. Move them with the decal tools, or paint on another layer.");
+        }
         Ok(Target::Layer(l.paint_res().unwrap()))
     }
 
@@ -1270,6 +1284,7 @@ impl PigmentApp {
         self.ts.ensure_resources(&rs.device, &rs.queue, &self.doc);
         self.sync_generated(rs);
         self.sync_foliage_gpu(rs);
+        self.sync_decal_layers(rs);
         if self.composited.as_ref() != Some(&self.doc) {
             self.ts.composite(&rs.device, &rs.queue, &self.doc, None);
             self.composited = Some(self.doc.clone());

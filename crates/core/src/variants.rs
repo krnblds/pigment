@@ -201,6 +201,13 @@ pub fn resolve(doc: &Document, v: &VariantDef) -> Result<Resolved, String> {
                         hit = true;
                     }
                 }
+                // decal objects (decal layers are regenerated from them)
+                for o in l.decals.iter_mut().flat_map(|s| s.objects.iter_mut()) {
+                    if matches(sel, &o.name, &o.group) {
+                        o.enabled = on;
+                        hit = true;
+                    }
+                }
             }
             if !hit {
                 return Err(format!("variant `{}`: `{sel}` matches no layer, decal or group", v.name));
@@ -214,6 +221,24 @@ pub fn resolve(doc: &Document, v: &VariantDef) -> Result<Resolved, String> {
             for dc in &mut l.variant.decals {
                 if whole_layer || matches(sel, &dc.name, &dc.group) {
                     swap_args(&mut dc.args, val).map_err(|e| format!("variant `{}`, swap `{sel}`: {e}", v.name))?;
+                    hit = true;
+                }
+            }
+            for o in l.decals.iter_mut().flat_map(|s| s.objects.iter_mut()) {
+                if whole_layer || matches(sel, &o.name, &o.group) {
+                    match val {
+                        serde_json::Value::String(img) => o.image = img.clone(),
+                        v => {
+                            if let Some(img) = v.get("image").and_then(|x| x.as_str()) {
+                                o.image = img.to_string();
+                            }
+                            if let Some(t) = v.get("tint").and_then(|x| x.as_array()) {
+                                for (k, x) in t.iter().take(3).enumerate() {
+                                    o.values.base_color[k] = x.as_f64().unwrap_or(1.0) as f32;
+                                }
+                            }
+                        }
+                    }
                     hit = true;
                 }
             }

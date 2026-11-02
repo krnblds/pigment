@@ -778,3 +778,60 @@ fn export_template_editor() {
         h.save_png(&docs().join("agents/parity/templates_ui.png"));
     }
 }
+
+/// Decal objects in the viewport: on a decal layer, a click selects the
+/// decal under the cursor, a drag slides it over the surface, Ctrl+wheel
+/// scales it; the Properties panel lists it.
+#[test]
+fn decal_gizmo_select_drag_scale() {
+    let Some(mut h) = harness() else { return };
+    settle(&mut h);
+    let rs = h.rs.clone();
+    h.app.new_project(&rs, Mesh::tile_grid(1), None, Document::new_default());
+    let mut l = h.app.doc.new_paint_layer("Decals");
+    l.decals = Some(Default::default());
+    let lid = l.id;
+    h.app.doc.layers.push(l);
+    let img = super::panels::decals::asset_dir("decals").unwrap().join("hazard_triangle.png");
+    let i = h.app.doc.layers.len() - 1;
+    h.app.doc.layers[i].decals.as_mut().unwrap().add(pigment_core::decal_layer::DecalObject {
+        id: 0,
+        name: "tri".into(),
+        group: String::new(),
+        image: img.to_string_lossy().into_owned(),
+        center: [0.0, 0.0, 0.0],
+        normal: [0.0, 0.0, 1.0],
+        size: [0.6, 0.6],
+        rotation: 0.0,
+        depth: 0.1,
+        projection: Default::default(),
+        wear: Default::default(),
+        values: pigment_core::decal_layer::white_decal(),
+        channels: pigment_core::decal_layer::default_channels(),
+        enabled: true,
+    });
+    h.app.select(Some(lid), false);
+    h.app.set_tool(Tool::Paint);
+    h.app.camera.yaw = 0.0;
+    h.app.camera.pitch = 0.0;
+    *h.app.ui.prefs.layout_mut() = DockLayout { root: super::dock::Node::Split { vertical: false, ratio: 0.6, a: Box::new(super::dock::Node::Leaf { tabs: vec![PanelId::Viewport], active: 0 }), b: Box::new(super::dock::Node::Leaf { tabs: vec![PanelId::Properties], active: 0 }) }, floating: vec![] };
+    h.run(4);
+    let vp = anchor(&h, "viewport");
+    h.click(vp.center());
+    assert_eq!(h.app.decal_sel, Some(0), "the click selects the decal under the cursor");
+    let strokes = h.app.counters.strokes;
+    h.drag(vp.center(), vp.center() + egui::vec2(60.0, 0.0), 6);
+    h.run(2);
+    let o = &h.app.doc.layers[i].decals.as_ref().unwrap().objects[0];
+    assert!(o.center[0] > 0.05, "dragging slides it along the surface: {:?}", o.center);
+    assert_eq!(h.app.counters.strokes, strokes, "no paint stroke on a decal layer");
+    let w0 = o.size[0];
+    h.hover(vp.center() + egui::vec2(60.0, 0.0));
+    h.push_event(egui::Event::ModifiersChanged(egui::Modifiers::CTRL));
+    h.push_event(egui::Event::MouseWheel { unit: egui::MouseWheelUnit::Point, delta: egui::vec2(0.0, 120.0), modifiers: egui::Modifiers::CTRL, phase: egui::TouchPhase::Move, source: egui::MouseWheelSource::Wheel });
+    h.run(4);
+    h.push_event(egui::Event::ModifiersChanged(Default::default()));
+    h.run(2);
+    let w1 = h.app.doc.layers[i].decals.as_ref().unwrap().objects[0].size[0];
+    assert!(w1 > w0 * 1.02, "Ctrl+wheel scales ({w0} -> {w1})");
+}

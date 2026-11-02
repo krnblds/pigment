@@ -5,7 +5,7 @@ use super::*;
 use pigment_core::texsets::{self, SetSpec, UdimMove};
 
 /// Tools that take `texture_set` (name, index, or "*" = every set).
-pub const SET_TOOLS: [&str; 15] = [
+pub const SET_TOOLS: [&str; 19] = [
     "add_layer",
     "update_layer",
     "delete_layer",
@@ -21,6 +21,10 @@ pub const SET_TOOLS: [&str; 15] = [
     "project_decal",
     "scatter_decals",
     "bake",
+    "list_decals",
+    "update_decal",
+    "delete_decal",
+    "place_decal",
 ];
 
 impl Session {

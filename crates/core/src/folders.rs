@@ -85,6 +85,7 @@ impl Document {
             height_gain: 1.0,
             filters: Vec::new(),
             anchor: None,
+            decals: None,
         }
     }
 
