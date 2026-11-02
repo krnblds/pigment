@@ -47,6 +47,8 @@ mod welcome;
 mod dialogs;
 #[cfg(test)]
 mod ui_tests;
+#[cfg(test)]
+mod design_shots;
 
 /// Things the quick-start guide watches for.
 #[derive(Default)]
