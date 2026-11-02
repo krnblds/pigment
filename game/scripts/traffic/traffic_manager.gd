@@ -44,6 +44,7 @@ var graph
 var signals
 var lib
 var peds
+var ped_provider = null          ## scripts/npc/npc_manager.gd: real pedestrians replace the silhouettes
 var rng := RandomNumberGenerator.new()
 var cars: Array = []             ## moving pool (civilians)
 var patrols: Array = []          ## security cruisers
@@ -166,7 +167,9 @@ func _late_setup(opts: Dictionary) -> void:
 	signals.ground_heads(get_world_3d().direct_space_state, [_hero_rid])
 	if not opts.get("no_parked", false):
 		_spawn_parked()
-	if opts.get("peds", true) and Pedestrians:
+	if ped_provider:
+		peds = ped_provider             # add_obstacles(): walkers on crossings / in the road; count()
+	elif opts.get("peds", true) and Pedestrians:
 		peds = Pedestrians.new()
 		peds.name = "Pedestrians"
 		add_child(peds)

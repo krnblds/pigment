@@ -26,6 +26,7 @@ extends Node3D
 ##                      drive each car a few metres (scripts/garage/garage_test.gd), exit code 0 = pass
 ##   --showroom-shot=<dir>  garage exterior / interior / menu screenshots, quits
 ##   --garage-save=<path>   customisation save file (default user://garage.json)   --no-garage-save  ignore it
+##   --no-npc           no pedestrians (scripts/npc/)   --npc=<n> walkers   --npc-test (headless OK)   --npc-shots=<dir>   --npc-bench
 ##   --no-cases         no Sleepwalker cases (on foot, weapons and the car door still work; scripts/waker/)
 ##   --onfoot-test      on-foot test (headless OK): walk, sprint, jump, vault, slope, stairs, car door, camera collision
 ##   --weapons-test     weapons test (headless OK): fire, reload, damage, headshot, stun, EMP, pooled tracers, perf
@@ -65,6 +66,7 @@ var traffic: Node3D                     ## living traffic (scripts/traffic/), --
 var damage: Node3D                      ## damage + destruction (scripts/damage/), --no-damage to skip
 var garage: Node                        ## drive-in garages + showroom (scripts/garage/), V / pause menu
 var pause_menu: CanvasLayer
+var npc: Node3D                         ## pedestrians (scripts/npc/), --no-npc to skip
 var waker: Node3D                       ## on foot, weapons, Sleepwalker cases (scripts/waker/), F gets out
 var player_focus: Node3D                ## the on-foot player while out of the car (null when driving)
 
@@ -145,6 +147,8 @@ func _ready() -> void:
 		damage = preload("res://scripts/damage/damage_manager.gd").new()
 		add_child(damage)
 		damage.setup(self)
+	if not args.has("no-npc"):
+		npc = preload("res://scripts/npc/npc_manager.gd").create(self)       # null without built citizens
 	garage = Garage.new()
 	add_child(garage)
 	garage.setup(self, garage_lots)
@@ -158,6 +162,10 @@ func _ready() -> void:
 		var dt := preload("res://scripts/damage/damage_tests.gd").new()
 		dt.main = self
 		add_child(dt)
+	elif args.has("npc-test") or args.has("npc-shots") or args.has("npc-bench"):
+		var nt := preload("res://scripts/npc/npc_tests.gd").new()
+		nt.main = self
+		add_child(nt)
 	elif args.has("showroom-test") or args.has("showroom-shot"):
 		var gt := preload("res://scripts/garage/garage_test.gd").new()
 		gt.main = self

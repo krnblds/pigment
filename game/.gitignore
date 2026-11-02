@@ -22,6 +22,9 @@ assets/.live/
 assets/trees/
 # interior atlas + kit window maps (tools/interiors/interiors.py sync)
 assets/interiors/
+# pedestrians / citizens (tools/npc/build_all.py): characters, animation library, crowd LODs, and the
+# git-ignored drop folder for extra (non-redistributable) clips: assets/npc/anim_extra/
+assets/npc/
 # weapon textures Godot extracts from the weapon glbs on import (tools/weapons/export_weapons.py)
 assets/weapons/*.png
 assets/weapons/*.png.import

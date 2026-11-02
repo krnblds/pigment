@@ -20,6 +20,10 @@ extends Node3D
 const MODEL := "res://assets/characters/ual/AnimationLibrary_Godot_Standard.gltf"
 const ANIMS := "res://assets/characters/ual/AnimationLibrary_Godot_Standard.gltf"
 const AimModifier := preload("res://scripts/player/aim_modifier.gd")
+## NPC pipeline (scripts/npc/character/): the Waker officers (waker_m / waker_f) and the 32 citizens, same
+## SkeletonProfileHumanoid import; used when built (python tools/npc/build_all.py), else the UAL mannequin.
+const CITIZEN_LIB := "res://scripts/npc/character/citizen_library.gd"
+const WAKER_MODELS := {"male": "res://assets/npc/citizens/waker_m.glb", "female": "res://assets/npc/citizens/waker_f.glb"}
 
 ## Upper-body bones (filters of the weapon / action layers).
 const UPPER := ["Chest", "UpperChest", "Neck", "Head", "LeftShoulder", "LeftUpperArm", "LeftLowerArm", "LeftHand",
@@ -48,7 +52,8 @@ const LOOKS := {
 	"ghost": {"tint": Color(0.3, 0.9, 1.0), "trim": Color(0.3, 0.9, 1.0), "gear": [], "ghost": true},
 }
 
-var model: String = MODEL
+var model: String = ""                    ## "" = by look: the Waker officer, a citizen (sleepers, ghosts), or MODEL
+var citizen_id := ""                      ## the NPC citizen this body is (its atlas materials), "" for the mannequin
 var skeleton: Skeleton3D
 var tree: AnimationTree
 var aim: SkeletonModifier3D
@@ -68,12 +73,18 @@ static var _ghost_mat: ShaderMaterial
 
 
 func _ready() -> void:
+	if model == "":
+		model = _pick_model()
+	if model.begins_with("res://assets/npc/citizens/"):
+		citizen_id = model.get_file().get_basename()
 	var ps = load(model) if ResourceLoader.exists(model) else null
 	if ps == null:
 		_fallback()
 		return
 	_root = ps.instantiate()
 	_root.name = "Model"
+	if citizen_id != "":
+		load(CITIZEN_LIB).dress(_root, citizen_id)    # atlas materials, LOD ranges, no crowd LOD2
 	add_child(_root)
 	var sks := _root.find_children("*", "Skeleton3D", true, false)
 	if sks.is_empty():
@@ -93,6 +104,18 @@ func _ready() -> void:
 		set_look(look)
 
 
+## The Waker officer for the player, a citizen for everyone else (seeded by the node), the mannequin
+## when the NPC citizens aren't built.
+func _pick_model() -> String:
+	var Lib = load(CITIZEN_LIB) if ResourceLoader.exists(CITIZEN_LIB) else null
+	if Lib == null or not Lib.available():
+		return MODEL
+	if look == "waker":
+		return WAKER_MODELS.male if ResourceLoader.exists(WAKER_MODELS.male) else MODEL
+	var id: String = Lib.pick(get_instance_id())
+	return Lib.info(id).get("glb", MODEL) if id != "" else MODEL
+
+
 static func library() -> AnimationLibrary:
 	if _lib:
 		return _lib
@@ -106,6 +129,7 @@ static func library() -> AnimationLibrary:
 		var ap: AnimationPlayer = aps[0]
 		for n in ap.get_animation_list():
 			var a: Animation = ap.get_animation(n).duplicate(true)
+			_hips_positions_only(a)
 			if n in ["Pistol_Aim_Up", "Pistol_Aim_Neutral", "Pistol_Aim_Down", "Pistol_Idle", "Crouch_Idle", "Crouch_Fwd",
 					"Idle", "Walk", "Jog_Fwd", "Sprint", "Jump", "Driving", "Sitting_Idle", "Idle_Talking", "Sword_Idle"]:
 				a.loop_mode = Animation.LOOP_LINEAR
@@ -115,6 +139,13 @@ static func library() -> AnimationLibrary:
 				_lib.add_animation(n + "_Back", _reversed(_lib.get_animation(n)))
 	inst.free()
 	return _lib
+
+
+## Position tracks only on the hips: the clips then fit any body (the MPFB citizens' proportions).
+static func _hips_positions_only(a: Animation) -> void:
+	for t in range(a.get_track_count() - 1, -1, -1):
+		if a.track_get_type(t) == Animation.TYPE_POSITION_3D and not String(a.track_get_path(t)).ends_with(":Hips"):
+			a.remove_track(t)
 
 
 static func _reversed(a: Animation) -> Animation:
@@ -301,6 +332,14 @@ func set_look(name_: String) -> void:
 		g.queue_free()
 	_gear.clear()
 	var L: Dictionary = LOOKS.get(name_, LOOKS.civilian)
+	if citizen_id != "" and not L.get("ghost", false):
+		# NPC citizens / the Waker officer wear their own clothes: no tint, no gear primitives; sleepers
+		# (the looks with a Dreamlink halo) get the citizens' sleepwalker glow instead
+		var sleeper: bool = "halo" in L.gear
+		for mi in mesh_instances:
+			mi.material_override = null
+			mi.set_instance_shader_parameter("sleepwalker", 1.0 if sleeper else 0.0)
+		return
 	if L.get("ghost", false):
 		for mi in mesh_instances:
 			mi.material_override = ghost_material()
