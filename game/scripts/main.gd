@@ -22,12 +22,17 @@ extends Node3D
 ##   --no-damage        no damage / destruction (scripts/damage/)
 ##   --damage-test      damage test (headless OK): walls at 30 / 60 km/h, a lamp post, a hydrant, 40 debris bodies
 ##   --damage-shots=<dir>  damage proof screenshots (windowed)    --damage-bench  fps with debris (windowed)
+##   --showroom-test    garages: every vehicle + livery, every customisation, save round trip, drive-in trigger,
+##                      drive each car a few metres (scripts/garage/garage_test.gd), exit code 0 = pass
+##   --showroom-shot=<dir>  garage exterior / interior / menu screenshots, quits
+##   --garage-save=<path>   customisation save file (default user://garage.json)   --no-garage-save  ignore it
 
 const TownLoader := preload("res://scripts/town_loader.gd")
 const Car := preload("res://scripts/car.gd")
 const ChaseCamera := preload("res://scripts/chase_camera.gd")
 const Hud := preload("res://scripts/hud.gd")
 const TrafficManager := preload("res://scripts/traffic/traffic_manager.gd")
+const Garage := preload("res://scripts/garage/garage.gd")
 
 const CAR_GLB := "res://assets/car/car.glb"
 const CAR_JSON := "res://assets/car/car.json"
@@ -53,6 +58,8 @@ var ap_speed := 15.0
 var map_name := "town"
 var traffic: Node3D                     ## living traffic (scripts/traffic/), --no-traffic to skip
 var damage: Node3D                      ## damage + destruction (scripts/damage/), --no-damage to skip
+var garage: Node                        ## drive-in garages + showroom (scripts/garage/), V / pause menu
+var pause_menu: CanvasLayer
 
 
 func _ready() -> void:
@@ -69,6 +76,7 @@ func _ready() -> void:
 	add_child(town)
 	# --map=town | world (default: the open world when it has been exported)
 	map_name = String(args.get("map", "world" if FileAccess.file_exists("res://assets/world/world_layout.json") else "town"))
+	var garage_lots := Garage.prepare(town, map_name)     # garage lots: what the town leaves out there
 	if args.has("no-town") or not town.load_town(1.0, map_name):
 		if not args.has("foliage-demo"):        # the foliage demo brings its own street
 			_fallback_ground()
@@ -130,10 +138,20 @@ func _ready() -> void:
 		damage = preload("res://scripts/damage/damage_manager.gd").new()
 		add_child(damage)
 		damage.setup(self)
+	garage = Garage.new()
+	add_child(garage)
+	garage.setup(self, garage_lots)
+	pause_menu = preload("res://scripts/pause_menu.gd").new()
+	pause_menu.main = self
+	add_child(pause_menu)
 	if args.has("damage-test") or args.has("damage-shots") or args.has("damage-bench"):
 		var dt := preload("res://scripts/damage/damage_tests.gd").new()
 		dt.main = self
 		add_child(dt)
+	elif args.has("showroom-test") or args.has("showroom-shot"):
+		var gt := preload("res://scripts/garage/garage_test.gd").new()
+		gt.main = self
+		add_child(gt)
 	elif args.has("traffic-test") or args.has("traffic-shots") or args.has("bench-traffic"):
 		var tauto := preload("res://scripts/traffic/traffic_automation.gd").new()
 		tauto.main = self
@@ -171,9 +189,10 @@ func _setup_input() -> void:
 		"toggle_rain": [KEY_F], "lightbar": [KEY_L], "toggle_gi": [KEY_G], "toggle_stats": [KEY_F3], "quit": [KEY_ESCAPE],
 		"toggle_abs": [KEY_B],
 		"toggle_tc": [KEY_T], "toggle_esc": [KEY_J], "toggle_steer_assist": [KEY_K],
+		"garage": [KEY_V],
 	}
 	var pads := {"handbrake": [JOY_BUTTON_A], "lightbar": [JOY_BUTTON_X], "reset": [JOY_BUTTON_Y], "camera": [JOY_BUTTON_RIGHT_SHOULDER],
-		"toggle_stats": [JOY_BUTTON_BACK]}
+		"toggle_stats": [JOY_BUTTON_BACK], "quit": [JOY_BUTTON_START]}
 	var axes := {"accelerate": [JOY_AXIS_TRIGGER_RIGHT, 1.0], "brake": [JOY_AXIS_TRIGGER_LEFT, 1.0],
 		"steer_left": [JOY_AXIS_LEFT_X, -1.0], "steer_right": [JOY_AXIS_LEFT_X, 1.0]}
 	for action in keys:
@@ -213,7 +232,10 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event.is_action_pressed("toggle_stats"):
 		hud.show_fps = not hud.show_fps
 	elif event.is_action_pressed("quit"):
-		get_tree().quit()
+		if pause_menu:
+			pause_menu.toggle()            # ESC: pause menu (resume / garage / quit)
+		else:
+			get_tree().quit()
 
 
 ## Stream the world in around `p` right now (teleports: automation camera spots).

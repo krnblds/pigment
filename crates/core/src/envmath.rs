@@ -76,6 +76,8 @@ impl EnvImage {
             "studio" => Some(Self::studio(width)),
             "night" => Some(Self::night_city(width)),
             "overcast" => Some(Self::overcast(width)),
+            "lightbox" => Some(Self::lightbox(width)),
+            "lightbox_dark" => Some(Self::lightbox_dark(width)),
             _ => None,
         }
     }
@@ -151,6 +153,72 @@ impl EnvImage {
         EnvImage { width, height, data }
     }
 
+    /// A white photo-studio cove (pair it with the lightbox stage, see
+    /// `stage`): a bright sweep floor and walls, a grey ceiling, a long
+    /// overhead softbox, a tall key and fill, and long low rim strips down
+    /// both sides and across the back. On clearcoat paint the strips read as
+    /// long clean highlight lines.
+    pub fn lightbox(width: u32) -> EnvImage {
+        let n = |x: f32, y: f32, z: f32| Vec3::new(x, y, z).normalize();
+        let lights = [
+            // centre, long axis, half-size (along, across) in tan units, intensity, tint
+            (n(0.0, 1.0, 0.0), Vec3::Z, Vec2::new(0.95, 0.42), 3.6, Vec3::new(1.0, 0.99, 0.97)),
+            (n(-0.55, 0.42, 0.72), Vec3::Y, Vec2::new(0.5, 0.3), 4.5, Vec3::new(1.0, 0.97, 0.93)),
+            (n(0.88, 0.3, 0.25), Vec3::Y, Vec2::new(0.45, 0.28), 1.7, Vec3::new(0.95, 0.97, 1.0)),
+            (n(1.0, 0.16, -0.25), Vec3::Z, Vec2::new(1.3, 0.035), 8.0, Vec3::ONE),
+            (n(-1.0, 0.16, -0.25), Vec3::Z, Vec2::new(1.3, 0.035), 8.0, Vec3::ONE),
+            (n(0.0, 0.32, -1.0), Vec3::X, Vec2::new(0.9, 0.05), 4.0, Vec3::ONE),
+        ];
+        Self::studio_box(width, Vec3::splat(0.5), Vec3::splat(0.7), Vec3::splat(0.16), &lights)
+    }
+
+    /// A black studio for a car-commercial look: near-black glossy sweep and
+    /// walls, lit only by long strip lights (three overhead along the length,
+    /// two rows down each side, vertical rims behind) and a soft, dim key.
+    /// Clearcoat paint picks up crisp reflection lines.
+    pub fn lightbox_dark(width: u32) -> EnvImage {
+        let n = |x: f32, y: f32, z: f32| Vec3::new(x, y, z).normalize();
+        let cool = Vec3::new(0.92, 0.97, 1.0);
+        let lights = [
+            (n(-0.33, 1.0, 0.0), Vec3::Z, Vec2::new(1.15, 0.028), 14.0, Vec3::ONE),
+            (n(0.0, 1.0, 0.0), Vec3::Z, Vec2::new(1.15, 0.028), 14.0, Vec3::ONE),
+            (n(0.33, 1.0, 0.0), Vec3::Z, Vec2::new(1.15, 0.028), 14.0, Vec3::ONE),
+            (n(1.0, 0.12, 0.0), Vec3::Z, Vec2::new(1.5, 0.022), 16.0, cool),
+            (n(-1.0, 0.12, 0.0), Vec3::Z, Vec2::new(1.5, 0.022), 16.0, cool),
+            (n(1.0, 0.42, 0.0), Vec3::Z, Vec2::new(1.3, 0.02), 11.0, Vec3::ONE),
+            (n(-1.0, 0.42, 0.0), Vec3::Z, Vec2::new(1.3, 0.02), 11.0, Vec3::ONE),
+            (n(0.75, 0.25, -0.75), Vec3::Y, Vec2::new(0.6, 0.024), 12.0, cool),
+            (n(-0.75, 0.25, -0.75), Vec3::Y, Vec2::new(0.6, 0.024), 12.0, cool),
+            (n(-0.45, 0.5, 0.8), Vec3::Y, Vec2::new(0.32, 0.22), 2.2, Vec3::new(1.0, 0.97, 0.94)),
+        ];
+        Self::studio_box(width, Vec3::splat(0.0025), Vec3::splat(0.007), Vec3::splat(0.002), &lights)
+    }
+
+    /// A seamless cove: `floor` radiance below, rising through a brighter
+    /// `cove` band at the horizon (no hard horizon line) to the `ceiling`,
+    /// plus rectangular area lights (see `area_light`).
+    fn studio_box(width: u32, floor: Vec3, cove: Vec3, ceiling: Vec3, lights: &[(Vec3, Vec3, Vec2, f32, Vec3)]) -> EnvImage {
+        let height = width / 2;
+        let mut data = Vec::with_capacity((width * height) as usize);
+        for y in 0..height {
+            for x in 0..width {
+                let uv = Vec2::new((x as f32 + 0.5) / width as f32, (y as f32 + 0.5) / height as f32);
+                let d = dir_from_uv(uv);
+                let mut c = if d.y < 0.0 {
+                    floor.lerp(cove, (1.0 + d.y).powf(6.0))
+                } else {
+                    let t = (d.y / 0.6).clamp(0.0, 1.0);
+                    cove.lerp(ceiling, t * t * (3.0 - 2.0 * t))
+                };
+                for &(dir, along, half, intensity, tint) in lights {
+                    c += tint * intensity * area_light(d, dir, along, half);
+                }
+                data.push(c.into());
+            }
+        }
+        EnvImage { width, height, data }
+    }
+
     /// Write as a Radiance .hdr (e.g. to light a Blender world identically).
     pub fn write_hdr(&self, path: &std::path::Path) -> anyhow::Result<()> {
         let px: Vec<image::Rgb<f32>> = self.data.iter().map(|c| image::Rgb(*c)).collect();
@@ -200,12 +268,13 @@ impl EnvImage {
 }
 
 /// Built-in lighting presets: (id, display name).
-pub const PRESETS: [(&str, &str); 3] = [("studio", "Studio"), ("night", "Night city"), ("overcast", "Overcast")];
+pub const PRESETS: [(&str, &str); 5] =
+    [("studio", "Studio"), ("night", "Night city"), ("overcast", "Overcast"), ("lightbox", "Lightbox"), ("lightbox_dark", "Lightbox (dark)")];
 
 /// Canonical preset id for a user-facing name (`night city`, `Night`, `night_city` → `night`).
 pub fn preset_id(name: &str) -> Option<&'static str> {
-    let n = name.trim().to_ascii_lowercase().replace([' ', '-', '_'], "");
-    PRESETS.iter().find(|(id, label)| n == *id || n == label.to_ascii_lowercase().replace(' ', "")).map(|(id, _)| *id)
+    let n = name.trim().to_ascii_lowercase().replace([' ', '-', '_', '(', ')'], "");
+    PRESETS.iter().find(|(id, label)| n == id.replace('_', "") || n == label.to_ascii_lowercase().replace([' ', '(', ')'], "")).map(|(id, _)| *id)
 }
 
 /// Game skies baked by `tools/sky/make_sky.py` into `assets/sky/<id>_2k.hdr`
@@ -289,6 +358,26 @@ fn soft_rect(d: Vec3, dir: Vec3, half: Vec2) -> f32 {
     let p = Vec2::new(d.dot(right), d.dot(up)) / along;
     let q = (p.abs() / half).max_element();
     (1.0 - ((q - 0.85) / 0.3).clamp(0.0, 1.0)).powf(2.0)
+}
+
+/// A flat rectangular area light seen from the origin: centred on `dir`, its
+/// long side along `along` (projected square to `dir`), half-size in tangent
+/// units (`half.x` along, `half.y` across). Slightly brighter in the middle
+/// like a real softbox diffuser, with a soft rim. 0..~1.
+fn area_light(d: Vec3, dir: Vec3, along: Vec3, half: Vec2) -> f32 {
+    let a = d.dot(dir);
+    if a <= 0.0 {
+        return 0.0;
+    }
+    let right = (along - dir * along.dot(dir)).normalize_or(Vec3::X);
+    let up = dir.cross(right);
+    let p = Vec2::new(d.dot(right), d.dot(up)) / a / half;
+    let q = p.abs();
+    // soft rim about 8% of the short side wide
+    let edge = 0.08 * half.y.min(half.x);
+    let soft = |x: f32, h: f32| 1.0 - ((x - 1.0) * h / edge + 0.5).clamp(0.0, 1.0);
+    let k = soft(q.x, half.x) * soft(q.y, half.y);
+    k * (1.0 - 0.18 * (p.x * p.x).min(1.0)) * (1.0 - 0.12 * (p.y * p.y).min(1.0))
 }
 
 fn hash(x: f32, y: f32) -> f32 {
@@ -396,6 +485,10 @@ mod tests {
         assert_eq!(preset_id("night_city"), Some("night"));
         assert_eq!(preset_id("OVERCAST"), Some("overcast"));
         assert_eq!(preset_id("disco"), None);
+        assert_eq!(preset_id("Lightbox (dark)"), Some("lightbox_dark"));
+        assert_eq!(preset_id("lightbox_dark"), Some("lightbox_dark"));
+        assert_eq!(preset_id("lightbox-dark"), Some("lightbox_dark"));
+        assert_eq!(preset_id("LIGHTBOX"), Some("lightbox"));
         let mean = |e: &EnvImage| e.data.iter().map(|c| Vec3::from(*c)).sum::<Vec3>() / e.data.len() as f32;
         let night = EnvImage::preset("night", 256).unwrap();
         let overcast = EnvImage::preset("overcast", 256).unwrap();
@@ -411,6 +504,31 @@ mod tests {
         // overcast: brighter overhead than at the horizon
         let sh = overcast.irradiance_sh9();
         assert!(eval_sh9(&sh, Vec3::Y).y > eval_sh9(&sh, Vec3::X).y);
+    }
+
+    #[test]
+    fn lightbox_presets_are_strip_lit_studios() {
+        let light = EnvImage::preset("lightbox", 512).unwrap();
+        let dark = EnvImage::preset("lightbox_dark", 512).unwrap();
+        let at = |e: &EnvImage, d: Vec3| {
+            let uv = uv_from_dir(d.normalize());
+            let (x, y) = ((uv.x * e.width as f32) as u32 % e.width, ((uv.y * e.height as f32) as u32).min(e.height - 1));
+            Vec3::from(e.data[(y * e.width + x) as usize])
+        };
+        // the dark studio is black between its strips; the light one is a white cove
+        assert!(at(&dark, Vec3::new(0.3, -0.5, 0.6)).max_element() < 0.01);
+        assert!(at(&light, Vec3::new(0.3, -0.5, 0.6)).min_element() > 0.3);
+        // the side strips are long: lit at the side, front and back along the car
+        for z in [-0.6f32, 0.0, 0.6] {
+            assert!(at(&dark, Vec3::new(1.0, 0.12, z)).x > 5.0, "dark side strip at z {z}");
+            assert!(at(&light, Vec3::new(-1.0, 0.16, z - 0.25)).x > 5.0, "light rim strip at z {z}");
+        }
+        // ...and thin: just above them it's dark again
+        assert!(at(&dark, Vec3::new(1.0, 0.2, 0.0)).x < 0.05);
+        // the overhead light makes the top brighter than the sides
+        let (sl, sd) = (light.irradiance_sh9(), dark.irradiance_sh9());
+        assert!(eval_sh9(&sl, Vec3::Y).x > eval_sh9(&sl, Vec3::X).x);
+        assert!(eval_sh9(&sd, Vec3::Y).x < eval_sh9(&sl, Vec3::Y).x);
     }
 
     #[test]

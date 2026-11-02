@@ -89,6 +89,8 @@ struct Globals {
     params: [f32; 4],
     params2: [f32; 4],
     sh: [[f32; 4]; 9],
+    /// Lightbox stage block (see `render::stage::uniforms`); zero = no stage.
+    stage: [[f32; 4]; 6],
 }
 
 #[repr(C)]
@@ -116,6 +118,9 @@ struct Targets {
     display: wgpu::TextureView,
     depth: Tex,
     paint_depth: Tex,
+    /// Half-res model mirrored in the lightbox floor (+ its depth).
+    refl: Tex,
+    refl_depth: Tex,
 }
 
 #[derive(Clone)]
@@ -127,11 +132,14 @@ pub struct ViewSettings {
     /// Multiplier on painted emission in the viewport.
     pub emission: f32,
     pub bloom: BloomSettings,
+    /// Show the lightbox stage (cove floor, contact shadow, reflection) when
+    /// the lighting has one (`lightbox`, `lightbox_dark`).
+    pub stage: bool,
 }
 
 impl Default for ViewSettings {
     fn default() -> Self {
-        Self { mode: ViewMode::Material, exposure: 0.0, env_rotation: 0.0, show_env: true, emission: 1.0, bloom: BloomSettings::default() }
+        Self { mode: ViewMode::Material, exposure: 0.0, env_rotation: 0.0, show_env: true, emission: 1.0, bloom: BloomSettings::default(), stage: true }
     }
 }
 
@@ -176,6 +184,10 @@ pub struct Viewport {
     texture_id: Option<egui::TextureId>,
     /// Foliage cards drawn after the opaque mesh (see `render/foliage.rs`).
     pub foliage: super::foliage::FoliageGpu,
+    /// Lightbox stage (see `render/stage.rs`).
+    pub(crate) stage: super::stage::StageGpu,
+    /// The model mirrored in the stage floor (single-sample, half res).
+    mirror_pipe: wgpu::RenderPipeline,
 }
 
 impl Viewport {
@@ -190,6 +202,7 @@ impl Viewport {
         );
         let layout = gpu::layout(device, "viewport", &[&g_bgl, &env_bgl, &mat_bgl]);
         let foliage = super::foliage::FoliageGpu::new(device, &g_bgl, &env_bgl, HDR_FORMAT, DEPTH_FORMAT, MSAA);
+        let stage = super::stage::StageGpu::new(device, &g_bgl, &env_bgl, std::mem::size_of::<Globals>() as u64, HDR_FORMAT, DEPTH_FORMAT, MSAA);
         let depth_layout = gpu::layout(device, "viewport depth", &[&g_bgl]);
         let globals = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("viewport globals"),
@@ -244,6 +257,21 @@ impl Viewport {
                 targets: &[gpu::target(HDR_FORMAT, Some(premultiplied))],
                 depth: Some(depth_state(false, wgpu::CompareFunction::Greater)),
                 samples: MSAA,
+                cull: None,
+            },
+        );
+        let mirror_pipe = gpu::pipeline(
+            device,
+            gpu::PipeDesc {
+                label: "viewport mirror",
+                module: &module,
+                vs: "vs_mesh",
+                fs: Some("fs_mesh_mirror"),
+                layout: &layout,
+                buffers: &mesh_layout,
+                targets: &ct,
+                depth: Some(depth_state(true, wgpu::CompareFunction::Greater)),
+                samples: 1,
                 cull: None,
             },
         );
@@ -332,6 +360,8 @@ impl Viewport {
             targets: None,
             texture_id: None,
             foliage,
+            stage,
+            mirror_pipe,
         }
     }
 
@@ -387,6 +417,8 @@ impl Viewport {
             display,
             depth: Tex::new_ms(d, "viewport depth", size, DEPTH_FORMAT, att, MSAA),
             paint_depth: Tex::new(d, "paint depth", size[0], size[1], DEPTH_FORMAT, att | wgpu::TextureUsages::TEXTURE_BINDING, 1),
+            refl: Tex::new(d, "stage reflection", bw, bh, HDR_FORMAT, att | wgpu::TextureUsages::TEXTURE_BINDING, 1),
+            refl_depth: Tex::new(d, "stage reflection depth", bw, bh, DEPTH_FORMAT, att, 1),
         });
         true
     }
@@ -447,14 +479,35 @@ impl Viewport {
         for (o, c) in sh.iter_mut().zip(env.sh) {
             *o = [c.x, c.y, c.z, 0.0];
         }
-        let globals = Globals {
+        // lightbox stage: only for lighting that has one, in the material view
+        let stage = pigment_core::stage::look(&env.source)
+            .filter(|_| settings.stage && settings.mode == ViewMode::Material)
+            .zip(mesh)
+            .map(|(look, m)| (look, pigment_core::stage::StageLayout::from_bounds(glam::Vec3::from(m.bounds.0), glam::Vec3::from(m.bounds.1))));
+        let mut globals = Globals {
             view_proj: vp.to_cols_array_2d(),
             inv_view_proj: vp.inverse().to_cols_array_2d(),
             eye: [eye.x, eye.y, eye.z, 1.0],
             params: [settings.mode as u32 as f32, settings.exposure, settings.env_rotation, ENV_MIPS as f32],
             params2: [settings.show_env as u32 as f32, 0.0, ts.baked as u32 as f32, settings.emission],
             sh,
+            stage: [[0.0; 4]; 6],
         };
+        if let Some((look, layout)) = &stage {
+            use super::stage::{mirror_matrix, occluder_matrix, uniforms};
+            globals.stage = uniforms(look, layout, size, false);
+            let mut g = globals;
+            g.view_proj = occluder_matrix(layout, true).to_cols_array_2d();
+            queue.write_buffer(&self.stage.low_globals, 0, bytemuck::bytes_of(&g));
+            g.view_proj = occluder_matrix(layout, false).to_cols_array_2d();
+            queue.write_buffer(&self.stage.high_globals, 0, bytemuck::bytes_of(&g));
+            let m = mirror_matrix(layout.floor_y);
+            let meye = m.transform_point3(eye);
+            g.view_proj = (vp * m).to_cols_array_2d();
+            g.eye = [meye.x, meye.y, meye.z, 1.0];
+            g.stage = uniforms(look, layout, size, true);
+            queue.write_buffer(&self.stage.mirror_globals, 0, bytemuck::bytes_of(&g));
+        }
         queue.write_buffer(&self.globals, 0, bytemuck::bytes_of(&globals));
         let b = settings.bloom;
         let bloom_on = b.enabled && b.intensity > 0.0 && settings.mode == ViewMode::Material;
@@ -493,6 +546,60 @@ impl Viewport {
         );
         let Some(t) = self.targets.as_ref() else { return };
         let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("viewport") });
+        let floor_bg = match (&stage, mesh) {
+            (Some(_), Some(m)) => {
+                // the model's lowest / highest surfaces, seen from below and above
+                for (view, bg) in [(&self.stage.occ_low.view, &self.stage.low_bg), (&self.stage.occ_high.view, &self.stage.high_bg)] {
+                    let mut pass = enc.begin_render_pass(&wgpu::RenderPassDescriptor {
+                        label: Some("stage occluders"),
+                        color_attachments: &[],
+                        depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                            view,
+                            depth_ops: Some(wgpu::Operations { load: wgpu::LoadOp::Clear(0.0), store: wgpu::StoreOp::Store }),
+                            stencil_ops: None,
+                        }),
+                        timestamp_writes: None,
+                        occlusion_query_set: None,
+                        multiview_mask: None,
+                    });
+                    pass.set_pipeline(&self.depth_pipe);
+                    pass.set_bind_group(0, bg, &[]);
+                    pass.set_vertex_buffer(0, m.vertices.slice(..));
+                    pass.set_index_buffer(m.indices.slice(..), wgpu::IndexFormat::Uint32);
+                    pass.draw_indexed(0..m.index_count, 0, 0..1);
+                }
+                self.stage.draw_shadow(&mut enc, &self.g_bg, &env_bg);
+                // the model mirrored in the floor
+                {
+                    let mut pass = enc.begin_render_pass(&wgpu::RenderPassDescriptor {
+                        label: Some("stage reflection"),
+                        color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                            view: &t.refl.view,
+                            depth_slice: None,
+                            resolve_target: None,
+                            ops: wgpu::Operations { load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT), store: wgpu::StoreOp::Store },
+                        })],
+                        depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                            view: &t.refl_depth.view,
+                            depth_ops: Some(wgpu::Operations { load: wgpu::LoadOp::Clear(0.0), store: wgpu::StoreOp::Discard }),
+                            stencil_ops: None,
+                        }),
+                        timestamp_writes: None,
+                        occlusion_query_set: None,
+                        multiview_mask: None,
+                    });
+                    pass.set_pipeline(&self.mirror_pipe);
+                    pass.set_bind_group(0, &self.stage.mirror_bg, &[]);
+                    pass.set_bind_group(1, &env_bg, &[]);
+                    pass.set_bind_group(2, &mat_bg, &[]);
+                    pass.set_vertex_buffer(0, m.vertices.slice(..));
+                    pass.set_index_buffer(m.indices.slice(..), wgpu::IndexFormat::Uint32);
+                    pass.draw_indexed(0..m.index_count, 0, 0..1);
+                }
+                Some(self.stage.floor_bind_group(device, &t.refl.view))
+            }
+            _ => None,
+        };
         {
             let mut pass = enc.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("viewport"),
@@ -516,6 +623,10 @@ impl Viewport {
             pass.set_bind_group(2, &mat_bg, &[]);
             pass.set_pipeline(&self.bg_pipe);
             pass.draw(0..3, 0..1);
+            if let Some(fb) = &floor_bg {
+                self.stage.draw_floor(&mut pass, fb);
+                pass.set_bind_group(2, &mat_bg, &[]);
+            }
             if let Some(m) = mesh {
                 pass.set_pipeline(&self.mesh_pipe);
                 pass.set_vertex_buffer(0, m.vertices.slice(..));

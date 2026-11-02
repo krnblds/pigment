@@ -22,6 +22,7 @@ pub mod partquery;
 pub mod project;
 pub mod sheet;
 pub mod smart;
+pub mod stage;
 pub mod stroke;
 pub mod tile;
 pub mod tiles;
