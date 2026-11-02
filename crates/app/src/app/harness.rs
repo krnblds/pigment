@@ -186,7 +186,7 @@ impl Harness {
         let view = tex.create_view(&Default::default());
         let jobs = self.ctx.tessellate(out.shapes, out.pixels_per_point);
         let screen = eframe::egui_wgpu::ScreenDescriptor { size_in_pixels: [w, h], pixels_per_point: out.pixels_per_point };
-        let textures = std::mem::take(&mut self.textures);
+        let mut textures = std::mem::take(&mut self.textures);
         {
             let mut r = self.rs.renderer.write();
             for (id, deltas) in &textures.set {
@@ -214,6 +214,7 @@ impl Harness {
             for id in &textures.free {
                 r.free_texture(id);
             }
+            textures.clear(); // applied above; epaint asserts on dropping unapplied deltas
         }
         let t = crate::render::gpu::Tex { tex, view, size: w, height: h, format, mips: 1 };
         let px = crate::render::gpu::readback(d, q, &t);
