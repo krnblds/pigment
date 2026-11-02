@@ -125,12 +125,13 @@ pub struct UiState {
 impl UiState {
     pub fn new(prefs: Prefs) -> UiState {
         let export_target = jobs::target(&prefs.export_target).id;
+        let palette = ds::Palette2State { recent: prefs.recent_commands.clone(), ..Default::default() };
         UiState {
             prefs,
             welcome: false,
             toasts: Default::default(),
             jobs: vec![],
-            palette: Default::default(),
+            palette,
             cheatsheet: false,
             gallery: None,
             async_bake: false,
@@ -198,14 +199,16 @@ impl eframe::App for PigmentApp {
         }
         let p = ds::pal(ui);
 
+        let m = ds::metrics(ui);
         egui::Panel::top("top bar").frame(ds::bar_frame(&p).stroke(Stroke::NONE)).show(ui, |ui| self.top_bar(ui, &rs));
-        egui::Panel::bottom("status").frame(ds::bar_frame(&p).stroke(Stroke::NONE)).show(ui, |ui| self.status_bar(ui));
+        egui::Panel::bottom("status").exact_size(m.status_h).frame(ds::bar_frame(&p).stroke(Stroke::NONE).inner_margin(egui::Margin::symmetric(space::MD as i8, 0))).show(ui, |ui| self.status_bar(ui));
         if self.ui.welcome {
             egui::CentralPanel::default().frame(egui::Frame::new().fill(p.bg)).show(ui, |ui| self.welcome_screen(ui, &rs));
         } else {
-            egui::Panel::top("tool options").frame(ds::bar_frame(&p).fill(p.surface_raised).stroke(Stroke::NONE)).show(ui, |ui| self.tool_options(ui, &rs));
-            egui::Panel::left("tool rail").exact_size(size::TOOL + space::LG * 2.0).resizable(false).frame(egui::Frame::new().fill(p.surface).inner_margin(egui::Margin::same(space::SM as i8))).show(ui, |ui| self.tool_rail(ui));
-            egui::CentralPanel::default().frame(egui::Frame::new().fill(p.bg).inner_margin(egui::Margin::same(space::XS as i8))).show(ui, |ui| {
+            egui::Panel::top("tool options").frame(ds::toolbar_frame(&p)).show(ui, |ui| self.tool_options(ui, &rs));
+            let rail = if m.tool_labels { (m.tool + space::LG * 2.0, space::SM) } else { (m.tool + space::MD, space::XS) };
+            egui::Panel::left("tool rail").exact_size(rail.0).resizable(false).frame(egui::Frame::new().fill(p.surface).inner_margin(egui::Margin::same(rail.1 as i8))).show(ui, |ui| self.tool_rail(ui));
+            egui::CentralPanel::default().frame(egui::Frame::new().fill(p.bg).inner_margin(egui::Margin::same(space::XXS as i8))).show(ui, |ui| {
                 let mut layout = std::mem::take(self.ui.prefs.layout_mut());
                 let before = layout.clone();
                 let mut panels = self.ui.panels.take().unwrap_or_default();
@@ -222,6 +225,10 @@ impl eframe::App for PigmentApp {
 
         self.dialogs(ui.ctx(), &rs);
         self.command_palette(ui.ctx(), &rs);
+        if let Some(open) = ds::take_changed_sections(ui.ctx()) {
+            self.ui.prefs.sections = open;
+            self.prefs_changed();
+        }
         if self.ui.cheatsheet {
             self.cheatsheet(ui.ctx());
         }
@@ -231,7 +238,7 @@ impl eframe::App for PigmentApp {
         }
         self.drop_overlay(ui.ctx());
         let screen = ui.ctx().content_rect();
-        let anchor = Rect::from_min_max(screen.min, pos2(screen.right(), screen.bottom() - size::CONTROL_H - space::LG));
+        let anchor = Rect::from_min_max(screen.min, pos2(screen.right(), screen.bottom() - m.status_h - space::XS));
         self.ui.toasts.show(ui.ctx(), anchor);
 
         // Record finished edits (not mid-drag, so a slider drag is one undo step).
@@ -399,8 +406,9 @@ impl PigmentApp {
     fn tool_rail(&mut self, ui: &mut egui::Ui) {
         let simple = self.ui.prefs.mode == Mode::Simple;
         let cur = self.tool();
+        let m = ds::metrics(ui);
         ui.vertical_centered(|ui| {
-            ui.spacing_mut().item_spacing.y = space::XS;
+            ui.spacing_mut().item_spacing.y = if m.tool_labels { space::XS } else { space::XXS };
             let tools: &[(Tool, Icon, &str, &str, &str)] = &[
                 (Tool::Paint, Icon::Brush, "Paint", "Paint the brush material onto the model. Left-drag.", "B"),
                 (Tool::Erase, Icon::Eraser, "Erase", "Erase paint, or paint a mask black.", "E"),
@@ -424,13 +432,13 @@ impl PigmentApp {
                     self.set_tool(*t);
                 }
             }
-            ui.add_space(space::LG);
+            ui.add_space(space::XS);
             ui.separator();
-            if ui.add(IconBtn::new(Icon::Frame, "Frame the model (or the selected parts)").shortcut("F").size(size::TOOL)).clicked() {
+            if ui.add(IconBtn::new(Icon::Frame, "Frame the model (or the selected parts)").shortcut("F").size(m.tool)).clicked() {
                 self.frame_selected();
             }
             let mv = self.view.mode == ViewMode::Material;
-            if ui.add(IconBtn::new(Icon::Image, "Material / base colour view").shortcut("M").selected(!mv).size(size::TOOL)).clicked() {
+            if ui.add(IconBtn::new(Icon::Image, "Material / base colour view").shortcut("M").selected(!mv).size(m.tool)).clicked() {
                 self.view.mode = if mv { ViewMode::BaseColor } else { ViewMode::Material };
             }
         });
@@ -453,8 +461,9 @@ impl PigmentApp {
     fn tool_options(&mut self, ui: &mut egui::Ui, rs: &RenderState) {
         let simple = self.ui.prefs.mode == Mode::Simple;
         let p = ds::pal(ui);
+        let m = ds::metrics(ui);
         ui.horizontal(|ui| {
-            ui.set_min_height(size::CONTROL_H);
+            ui.set_min_height(m.control_h + space::XS);
             let tool = self.tool();
             let (ic, name) = match tool {
                 Tool::Paint => (Icon::Brush, "Paint"),
@@ -464,14 +473,12 @@ impl PigmentApp {
                 Tool::Pick => (Icon::Target, "Pick parts"),
                 Tool::Foliage => (Icon::Leaf, "Foliage"),
             };
-            ic.show(ui, icon::MD, p.accent);
+            ic.show(ui, icon::SM + 1.0, p.accent);
             ui.label(ds::strong(name, font::BODY));
             ui.separator();
+            let fw = if m.tool_labels { 190.0 } else { 150.0 };
             let compact = |ui: &mut egui::Ui, label: &str, v: &mut f32, r: std::ops::RangeInclusive<f32>, unit: ds::Unit, log: bool, tip: &str| {
-                ui.scope(|ui| {
-                    ui.set_width(205.0);
-                    ds::slider_row_ex(ui, label, v, r, unit, log, Some(tip));
-                });
+                ui.add(ds::DragField::new(v, r).unit(unit).logarithmic(log).label(label).width(fw)).on_hover_ui(|ui| ds::tooltip_body(ui, label, Some(tip), None));
             };
             match tool {
                 Tool::Paint | Tool::Erase => {
@@ -513,11 +520,10 @@ impl PigmentApp {
                     ui.label(ds::text(b.cells.join(", "), font::SMALL).color(p.text_secondary));
                 }
             }
-            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                if matches!(tool, Tool::Paint | Tool::Erase | Tool::Decal) {
-                    self.paint_target_chip(ui, rs);
-                }
-            });
+            if matches!(tool, Tool::Paint | Tool::Erase | Tool::Decal) {
+                ui.separator();
+                self.paint_target_chip(ui, rs);
+            }
         });
     }
 
@@ -528,14 +534,17 @@ impl PigmentApp {
         let locked = layer.as_ref().is_some_and(|l| self.ui.locked.contains(&l.3));
         match (layer, self.paint_target()) {
             (Some((name, ..)), _) if locked => {
-                ui.label(ds::text(format!("{name} is locked"), font::SMALL).color(p.warn));
                 Icon::Lock.show(ui, icon::SM, p.warn);
+                ui.label(ds::text(format!("{name} is locked"), font::SMALL).color(p.warn));
             }
             (Some((name, ..)), Ok(Target::Mask(_))) => {
-                ds::segmented(ui, &mut self.brush.mask_white, &[(false, None, "Black: hide"), (true, None, "White: reveal")]);
-                ui.label(ds::text(format!("Painting the mask of {name}"), font::SMALL).color(p.accent)).rich_tip("Painting a mask", "White shows the layer, black hides it. X swaps.");
+                Icon::Mask.show(ui, icon::SM, p.accent);
+                ui.label(ds::text(format!("Mask of {name}"), font::SMALL).color(p.text)).rich_tip("Painting a mask", "White shows the layer, black hides it. X swaps.");
+                ds::segmented(ui, &mut self.brush.mask_white, &[(true, None, "White: reveal"), (false, None, "Black: hide")]);
+                ds::kbd(ui, "X").on_hover_text("X swaps black and white");
             }
             (Some((name, ..)), Ok(Target::Layer(_))) => {
+                Icon::PaintLayer.show(ui, icon::SM, p.text_muted);
                 ui.label(ds::text(format!("Painting on {name}"), font::SMALL).color(p.text_secondary));
             }
             (Some((name, false, false, _)), _) => {
@@ -553,12 +562,12 @@ impl PigmentApp {
     fn top_bar(&mut self, ui: &mut egui::Ui, rs: &RenderState) {
         let p = ds::pal(ui);
         egui::MenuBar::new().ui(ui, |ui| {
-            ui.set_min_height(size::CONTROL_H + space::XS);
+            ui.set_min_height(ds::metrics(ui).control_h);
             // logo: a pigment drop
-            let (r, _) = ui.allocate_exact_size(vec2(icon::LG, icon::LG), egui::Sense::hover());
+            let (r, _) = ui.allocate_exact_size(vec2(icon::MD, icon::MD), egui::Sense::hover());
             Icon::Palette.paint(ui.painter(), r, p.accent);
             ui.label(ds::strong("Pigment", font::TITLE));
-            ui.add_space(space::SM);
+            ui.add_space(space::XS);
             let file = ui.menu_button("File", |ui| self.file_menu(ui, rs));
             self.anchors.insert("file_menu", file.response.rect);
             ui.menu_button("Edit", |ui| {
@@ -579,7 +588,7 @@ impl PigmentApp {
                     self.ui.palette.open = true;
                     ui.close();
                 }
-                if ui.button("Settings…").clicked() {
+                if ui.add(egui::Button::new("Settings…").shortcut_text("Ctrl+,")).clicked() {
                     self.ui.settings = true;
                     ui.close();
                 }
@@ -588,9 +597,21 @@ impl PigmentApp {
                 if ui.add(egui::Button::new("Frame model / selection").shortcut_text("F")).clicked() {
                     self.frame_selected();
                 }
+                if ui.add(egui::Button::new("Material / base colour").shortcut_text("M")).clicked() {
+                    self.view.mode = if self.view.mode == ViewMode::Material { ViewMode::BaseColor } else { ViewMode::Material };
+                }
                 ui.separator();
                 for m in ViewMode::ALL {
                     ui.radio_value(&mut self.view.mode, m, m.label());
+                }
+                ui.separator();
+                let dark = self.ui.prefs.theme == ds::ThemeKind::Dark;
+                if ui.add(egui::Button::selectable(dark, "Dark theme")).clicked() {
+                    self.toggle_theme(ui.ctx());
+                }
+                let compact = self.ui.prefs.density == ds::Density::Compact;
+                if ui.add(egui::Button::selectable(compact, "Compact density")).clicked() {
+                    self.toggle_density(ui.ctx());
                 }
             });
             ui.menu_button("Window", |ui| self.window_menu(ui));
@@ -612,7 +633,7 @@ impl PigmentApp {
                     ui.close();
                 }
             });
-            ui.add_space(space::LG);
+            ui.add_space(space::MD);
             let mut mode = self.ui.prefs.mode;
             let seg = ui.scope(|ui| ds::segmented(ui, &mut mode, &[(Mode::Simple, Some(Icon::Sparkle), "Simple"), (Mode::Advanced, Some(Icon::Sliders), "Advanced")]));
             self.anchors.insert("mode_toggle", seg.response.rect);
@@ -620,7 +641,7 @@ impl PigmentApp {
                 self.set_mode(mode);
             }
             let name = self.project_dir.as_ref().and_then(|d| d.file_stem()).map(|n| n.to_string_lossy().to_string()).unwrap_or_else(|| self.export_name.clone());
-            ui.add_space(space::LG);
+            ui.add_space(space::MD);
             ui.label(ds::text(name, font::SMALL).color(p.text_secondary));
             if self.modified {
                 ds::badge(ui, "unsaved", p.warn).on_hover_text("Ctrl+S saves. Pigment also keeps a recovery copy every few minutes.");
@@ -634,7 +655,7 @@ impl PigmentApp {
                 if ui.add(Btn::secondary("Send to Blender").icon(Icon::Send)).rich_tip("Send to Blender", "Exports the maps, the mesh and a material.json the Pigment Bridge add-on links into a Blender material.").clicked() {
                     self.send_to_blender(rs);
                 }
-                ui.add_space(space::SM);
+                ui.add_space(space::XS);
                 if ui.add(IconBtn::new(Icon::Help, "Keyboard shortcuts").shortcut("?")).clicked() {
                     self.ui.cheatsheet = !self.ui.cheatsheet;
                 }
@@ -775,9 +796,43 @@ impl PigmentApp {
         self.set_status(msg, false);
     }
 
+    /// What the mouse and keys do with the current tool (the status bar's hints).
+    pub(super) fn tool_hints(&self) -> &'static [ds::Hint] {
+        use ds::{hint_key as k, hint_mod as km, hint_mouse as mo, MouseBtn::*};
+        const PAINT: &[ds::Hint] = &[mo(Left, "Paint"), mo(Right, "Orbit"), mo(Middle, "Pan"), mo(Wheel, "Zoom"), k("[ ]", "Size"), k("F", "Frame")];
+        const MASK: &[ds::Hint] = &[mo(Left, "Paint mask"), k("X", "Black / white"), mo(Right, "Orbit"), mo(Wheel, "Zoom"), k("[ ]", "Size")];
+        const ERASE: &[ds::Hint] = &[mo(Left, "Erase"), mo(Right, "Orbit"), mo(Wheel, "Zoom"), k("[ ]", "Size"), k("E", "Back to brush")];
+        const FILL: &[ds::Hint] = &[mo(Left, "Fill a part"), mo(Right, "Orbit"), mo(Wheel, "Zoom"), k("Esc", "Brush")];
+        const PICK: &[ds::Hint] = &[mo(Left, "Add / remove part"), mo(Right, "Orbit"), mo(Wheel, "Zoom"), k("Esc", "Brush")];
+        const FOLIAGE: &[ds::Hint] = &[mo(Left, "Plant cards"), km("Shift", Left, "Erase"), mo(Right, "Orbit"), mo(Wheel, "Zoom"), k("Esc", "Brush")];
+        const STAMP: &[ds::Hint] = &[mo(Left, "Stick decal"), mo(Right, "Orbit"), mo(Wheel, "Zoom"), k("Esc", "Brush")];
+        const BOX: &[ds::Hint] = &[mo(Left, "Drag a box to project"), mo(Right, "Orbit"), mo(Wheel, "Zoom"), k("Esc", "Brush")];
+        const PART: &[ds::Hint] = &[mo(Left, "Fit decal to a part"), mo(Right, "Orbit"), mo(Wheel, "Zoom"), k("Esc", "Brush")];
+        const SCATTER: &[ds::Hint] = &[k("Scatter", "in the Decals panel"), mo(Right, "Orbit"), mo(Wheel, "Zoom"), k("Esc", "Brush")];
+        match self.tool() {
+            Tool::Paint if matches!(self.paint_target(), Ok(Target::Mask(_))) => MASK,
+            Tool::Paint => PAINT,
+            Tool::Erase => ERASE,
+            Tool::Fill => FILL,
+            Tool::Pick => PICK,
+            Tool::Foliage => FOLIAGE,
+            Tool::Decal => match self.ui.decal.mode {
+                DecalMode::Stamp => STAMP,
+                DecalMode::Box => BOX,
+                DecalMode::Part => PART,
+                DecalMode::Scatter => SCATTER,
+            },
+        }
+    }
+
     fn status_bar(&mut self, ui: &mut egui::Ui) {
         let p = ds::pal(ui);
-        ui.horizontal(|ui| {
+        ui.horizontal_centered(|ui| {
+            if !self.ui.welcome {
+                let hints = ds::hover_hints(ui.ctx()).unwrap_or_else(|| self.tool_hints());
+                ds::hint_row(ui, hints);
+                ui.separator();
+            }
             if let Some(j) = self.ui.jobs.iter().find(|j| j.toast != 0) {
                 let title = self.ui.toasts.list.iter().find(|t| t.id == j.toast).map(|t| t.title.clone()).unwrap_or_default();
                 ds::progress(ui, None, &title);
@@ -804,6 +859,10 @@ impl PigmentApp {
     fn shortcuts(&mut self, ui: &mut egui::Ui, rs: &RenderState) {
         use egui::{Key, KeyboardShortcut as K, Modifiers as M};
         let c = |i: &mut egui::InputState, m: M, k: Key| i.consume_shortcut(&K::new(m, k));
+        let settings = ui.input_mut(|i| c(i, M::COMMAND, Key::Comma));
+        if settings {
+            self.ui.settings = true;
+        }
         let (redo2, redo, undo, save_as, save, open_model, open, export, export2, palette, newp, tab) = ui.input_mut(|i| {
             (
                 c(i, M::COMMAND | M::SHIFT, Key::Z),
@@ -909,6 +968,8 @@ impl PigmentApp {
         if esc {
             if self.ui.cheatsheet {
                 self.ui.cheatsheet = false;
+            } else if self.show_export || self.ui.settings || self.ui.new_project.open {
+                // the dialog closes itself
             } else if self.tool() != Tool::Paint {
                 self.set_tool(Tool::Paint);
             }
@@ -948,6 +1009,9 @@ impl PigmentApp {
             cmd("simple", "Switch to Simple mode", "Mode", Some("Ctrl+Tab"), Icon::Sparkle),
             cmd("advanced", "Switch to Advanced mode", "Mode", Some("Ctrl+Tab"), Icon::Sliders),
             cmd("theme", "Toggle light / dark theme", "View", None, Icon::Sun),
+            cmd("density", "Toggle compact / comfortable density", "View", None, Icon::Sliders),
+            cmd("material_view", "Material / base colour view", "View", Some("M"), Icon::Image),
+            cmd("history", "Undo history", "Edit", None, Icon::History),
             cmd("frame", "Frame model / selection", "View", Some("F"), Icon::Frame),
             cmd("tool_paint", "Paint tool", "Tools", Some("B"), Icon::Brush),
             cmd("tool_erase", "Eraser", "Tools", Some("E"), Icon::Eraser),
@@ -962,7 +1026,7 @@ impl PigmentApp {
             cmd("shortcuts", "Keyboard shortcuts", "Help", Some("?"), Icon::Keyboard),
             cmd("tour", "Learn in 2 minutes (guided tour)", "Help", None, Icon::Play),
             cmd("reset_layout", "Reset layout", "Window", None, Icon::Window),
-            cmd("settings", "Settings…", "Edit", None, Icon::Gear),
+            cmd("settings", "Settings…", "Edit", Some("Ctrl+,"), Icon::Gear),
         ];
         for l in dock::PRESETS {
             v.push(ds::Command { id: format!("layout:{l}"), title: format!("Layout: {l}"), group: "Window", shortcut: None, icon: Icon::Window });
@@ -997,6 +1061,16 @@ impl PigmentApp {
             "theme" => {
                 self.ui.prefs.theme = if self.ui.prefs.theme == ds::ThemeKind::Dark { ds::ThemeKind::Light } else { ds::ThemeKind::Dark };
                 self.ui.pending_theme = true;
+                self.prefs_changed();
+            }
+            "density" => {
+                self.ui.prefs.density = if self.ui.prefs.density == ds::Density::Compact { ds::Density::Comfortable } else { ds::Density::Compact };
+                self.ui.pending_theme = true;
+                self.prefs_changed();
+            }
+            "material_view" => self.view.mode = if self.view.mode == ViewMode::Material { ViewMode::BaseColor } else { ViewMode::Material },
+            "history" => {
+                self.ui.prefs.layout_mut().open(PanelId::History);
                 self.prefs_changed();
             }
             "frame" => self.frame_selected(),
@@ -1044,15 +1118,29 @@ impl PigmentApp {
 
     fn command_palette(&mut self, ctx: &egui::Context, rs: &RenderState) {
         if std::mem::take(&mut self.ui.pending_theme) {
-            ds::apply(ctx, self.ui.prefs.theme);
+            ds::apply_with(ctx, self.ui.prefs.theme, self.ui.prefs.density);
         }
         if !self.ui.palette.open {
             return;
         }
         let cmds = self.commands();
         if let Some(id) = ds::command_palette(ctx, &mut self.ui.palette, &cmds) {
+            self.ui.prefs.recent_commands = self.ui.palette.recent.clone();
+            self.prefs_changed();
             self.run_command(rs, &id);
         }
+    }
+
+    pub(super) fn toggle_theme(&mut self, ctx: &egui::Context) {
+        self.ui.prefs.theme = if self.ui.prefs.theme == ds::ThemeKind::Dark { ds::ThemeKind::Light } else { ds::ThemeKind::Dark };
+        ds::apply_with(ctx, self.ui.prefs.theme, self.ui.prefs.density);
+        self.prefs_changed();
+    }
+
+    pub(super) fn toggle_density(&mut self, ctx: &egui::Context) {
+        self.ui.prefs.density = if self.ui.prefs.density == ds::Density::Compact { ds::Density::Comfortable } else { ds::Density::Compact };
+        ds::apply_with(ctx, self.ui.prefs.theme, self.ui.prefs.density);
+        self.prefs_changed();
     }
 
     pub(super) fn set_lighting(&mut self, rs: &RenderState, id: &str) {
@@ -1066,13 +1154,15 @@ impl PigmentApp {
     }
 
     fn cheatsheet(&mut self, ctx: &egui::Context) {
-        let groups: [(&str, &[(&str, &str)]); 4] = [
+        let groups: [(&str, &[(&str, &str)]); 6] = [
             ("Viewport", &[("Right-drag / Alt+left-drag", "Orbit"), ("Middle-drag", "Pan"), ("Wheel", "Zoom (towards the cursor)"), ("F", "Frame model or selected parts"), ("M", "Material / base colour view")]),
             ("Tools", &[("B", "Paint"), ("E", "Eraser"), ("G", "Fill a part"), ("D", "Decal"), ("P", "Pick parts (Advanced)"), ("[  ]", "Brush size"), ("X", "Swap mask black / white"), ("Esc", "Back to the brush")]),
             ("Project", &[("Ctrl+N", "New project"), ("Ctrl+O", "Open project"), ("Ctrl+Shift+O", "Open model"), ("Ctrl+S", "Save"), ("Ctrl+E", "Export"), ("Ctrl+Z / Ctrl+Y", "Undo / redo")]),
-            ("Interface", &[("Ctrl+K", "Command palette"), ("Ctrl+Tab", "Simple / Advanced"), ("?", "This sheet"), ("Ctrl + / Ctrl -", "Interface size")]),
+            ("Interface", &[("Ctrl+K", "Command palette"), ("Ctrl+Tab", "Simple / Advanced"), ("Ctrl+,", "Settings"), ("?", "This sheet"), ("Ctrl + / Ctrl -", "Interface size")]),
+            ("Layers (pointer over the panel)", &[("F2 / double-click", "Rename"), ("Ctrl+D", "Duplicate"), ("Ctrl+G", "Group into folder"), ("Delete", "Delete"), ("H", "Hide / show"), ("Right-click", "More actions")]),
+            ("Number fields", &[("Drag", "Change"), ("Shift+drag", "Fine"), ("Ctrl+drag", "Snap to round steps"), ("Double-click / Enter", "Type a value (2*3 works)")]),
         ];
-        let (_, dismissed) = ds::modal(ctx, "cheatsheet", "Keyboard shortcuts", 680.0, |ui| {
+        let (_, dismissed) = ds::modal(ctx, "cheatsheet", "Keyboard shortcuts", 720.0, |ui| {
             ui.columns(2, |cols| {
                 for (k, (title, rows)) in groups.iter().enumerate() {
                     let ui = &mut cols[k % 2];
@@ -1080,7 +1170,7 @@ impl PigmentApp {
                     for (keys, what) in rows.iter() {
                         ui.horizontal(|ui| {
                             ui.scope(|ui| {
-                                ui.set_width(150.0);
+                                ui.set_width(130.0);
                                 ds::kbd(ui, keys);
                             });
                             ui.label(ds::text(*what, font::SMALL));
@@ -1297,7 +1387,7 @@ impl PigmentApp {
         let glass = ds::glass_frame(&p);
         let simple = self.ui.prefs.mode == Mode::Simple;
         // view-mode chips, top left
-        let chips = Rect::from_min_size(rect.left_top() + vec2(space::MD, space::MD), vec2((rect.width() - 240.0).max(120.0), size::CONTROL_H + space::XS));
+        let chips = Rect::from_min_size(rect.left_top() + vec2(space::SM, space::SM), vec2((rect.width() - 220.0).max(120.0), size::CONTROL_H));
         ui.scope_builder(egui::UiBuilder::new().max_rect(chips), |ui| {
             glass.show(ui, |ui| {
                 ui.horizontal(|ui| {
@@ -1326,7 +1416,7 @@ impl PigmentApp {
             });
         });
         // lighting, top right
-        let light = Rect::from_min_size(pos2(rect.right() - 220.0, rect.top() + space::MD), vec2(212.0, size::CONTROL_H + space::XS));
+        let light = Rect::from_min_size(pos2(rect.right() - 206.0, rect.top() + space::SM), vec2(200.0, size::CONTROL_H));
         ui.scope_builder(egui::UiBuilder::new().max_rect(light).layout(egui::Layout::right_to_left(egui::Align::Min)), |ui| {
             glass.show(ui, |ui| {
                 ui.menu_button(ds::text(format!("Lighting: {}", self.env.name), font::SMALL), |ui| {
@@ -1336,36 +1426,32 @@ impl PigmentApp {
             });
         });
         // axis gizmo, bottom right
-        let g = pos2(rect.right() - 44.0, rect.bottom() - 44.0);
+        let g = pos2(rect.right() - 34.0, rect.bottom() - 34.0);
         let painter = ui.painter().with_clip_rect(rect);
-        painter.circle_filled(g, 30.0, p.glass);
+        painter.circle_filled(g, 24.0, p.glass);
         let view = self.camera.view();
         let mut axes: Vec<(glam::Vec3, egui::Color32, &str)> = vec![(glam::Vec3::X, p.danger, "X"), (glam::Vec3::Y, p.success, "Y"), (glam::Vec3::Z, p.info, "Z")];
         axes.sort_by(|a, b| view.transform_vector3(a.0).z.total_cmp(&view.transform_vector3(b.0).z));
         for (a, c, l) in axes {
             let v = view.transform_vector3(a);
-            let tip = g + vec2(v.x, -v.y) * 22.0;
-            painter.line_segment([g, tip], Stroke::new(2.0, c));
-            painter.circle_filled(tip, 7.0, c);
+            let tip = g + vec2(v.x, -v.y) * 17.0;
+            painter.line_segment([g, tip], Stroke::new(1.5, c));
+            painter.circle_filled(tip, 6.0, c);
             painter.text(tip, Align2::CENTER_CENTER, l, ds::fonts::semibold(font::CAPTION), p.on_accent);
         }
-        // empty-state hint for the current tool, bottom left
-        let hint = match self.tool() {
-            Tool::Paint => "Left-drag to paint · Right-drag to orbit · Wheel to zoom · F to frame",
-            Tool::Erase => "Left-drag to erase · E switches back to the brush",
-            Tool::Fill => "Click a part of the model to fill it",
-            Tool::Pick => "Click parts to add / remove them from the layer's mask",
-            Tool::Foliage => "Left-drag to paint foliage cards · Shift-drag erases · pick cards in the Foliage library",
-            Tool::Decal => match self.ui.decal.mode {
-                DecalMode::Stamp => "Click the model to stick the decal there",
-                DecalMode::Box => "Drag a box over the model to project the decal",
-                DecalMode::Part => "Click a part to fit the decal to it",
-                DecalMode::Scatter => "Press Scatter in the Decals panel",
-            },
+        // the active tool, bottom left (the status bar lists what the mouse does)
+        let (ic, name) = match self.tool() {
+            Tool::Paint => (Icon::Brush, "Paint"),
+            Tool::Erase => (Icon::Eraser, "Erase"),
+            Tool::Fill => (Icon::Bucket, "Fill part"),
+            Tool::Decal => (Icon::Stamp, "Decal"),
+            Tool::Pick => (Icon::Target, "Pick parts"),
+            Tool::Foliage => (Icon::Leaf, "Foliage"),
         };
-        let gal = painter.layout_no_wrap(hint.to_string(), ds::fonts::regular(font::SMALL), p.text_secondary);
-        let hr = Rect::from_min_size(rect.left_bottom() + vec2(space::MD, -space::MD - gal.size().y - space::MD), gal.size() + vec2(space::LG * 2.0, space::MD));
-        painter.rect_filled(hr, egui::CornerRadius::same(ds::radius::PILL), p.glass);
-        painter.galley(hr.min + vec2(space::LG, space::XS), gal, p.text_secondary);
+        let gal = painter.layout_no_wrap(name.to_string(), ds::fonts::semibold(font::SMALL), p.text);
+        let hr = Rect::from_min_size(rect.left_bottom() + vec2(space::MD, -space::MD - ds::metrics(ui).control_h), vec2(gal.size().x + icon::SM + space::SM * 3.0, ds::metrics(ui).control_h));
+        painter.rect(hr, egui::CornerRadius::same(ds::radius::LG), p.glass, Stroke::new(1.0, p.border), egui::StrokeKind::Inside);
+        ic.paint(&painter, Rect::from_center_size(pos2(hr.left() + space::SM + icon::SM / 2.0, hr.center().y), vec2(icon::SM, icon::SM)), p.accent);
+        painter.galley(pos2(hr.left() + space::SM * 2.0 + icon::SM, hr.center().y - gal.size().y / 2.0), gal, p.text);
     }
 }

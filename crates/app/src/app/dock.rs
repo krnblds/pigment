@@ -522,7 +522,7 @@ pub fn show(ui: &mut Ui, layout: &mut DockLayout, mut panel: impl FnMut(&mut Ui,
         let hot = r.hovered() || r.dragged();
         if hot {
             ui.ctx().set_cursor_icon(if *vertical { egui::CursorIcon::ResizeVertical } else { egui::CursorIcon::ResizeHorizontal });
-            ui.painter().rect_filled(*bar, CornerRadius::ZERO, p.accent.gamma_multiply(0.6));
+            ui.painter().rect_filled(*bar, CornerRadius::ZERO, if r.dragged() { p.accent.gamma_multiply(0.7) } else { p.border_strong });
         }
         if r.dragged() {
             if let Some(pos) = r.interact_pointer_pos() {
@@ -541,6 +541,7 @@ pub fn show(ui: &mut Ui, layout: &mut DockLayout, mut panel: impl FnMut(&mut Ui,
     let pointer = ui.ctx().pointer_latest_pos();
     let released = ui.input(|i| i.pointer.any_released());
 
+    let m = design::metrics(ui);
     for (path, lrect) in &leaves {
         let Some(Node::Leaf { tabs, active }) = layout.root.at(path).cloned() else { continue };
         if tabs.is_empty() {
@@ -548,35 +549,33 @@ pub fn show(ui: &mut Ui, layout: &mut DockLayout, mut panel: impl FnMut(&mut Ui,
         }
         let active = active.min(tabs.len() - 1);
         let only_viewport = tabs.len() == 1 && tabs[0] == PanelId::Viewport;
-        let lrect = lrect.shrink(1.0);
-        let content = if only_viewport { lrect } else { Rect::from_min_max(pos2(lrect.left(), lrect.top() + size::TAB_H), lrect.max) };
+        let lrect = lrect.shrink(0.5);
+        let content = if only_viewport { lrect } else { Rect::from_min_max(pos2(lrect.left(), lrect.top() + m.tab_h), lrect.max) };
         if !only_viewport {
-            let bar = Rect::from_min_max(lrect.min, pos2(lrect.right(), lrect.top() + size::TAB_H));
-            ui.painter().rect_filled(bar, CornerRadius { nw: radius::MD, ne: radius::MD, sw: 0, se: 0 }, p.surface);
-            ui.painter().hline(bar.x_range(), bar.bottom() - 0.5, Stroke::new(1.0, p.border));
-            let mut x = bar.left() + space::XS;
+            // the tab strip sits on the darker background; the active tab joins the panel below
+            let bar = Rect::from_min_max(lrect.min, pos2(lrect.right(), lrect.top() + m.tab_h));
+            ui.painter().rect_filled(bar, CornerRadius { nw: radius::LG, ne: radius::LG, sw: 0, se: 0 }, p.bg.lerp_to_gamma(p.surface, 0.45));
+            let mut x = bar.left();
+            let isz = icon::SM - 1.0;
             for (k, t) in tabs.iter().enumerate() {
                 let on = k == active;
-                let g = ui.painter().layout_no_wrap(t.title().to_string(), if on { fonts::semibold(font::SMALL) } else { fonts::regular(font::SMALL) }, p.text);
-                let w = g.size().x + icon::SM + space::SM + space::LG * 2.0 + if t.closable() { icon::SM } else { 0.0 };
+                let g = ui.painter().layout_no_wrap(t.title().to_string(), fonts::regular(font::SMALL), p.text);
+                let w = g.size().x + isz + space::SM + space::MD * 2.0 + if t.closable() { isz + space::XXS } else { 0.0 };
                 let w = w.min(bar.right() - x).max(0.0);
                 if w < 24.0 {
                     break;
                 }
-                let tr = Rect::from_min_size(pos2(x, bar.top() + 3.0), vec2(w, size::TAB_H - 3.0));
+                let tr = Rect::from_min_size(pos2(x, bar.top()), vec2(w, m.tab_h));
                 let id = ui.scope_id().with(("dock tab", *t));
                 let r = ui.interact(tr, id, Sense::click_and_drag());
-                let bg = if on { p.surface_raised } else if r.hovered() { p.surface_hover } else { p.surface };
-                ui.painter().rect_filled(tr, CornerRadius { nw: radius::MD, ne: radius::MD, sw: 0, se: 0 }, bg);
-                if on {
-                    ui.painter().hline(tr.x_range().shrink(space::SM), tr.top() + 1.0, Stroke::new(2.0, p.accent));
-                }
-                let fg = if on { p.text } else { p.text_muted };
+                let bg = if on { p.surface } else if r.hovered() { p.surface_raised } else { egui::Color32::TRANSPARENT };
+                ui.painter().rect_filled(tr, CornerRadius { nw: radius::LG, ne: radius::LG, sw: 0, se: 0 }, bg);
+                let fg = if on { p.text } else if r.hovered() { p.text_secondary } else { p.text_muted };
                 let painter = ui.painter().with_clip_rect(tr);
-                t.icon().paint(&painter, Rect::from_min_size(pos2(tr.left() + space::LG, tr.center().y - icon::SM / 2.0), vec2(icon::SM, icon::SM)), if on { p.accent } else { fg });
-                painter.galley(pos2(tr.left() + space::LG + icon::SM + space::SM, tr.center().y - g.size().y / 2.0), g, fg);
-                if t.closable() && (r.hovered() || on) {
-                    let cr = Rect::from_center_size(pos2(tr.right() - space::MD - icon::SM / 2.0 + 2.0, tr.center().y), vec2(icon::SM - 2.0, icon::SM - 2.0));
+                t.icon().paint(&painter, Rect::from_min_size(pos2(tr.left() + space::MD, tr.center().y - isz / 2.0), vec2(isz, isz)), if on { p.text_secondary } else { fg });
+                painter.galley(pos2(tr.left() + space::MD + isz + space::SM, tr.center().y - g.size().y / 2.0), g, fg);
+                if t.closable() && r.hovered() {
+                    let cr = Rect::from_center_size(pos2(tr.right() - space::SM - isz / 2.0 + 2.0, tr.center().y), vec2(isz - 3.0, isz - 3.0));
                     let c = ui.interact(cr.expand(2.0), id.with("close"), Sense::click());
                     Icon::Close.paint(ui.painter(), cr, if c.hovered() { p.danger } else { p.text_muted });
                     if c.on_hover_text("Close panel (reopen it from the Window menu)").clicked() {
@@ -608,18 +607,18 @@ pub fn show(ui: &mut Ui, layout: &mut DockLayout, mut panel: impl FnMut(&mut Ui,
                     }
                 });
                 out.rects.push((*t, tr));
-                x += w + space::XXS;
+                x += w + 1.0;
             }
         }
         let t = tabs[active];
-        ui.painter().rect_filled(content, CornerRadius { nw: 0, ne: 0, sw: radius::MD, se: radius::MD }, if t == PanelId::Viewport { p.bg } else { p.surface });
+        ui.painter().rect_filled(content, CornerRadius { nw: 0, ne: 0, sw: radius::LG, se: radius::LG }, if t == PanelId::Viewport { p.bg } else { p.surface });
         let mut child = ui.new_child(egui::UiBuilder::new().max_rect(content).id_salt(("dock panel", t)).layout(egui::Layout::top_down(egui::Align::Min)));
         child.set_clip_rect(content.intersect(ui.clip_rect()));
         if t == PanelId::Viewport {
             panel(&mut child, t);
         } else {
             egui::ScrollArea::vertical().id_salt(("panel scroll", t)).auto_shrink([false, false]).show(&mut child, |ui| {
-                egui::Frame::new().inner_margin(egui::Margin::same(space::LG as i8)).show(ui, |ui| {
+                egui::Frame::new().inner_margin(egui::Margin::same(m.pad as i8)).show(ui, |ui| {
                     ui.set_width(ui.available_width());
                     panel(ui, t)
                 });
@@ -633,7 +632,7 @@ pub fn show(ui: &mut Ui, layout: &mut DockLayout, mut panel: impl FnMut(&mut Ui,
                 let z = zone_at(content, pos);
                 let painter = ui.ctx().layer_painter(egui::LayerId::new(egui::Order::Foreground, egui::Id::NULL.with("dock drop")));
                 let zr = zone_rect(content, z);
-                painter.rect(zr, CornerRadius::same(radius::LG), p.accent.gamma_multiply(0.18), Stroke::new(2.0, p.accent), StrokeKind::Inside);
+                painter.rect(zr, CornerRadius::same(radius::LG), p.accent.gamma_multiply(0.14), Stroke::new(1.5, p.accent), StrokeKind::Inside);
                 painter.text(zr.center(), Align2::CENTER_CENTER, if z == Zone::Center { format!("Add {} here", d.title()) } else { format!("Split: {}", d.title()) }, fonts::semibold(font::BODY), p.text);
                 if released {
                     let path = path.clone();
