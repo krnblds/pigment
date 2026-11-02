@@ -185,6 +185,9 @@ func _new_car(model, i: int):
 
 # ================================================================== spawning
 func _player_pos() -> Vector3:
+	var pf = main.get("player_focus")         # on foot (scripts/waker/): traffic lives round the Waker
+	if pf and is_instance_valid(pf):
+		return pf.global_position
 	return main.car.global_position if main.car else Vector3.ZERO
 
 
@@ -697,6 +700,14 @@ func _collect_obstacles() -> void:
 			obstacles.append([p.global_position, p.linear_velocity, p.half_len, false, p, p.half_w])
 	if peds:
 		peds.add_obstacles(obstacles)
+	# the Waker on foot (scripts/waker/): cars stop for them; sleepers and a courier's car too
+	var pf = main.get("player_focus")
+	if pf != null and is_instance_valid(pf):
+		if not ignore_player:
+			obstacles.append([pf.global_position, pf.velocity, 0.35, true, pf, 0.35])
+		for s in get_tree().get_nodes_in_group("sleeper"):
+			if s.visible and s.global_position.distance_squared_to(pf.global_position) < 90000.0:
+				obstacles.append([s.global_position, s.velocity, 0.35, false, s, 0.35])
 
 
 ## [gap, speed along my heading, is player] for the nearest obstacle on my path.

@@ -1,0 +1,8 @@
+{
+	"id": "shotgun", "name": "MUKADE-12 SHOTGUN", "slot": 5, "kind": "hitscan", "lethal": true,
+	"damage": 11, "stun": 0.0, "headshot": 1.5, "range": 40, "rate": 1.3, "auto": false, "pellets": 8,
+	"spread_hip": 5.5, "spread_aim": 4.0, "bloom": 2.0, "bloom_max": 6.0, "recoil": 5.0,
+	"mag": 6, "reserve": 36, "reload": 2.6, "tracer": "bullet", "casing": true, "hold": "rifle",
+	"sounds": {"fire": "shotgun_shot", "reload": "reload_shell", "dry": "dry_fire"},
+	"unlock": {"meridian": 700}
+}
