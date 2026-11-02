@@ -848,6 +848,16 @@ fn field_denorm(t: f32, lo: f32, hi: f32, log: bool) -> f32 {
     }
 }
 
+/// Does a fill edge of `span` fall inside the text at `text` (x range)? Then
+/// `Some(filled)`: draw a plate behind the text, filled colour if the fill
+/// covers most of it, else the background, so no edge crosses the glyphs.
+pub fn text_plate(span: Option<(f32, f32)>, text: (f32, f32)) -> Option<bool> {
+    let (a, b) = span?;
+    let (tl, tr) = text;
+    let cuts = (a > tl && a < tr) || (b > tl && b < tr);
+    cuts.then(|| (b.min(tr) - a.max(tl)).max(0.0) / (tr - tl).max(1.0) >= 0.5)
+}
+
 impl Widget for DragField<'_> {
     fn ui(self, ui: &mut Ui) -> Response {
         let p = pal(ui);
@@ -963,32 +973,44 @@ impl Widget for DragField<'_> {
             ui.painter().rect_filled(rect, cr(radius::MD), bg);
             let t = field_norm(*self.v, lo, hi, self.log);
             let c = if resp.dragged() { p.border_strong.lerp_to_gamma(p.field_fill, 0.4) } else if hov { p.field_fill.lerp_to_gamma(p.border_strong, 0.25) } else { p.field_fill };
-            if lo < 0.0 && hi > 0.0 && !self.log {
-                // signed: fill from zero towards the value
+            // the filled span in x: from zero for signed ranges, else from the left
+            let x_at = |f: f32| rect.left() + rect.width() * f;
+            let span = if lo < 0.0 && hi > 0.0 && !self.log {
                 let z = field_norm(0.0, lo, hi, false);
-                let (a, b) = (z.min(t), z.max(t));
-                let fill = Rect::from_min_max(pos2(rect.left() + rect.width() * a, rect.top()), pos2(rect.left() + rect.width() * b, rect.bottom()));
-                ui.painter().rect_filled(fill, CornerRadius::ZERO, c);
-                let zx = rect.left() + rect.width() * z;
-                ui.painter().vline(zx, rect.top()..=rect.top() + space::XS, Stroke::new(1.0, p.text_muted));
-                ui.painter().vline(zx, rect.bottom() - space::XS..=rect.bottom(), Stroke::new(1.0, p.text_muted));
-            } else if t > 0.0 {
-                let fill = Rect::from_min_max(rect.min, pos2(rect.left() + rect.width() * t, rect.bottom()));
-                ui.painter().rect_filled(fill, CornerRadius { nw: radius::MD, sw: radius::MD, ne: if t > 0.99 { radius::MD } else { 0 }, se: if t > 0.99 { radius::MD } else { 0 } }, c);
+                Some((x_at(z.min(t)), x_at(z.max(t))))
+            } else {
+                Some((rect.left(), x_at(t)))
+            }
+            .filter(|(a, b)| b - a >= 1.0);
+            if let Some((a, b)) = span {
+                let round_l = a <= rect.left() + 0.5;
+                let round_r = b >= rect.right() - 0.5;
+                let r = |on: bool| if on { radius::MD } else { 0 };
+                ui.painter().rect_filled(Rect::from_min_max(pos2(a, rect.top()), pos2(b, rect.bottom())), CornerRadius { nw: r(round_l), sw: r(round_l), ne: r(round_r), se: r(round_r) }, c);
             }
             ui.painter().rect_stroke(rect, cr(radius::MD), Stroke::new(1.0, if resp.has_focus() { p.focus } else if hov { p.border_strong } else { p.border }), StrokeKind::Inside);
             let value = self.unit.format(*self.v);
             let vg = ui.painter().layout_no_wrap(value, fonts::mono(font::MONO), p.text);
             let pad = if hov { edge } else { space::SM };
-            match &self.label {
-                Some(l) => {
-                    let lg = elided(ui.painter(), l, fonts::regular(font::SMALL), p.text_secondary, rect.width() - vg.size().x - pad * 2.0 - space::XS);
-                    ui.painter().galley(pos2(rect.left() + pad, rect.center().y - lg.size().y / 2.0), lg, p.text_secondary);
-                    ui.painter().galley(pos2(rect.right() - pad - vg.size().x, rect.center().y - vg.size().y / 2.0), vg, p.text);
+            let mut texts: Vec<(egui::Pos2, Arc<egui::Galley>, Color32)> = vec![];
+            if let Some(l) = &self.label {
+                let lg = elided(ui.painter(), l, fonts::regular(font::SMALL), p.text_secondary, rect.width() - vg.size().x - pad * 2.0 - space::XS);
+                texts.push((pos2(rect.left() + pad, rect.center().y - lg.size().y / 2.0), lg, p.text_secondary));
+                texts.push((pos2(rect.right() - pad - vg.size().x, rect.center().y - vg.size().y / 2.0), vg, p.text));
+            } else {
+                texts.push((rect.center() - vg.size() / 2.0, vg, p.text));
+            }
+            // a fill edge never cuts through text: where one falls inside a label or the
+            // value, a plate in the colour covering most of that text hides it
+            for (pos, g, _) in &texts {
+                let (tl, tr) = (pos.x - space::XS + 1.0, pos.x + g.size().x + space::XS - 1.0);
+                if let Some(filled) = text_plate(span, (tl, tr)) {
+                    let plate = Rect::from_min_max(pos2(tl, rect.top() + 1.0), pos2(tr, rect.bottom() - 1.0));
+                    ui.painter().rect_filled(plate, CornerRadius::ZERO, if filled { c } else { bg });
                 }
-                None => {
-                    ui.painter().galley(rect.center() - vg.size() / 2.0, vg, p.text);
-                }
+            }
+            for (pos, g, col) in texts {
+                ui.painter().galley(pos, g, col);
             }
             if hov && !resp.dragged() {
                 let a = Rect::from_center_size(pos2(rect.left() + edge / 2.0 + 1.0, rect.center().y), vec2(8.0, 8.0));
@@ -1959,6 +1981,20 @@ mod tests {
         assert_eq!(r.len(), cmds.len());
         // the group name matches too ("window layers")
         assert_eq!(rank_commands("window lay", &[], &cmds)[0].0.id, "lay");
+    }
+
+    #[test]
+    fn fill_edges_never_cross_text() {
+        let text = (40.0, 60.0);
+        // edge well clear of the text: no plate
+        assert_eq!(text_plate(Some((0.0, 20.0)), text), None);
+        assert_eq!(text_plate(Some((0.0, 80.0)), text), None);
+        assert_eq!(text_plate(None, text), None);
+        // edge inside the text: a plate, coloured by whichever side covers more
+        assert_eq!(text_plate(Some((0.0, 55.0)), text), Some(true));
+        assert_eq!(text_plate(Some((0.0, 44.0)), text), Some(false));
+        // a signed sliver starting mid-text (Height 0.10)
+        assert_eq!(text_plate(Some((50.0, 53.0)), text), Some(false));
     }
 
     #[test]
