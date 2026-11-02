@@ -756,6 +756,18 @@ def build(rc):
     bpy.ops.export_scene.gltf(filepath=glb, export_format="GLB", use_selection=True, export_animations=False, export_skins=True,
                               export_morph=False, export_apply=False, export_yup=True, export_materials="EXPORT",
                               export_image_format="NONE", export_vertex_color="ACTIVE", export_all_vertex_colors=False)
+    # LOD0 alone, unskinned, in the bind pose: the mesh Pigment paints the weathering pass on (paint_citizens.py)
+    paint = dup(lod0, "Paint")
+    for m in list(paint.modifiers):
+        paint.modifiers.remove(m)
+    paint.parent = None
+    paint.matrix_world = Matrix()
+    paint.vertex_groups.clear()
+    bpy.ops.object.select_all(action="DESELECT")
+    paint.select_set(True)
+    bpy.ops.export_scene.gltf(filepath=os.path.join(OUT, rc["id"] + "_paint.glb"), export_format="GLB", use_selection=True,
+                              export_animations=False, export_skins=False, export_morph=False, export_materials="NONE")
+    bpy.data.objects.remove(paint, do_unlink=True)
     spec["tris"] = [t_lod0, tris(lod1), tris(lod2)]
     spec["height"] = round(max(v.co.z for v in lod0.data.vertices), 3)
     spec["metrics"] = {k: [round(c, 4) for c in v] for k, v in M.items()}

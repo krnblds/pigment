@@ -207,6 +207,7 @@ func _crossing_test() -> Dictionary:
 	npc._set_on(a, lead, s0, dir)
 	a.force_next = best.id
 	a.no_dodge = true
+	a.pinned = true
 	a.shaken = 100.0          # no stops on the way
 	var log := []
 	var waited_on_green := false
@@ -225,6 +226,7 @@ func _crossing_test() -> Dictionary:
 		if a.edge != lead and a.edge != best.id:
 			break
 	a.no_dodge = false
+	a.pinned = false
 	a.shaken = 0.0
 	return {"ok": entered and crossed_on == 2 and waited_on_green, "waited_on_green": waited_on_green, "entered": entered, "signal_when_entered": crossed_on,
 		"junction": best.junction, "all_crossings": npc.stats.crossings, "signalled": npc.stats.signalled_crossings,
@@ -247,9 +249,12 @@ func _dodge_test() -> Dictionary:
 	car.linear_velocity = fwd * 16.7
 	var dodged := false
 	var hit := false
+	var c0: Vector3 = car.global_position
+	var basis0: Basis = car.global_basis
 	for k in 240:
+		car.global_transform = Transform3D(basis0, c0 + fwd * 16.7 * (k + 1) / Engine.physics_ticks_per_second)
+		car.linear_velocity = fwd * 16.7
 		await get_tree().physics_frame
-		car.linear_velocity = fwd * 16.7 + Vector3(0, car.linear_velocity.y, 0)
 		if a.state == npc.DODGE:
 			dodged = true
 		if a.state == npc.DOWN:
@@ -294,7 +299,12 @@ func _ragdoll_test() -> Dictionary:
 	var went_down := false
 	var max_disp := 0.0
 	var bones := 0
+	var c0: Vector3 = car.global_position
+	var basis0: Basis = car.global_basis
 	for k in 120:
+		# drive it straight through, whatever is parked in the lane (a kinematic push at 45 km/h)
+		if not went_down:
+			car.global_transform = Transform3D(basis0, c0 + fwd * 12.5 * (k + 1) / Engine.physics_ticks_per_second)
 		await get_tree().physics_frame
 		if k % 15 == 0 and main.args.has("npc-debug"):
 			print("ragdoll test k=%d car %s v %s agent %s state %d local %s" % [k, car.global_position, car.linear_velocity, a.pos, a.state, car.global_transform.affine_inverse() * (a.pos + Vector3.UP * 0.9)])

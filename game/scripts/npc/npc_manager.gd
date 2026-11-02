@@ -78,6 +78,7 @@ class Agent:
 	var off_path := 0.0
 	var no_dodge := false       ## tests
 	var force_next := -1        ## tests: take this edge at the next node
+	var pinned := false         ## tests: never respawned
 
 var main: Node3D
 var net = null                  ## Sidewalks
@@ -817,7 +818,7 @@ func _update_lod(initial: bool) -> void:
 	var c := _center()
 	for a in agents:
 		a.dist = Vector2(a.pos.x - c.x, a.pos.z - c.z).length()
-		if a.dist > despawn_radius and a.state != DOWN:
+		if a.dist > despawn_radius and a.state != DOWN and not a.pinned:
 			_respawn(a, c)
 	var order := agents.duplicate()
 	order.sort_custom(func(x, y): return x.dist < y.dist)
