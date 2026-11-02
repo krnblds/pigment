@@ -267,3 +267,80 @@ A **Texture set** switcher at the top of the Layers panel (name · resolution ·
 - EXR has no layered (multi-part) output: one file per output.
 - 8-bit and 16-bit outputs of HDR sources keep the old encodings (emission normalised to its peak, with the scale in the Blender sidecar; height mapped from -1..1). Use EXR for the raw range.
 - The Blender bridge sidecar and `send_to_blender` still use the presets, not templates.
+
+## 6. Non-destructive decal objects
+
+![before / after](decals_before_after.png)
+
+*building_a at 2048.*
+- *Top: `place_decal {region: "auto", height: [0.4, 3.4], grid: {rows: 2, cols: 3}}` finds the largest flat, window-free wall area at street level (the west wall here) and lays out a 2 × 3 poster grid. Afterwards, `update_decal` scales and rotates `ad_1` and hides `ad_4`, and the layer re-composites each time.*
+- *Middle: a wrap-projected graffiti by the east corner.*
+- *Bottom: the street lamp's pole with the same sticker box-projected (lower) and wrap-projected (upper). From the side, the box one smears and fades while the wrap one follows the curve.*
+
+Reproduce: `python docs/agents/parity/decals_demo.py 2048` (writes `scenes/town/scripts/parity_decals_demo.jsonl` and `parity_decals_lamp.jsonl`).
+
+### What it does
+
+- **Decal layers** (`crates/core/src/decal_layer.rs`). A paint layer with `decals: Some(DecalSet)` owns a list of **decal objects**. Each object has an image, centre, normal, size, rotation, depth, projection, wear (opacity, tear, fade, grunge, paper rim, seed), the material values and channels it paints, a name / variant group, and `enabled`.
+- **Regeneration.** The app keeps a key of each decal layer's objects. When the objects change (a move, delete, re-order, hide, undo, variant switch...), it clears the layer and paints every enabled object, bottom to top, through the existing box-decal path, without undo steps. The objects are the document state, so undo and redo work as document changes. Hand-painting on a decal layer is refused with a hint.
+- **Projections** (`decal_box.wgsl`, `projection` in the uniform):
+  - `box`: the classic planar box with a facing fade.
+  - `triplanar`: the image projected along the decal frame's three axes and blended by the surface normal, so it continues over the side and top faces within the box.
+  - `wrap` (conform): `decal_layer::unfold` walks the surface outwards from the triangle under the centre, across shared (position-welded) edges, placing each new vertex so it keeps its 3D distances to the shared edge's ends. That is a geodesic-ish unfolding into the decal plane. The coordinates go to the GPU as a second vertex buffer (`vs_wrap`).
+- **Placement aids**:
+  - **Smart region fill** (`find_regions`): wall triangles are grouped by plane, rasterised into a 5 cm occupancy grid (windows and doors are holes), and the largest empty rectangle is found by the histogram method. An optional height band and part filter apply. Ties are ordered by position, so the result is deterministic.
+  - **Grid / array layouts**: rows × cols with a gap, each image fitted to its cell by its aspect.
+  - **Snapping**: to the centre of the flat area under the decal, or to its nearest edge with a margin.
+  - **Alignment**: upright (rotation 0) or vertical.
+- **Viewport gizmo** (`app/decal_gizmo.rs`). With a decal layer selected:
+  - click a decal to select it (and see its outline);
+  - drag to slide it over the surface (it takes the hit normal);
+  - Shift+drag to rotate, Ctrl+wheel to scale.
+  Every decal's outline is drawn, and the selected one is highlighted.
+- **Masks and wear.** A decal layer's own mask (painted, generator, filters, ID colour) masks all its decals. Tear and fade wear as before.
+- **Migration.** `project_decal` (anchor / position) and `scatter_decals` make objects when the target is a decal layer. New `Decals n` layers from `overlap_order`, and the default target, are now decal layers. Explicit paint layers (e.g. the town's `Story decals`) keep the old destructive, recorded behaviour, so the existing town scripts still run. Camera-projected `rect` / `part` decals and brush strokes skip decal layers. `export_variants` switches decal objects on and off by name or group and swaps their images.
+
+### MCP
+
+| tool | args |
+|---|---|
+| `add_layer` | `kind: "decal"` |
+| `project_decal`, `scatter_decals` | + `projection: box \| triplanar \| wrap`; on a decal layer they return `ids` |
+| `list_decals` | `layer?` → `{decals: [{id, name, group, layer, image, center, normal, size, rotation, depth, projection, wear, fade, opacity, tint, channels, enabled}]}` |
+| `update_decal` | `decal` (id or name), `layer?`, `position` (snapped to the surface), `normal`, `move` [dx, dy], `size`, `scale`, `rotation`, `rotate`, `depth`, `projection`, `image`, `tint`, `opacity`, `wear`, `fade`, `wear_scale`, `wear_seed`, `paper_rim`, `enabled`, `name`, `variant`, `move_to` (re-order), `align: upright \| vertical`, `snap: center \| edge`, `margin` |
+| `delete_decal` | `decal`, `layer?` |
+| `place_decal` | `image` / `images`, `region: "auto" \| {min, max}`, `pick`, `parts`, `parts_where`, `height` [min, max], `facing`, `margin`, `fill`, `grid {rows, cols, gap}`, plus the look args → `{region, decals, layer, texels_across}` |
+
+These tools also take `texture_set` (feature 4).
+
+### UI
+
+- Properties of a decal layer: the decal list (show / hide, select, bring forward / send back, delete).
+- The selected decal: name, projection (segmented), width, rotation, depth, opacity, torn, faded; **Upright**, **Snap to centre**, **Snap to edge**, **Fill this wall**.
+- The Decals panel's tool stamps objects onto the decal layer.
+- The viewport gizmo described above.
+
+### Tests
+
+- core `decal_layer::tests`:
+  - the largest window-free rectangle on a wall with a window, with a height band, fit and grid;
+  - snapping and ids;
+  - wrap unfolding round an L corner and round a cylinder (arc lengths).
+- Session `decal_objects_over_mcp` (building_a):
+  - an object paints, then is moved, scaled, hidden and undone;
+  - region auto with a 2 × 3 grid;
+  - scatter on a decal layer with triplanar, a projection change and re-order;
+  - delete, and errors;
+  - save / reopen regenerates identical pixels.
+- The existing decal tests were updated: `Decals n` layers now hold 5 objects; one undo removes the scatter, redo restores it; variants switch the posters off by group, and the regenerated layer matches the authored one.
+- UI `decal_gizmo_select_drag_scale`: click selects, drag slides along the surface without painting, Ctrl+wheel scales.
+- `ui_frame_timing` (4096): idle 1.8 / 2.0 ms, painting 5.5 / 6.4 ms (p95 about 14 ms). Two per-frame costs this feature introduced were fixed: a whole-mesh raycast every frame on decal layers, and re-reading the user template file every frame.
+
+### Known limits
+
+- **Regeneration cost.** Any edit repaints the whole decal layer (each object is a texture-space pass at full resolution), so dragging a decal on a layer with dozens of decals at 4K is not interactive. Keep big scatters on their own layer.
+- **Wrap** follows *connected* geometry only. Where a corner is separate geometry (building_a's corner pillar), the decal stops at the gap. The unfolding is first-come per vertex, so strongly curved, closed shapes can show a seam where the walk meets itself.
+- Triplanar only continues the image within the decal box (`depth` sets how far).
+- Region fill sees geometry holes (windows) but not existing decals or paint, so a poster grid can overlap earlier posters.
+- No per-decal mask: masks apply per decal layer (use several decal layers).
+- Camera-projected (`rect` / `part`) decals can't be decal objects (they depend on a camera view).
