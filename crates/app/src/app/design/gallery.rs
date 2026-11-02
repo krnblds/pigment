@@ -100,6 +100,13 @@ pub fn show(ui: &mut Ui, st: &mut GalleryState) {
                     ui.add_space(space::MD);
                 }
             });
+            section(ui, "Logo: small artwork up to 40 px, master above");
+            ui.horizontal(|ui| {
+                for s in [icon::SM, icon::MD, icon::LG, icon::XL, icon::XL * 2.0] {
+                    super::logo(ui, s);
+                    ui.add_space(space::MD);
+                }
+            });
             section(ui, "Icons (18 pt grid, 1.6 stroke)");
             ui.horizontal_wrapped(|ui| {
                 for i in Icon::ALL {

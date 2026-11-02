@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <!-- B: one drop, four texture channels (colour, roughness, metal, normal) sliced on the diagonal -->
+  <defs>
+    <path id="d" d="M128 10 C152 48 216 102 216 160 A88 88 0 0 1 40 160 C40 102 104 48 128 10 Z"/>
+    <clipPath id="c"><use href="#d"/></clipPath>
+    <linearGradient id="col" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFB070"/><stop offset="1" stop-color="#E07428"/></linearGradient>
+    <linearGradient id="rgh" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#D6D6D6"/><stop offset="1" stop-color="#6E6E6E"/></linearGradient>
+    <linearGradient id="met" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F6F6F6"/><stop offset="0.5" stop-color="#8E939A"/><stop offset="0.56" stop-color="#3B3E44"/><stop offset="1" stop-color="#C9CBCF"/></linearGradient>
+    <linearGradient id="nrm" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#B4A8FF"/><stop offset="1" stop-color="#6A78E8"/></linearGradient>
+    <radialGradient id="sh" cx="0.4" cy="0.45" r="0.6"><stop offset="0.75" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity="0.3"/></radialGradient>
+  </defs>
+  <g clip-path="url(#c)">
+    <g transform="rotate(24 128 140)">
+      <rect x="-60" y="-60" width="186" height="400" fill="url(#col)"/>
+      <rect x="126" y="-60" width="34" height="400" fill="url(#rgh)"/>
+      <rect x="160" y="-60" width="34" height="400" fill="url(#met)"/>
+      <rect x="194" y="-60" width="160" height="400" fill="url(#nrm)"/>
+      <g stroke="#1E1F22" stroke-opacity="0.35" stroke-width="2"><path d="M126 -60 V340 M160 -60 V340 M194 -60 V340"/></g>
+    </g>
+    <use href="#d" fill="url(#sh)"/>
+  </g>
+  <path d="M86 112 C96 84 112 60 124 44 C118 74 110 100 106 124 C102 146 80 140 86 112 Z" fill="#fff" fill-opacity="0.7"/>
+  <use href="#d" fill="none" stroke="#1E1F22" stroke-opacity="0.6" stroke-width="3"/>
+</svg>

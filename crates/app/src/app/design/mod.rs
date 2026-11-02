@@ -10,9 +10,11 @@ pub mod components;
 pub mod fonts;
 pub mod gallery;
 pub mod icons;
+pub mod logo;
 
 pub use components::*;
 pub use icons::Icon;
+pub use logo::{logo, WINDOW_ICON_PNG};
 
 use eframe::egui;
 use egui::{Color32, CornerRadius, Margin, Shadow, Stroke};
