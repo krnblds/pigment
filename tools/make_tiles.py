@@ -17,6 +17,15 @@ Pigment's triplanar `tile_size`):
     corrugated_metal  1 m   galvanised sheet, 12 corrugations, rust patches
     asphalt_cracks    2 m   aggregate asphalt with a crack network and patches
 
+    wallpapers   wallpaper_damask 1 m, wallpaper_stripes 0.5 m, wallpaper_floral 0.6 m,
+                 wallpaper_art_deco 1 m, wallpaper_trellis 0.5 m
+    carpets      carpet_plush 1 m, carpet_berber 0.5 m, carpet_tiles 1 m, carpet_hotel 1 m
+    floors       wood_planks 1 m, parquet_herringbone 1 m, floor_checker 1.2 m,
+                 floor_hex_tiles 1 m, terrazzo 1 m, marble 2 m, diamond_plate 1 m, rubber_studs 1 m
+    walls        subway_tiles 0.9 m, plaster 2 m
+    surfaces     wood_grain 1 m, leather 0.3 m, linen 0.1 m, denim 0.1 m, carbon_fibre 0.05 m,
+                 hammered_metal 0.5 m
+
     python tools/make_tiles.py [--size 512] [set ...]   (committed at 512; 1024+ for close-ups)  ->  assets/tiles/<set>/*.png
 """
 import argparse
@@ -62,7 +71,9 @@ def smooth(x, a, b):
 
 
 def mix(a, b, t):
-    t = np.asarray(t)[..., None] if np.ndim(a) == 3 else t
+    t = np.asarray(t)
+    if t.ndim == 2 and any(np.ndim(c) in (1, 3) for c in (a, b)):   # colours: broadcast t over rgb
+        t = t[..., None]
     return a * (1 - t) + b * t
 
 
@@ -121,6 +132,85 @@ def torus_voronoi(n, pts):
         f2 = np.where(d < f1, f1, np.minimum(f2, d))
         f1 = np.minimum(f1, d)
     return f1, f2
+
+
+def srgb(r, g, b):
+    """A colour picked in sRGB 0..1, as the linear value `save` expects."""
+    return np.array([r, g, b], dtype=np.float64) ** 2.2
+
+
+def aniso_noise(n, rng, lo, hi, beta=1.0, stretch=8.0):
+    """Periodic noise whose features are `stretch` times longer along x than y
+    (wood grain, fibres). Normalised like `noise`."""
+    w = rng.standard_normal((n, n))
+    f = np.fft.fftfreq(n) * n
+    fy, fx = np.meshgrid(f, f, indexing="ij")
+    r = np.sqrt((fx * stretch) ** 2 + fy * fy)
+    amp = np.where((r >= lo) & (r <= hi), 1.0 / np.maximum(r, 1.0) ** beta, 0.0)
+    out = np.real(np.fft.ifft2(np.fft.fft2(w) * amp))
+    return (out - out.mean()) / (out.std() + 1e-9)
+
+
+def warp(a, dy, dx):
+    """Sample `a` displaced by (dy, dx) pixels, wrapping."""
+    n = a.shape[0]
+    yy, xx = np.indices((n, n))
+    return a[(yy + np.round(dy).astype(int)) % n, (xx + np.round(dx).astype(int)) % n]
+
+
+def grid_voronoi(n, g, rng, jitter=1.0):
+    """Jittered-grid Voronoi on the torus with g x g cells: F1, F2 (tile
+    units) and the nearest cell's id (0..g*g-1)."""
+    y, x = coords(n)
+    gy, gx = y * g, x * g
+    iy, ix = np.floor(gy).astype(int), np.floor(gx).astype(int)
+    pts = rng.random((g, g, 2)) * jitter + (1 - jitter) / 2
+    f1 = np.full((n, n), 9.0)
+    f2 = np.full((n, n), 9.0)
+    ids = np.zeros((n, n), dtype=int)
+    for dy in (-1, 0, 1):
+        for dx in (-1, 0, 1):
+            cy, cx = iy + dy, ix + dx
+            p = pts[cy % g, cx % g]
+            d = np.hypot(gy - cy - p[..., 0], gx - cx - p[..., 1])
+            closer = d < f1
+            f2 = np.where(closer, f1, np.minimum(f2, d))
+            ids = np.where(closer, (cy % g) * g + cx % g, ids)
+            f1 = np.minimum(f1, d)
+    return f1 / g, f2 / g, ids
+
+
+def wrap_d(a):
+    """Signed periodic difference in tile units, -0.5..0.5."""
+    return (a + 0.5) % 1.0 - 0.5
+
+
+def leaf(u, v, cu, cv, angle, length, width, px):
+    """Anti-aliased pointed-leaf mask centred (cu, cv), pointing along `angle`."""
+    ca, sa = np.cos(angle), np.sin(angle)
+    s = (u - cu) * ca + (v - cv) * sa
+    t = -(u - cu) * sa + (v - cv) * ca
+    half = width * np.clip(1 - (s / length) ** 2, 0, 1)
+    return smooth(half - np.abs(t), -px, px) * (np.abs(s) < length)
+
+
+def wood_rings(n, rng, rings, stretch=10.0):
+    """Long-grain wood figure along x: (rings 0..1, pores 0..1, flecks)."""
+    w = aniso_noise(n, rng, 1, 24, 1.2, stretch) * 0.035 + aniso_noise(n, rng, 1, 6, 1.0, 3.0) * 0.05
+    y, _ = coords(n)
+    r = (y + w) * rings
+    late = smooth(np.abs((r % 1.0) - 0.5) * 2, 0.55, 0.95)          # latewood bands
+    pores = smooth(aniso_noise(n, rng, 60, n // 2, 0.3, 14.0), 1.2, 2.4)
+    fleck = aniso_noise(n, rng, 8, 80, 0.8, 4.0)
+    return late, pores, fleck
+
+
+def pile(n, rng):
+    """Carpet pile: fibre tips, tufts and the shading of brushed pile."""
+    fib = noise(n, rng, n // 6, n // 2, 0.0)
+    tuft = noise(n, rng, 40, 120, 0.6)
+    shade = noise(n, rng, 1, 5, 1.4)
+    return fib, tuft, shade
 
 
 def normal_from_height(h, strength):
@@ -289,6 +379,607 @@ def asphalt_cracks(n, rng):
     rough = 0.86 - stones * 0.1 - patch * 0.15 + crack * 0.1
     h = 0.6 + stones * 0.05 + agg2 * 0.01 - crack * 0.35 + patch * 0.01
     return base, rough, h, 0.01
+
+
+# ------------------------------------------------------------ wallpapers
+# Paper: a faint fibre texture, matte. Repeats are 0.5-1 m like real rolls.
+
+def paper(n, rng):
+    return noise(n, rng, 60, n // 2, 0.3) * 0.5 + noise(n, rng, 4, 30, 1.0) * 0.5
+
+
+@tile_set(1.0)
+def wallpaper_damask(n, rng):
+    """Flocked damask: raised velvety motifs on a satin ground, half-drop repeat."""
+    y, x = coords(n)
+    cols, rows = 2, 2
+    cx = x * cols
+    col = np.floor(cx).astype(int)
+    cy = y * rows + (col % 2) * 0.5                               # half drop
+    u = (cx % 1.0) * 2 - 1
+    v = (cy % 1.0) * 2 - 1
+    au = np.abs(u)                                                # mirror symmetry
+    px = 2.0 * cols / n
+    r = np.hypot(au / 0.62, v / 0.9)
+    th = np.arctan2(v, au)
+    body = smooth(0.62 + 0.1 * np.cos(6 * th) - r, -px, px)          # lobed medallion
+    hole = smooth(0.34 + 0.06 * np.cos(4 * th) - np.hypot(au / 0.5, v / 0.75), -px, px)
+    core = smooth(0.12 - np.hypot(au, v + 0.05), -px, px)
+    motif = np.clip(body - hole + core, 0, 1)
+    for cu, cv, a, l, w in [(0.42, -0.62, -0.9, 0.24, 0.07), (0.5, 0.55, 0.8, 0.26, 0.08), (0.78, 0.05, 1.57, 0.2, 0.06),
+                            (0.0, -0.86, 1.57, 0.12, 0.06), (0.0, 0.9, 1.57, 0.1, 0.05), (0.88, -0.78, -0.4, 0.14, 0.04)]:
+        motif = np.maximum(motif, leaf(au, v, cu, cv, a, l, w, px))
+    # scroll lines linking the medallions
+    scroll = 1 - smooth(np.abs(au - (0.82 + 0.12 * np.sin(v * np.pi * 1.5))), 0.012, 0.02)
+    motif = np.maximum(motif, scroll * (np.abs(v) > 0.35))
+    fib = paper(n, rng)
+    ground = srgb(0.36, 0.07, 0.1) * (1 + fib[..., None] * 0.03)
+    flock = srgb(0.62, 0.18, 0.2) * (1 + noise(n, rng, n // 4, n // 2, 0.0)[..., None] * 0.08)
+    base = mix(ground, flock, motif)
+    rough = 0.38 + fib * 0.02 + motif * 0.5
+    h = 0.48 + motif * 0.06 + fib * 0.003
+    return base, rough, h, 0.0003
+
+
+@tile_set(0.5)
+def wallpaper_stripes(n, rng):
+    """Regency stripe: sage and cream bands with a satin stripe and gold pinlines."""
+    y, x = coords(n)
+    u = (x * 2) % 1.0                                             # 25 cm repeat
+    px = 2.0 / n
+    band = lambda a, b: smooth(u - a, -px, px) * smooth(b - u, -px, px)
+    wide = band(0.0, 0.42)
+    satin = band(0.5, 0.62) + band(0.88, 1.0)
+    pin = band(0.455, 0.465) + band(0.835, 0.845)
+    fib = paper(n, rng)
+    cream = srgb(0.93, 0.9, 0.8)
+    sage = srgb(0.55, 0.62, 0.5)
+    base = mix(cream, sage, wide)
+    base = mix(base, srgb(0.86, 0.84, 0.74), satin)
+    base = mix(base, srgb(0.78, 0.62, 0.3), pin)
+    base = base * (1 + fib[..., None] * 0.025)
+    rough = 0.75 - satin * 0.35 - pin * 0.4 + fib * 0.03
+    h = 0.5 + fib * 0.01 + pin * 0.05
+    return base, rough, h, 0.0005
+
+
+@tile_set(0.6)
+def wallpaper_floral(n, rng):
+    """Scattered blossoms and leaves on a cream ground with a pin-dot."""
+    y, x = coords(n)
+    px = 1.0 / n
+    g = 4
+    base = srgb(0.94, 0.91, 0.84) * (1 + paper(n, rng)[..., None] * 0.02)
+    dots = smooth(0.08 - np.hypot((x * 24) % 1 - 0.5, (y * 24) % 1 - 0.5), -0.05, 0.05)
+    base = mix(base, srgb(0.8, 0.74, 0.62), dots * 0.6)
+    ink = np.zeros((n, n))
+    pal = [srgb(0.85, 0.42, 0.45), srgb(0.95, 0.7, 0.4), srgb(0.55, 0.45, 0.75), srgb(0.9, 0.55, 0.6)]
+    leaf_c = srgb(0.35, 0.52, 0.36)
+    for i in range(g):
+        for j in range(g):
+            pyc = (i + 0.2 + rng.random() * 0.6) / g
+            pxc = (j + 0.2 + rng.random() * 0.6) / g
+            s = 0.055 + rng.random() * 0.03
+            rot = rng.random() * 6.28
+            dy, dx = wrap_d(y - pyc), wrap_d(x - pxc)
+            # two leaves first, then the flower over them
+            for k in range(2):
+                a = rot + 2.2 + k * 1.9
+                lc = (s * 1.35 * np.cos(a), s * 1.35 * np.sin(a))
+                lm = leaf(dx, dy, lc[0], lc[1], a, s * 0.9, s * 0.32, px)
+                base = mix(base, leaf_c * (0.9 + 0.2 * rng.random()), lm)
+                ink = np.maximum(ink, lm)
+            r = np.hypot(dx, dy)
+            th = np.arctan2(dy, dx) + rot
+            petals = smooth(s * (0.55 + 0.45 * np.abs(np.cos(2.5 * th))) - r, -px, px)
+            c = pal[rng.integers(len(pal))]
+            base = mix(base, c * (1 - 0.25 * smooth(r / s, 0.2, 1.0))[..., None], petals)
+            centre = smooth(s * 0.18 - r, -px, px)
+            base = mix(base, srgb(0.95, 0.8, 0.35), centre)
+            ink = np.maximum(ink, petals)
+    rough = 0.72 - ink * 0.1
+    h = 0.5 + ink * 0.04
+    return base, rough, h, 0.0005
+
+
+@tile_set(1.0)
+def wallpaper_art_deco(n, rng):
+    """Art deco fans: overlapping scallops with gold arcs and rays on deep teal."""
+    y, x = coords(n)
+    cols, rows = 4, 8
+    R = 1.0 / rows                     # discs 2R apart in a row, rows R apart and offset by R: full cover
+    best_d = np.full((n, n), 9.0)
+    best_dy = np.zeros((n, n))
+    best_dx = np.zeros((n, n))
+    band = np.floor(y * rows).astype(int)
+    for k in (0, -1):                                             # later (lower) rows win
+        r_ = band + k
+        shift = (r_ % 2) * 0.5
+        i = np.round(x * cols - 0.5 - shift)
+        cxp = (i + 0.5 + shift) / cols
+        cyp = (r_ + 1) / rows
+        dx = wrap_d(x - cxp)
+        dy = y - cyp
+        d = np.hypot(dx, dy) / R                                  # 1 at the rim
+        take = (d < 1.0) & (best_d > 1.0)
+        best_d = np.where(take, d, best_d)
+        best_dy = np.where(take, dy, best_dy)
+        best_dx = np.where(take, dx, best_dx)
+    d = best_d
+    th = np.arctan2(-best_dy, best_dx)                            # 0..pi over the visible top half
+    px = 3.0 * rows / n
+    rim = 1 - smooth(np.abs(d - 0.95), 0.0, px * 1.5)
+    arc = 1 - smooth(np.abs(d - 0.6), 0.0, px)
+    rays = (1 - smooth(np.abs(((th / np.pi) * 14) % 1.0 - 0.5) * 2, 0.0, 0.3)) * (d < 0.6) * (d > 0.25)
+    gold = np.clip(rim + arc + rays * 0.8 + (d < 0.16), 0, 1)
+    fib = paper(n, rng)
+    teal = srgb(0.06, 0.26, 0.28) * (1 + fib[..., None] * 0.03)
+    base = mix(teal * (0.85 + 0.15 * d[..., None]), srgb(0.85, 0.66, 0.32), gold)
+    rough = 0.7 - gold * 0.45 + fib * 0.02
+    h = 0.5 + gold * 0.03
+    return base, rough, h, 0.0005
+
+
+@tile_set(0.5)
+def wallpaper_trellis(n, rng):
+    """Mid-century trellis: a diamond lattice with dots at the crossings, mustard on charcoal."""
+    y, x = coords(n)
+    k = 5
+    a = (x + y) * k
+    b = (x - y) * k
+    la = np.abs((a % 1.0) - 0.5)
+    lb = np.abs((b % 1.0) - 0.5)
+    px = k / n * 1.5
+    line = 1 - smooth(np.minimum(la, lb), 0.025, 0.025 + px)
+    node = 1 - smooth(np.hypot(la, lb), 0.1, 0.1 + px)
+    inner = 1 - smooth(np.hypot(0.5 - la, 0.5 - lb), 0.05, 0.05 + px)
+    fib = paper(n, rng)
+    base = srgb(0.17, 0.18, 0.19) * (1 + fib[..., None] * 0.04)
+    ink = np.clip(line + node + inner * 0.8, 0, 1)
+    base = mix(base, srgb(0.86, 0.64, 0.2), ink)
+    rough = 0.78 - ink * 0.15
+    h = 0.5 + ink * 0.03
+    return base, rough, h, 0.0005
+
+
+# --------------------------------------------------------------- carpets
+# Light, fairly neutral colours where it makes sense, so a layer's `tint`
+# recolours them.
+
+@tile_set(1.0)
+def carpet_plush(n, rng):
+    """Cut-pile plush carpet: dense fibre tips, tufts and pile shading. Neutral greige."""
+    fib, tuft, shade = pile(n, rng)
+    g = 0.42 + fib * 0.06 + tuft * 0.03 + shade * 0.015
+    base = np.stack([g, g * 0.96, g * 0.9], -1)
+    rough = 0.95 - shade * 0.02
+    h = 0.5 + fib * 0.12 + tuft * 0.04
+    return base, rough, h, 0.0012
+
+
+@tile_set(0.5)
+def carpet_berber(n, rng):
+    """Berber loop pile: knobbly rows of loops in flecked oatmeal yarn."""
+    y, x = coords(n)
+    rows, loops = 50, 70
+    ry = (y * rows) % 1.0
+    row = np.floor(y * rows).astype(int)
+    rx = (x * loops + (row % 2) * 0.5) % 1.0
+    loop = np.sin(np.pi * ry) * (0.6 + 0.4 * np.sin(np.pi * rx))
+    yarn = noise(n, rng, 80, n // 2, 0.2)
+    fleck = noise(n, rng, 30, 160, 0.3)
+    base = srgb(0.78, 0.72, 0.62) * (0.75 + 0.3 * loop)[..., None]
+    base = mix(base, srgb(0.4, 0.34, 0.27), smooth(fleck, 1.1, 1.6))
+    base = mix(base, srgb(0.95, 0.93, 0.88), smooth(-fleck, 1.3, 1.8) * 0.8)
+    base = base * (1 + yarn[..., None] * 0.04)
+    rough = np.full((n, n), 0.96)
+    h = 0.2 + loop * 0.6 + yarn * 0.03
+    return base, rough, h, 0.006
+
+
+@tile_set(1.0)
+def carpet_tiles(n, rng):
+    """Office carpet tiles, 50 cm, laid quarter-turned: ribbed loop pile in charcoal blue."""
+    y, x = coords(n)
+    cy, cx = np.floor(y * 2).astype(int), np.floor(x * 2).astype(int)
+    turned = (cy + cx) % 2 == 1
+    ly, lx = (y * 2) % 1.0, (x * 2) % 1.0
+    along = np.where(turned, lx, ly)
+    rib = 0.5 + 0.5 * np.sin(2 * np.pi * along * 90)
+    fib = noise(n, rng, n // 5, n // 2, 0.0)
+    fleck = noise(n, rng, 40, 200, 0.3)
+    tone = 1 + 0.06 * (rng.random((2, 2)) - 0.5)[cy, cx]
+    base = srgb(0.2, 0.24, 0.3) * ((0.8 + 0.25 * rib) * tone)[..., None]
+    base = mix(base, srgb(0.45, 0.5, 0.58), smooth(fleck, 1.2, 1.7) * 0.7)
+    base = base * (1 + fib[..., None] * 0.05)
+    seam = 1 - smooth(np.minimum(np.minimum(lx, 1 - lx), np.minimum(ly, 1 - ly)) * 0.5, 0.0004, 0.0015)
+    base = base * (1 - 0.35 * seam[..., None])
+    rough = np.full((n, n), 0.95)
+    h = 0.4 + rib * 0.3 + fib * 0.05 - seam * 0.3
+    return base, rough, h, 0.003
+
+
+@tile_set(1.0)
+def carpet_hotel(n, rng):
+    """Bold hotel-corridor carpet: gold-edged red quatrefoils on navy, with small diamonds."""
+    y, x = coords(n)
+    k = 3
+    u = ((x * k) % 1.0) * 2 - 1
+    v = ((y * k) % 1.0) * 2 - 1
+    px = 2.0 * k / n * 1.5
+    r = np.hypot(u, v)
+    th = np.arctan2(v, u)
+    shape = 0.62 * (0.78 + 0.22 * np.cos(4 * th))
+    fill = smooth(shape - r, -px, px)
+    edge = smooth(shape - r, -px, px) * (1 - smooth(shape - r, 0.05, 0.05 + px))
+    inner = smooth(0.18 - (np.abs(u) + np.abs(v)), -px, px)
+    du, dv = np.abs(np.abs(u) - 1), np.abs(np.abs(v) - 1)
+    diamond = smooth(0.16 - (du + dv), -px, px)
+    fib, tuft, shade = pile(n, rng)
+    navy = srgb(0.08, 0.1, 0.25)
+    base = mix(navy, srgb(0.6, 0.08, 0.1), fill)
+    base = mix(base, srgb(0.85, 0.62, 0.25), np.clip(edge + inner + diamond, 0, 1))
+    base = base * (1 + fib[..., None] * 0.08 + tuft[..., None] * 0.04 + shade[..., None] * 0.03)
+    rough = np.full((n, n), 0.95)
+    h = 0.5 + fib * 0.1 + tuft * 0.06
+    return base, rough, h, 0.003
+
+
+# ---------------------------------------------------------------- floors
+
+OAK = (srgb(0.72, 0.52, 0.32), srgb(0.5, 0.33, 0.18))          # earlywood, latewood
+
+
+def wood_color(late, pores, fleck, tone, light=OAK[0], dark=OAK[1]):
+    c = mix(light, dark, late * 0.8 + pores * 0.3)
+    return c * (tone * (1 + fleck * 0.04))[..., None]
+
+
+@tile_set(1.0)
+def wood_planks(n, rng):
+    """Oak floorboards, 14 cm wide, random joints, satin lacquer, eased edges."""
+    y, x = coords(n)
+    rows = 7
+    row = np.floor(y * rows).astype(int)
+    ly = (y * rows) % 1.0
+    joints = np.sort(rng.random((rows, 2)), axis=1)
+    j0, j1 = joints[row, 0], joints[row, 1]
+    seg = ((x >= j0) & (x < j1)).astype(int)
+    ids = row * 2 + seg
+    v = rng.random((rows * 2, 3))[ids]
+    # each board takes its own slice of a big grain field
+    late, pores, fleck = wood_rings(n, rng, 38)
+    off = (v[..., 0] * n).astype(int)
+    yy, xx = np.indices((n, n))
+    late, pores, fleck = (a[(yy + off) % n, xx] for a in (late, pores, fleck))
+    base = wood_color(late, pores, fleck, 0.8 + 0.35 * v[..., 1])
+    dj = np.minimum(np.abs(wrap_d(x - j0)), np.abs(wrap_d(x - j1)))
+    de = np.minimum(np.minimum(ly, 1 - ly) / rows, dj)
+    gap = 1 - smooth(de, 0.0006, 0.0022)
+    base = mix(base, srgb(0.12, 0.08, 0.05), gap)
+    rough = 0.38 + pores * 0.15 + v[..., 2] * 0.06 + gap * 0.4
+    h = 0.55 + smooth(de, 0.0, 0.004) * 0.05 - pores * 0.01 - gap * 0.2
+    return base, rough, h, 0.004
+
+
+@tile_set(1.0)
+def parquet_herringbone(n, rng):
+    """Herringbone parquet: 6 x 25 cm oak slats, alternating direction."""
+    L, P = 4, 16                                                  # slat length in widths; widths per tile
+    y, x = coords(n)
+    X, Y = x * P, y * P
+    sid = np.full((n, n), -1)
+    lu = np.zeros((n, n))                                         # along the slat 0..1
+    lv = np.zeros((n, n))                                         # across 0..1
+    horiz = np.zeros((n, n), dtype=bool)
+    # slats: H(k,j) = [k+jL, k+jL+L) x [k-jL, k-jL+1), V(k,j) = [k+jL, k+jL+1) x [k-jL+1, k-jL+1+L)
+    half = P // (2 * L)
+    for j in range(-P, P + 1):
+        k = np.floor(Y + j * L)                                   # H: row of the slat
+        ax = X - k - j * L
+        hit = (ax >= 0) & (ax < L) & (sid < 0)
+        kk = k - np.floor_divide(j, half) * (P // 2) if half else k
+        canon = ((np.mod(j, half) if half else 0) * P + np.mod(kk, P)).astype(int)
+        sid = np.where(hit, canon * 2, sid)
+        lu = np.where(hit, ax / L, lu)
+        lv = np.where(hit, Y + j * L - k, lv)
+        horiz |= hit
+        k2 = np.floor(X - j * L)                                  # V: column of the slat
+        ay = Y - k2 + j * L - 1
+        hit = (ay >= 0) & (ay < L) & (sid < 0)
+        kk = k2 - np.floor_divide(j, half) * (P // 2) if half else k2
+        canon = ((np.mod(j, half) if half else 0) * P + np.mod(kk, P)).astype(int)
+        sid = np.where(hit, canon * 2 + 1, sid)
+        lu = np.where(hit, ay / L, lu)
+        lv = np.where(hit, X - j * L - k2, lv)
+    sid = np.maximum(sid, 0)
+    v = rng.random((sid.max() + 1, 3))[sid]
+    late_h, pores_h, fleck_h = wood_rings(n, rng, 60)
+    late_v, pores_v, fleck_v = (np.ascontiguousarray(a.T) for a in wood_rings(n, rng, 60))
+    off = (v[..., 0] * n).astype(int)
+    yy, xx = np.indices((n, n))
+    pick = lambda a, b: np.where(horiz, a[(yy + off) % n, xx], b[yy, (xx + off) % n])
+    late, pores, fleck = pick(late_h, late_v), pick(pores_h, pores_v), pick(fleck_h, fleck_v)
+    base = wood_color(late, pores, fleck, 0.78 + 0.4 * v[..., 1])
+    w = 1.0 / P
+    de = np.minimum(np.minimum(lv, 1 - lv) * w, np.minimum(lu, 1 - lu) * w * L)
+    gap = 1 - smooth(de, 0.0004, 0.0016)
+    base = mix(base, srgb(0.14, 0.09, 0.05), gap)
+    rough = 0.32 + pores * 0.15 + v[..., 2] * 0.08 + gap * 0.4
+    h = 0.55 - pores * 0.01 - gap * 0.2 + smooth(de, 0, 0.003) * 0.03
+    return base, rough, h, 0.003
+
+
+def marble_veins(n, rng, sharp=0.06):
+    """Wavy marble veins (0..1) where turbulent noise crosses zero, plus cloudiness."""
+    a = noise(n, rng, 1, 10, 1.3) + 0.35 * noise(n, rng, 10, 40, 1.0)
+    dy, dx = noise(n, rng, 1, 6, 1.2) * n * 0.03, noise(n, rng, 1, 6, 1.2) * n * 0.03
+    a = warp(a, dy, dx)
+    veins = 1 - smooth(np.abs(a), 0.0, sharp)
+    fine = 1 - smooth(np.abs(noise(n, rng, 6, 40, 1.0)), 0.0, sharp * 0.5)
+    cloud = noise(n, rng, 1, 8, 1.2)
+    return veins, fine, cloud
+
+
+@tile_set(1.2)
+def floor_checker(n, rng):
+    """Black and white marble checkerboard, 30 cm tiles, polished, fine grout."""
+    y, x = coords(n)
+    k = 4
+    cy, cx = np.floor(y * k).astype(int), np.floor(x * k).astype(int)
+    white = (cy + cx) % 2 == 0
+    veins, fine, cloud = marble_veins(n, rng)
+    wm = srgb(0.9, 0.89, 0.86) * (1 + cloud[..., None] * 0.02)
+    wm = mix(wm, srgb(0.55, 0.56, 0.58), veins * 0.7 + fine * 0.25)
+    bm = srgb(0.05, 0.05, 0.055) * (1 + cloud[..., None] * 0.15)
+    bm = mix(bm, srgb(0.6, 0.6, 0.58), veins * 0.5 + fine * 0.15)
+    base = np.where(white[..., None], wm, bm)
+    ly, lx = (y * k) % 1.0, (x * k) % 1.0
+    de = np.minimum(np.minimum(lx, 1 - lx), np.minimum(ly, 1 - ly)) * 1.2 / k
+    grout = 1 - smooth(de, 0.0008, 0.0016)
+    base = mix(base, srgb(0.45, 0.44, 0.42), grout)
+    rough = np.where(grout > 0.5, 0.85, 0.08 + veins * 0.04)
+    h = 0.6 - grout * 0.3
+    return base, rough, h, 0.002
+
+
+@tile_set(1.0)
+def floor_hex_tiles(n, rng):
+    """Small white hexagon mosaic (about 4 cm) with scattered black tiles, grey grout."""
+    y, x = coords(n)
+    cols, R2 = 26, 15                                             # cols ~ sqrt(3) * R2 keeps the hexes regular
+    w, h2 = 1.0 / cols, 1.0 / R2
+    f1 = np.full((n, n), 9.0)
+    f2 = np.full((n, n), 9.0)
+    ids = np.zeros((n, n), dtype=int)
+    for lat, (ox, oy) in enumerate([(0.0, 0.0), (0.5, 0.5)]):
+        gi = np.floor(x / w - ox)
+        gj = np.floor(y / h2 - oy)
+        for di in (0, 1):
+            for dj in (0, 1):
+                i, j = gi + di, gj + dj
+                d = np.hypot(wrap_d(x - (i + ox) * w), wrap_d(y - (j + oy) * h2))
+                cid = ((np.mod(j, R2) * cols + np.mod(i, cols)) * 2 + lat).astype(int)
+                closer = d < f1
+                f2 = np.where(closer, f1, np.minimum(f2, d))
+                ids = np.where(closer, cid, ids)
+                f1 = np.minimum(f1, d)
+    edge = (f2 - f1) * 0.5
+    grout = 1 - smooth(edge, 0.0009, 0.0018)
+    v = rng.random((cols * R2 * 2, 2))[ids]
+    black = v[..., 0] < 0.07
+    tile_c = np.where(black[..., None], srgb(0.06, 0.06, 0.065), srgb(0.9, 0.9, 0.88) * (0.97 + 0.05 * v[..., 1])[..., None])
+    base = mix(tile_c, srgb(0.55, 0.54, 0.52), grout)
+    rough = np.where(grout > 0.5, 0.9, 0.12 + v[..., 1] * 0.05)
+    hgt = 0.6 - grout * 0.35 + smooth(edge, 0.0, 0.004) * 0.04
+    return base, rough, hgt, 0.002
+
+
+@tile_set(1.0)
+def terrazzo(n, rng):
+    """Polished terrazzo: angular marble chips of several colours in a cream cement."""
+    f1, f2, ids = grid_voronoi(n, 34, rng)
+    v = rng.random((34 * 34, 3))[ids]
+    chip = smooth((f2 - f1) * 0.5, 0.002 + v[..., 1] * 0.004, 0.0035 + v[..., 1] * 0.004) * (v[..., 0] < 0.55)
+    s1, s2, sid = grid_voronoi(n, 110, rng)
+    sv = rng.random((110 * 110, 2))[sid]
+    speck = (1 - smooth(s1, 0.0015, 0.0025)) * (sv[..., 0] < 0.5)
+    pal = np.array([srgb(0.95, 0.94, 0.9), srgb(0.55, 0.55, 0.56), srgb(0.12, 0.12, 0.13), srgb(0.75, 0.42, 0.3), srgb(0.45, 0.55, 0.45), srgb(0.85, 0.75, 0.6)])
+    cc = pal[(v[..., 2] * len(pal)).astype(int) % len(pal)]
+    sc = pal[(sv[..., 1] * len(pal)).astype(int) % len(pal)]
+    matrix = srgb(0.86, 0.83, 0.76) * (1 + noise(n, rng, 20, n // 2, 0.4)[..., None] * 0.03)
+    base = mix(mix(matrix, sc, speck), cc, chip)
+    rough = 0.16 + noise(n, rng, 2, 10, 1.0) * 0.03
+    h = 0.5 + chip * 0.004
+    return base, rough, h, 0.002
+
+
+@tile_set(2.0)
+def marble(n, rng):
+    """Carrara-style white marble slab: soft grey veining and cloudiness, honed."""
+    veins, fine, cloud = marble_veins(n, rng, 0.08)
+    base = srgb(0.92, 0.91, 0.89) * (1 + cloud[..., None] * 0.025)
+    base = mix(base, srgb(0.5, 0.52, 0.55), veins * 0.75)
+    base = mix(base, srgb(0.7, 0.71, 0.72), fine * 0.4)
+    rough = 0.12 + veins * 0.05 + cloud * 0.01
+    h = 0.5 - veins * 0.003
+    return base, rough, h, 0.001
+
+
+@tile_set(1.0)
+def diamond_plate(n, rng):
+    """Steel tread plate: raised lozenges in alternating directions, scuffed tops."""
+    y, x = coords(n)
+    g = 24
+    iy, ix = np.floor(y * g).astype(int), np.floor(x * g).astype(int)
+    u, v = (x * g) % 1.0 - 0.5, (y * g) % 1.0 - 0.5
+    flip = np.where((iy + ix) % 2 == 0, 1.0, -1.0)
+    s = (u + flip * v) * 0.7071
+    t = (u - flip * v) * 0.7071
+    lz = np.abs(s) / 0.42 + np.abs(t) / 0.075
+    px = g / n * 2
+    raised = smooth(1.0 - lz, -px * 4, px * 4)
+    crown = np.clip(1 - lz, 0, 1) ** 0.5
+    scr = smooth(aniso_noise(n, rng, 30, n // 2, 0.4, 10.0), 1.3, 2.2)
+    grime = smooth(noise(n, rng, 3, 20, 1.0), 0.8, 2.2)
+    g0 = 0.52 + noise(n, rng, 4, 40, 1.0) * 0.03
+    base = np.stack([g0, g0 * 1.01, g0 * 1.03], -1)
+    base = base * (0.85 + raised[..., None] * (0.3 + 0.1 * crown[..., None]) + scr[..., None] * 0.12)
+    base = mix(base, srgb(0.2, 0.18, 0.16), grime * (1 - raised) * 0.35)
+    rough = 0.45 - raised * 0.15 - scr * 0.1 + grime * 0.25
+    h = 0.3 + raised * (0.4 + crown * 0.15)
+    return base, rough, h, 0.002
+
+
+@tile_set(1.0)
+def rubber_studs(n, rng):
+    """Studded rubber flooring: round raised coins on a fine-textured dark grey sheet."""
+    y, x = coords(n)
+    g = 20
+    u, v = (x * g) % 1.0 - 0.5, (y * g) % 1.0 - 0.5
+    r = np.hypot(u, v)
+    px = g / n * 1.5
+    stud = smooth(0.3 - r, -px, px)
+    dome = np.clip(1 - r / 0.3, 0, 1) ** 0.4
+    tex = noise(n, rng, 80, n // 2, 0.2)
+    g0 = 0.055 + tex * 0.004 + stud * 0.01
+    base = np.stack([g0, g0, g0 * 1.05], -1)
+    rough = 0.8 - stud * 0.15 + tex * 0.03
+    h = 0.4 + stud * (0.25 + dome * 0.1) + tex * 0.01
+    return base, rough, h, 0.003
+
+
+# ----------------------------------------------------------------- walls
+
+@tile_set(0.9)
+def subway_tiles(n, rng):
+    """Glossy white 7.5 x 15 cm metro tiles in running bond, bevelled edges, grey grout."""
+    rows, cols = 12, 6
+    row, col, lx, ly = cells(n, rows, cols)
+    ids = row * cols + col
+    bw, bh = 0.9 / cols, 0.9 / rows
+    d = edge_dist(lx, ly, bw, bh)
+    grout = 1 - smooth(d, 0.0012, 0.002)
+    bevel = smooth(d, 0.0015, 0.007)
+    v = per_cell(rng, ids, 2)
+    wave = noise(n, rng, 2, 30, 1.0)
+    tile = srgb(0.93, 0.93, 0.91) * (0.97 + 0.04 * v[..., 0])[..., None] * (1 + wave[..., None] * 0.01)
+    base = mix(tile, srgb(0.6, 0.6, 0.58), grout)
+    rough = np.where(grout > 0.5, 0.9, 0.06 + v[..., 1] * 0.04)
+    h = 0.3 + (1 - grout) * (0.3 + bevel * 0.15) + wave * 0.003
+    return base, rough, h, 0.004
+
+
+@tile_set(2.0)
+def plaster(n, rng):
+    """Hand-trowelled plaster: soft lumps, trowel sweeps and fine sand. Off-white, tintable."""
+    lump = noise(n, rng, 2, 20, 1.3)
+    sweep = warp(aniso_noise(n, rng, 2, 40, 1.0, 4.0), noise(n, rng, 1, 4, 1.0) * n * 0.05, 0)
+    sand = noise(n, rng, 120, n // 2, 0.0)
+    g = 0.78 + lump * 0.02 + sweep * 0.015
+    base = np.stack([g, g * 0.985, g * 0.96], -1) * (1 + sand[..., None] * 0.015)
+    rough = 0.82 - smooth(sweep, 0.8, 2.0) * 0.2 + sand * 0.03
+    h = 0.5 + lump * 0.08 + sweep * 0.05 + sand * 0.01
+    return base, rough, h, 0.004
+
+
+# ------------------------------------------------------- surface materials
+
+@tile_set(1.0)
+def wood_grain(n, rng):
+    """A plain run of oak grain along x for furniture, doors and trim (UV or triplanar)."""
+    late, pores, fleck = wood_rings(n, rng, 30)
+    base = wood_color(late, pores, fleck, 1.0 + noise(n, rng, 1, 4, 1.0) * 0.05)
+    rough = 0.45 + pores * 0.15 + late * 0.05
+    h = 0.5 - pores * 0.02 + late * 0.005
+    return base, rough, h, 0.002
+
+
+@tile_set(0.3)
+def leather(n, rng):
+    """Pebble-grain leather: rounded grains, creases and a soft sheen. Mid tan, tintable."""
+    f1, f2, ids = grid_voronoi(n, 70, rng)
+    edge = (f2 - f1) * 0.5 * 70                                   # 0 at grain borders
+    grain = smooth(edge, 0.0, 0.25) ** 0.6
+    crease = 1 - smooth(np.abs(noise(n, rng, 2, 14, 1.2)), 0.0, 0.04)
+    v = rng.random((70 * 70,))[ids]
+    tone = 0.85 + noise(n, rng, 1, 8, 1.2) * 0.06 + v * 0.04
+    base = srgb(0.62, 0.42, 0.26) * (tone * (0.82 + 0.18 * grain) * (1 - 0.25 * crease))[..., None]
+    rough = 0.6 - grain * 0.15 + crease * 0.1
+    h = 0.46 + grain * 0.1 - crease * 0.05
+    return base, rough, h, 0.0008
+
+
+@tile_set(0.1)
+def linen(n, rng):
+    """Plain-weave linen: over-under threads with slubs. Natural flax, tintable."""
+    y, x = coords(n)
+    T = 64
+    i, j = np.floor(x * T).astype(int), np.floor(y * T).astype(int)
+    lx, ly = (x * T) % 1.0, (y * T) % 1.0
+    warp_up = (i + j) % 2 == 0
+    prof_w = np.sin(np.pi * lx)                                   # across a warp thread
+    prof_f = np.sin(np.pi * ly)
+    slub_w = 1 + 0.25 * (rng.random(T) - 0.5)[i] + 0.08 * noise(n, rng, 4, 40, 1.0)
+    slub_f = 1 + 0.25 * (rng.random(T) - 0.5)[j]
+    top = np.where(warp_up, prof_w * slub_w, prof_f * slub_f)
+    base = srgb(0.78, 0.72, 0.6) * (0.7 + 0.35 * top)[..., None]
+    base = base * (1 + noise(n, rng, 30, n // 2, 0.3)[..., None] * 0.03)
+    rough = np.full((n, n), 0.88)
+    h = 0.3 + top * 0.5
+    return base, rough, h, 0.0004
+
+
+@tile_set(0.1)
+def denim(n, rng):
+    """3/1 twill denim: indigo warp diagonals over white weft, with a washed fade."""
+    y, x = coords(n)
+    T = 96
+    i, j = np.floor(x * T).astype(int), np.floor(y * T).astype(int)
+    lx, ly = (x * T) % 1.0, (y * T) % 1.0
+    warp_up = (i + j) % 4 != 0
+    top = np.where(warp_up, np.sin(np.pi * lx), np.sin(np.pi * ly))
+    fade = smooth(noise(n, rng, 2, 12, 1.0), 0.0, 2.5) * 0.6
+    slub = noise(n, rng, 4, 60, 0.8) * 0.06
+    indigo = mix(srgb(0.12, 0.2, 0.38), srgb(0.42, 0.52, 0.66), fade * 0.6 + slub)
+    weft = srgb(0.6, 0.62, 0.66)
+    base = np.where(warp_up[..., None], indigo, weft) * (0.72 + 0.3 * top)[..., None]
+    rough = np.full((n, n), 0.9)
+    h = 0.3 + top * 0.5
+    return base, rough, h, 0.0004
+
+
+@tile_set(0.05)
+def carbon_fibre(n, rng):
+    """2x2 twill carbon fibre under clear resin: woven tows with a rounded sheen."""
+    y, x = coords(n)
+    T = 16
+    i, j = np.floor(x * T).astype(int), np.floor(y * T).astype(int)
+    lx, ly = (x * T) % 1.0, (y * T) % 1.0
+    horiz = ((i + j) // 2) % 2 == 0
+    across = np.where(horiz, ly, lx)
+    along = np.where(horiz, lx, ly)
+    sheen = np.sin(np.pi * across) ** 2
+    fibres = 1 + 0.08 * np.sin(2 * np.pi * across * 18)
+    g = (0.025 + 0.06 * sheen * fibres) * (1 - 0.15 * np.abs(along - 0.5))
+    base = np.stack([g, g, g * 1.08], -1)
+    rough = 0.18 + (1 - sheen) * 0.1
+    h = 0.4 + np.sin(np.pi * across) * 0.25
+    return base, rough, h, 0.0003
+
+
+@tile_set(0.5)
+def hammered_metal(n, rng):
+    """Hand-hammered sheet: overlapping round dimples with bright facet edges. Neutral grey."""
+    f1, f2, ids = grid_voronoi(n, 16, rng, 0.8)
+    r = f1 * 16                                                   # 0 at a blow's centre
+    dimple = -(np.clip(1 - r / 0.75, 0, 1) ** 2)
+    ridge = 1 - smooth((f2 - f1) * 16, 0.0, 0.12)
+    g = 0.62 + ridge * 0.06 + noise(n, rng, 4, 40, 1.0) * 0.02
+    base = np.stack([g, g, g * 1.01], -1)
+    rough = 0.28 + ridge * -0.08 + noise(n, rng, 30, n // 2, 0.3) * 0.02
+    h = 0.6 + dimple * 0.4 + ridge * 0.03
+    return base, rough, h, 0.003
 
 
 def main():

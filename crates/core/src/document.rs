@@ -912,12 +912,53 @@ pub const SMART_PAINTS: [&str; 7] = ["Olive drab", "Teal paint", "Orange paint",
 /// Plastics offered as "Scuffed <plastic>" smart materials.
 pub const SMART_PLASTICS: [&str; 4] = ["Neon pink plastic", "Cyan plastic", "White plastic", "Black rubber"];
 
+/// Smart materials built on the tile sets in assets/tiles, by library group.
+pub const SMART_WALLS: [&str; 8] =
+    ["Damask wallpaper", "Striped wallpaper", "Floral wallpaper", "Art deco wallpaper", "Trellis wallpaper", "Peeling wallpaper", "Painted plaster", "Subway tiles"];
+pub const SMART_FLOORS: [&str; 13] = [
+    "Plush carpet",
+    "Berber carpet",
+    "Office carpet tiles",
+    "Hotel carpet",
+    "Worn carpet",
+    "Oak floorboards",
+    "Dark walnut floor",
+    "Herringbone parquet",
+    "Checker marble floor",
+    "Hex tile floor",
+    "Terrazzo floor",
+    "Diamond plate",
+    "Rubber flooring",
+];
+pub const SMART_SURFACES: [&str; 14] = [
+    "Polished marble",
+    "Oak wood",
+    "Varnished walnut",
+    "Pebbled leather",
+    "Black pebbled leather",
+    "Linen fabric",
+    "Denim",
+    "Carbon fibre",
+    "Hammered copper",
+    "Hammered steel",
+    "Copper patina",
+    "Weathered galvanized",
+    "Scorched metal",
+    "Mossy stone",
+];
+
+/// Smart materials by library group, in menu order.
+pub fn smart_material_groups() -> Vec<(&'static str, Vec<String>)> {
+    let mut wear: Vec<String> = SMART_PAINTS.iter().map(|p| format!("Worn {} metal", p.to_ascii_lowercase())).collect();
+    wear.extend(["Rusty steel", "Hazard stripes", "Grimy concrete", "Tech panels", "Grimy chrome"].map(String::from));
+    wear.extend(SMART_PLASTICS.iter().map(|p| format!("Scuffed {}", p.to_ascii_lowercase())));
+    let own = |names: &[&str]| names.iter().map(|n| n.to_string()).collect();
+    vec![("Smart materials", wear), ("Walls & wallpaper", own(&SMART_WALLS)), ("Floors & carpet", own(&SMART_FLOORS)), ("Surfaces", own(&SMART_SURFACES))]
+}
+
 /// Every smart material name, for menus and the MCP server.
 pub fn smart_material_names() -> Vec<String> {
-    let mut v: Vec<String> = SMART_PAINTS.iter().map(|p| format!("Worn {} metal", p.to_ascii_lowercase())).collect();
-    v.extend(["Rusty steel", "Hazard stripes", "Grimy concrete", "Tech panels", "Grimy chrome"].map(String::from));
-    v.extend(SMART_PLASTICS.iter().map(|p| format!("Scuffed {}", p.to_ascii_lowercase())));
-    v
+    smart_material_groups().into_iter().flat_map(|(_, v)| v).collect()
 }
 
 /// Ready-made materials for the brush and for fill layers.
@@ -968,6 +1009,84 @@ pub fn material_presets() -> Vec<(&'static str, MaterialValues)> {
         ("Car paint clearcoat", MaterialValues { base_color: [0.42, 0.04, 0.05], roughness: 0.35, metallic: 0.0, coat: 1.0, coat_roughness: 0.03, ..Default::default() }),
         ("Candy paint", MaterialValues { base_color: [0.55, 0.05, 0.32], roughness: 0.3, metallic: 0.6, coat: 1.0, coat_roughness: 0.02, flake: 0.6, ..Default::default() }),
         ("Metallic flake paint", MaterialValues { base_color: [0.1, 0.16, 0.3], roughness: 0.35, metallic: 0.5, coat: 1.0, coat_roughness: 0.04, flake: 0.8, ..Default::default() }),
+        // more metals
+        ("Silver", m([0.97, 0.96, 0.91], 0.15, 1.0, 0.0)),
+        ("Brass", m([0.89, 0.75, 0.42], 0.3, 1.0, 0.0)),
+        ("Bronze", m([0.7, 0.47, 0.3], 0.4, 1.0, 0.0)),
+        ("Rose gold", m([0.93, 0.66, 0.55], 0.22, 1.0, 0.0)),
+        ("Nickel", m([0.8, 0.77, 0.7], 0.2, 1.0, 0.0)),
+        ("Titanium", m([0.62, 0.6, 0.58], 0.35, 1.0, 0.0)),
+        ("Cast iron", m([0.26, 0.26, 0.27], 0.7, 1.0, 0.0)),
+        ("Galvanized steel", m([0.66, 0.68, 0.7], 0.45, 1.0, 0.0)),
+        ("Blued steel", m([0.15, 0.2, 0.32], 0.25, 1.0, 0.0)),
+        ("Anodized blue", m([0.15, 0.35, 0.75], 0.3, 1.0, 0.0)),
+        ("Anodized red", m([0.7, 0.08, 0.1], 0.3, 1.0, 0.0)),
+        ("Mirror", m([0.97, 0.97, 0.97], 0.01, 1.0, 0.0)),
+        // more paints and plastics
+        ("White paint", m([0.88, 0.88, 0.86], 0.45, 0.0, 0.0)),
+        ("Cream paint", m([0.93, 0.88, 0.74], 0.45, 0.0, 0.0)),
+        ("Navy paint", m([0.07, 0.12, 0.28], 0.45, 0.0, 0.0)),
+        ("Forest green paint", m([0.1, 0.3, 0.15], 0.45, 0.0, 0.0)),
+        ("Sky blue paint", m([0.45, 0.68, 0.88], 0.45, 0.0, 0.0)),
+        ("Satin black", m([0.04, 0.04, 0.045], 0.45, 0.0, 0.0)),
+        ("Primer grey", m([0.5, 0.5, 0.5], 0.8, 0.0, 0.0)),
+        ("Red oxide primer", m([0.45, 0.15, 0.1], 0.8, 0.0, 0.0)),
+        ("Glossy black plastic", m([0.02, 0.02, 0.022], 0.1, 0.0, 0.0)),
+        ("Grey ABS", m([0.4, 0.41, 0.42], 0.5, 0.0, 0.0)),
+        ("Yellow plastic", m([0.95, 0.75, 0.1], 0.3, 0.0, 0.0)),
+        ("Red plastic", m([0.8, 0.08, 0.06], 0.3, 0.0, 0.0)),
+        ("Blue plastic", m([0.08, 0.3, 0.8], 0.3, 0.0, 0.0)),
+        ("Clear acrylic", MaterialValues { base_color: [0.95, 0.96, 0.97], roughness: 0.02, opacity: 0.25, transmission: 1.0, ..Default::default() }),
+        ("Pearl white paint", MaterialValues { base_color: [0.92, 0.91, 0.88], roughness: 0.3, metallic: 0.2, coat: 1.0, coat_roughness: 0.02, flake: 0.3, ..Default::default() }),
+        ("Gold flake paint", MaterialValues { base_color: [0.6, 0.45, 0.15], roughness: 0.3, metallic: 0.7, coat: 1.0, coat_roughness: 0.03, flake: 0.8, ..Default::default() }),
+        ("Matte wrap black", m([0.05, 0.05, 0.055], 0.6, 0.0, 0.0)),
+        // wood
+        ("Oak", m([0.62, 0.45, 0.28], 0.6, 0.0, 0.0)),
+        ("Walnut", m([0.3, 0.18, 0.1], 0.55, 0.0, 0.0)),
+        ("Pine", m([0.8, 0.64, 0.42], 0.65, 0.0, 0.0)),
+        ("Mahogany", m([0.42, 0.15, 0.08], 0.5, 0.0, 0.0)),
+        ("Ebony", m([0.07, 0.05, 0.04], 0.4, 0.0, 0.0)),
+        ("Cork", m([0.65, 0.5, 0.35], 0.9, 0.0, 0.0)),
+        ("Varnished wood", MaterialValues { base_color: [0.5, 0.3, 0.15], roughness: 0.5, coat: 1.0, coat_roughness: 0.08, ..Default::default() }),
+        // stone and ceramic
+        ("Marble white", m([0.9, 0.89, 0.87], 0.15, 0.0, 0.0)),
+        ("Granite", m([0.3, 0.29, 0.28], 0.4, 0.0, 0.0)),
+        ("Slate", m([0.2, 0.22, 0.24], 0.7, 0.0, 0.0)),
+        ("Sandstone", m([0.78, 0.65, 0.48], 0.9, 0.0, 0.0)),
+        ("Terracotta", m([0.72, 0.36, 0.22], 0.8, 0.0, 0.0)),
+        ("Brick red", m([0.55, 0.22, 0.15], 0.85, 0.0, 0.0)),
+        ("Clay", m([0.6, 0.45, 0.35], 0.9, 0.0, 0.0)),
+        ("Porcelain", MaterialValues { base_color: [0.95, 0.95, 0.93], roughness: 0.2, coat: 1.0, coat_roughness: 0.02, ..Default::default() }),
+        // fabric and leather
+        ("Leather brown", m([0.36, 0.2, 0.1], 0.55, 0.0, 0.0)),
+        ("Black leather", m([0.05, 0.05, 0.05], 0.45, 0.0, 0.0)),
+        ("Suede tan", m([0.6, 0.45, 0.3], 0.95, 0.0, 0.0)),
+        ("Cotton white", m([0.9, 0.9, 0.88], 0.95, 0.0, 0.0)),
+        ("Wool grey", m([0.5, 0.5, 0.5], 0.98, 0.0, 0.0)),
+        ("Velvet red", m([0.4, 0.03, 0.06], 0.85, 0.0, 0.0)),
+        ("Denim blue", m([0.15, 0.24, 0.42], 0.9, 0.0, 0.0)),
+        ("Canvas", m([0.72, 0.66, 0.52], 0.92, 0.0, 0.0)),
+        ("Felt green", m([0.12, 0.35, 0.18], 0.98, 0.0, 0.0)),
+        // nature
+        ("Sand", m([0.82, 0.72, 0.55], 0.95, 0.0, 0.0)),
+        ("Mud", m([0.25, 0.18, 0.12], 0.55, 0.0, 0.05)),
+        ("Snow", m([0.95, 0.96, 0.98], 0.6, 0.0, 0.0)),
+        ("Moss green", m([0.25, 0.35, 0.12], 0.9, 0.0, 0.05)),
+        ("Bark", m([0.28, 0.2, 0.14], 0.95, 0.0, 0.1)),
+        ("Bone", m([0.88, 0.84, 0.74], 0.55, 0.0, 0.0)),
+        ("Soot", m([0.03, 0.03, 0.03], 0.98, 0.0, 0.0)),
+        ("Ice", MaterialValues { base_color: [0.8, 0.9, 0.95], roughness: 0.08, opacity: 0.6, transmission: 1.0, ..Default::default() }),
+        ("Water", MaterialValues { base_color: [0.1, 0.18, 0.2], roughness: 0.02, opacity: 0.4, transmission: 1.0, ..Default::default() }),
+        // more glass and glow
+        ("Amber glass", MaterialValues { base_color: [0.9, 0.55, 0.15], roughness: 0.03, opacity: 0.5, transmission: 1.0, ..Default::default() }),
+        ("Bottle green glass", MaterialValues { base_color: [0.3, 0.6, 0.35], roughness: 0.03, opacity: 0.5, transmission: 1.0, ..Default::default() }),
+        ("Smoked glass", MaterialValues { base_color: [0.15, 0.15, 0.16], roughness: 0.03, opacity: 0.75, transmission: 1.0, ..Default::default() }),
+        ("Neon red", neon([1.0, 0.1, 0.1], 6.0)),
+        ("Neon yellow", neon([1.0, 0.9, 0.15], 6.0)),
+        ("Warm bulb", neon([1.0, 0.78, 0.5], 3.0)),
+        ("Lava", MaterialValues { base_color: [0.15, 0.05, 0.02], roughness: 0.9, emissive: [1.0, 0.35, 0.05], emissive_strength: 4.0, ..Default::default() }),
+        ("Hologram blue", MaterialValues { base_color: [0.1, 0.4, 0.6], roughness: 0.1, emissive: [0.3, 0.8, 1.0], emissive_strength: 2.5, opacity: 0.5, ..Default::default() }),
+        ("Terminal green screen", MaterialValues { base_color: [0.01, 0.04, 0.01], roughness: 0.1, emissive: [0.2, 1.0, 0.35], emissive_strength: 2.0, ..Default::default() }),
     ]
 }
 
@@ -1054,6 +1173,37 @@ impl Document {
         l
     }
 
+    /// A fill layer whose colour, roughness, height and normal come from the
+    /// tile set `assets/tiles/<set>` (tools/make_tiles.py), projected
+    /// triplanar at the set's real size (`size_m` metres per repeat), so it
+    /// works on any mesh without UV scale. `preset` supplies the channels the
+    /// images don't (metallic, coat...); `tint` multiplies the colour.
+    pub fn tiled_fill(&mut self, name: &str, set: &str, size_m: f32, preset: &str, tint: [f32; 3]) -> Layer {
+        use crate::image_fill::{ChannelImages, ImageFill, Projection};
+        let mut l = self.fill_with(name, preset, None);
+        let path = |stem: &str| Some(format!("assets/tiles/{set}/{stem}.png"));
+        let images = ChannelImages { base_color: path("base_color"), roughness: path("roughness"), height: path("height"), normal: path("normal") };
+        let fill = ImageFill { images, projection: Projection::Triplanar, tile_size: size_m, tint, ..Default::default() };
+        for (c, _) in fill.images.iter() {
+            l.channels.get_mut(c.channel()).enabled = true;
+        }
+        l.image = Some(fill);
+        l
+    }
+
+    /// A tile set fill (see `tiled_fill`) with light grime in its crevices.
+    fn tiled_with_grime(&mut self, name: &str, set: &str, size_m: f32, preset: &str, tint: [f32; 3]) -> Vec<Layer> {
+        let tile = self.tiled_fill(name, set, size_m, preset, tint);
+        let mut dirt = Generator::new(GeneratorKind::Dirt);
+        dirt.amount = 0.35;
+        let mut grime = self.fill_with("Grime", "Grime", Some(dirt));
+        for c in Channel::ALL {
+            grime.channels.get_mut(c).enabled = matches!(c, Channel::BaseColor | Channel::Roughness);
+        }
+        grime.opacity = 0.45;
+        vec![tile, grime]
+    }
+
     /// Multi-layer smart materials, bottom to top. `None` for an unknown name.
     pub fn smart_material(&mut self, name: &str) -> Option<Vec<Layer>> {
         use GeneratorKind::*;
@@ -1127,6 +1277,206 @@ impl Document {
                 dirt.amount = 0.5;
                 let grime = self.fill_with("Grime", "Grime", Some(dirt));
                 vec![base, smudge, grime]
+            }
+            // ---- walls: tile sets plus a little living-in
+            "Damask wallpaper" | "Striped wallpaper" | "Floral wallpaper" | "Art deco wallpaper" | "Trellis wallpaper" => {
+                let (set, size) = match name {
+                    "Damask wallpaper" => ("wallpaper_damask", 1.0),
+                    "Striped wallpaper" => ("wallpaper_stripes", 0.5),
+                    "Floral wallpaper" => ("wallpaper_floral", 0.6),
+                    "Art deco wallpaper" => ("wallpaper_art_deco", 1.0),
+                    _ => ("wallpaper_trellis", 0.5),
+                };
+                let paper = self.tiled_fill(name, set, size, "White paint", [1.0; 3]);
+                let mut dirt = g(Dirt);
+                dirt.amount = 0.3;
+                let mut grime = self.fill_with("Grime", "Grime", Some(dirt));
+                only(&mut grime, &[Channel::BaseColor, Channel::Roughness]);
+                grime.opacity = 0.4;
+                vec![paper, grime]
+            }
+            "Peeling wallpaper" => {
+                let plaster = self.tiled_fill("Bare plaster", "plaster", 2.0, "White paint", [0.86, 0.84, 0.8]);
+                // the paper is everywhere except where grunge patches have torn it away
+                let mut paper = self.tiled_fill("Wallpaper", "wallpaper_floral", 0.6, "White paint", [0.92, 0.88, 0.8]);
+                let res = self.mint();
+                let mut m = Mask::with_generator(res, g(Grunge).with(0.42, 2.5));
+                m.invert = true;
+                paper.mask = Some(m);
+                let mut stains = self.fill_with("Damp stains", "Grime", Some(g(Leaks).with(0.4, 2.0)));
+                only(&mut stains, &[Channel::BaseColor, Channel::Roughness]);
+                stains.opacity = 0.5;
+                let mut dirt = g(Dirt);
+                dirt.amount = 0.45;
+                let grime = self.fill_with("Grime", "Grime", Some(dirt));
+                vec![plaster, paper, stains, grime]
+            }
+            "Painted plaster" => {
+                let plaster = self.tiled_fill("Plaster", "plaster", 2.0, "White paint", [1.0; 3]);
+                let mut scuffs = self.fill_with("Scuffs", "Grime", Some(g(Grunge).with(0.25, 3.0)));
+                only(&mut scuffs, &[Channel::BaseColor, Channel::Roughness]);
+                scuffs.opacity = 0.2;
+                vec![plaster, scuffs]
+            }
+            "Subway tiles" => {
+                let tiles = self.tiled_fill("Subway tiles", "subway_tiles", 0.9, "Porcelain", [1.0; 3]);
+                let mut dirt = g(Dirt);
+                dirt.amount = 0.4;
+                let mut grime = self.fill_with("Grout grime", "Grime", Some(dirt));
+                only(&mut grime, &[Channel::BaseColor, Channel::Roughness]);
+                grime.opacity = 0.6;
+                vec![tiles, grime]
+            }
+            // ---- floors
+            "Plush carpet" => self.tiled_with_grime(name, "carpet_plush", 1.0, "Wool grey", [1.0; 3]),
+            "Berber carpet" => self.tiled_with_grime(name, "carpet_berber", 0.5, "Wool grey", [1.0; 3]),
+            "Office carpet tiles" => self.tiled_with_grime(name, "carpet_tiles", 1.0, "Wool grey", [1.0; 3]),
+            "Hotel carpet" => self.tiled_with_grime(name, "carpet_hotel", 1.0, "Wool grey", [1.0; 3]),
+            "Worn carpet" => {
+                let carpet = self.tiled_fill("Carpet", "carpet_plush", 1.0, "Wool grey", [0.85, 0.45, 0.4]);
+                // walked-flat lanes: darker and a touch shinier
+                let mut traffic = self.fill_with("Traffic wear", "Grime", Some(g(Grunge).with(0.45, 1.2)));
+                only(&mut traffic, &[Channel::BaseColor, Channel::Roughness]);
+                traffic.opacity = 0.35;
+                let mut stains = self.fill_with("Stains", "Mud", Some(g(Spots).with(0.12, 3.0)));
+                only(&mut stains, &[Channel::BaseColor]);
+                stains.opacity = 0.5;
+                let mut dirt = g(Dirt);
+                dirt.amount = 0.5;
+                let grime = self.fill_with("Grime", "Grime", Some(dirt));
+                vec![carpet, traffic, stains, grime]
+            }
+            "Oak floorboards" | "Dark walnut floor" | "Herringbone parquet" => {
+                let wood = match name {
+                    "Oak floorboards" => self.tiled_fill(name, "wood_planks", 1.0, "Oak", [1.0; 3]),
+                    "Dark walnut floor" => self.tiled_fill(name, "wood_planks", 1.0, "Varnished wood", [0.5, 0.38, 0.3]),
+                    _ => self.tiled_fill(name, "parquet_herringbone", 1.0, "Oak", [1.0; 3]),
+                };
+                let mut scratches = self.fill_with("Scuffs", "Grime", Some(g(Scratches).with(0.15, 4.0)));
+                only(&mut scratches, &[Channel::BaseColor, Channel::Roughness]);
+                scratches.opacity = 0.3;
+                let mut dirt = g(Dirt);
+                dirt.amount = 0.4;
+                let grime = self.fill_with("Grime", "Grime", Some(dirt));
+                vec![wood, scratches, grime]
+            }
+            "Checker marble floor" | "Hex tile floor" | "Terrazzo floor" => {
+                let (set, size) = match name {
+                    "Checker marble floor" => ("floor_checker", 1.2),
+                    "Hex tile floor" => ("floor_hex_tiles", 1.0),
+                    _ => ("terrazzo", 1.0),
+                };
+                let floor = self.tiled_fill(name, set, size, "Marble white", [1.0; 3]);
+                let mut dirt = g(Dirt);
+                dirt.amount = 0.35;
+                let mut grime = self.fill_with("Grime", "Grime", Some(dirt));
+                only(&mut grime, &[Channel::BaseColor, Channel::Roughness]);
+                grime.opacity = 0.5;
+                vec![floor, grime]
+            }
+            "Diamond plate" => {
+                let plate = self.tiled_fill(name, "diamond_plate", 1.0, "Steel", [1.0; 3]);
+                let mut dirt = g(Dirt);
+                dirt.amount = 0.5;
+                let grime = self.fill_with("Grime", "Grime", Some(dirt));
+                let mut wear = g(EdgeWear);
+                wear.amount = 0.4;
+                let edges = self.fill_with("Worn edges", "Brushed steel", Some(wear));
+                vec![plate, grime, edges]
+            }
+            "Rubber flooring" => {
+                let rubber = self.tiled_fill(name, "rubber_studs", 1.0, "Black rubber", [1.0; 3]);
+                let mut scuffs = self.fill_with("Scuffs", "Grey ABS", Some(g(Scratches).with(0.15, 5.0)));
+                only(&mut scuffs, &[Channel::BaseColor, Channel::Roughness]);
+                scuffs.opacity = 0.3;
+                vec![rubber, scuffs]
+            }
+            // ---- surfaces
+            "Polished marble" => self.tiled_with_grime(name, "marble", 2.0, "Marble white", [1.0; 3]),
+            "Oak wood" => self.tiled_with_grime(name, "wood_grain", 1.0, "Oak", [1.0; 3]),
+            "Varnished walnut" => self.tiled_with_grime(name, "wood_grain", 1.0, "Varnished wood", [0.5, 0.36, 0.28]),
+            "Pebbled leather" | "Black pebbled leather" => {
+                let tint = if name == "Pebbled leather" { [1.0; 3] } else { [0.16, 0.16, 0.17] };
+                let leather = self.tiled_fill(name, "leather", 0.3, "Leather brown", tint);
+                // worn, burnished high points
+                let mut wear = g(EdgeWear);
+                wear.amount = 0.35;
+                let mut rub = self.fill_with("Rubbed edges", "Suede tan", Some(wear));
+                only(&mut rub, &[Channel::BaseColor, Channel::Roughness]);
+                rub.opacity = 0.35;
+                vec![leather, rub]
+            }
+            "Linen fabric" => self.tiled_with_grime(name, "linen", 0.1, "Canvas", [1.0; 3]),
+            "Denim" => {
+                let denim = self.tiled_fill(name, "denim", 0.1, "Denim blue", [1.0; 3]);
+                let mut wear = g(EdgeWear);
+                wear.amount = 0.4;
+                let mut fade = self.fill_with("Faded edges", "Cotton white", Some(wear));
+                only(&mut fade, &[Channel::BaseColor]);
+                fade.opacity = 0.45;
+                vec![denim, fade]
+            }
+            "Carbon fibre" => {
+                let mut cf = self.tiled_fill(name, "carbon_fibre", 0.05, "Carbon black", [1.0; 3]);
+                // clear resin coat over the weave
+                if let LayerKind::Fill { values } = &mut cf.kind {
+                    values.coat = 1.0;
+                    values.coat_roughness = 0.03;
+                }
+                cf.channels.coat.enabled = true;
+                cf.channels.coat_roughness.enabled = true;
+                let mut scuffs = self.fill_with("Resin scuffs", "Grey ABS", Some(g(Scratches).with(0.12, 6.0)));
+                only(&mut scuffs, &[Channel::Roughness]);
+                scuffs.opacity = 0.3;
+                vec![cf, scuffs]
+            }
+            "Hammered copper" => self.tiled_with_grime(name, "hammered_metal", 0.5, "Copper", [1.0, 0.68, 0.55]),
+            "Hammered steel" => self.tiled_with_grime(name, "hammered_metal", 0.5, "Steel", [1.0; 3]),
+            "Copper patina" => {
+                let base = self.fill_with("Copper", "Copper", None);
+                let mut tarnish = self.fill_with("Tarnish", "Bronze", Some(g(Grunge).with(0.5, 4.0)));
+                tarnish.opacity = 0.6;
+                let mut cav = g(Dirt);
+                cav.amount = 0.55;
+                let verdigris = self.fill_with("Verdigris", "Verdigris", Some(cav));
+                let mut runs = self.fill_with("Verdigris runs", "Verdigris", Some(g(Streaks).with(0.3, 8.0)));
+                runs.opacity = 0.6;
+                let mut spots = self.fill_with("Verdigris spots", "Verdigris", Some(g(Spots).with(0.2, 7.0)));
+                spots.opacity = 0.7;
+                vec![base, tarnish, verdigris, runs, spots]
+            }
+            "Weathered galvanized" => {
+                let base = self.fill_with("Galvanized steel", "Galvanized steel", None);
+                let mut spangle = self.fill_with("Spangle", "Aluminium", Some(g(Grunge).with(0.5, 9.0)));
+                spangle.opacity = 0.4;
+                let mut white_rust = self.fill_with("White rust", "Concrete", Some(g(Spots).with(0.2, 6.0)));
+                white_rust.opacity = 0.45;
+                let mut dirt = g(Dirt);
+                dirt.amount = 0.45;
+                let grime = self.fill_with("Grime", "Grime", Some(dirt));
+                vec![base, spangle, white_rust, grime]
+            }
+            "Scorched metal" => {
+                let base = self.fill_with("Steel", "Steel", None);
+                let mut heat = self.fill_with("Heat tint", "Blued steel", Some(g(Grunge).with(0.45, 2.5)));
+                heat.opacity = 0.5;
+                let mut cav = g(Dirt);
+                cav.amount = 0.6;
+                let soot = self.fill_with("Soot", "Soot", Some(cav));
+                let mut wear = g(EdgeWear);
+                wear.amount = 0.45;
+                let edges = self.fill_with("Bright edges", "Brushed steel", Some(wear));
+                vec![base, heat, soot, edges]
+            }
+            "Mossy stone" => {
+                let base = self.fill_with("Slate", "Slate", None);
+                let mut lichen = self.fill_with("Lichen", "Sandstone", Some(g(Spots).with(0.1, 16.0)));
+                lichen.opacity = 0.35;
+                let moss = self.fill_with("Moss", "Moss green", Some(g(Moss)));
+                let mut dirt = g(Dirt);
+                dirt.amount = 0.5;
+                let grime = self.fill_with("Grime", "Grime", Some(dirt));
+                vec![base, lichen, moss, grime]
             }
             other => {
                 let color = other.strip_prefix("Scuffed ")?;
@@ -1334,6 +1684,31 @@ mod tests {
             assert_eq!(ids.len(), n, "{name}");
         }
         assert!(Document::default().smart_material("Nope").is_none());
+    }
+
+    #[test]
+    fn smart_material_tile_sets_exist() {
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let mut sets = 0;
+        for name in smart_material_names() {
+            for l in Document::default().smart_material(&name).unwrap() {
+                for (_, p) in l.image.iter().flat_map(|f| f.images.iter()) {
+                    assert!(root.join(p).is_file(), "{name}: {p} missing (run tools/make_tiles.py)");
+                    sets += 1;
+                }
+            }
+        }
+        assert!(sets > 0);
+    }
+
+    #[test]
+    fn material_names_are_unique() {
+        let mut names: Vec<String> = material_presets().into_iter().map(|(n, _)| n.to_string()).collect();
+        names.extend(smart_material_names());
+        let n = names.len();
+        names.sort();
+        names.dedup();
+        assert_eq!(names.len(), n, "a preset and a smart material share a name");
     }
 
     #[test]
