@@ -322,6 +322,16 @@ func _despawn(c) -> void:
 	stats.despawned += 1
 
 
+## Take moving traffic off the road within `r` of `p` (tests and scripted moments); it respawns elsewhere.
+func clear_around(p: Vector3, r: float) -> int:
+	var n := 0
+	for c in active.duplicate():
+		if is_instance_valid(c) and c.global_position.distance_to(p) < r:
+			_despawn(c)
+			n += 1
+	return n
+
+
 # ================================================================== lanes / routes
 func _enter_lane(c) -> void:
 	var l = graph.lanes[c.lane]
