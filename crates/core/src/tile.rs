@@ -185,7 +185,7 @@ impl TileSpec {
             SheetKind::Trim => "TrimSheet".to_string(),
             SheetKind::Atlas => "DecalAtlas".to_string(),
         };
-        let mut m = Mesh { name, vertices, indices, has_uvs: true };
+        let mut m = Mesh { name, vertices, indices, has_uvs: true, ..Default::default() };
         m.compute_tangents();
         m
     }
@@ -197,7 +197,7 @@ impl TileSpec {
         let [px, pz] = self.period();
         let xs: Vec<f32> = if px > 0.0 { vec![0.0, -px, px] } else { vec![0.0] };
         let zs: Vec<f32> = if pz > 0.0 { vec![0.0, -pz, pz] } else { vec![0.0] };
-        let mut out = Mesh { name: mesh.name.clone(), vertices: Vec::new(), indices: Vec::new(), has_uvs: mesh.has_uvs };
+        let mut out = Mesh { name: mesh.name.clone(), vertices: Vec::new(), indices: Vec::new(), has_uvs: mesh.has_uvs, ..Default::default() };
         for &dz in &zs {
             for &dx in &xs {
                 let base = out.vertices.len() as u32;

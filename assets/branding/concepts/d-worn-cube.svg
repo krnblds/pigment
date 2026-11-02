@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <!-- D: an orange-painted cube, its edges worn through to steel: edge wear as the mark -->
+  <defs>
+    <linearGradient id="t" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFB574"/><stop offset="1" stop-color="#F59040"/></linearGradient>
+    <linearGradient id="l" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#E9822F"/><stop offset="1" stop-color="#C96B22"/></linearGradient>
+    <linearGradient id="r" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#B85E20"/><stop offset="1" stop-color="#8E4614"/></linearGradient>
+  </defs>
+  <ellipse cx="128" cy="236" rx="84" ry="10" fill="#000" fill-opacity="0.2"/>
+  <path d="M128 18 L224 70 L128 122 L32 70 Z" fill="url(#t)"/>
+  <path d="M32 70 L128 122 L128 236 L32 184 Z" fill="url(#l)"/>
+  <path d="M224 70 L128 122 L128 236 L224 184 Z" fill="url(#r)"/>
+  <g fill="#E6E4E0">
+    <path d="M128 122 L118 116 C122 130 116 146 122 160 C126 172 120 190 124 204 C126 214 122 226 128 236 L134 232 C130 220 136 206 132 192 C128 176 136 162 132 148 C128 136 136 128 138 116 Z"/>
+    <path d="M32 70 L44 64 C58 74 70 70 82 80 C90 86 104 92 112 102 L104 104 C92 98 80 94 70 88 C56 82 46 82 32 76 Z"/>
+    <path d="M224 70 L212 64 C200 72 188 72 176 82 C170 88 156 92 148 102 L156 104 C166 96 178 94 188 88 C200 82 212 80 224 76 Z"/>
+    <path d="M128 18 L118 22 C110 30 96 30 88 38 L96 40 C106 34 116 34 124 28 Z"/>
+    <path d="M32 70 L38 80 C36 96 42 110 38 126 C36 140 40 160 36 176 L32 184 Z"/>
+    <path d="M224 70 L218 82 C222 100 216 116 220 132 L224 140 Z"/>
+  </g>
+  <g fill="#9EA2A8"><circle cx="70" cy="140" r="3"/><circle cx="184" cy="168" r="2.5"/><circle cx="96" cy="190" r="2"/></g>
+  <path d="M64 70 L128 36 L152 48 L88 82 Z" fill="#fff" fill-opacity="0.35"/>
+</svg>

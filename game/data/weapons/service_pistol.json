@@ -1,0 +1,7 @@
+{
+	"id": "service_pistol", "name": "HS-9 SERVICE PISTOL", "slot": 3, "kind": "hitscan", "lethal": true,
+	"damage": 24, "stun": 0.0, "headshot": 2.5, "range": 120, "rate": 5.0, "auto": false, "pellets": 1,
+	"spread_hip": 1.8, "spread_aim": 0.35, "bloom": 0.9, "bloom_max": 4.0, "recoil": 2.0,
+	"mag": 15, "reserve": 90, "reload": 1.35, "tracer": "bullet", "casing": true, "hold": "pistol",
+	"sounds": {"fire": "pistol_shot", "reload": "reload_mag", "dry": "dry_fire"}
+}

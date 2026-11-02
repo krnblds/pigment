@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Pigment
+GenericName=PBR Texture Painter
+Comment=Paint PBR textures directly onto 3D models
+Exec=pigment %f
+Icon=pigment
+Terminal=false
+Categories=Graphics;3DGraphics;
+MimeType=model/gltf-binary;model/gltf+json;model/obj;
+Keywords=texture;paint;PBR;3D;material;
+StartupWMClass=pigment

@@ -60,6 +60,8 @@ pub struct DecalsPanel {
     images: Option<Vec<PathBuf>>,
     thumbs: library::ImageThumbs,
     folder: Option<String>,
+    /// Quick search over every decal image (all folders).
+    search: String,
 }
 
 impl Panel for DecalsPanel {
@@ -74,10 +76,9 @@ impl Panel for DecalsPanel {
         let active = app.tool() == super::super::ui::Tool::Decal;
         if !active {
             ui.horizontal(|ui| {
-                if ui.add(Btn::primary("Use the decal tool").icon(Icon::Stamp)).clicked() {
+                if ui.add(Btn::secondary("Use the decal tool").icon(Icon::Stamp).shortcut("D")).clicked() {
                     app.set_tool(super::super::ui::Tool::Decal);
                 }
-                ui.label(ds::text("D", font::SMALL).color(p.text_muted));
             });
             ui.add_space(space::SM);
         }
@@ -142,6 +143,10 @@ impl Panel for DecalsPanel {
             f.dedup();
             f
         };
+        ds::search_field(ui, &mut self.search, "Search decals");
+        let query = self.search.trim().to_string();
+        ui.add_space(space::XS);
+        if query.is_empty() {
         ui.horizontal_wrapped(|ui| {
             ui.spacing_mut().item_spacing = egui::vec2(space::XS, space::XS);
             for f in &folders {
@@ -151,15 +156,42 @@ impl Panel for DecalsPanel {
                 }
             }
         });
+        }
         let sel_folder = self.folder.clone().unwrap_or_default();
         let w = 72.0;
+        let folder_of = |i: &PathBuf| i.parent().and_then(|d| root.as_ref().and_then(|r| d.strip_prefix(r).ok())).map(|r| r.to_string_lossy().to_string()).unwrap_or_default();
+        let shown: Vec<&PathBuf> = if query.is_empty() {
+            images.iter().filter(|i| folder_of(i) == sel_folder).collect()
+        } else {
+            let mut v: Vec<(i32, &PathBuf)> = images.iter().filter_map(|i| ds::fuzzy_score(&query, &format!("{} {}", i.file_stem().map(|s| s.to_string_lossy().replace('_', " ")).unwrap_or_default(), folder_of(i))).map(|sc| (sc, i))).collect();
+            v.sort_by(|a, b| b.0.cmp(&a.0));
+            v.into_iter().map(|(_, i)| i).collect()
+        };
+        if shown.is_empty() {
+            ds::empty_state(ui, Icon::Search, "No decals match", "Try another word, or clear the search to browse folders.", None);
+        }
         ui.horizontal_wrapped(|ui| {
             ui.spacing_mut().item_spacing = egui::vec2(space::SM, space::SM);
-            for img in images.iter().filter(|i| i.parent().and_then(|d| root.as_ref().and_then(|r| d.strip_prefix(r).ok())).map(|r| r.to_string_lossy().to_string()).unwrap_or_default() == sel_folder) {
+            for img in shown {
                 let tex = self.thumbs.get(ui.ctx(), img);
                 let name = img.file_stem().map(|s| s.to_string_lossy().replace('_', " ")).unwrap_or_default();
                 let on = app.ui.decal.image.as_deref() == Some(img.as_path());
                 let r = ds::asset_tile(ui, w, tex, |pa, r| Icon::Image.paint(pa, r.shrink(space::LG), p.text_muted), &name, "", on);
+                r.context_menu(|ui| {
+                    if ui.add(ds::MenuItem::new("Stick it on (decal tool)").icon(Icon::Stamp).shortcut("D")).clicked() {
+                        app.ui.decal.image = Some(img.clone());
+                        app.decal_tool = Some((img.clone(), None));
+                        app.ui.decal.mode = DecalMode::Stamp;
+                        app.set_tool(super::super::ui::Tool::Decal);
+                        ui.close();
+                    }
+                    if ui.add(ds::MenuItem::new("Scatter copies…").icon(Icon::Scatter)).clicked() {
+                        app.ui.decal.image = Some(img.clone());
+                        app.ui.decal.mode = DecalMode::Scatter;
+                        app.set_tool(super::super::ui::Tool::Decal);
+                        ui.close();
+                    }
+                });
                 if r.clicked() {
                     app.ui.decal.image = Some(img.clone());
                     app.decal_tool = Some((img.clone(), None));
@@ -193,11 +225,13 @@ impl PigmentApp {
         if ok && !self.paint_mask {
             return;
         }
-        let top = self.doc.layers.iter().rev().find(|l| l.is_paint()).map(|l| l.id);
+        // decals become editable objects on a decal layer (the top one, or a new one)
+        let top = self.doc.layers.iter().rev().find(|l| l.decals.is_some()).map(|l| l.id);
         match top {
             Some(id) => self.select(Some(id), false),
             None => {
-                let l = self.doc.new_paint_layer("Decals");
+                let mut l = self.doc.new_paint_layer("Decals");
+                l.decals = Some(Default::default());
                 let id = l.id;
                 self.doc.layers.push(l);
                 self.select(Some(id), false);
@@ -234,6 +268,37 @@ impl PigmentApp {
         self.commit_doc_changes();
         self.decal_target();
         let saved = self.decal_brush();
+        // a decal layer keeps them as editable objects (one undo step: a document change)
+        if let Some(i) = self.decal_layer_selected().filter(|_| !self.paint_mask) {
+            let values = self.brush.values.clone();
+            let channels: Vec<Channel> = Channel::ALL.into_iter().filter(|c| self.brush.channels[c.index()]).collect();
+            let mut ids = Vec::new();
+            for d in &decals {
+                let l = &d.look;
+                let o = pigment_core::decal_layer::DecalObject {
+                    id: 0,
+                    name: d.image.file_stem().map(|s| s.to_string_lossy().to_string()).unwrap_or_default(),
+                    group: String::new(),
+                    image: d.image.to_string_lossy().replace('\\', "/"),
+                    center: d.placement.center.into(),
+                    normal: d.placement.normal.into(),
+                    size: d.placement.size.into(),
+                    rotation: self.ui.decal.rotation,
+                    depth: d.placement.depth,
+                    projection: d.projection,
+                    wear: pigment_core::decal_layer::DecalWear { opacity: l.opacity, alpha_from_luminance: l.luminance_alpha, tear: l.tear, fade: l.fade, wear_scale: l.wear_scale, seed: l.seed, grunge: l.grunge, paper_rim: l.paper_rim },
+                    values: values.clone(),
+                    channels: channels.clone(),
+                    enabled: true,
+                };
+                ids.push(self.doc.layers[i].decals.as_mut().unwrap().add(o));
+            }
+            (self.brush.values, self.brush.channels) = saved;
+            self.decal_sel = ids.last().copied();
+            let _ = label;
+            self.commit_doc_changes();
+            return Ok(ids.len());
+        }
         let r = self.project_box_decals(rs, &decals, label, true);
         (self.brush.values, self.brush.channels) = saved;
         r
@@ -245,7 +310,7 @@ impl PigmentApp {
         let size = glam::Vec2::new(self.ui.decal.size, self.ui.decal.size / aspect(image).max(0.05));
         let placement = Placement::new(pt, n, size, self.ui.decal.rotation, Placement::default_depth(size));
         let name = image.file_stem().map(|s| s.to_string_lossy().to_string()).unwrap_or_default();
-        self.place_box_decals(rs, vec![BoxDecal { image: image.to_path_buf(), placement, look: self.decal_look() }], format!("Decal {name}"))
+        self.place_box_decals(rs, vec![BoxDecal { image: image.to_path_buf(), placement, look: self.decal_look(), projection: Default::default() }], format!("Decal {name}"))
     }
 
     /// Part mode: fit the image to the face of the clicked part.
@@ -266,7 +331,7 @@ impl PigmentApp {
         let size = if fit.x / a <= fit.y { glam::Vec2::new(fit.x, fit.x / a) } else { glam::Vec2::new(fit.y * a, fit.y) };
         let placement = Placement::new(center, normal, size, 0.0, Placement::default_depth(size));
         let name = image.file_stem().map(|s| s.to_string_lossy().to_string()).unwrap_or_default();
-        self.place_box_decals(rs, vec![BoxDecal { image: image.to_path_buf(), placement, look: self.decal_look() }], format!("Decal {name} on part {part}"))
+        self.place_box_decals(rs, vec![BoxDecal { image: image.to_path_buf(), placement, look: self.decal_look(), projection: Default::default() }], format!("Decal {name} on part {part}"))
     }
 
     /// Scatter mode: copies over the picked parts (or the whole model).
@@ -312,7 +377,7 @@ impl PigmentApp {
                     look.fade = (look.fade + rng.range(-0.15, 0.15)).clamp(0.0, 1.0);
                 }
                 look.seed = base.seed + rng.range(0.0, 100.0);
-                BoxDecal { image: images[s.image].clone(), placement: s.placement, look }
+                BoxDecal { image: images[s.image].clone(), placement: s.placement, look, projection: Default::default() }
             })
             .collect();
         let n = decals.len();

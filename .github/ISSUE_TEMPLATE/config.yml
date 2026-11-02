@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/krnblds/pigment/security/advisories/new
+    about: Please report security problems privately, not as a public issue.
+  - name: Getting started guide
+    url: https://github.com/krnblds/pigment/blob/main/docs/GETTING_STARTED.md
+    about: New to Pigment? Start here.

@@ -27,6 +27,11 @@ extends Node3D
 ##   --showroom-shot=<dir>  garage exterior / interior / menu screenshots, quits
 ##   --garage-save=<path>   customisation save file (default user://garage.json)   --no-garage-save  ignore it
 ##   --no-npc           no pedestrians (scripts/npc/)   --npc=<n> walkers   --npc-test (headless OK)   --npc-shots=<dir>   --npc-bench
+##   --no-cases         no Sleepwalker cases (on foot, weapons and the car door still work; scripts/waker/)
+##   --onfoot-test      on-foot test (headless OK): walk, sprint, jump, vault, slope, stairs, car door, camera collision
+##   --weapons-test     weapons test (headless OK): fire, reload, damage, headshot, stun, EMP, pooled tracers, perf
+##   --waker-test       case test (headless OK): dispatch, scan, echo, every archetype, wake / stun-wake / kill, choices, save
+##   --waker-shots=<dir>   Waker proof screenshots (windowed)   --waker-save=<path>  case save (default user://waker.json)
 
 const TownLoader := preload("res://scripts/town_loader.gd")
 const Car := preload("res://scripts/car.gd")
@@ -62,6 +67,8 @@ var damage: Node3D                      ## damage + destruction (scripts/damage/
 var garage: Node                        ## drive-in garages + showroom (scripts/garage/), V / pause menu
 var pause_menu: CanvasLayer
 var npc: Node3D                         ## pedestrians (scripts/npc/), --no-npc to skip
+var waker: Node3D                       ## on foot, weapons, Sleepwalker cases (scripts/waker/), F gets out
+var player_focus: Node3D                ## the on-foot player while out of the car (null when driving)
 
 
 func _ready() -> void:
@@ -148,6 +155,9 @@ func _ready() -> void:
 	pause_menu = preload("res://scripts/pause_menu.gd").new()
 	pause_menu.main = self
 	add_child(pause_menu)
+	waker = preload("res://scripts/waker/waker.gd").new()
+	add_child(waker)
+	waker.setup(self)
 	if args.has("damage-test") or args.has("damage-shots") or args.has("damage-bench"):
 		var dt := preload("res://scripts/damage/damage_tests.gd").new()
 		dt.main = self
@@ -168,6 +178,10 @@ func _ready() -> void:
 		var vt := preload("res://scripts/vehicle/vehicle_tests.gd").new()
 		vt.main = self
 		add_child(vt)
+	elif args.has("onfoot-test") or args.has("weapons-test") or args.has("waker-test") or args.has("waker-shots"):
+		var wt := preload("res://scripts/waker/waker_tests.gd").new()
+		wt.main = self
+		add_child(wt)
 	elif args.has("road-clear-test"):
 		var rc := preload("res://scripts/road_clear_test.gd").new()
 		rc.main = self

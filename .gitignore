@@ -42,3 +42,7 @@ scenes/world/ground_masks*
 scenes/world/ground_spots.json
 # citizens (tools/npc): downloaded CC0 packs, animation library sources, Blender build scratch
 .npccache/
+
+# Waker kit (tools/weapons): Pigment texture sets and proof renders are regenerated
+scenes/weapons/textures/
+scenes/weapons/proof/

@@ -1,0 +1,59 @@
+{
+  "tips": [
+    {
+      "id": "round",
+      "label": "Round, soft edge",
+      "file": "round.png"
+    },
+    {
+      "id": "square",
+      "label": "Square, hard edge",
+      "file": "square.png"
+    },
+    {
+      "id": "chalk",
+      "label": "Chalk: grainy disc",
+      "file": "chalk.png"
+    },
+    {
+      "id": "spray",
+      "label": "Spray: airbrush dots",
+      "file": "spray.png"
+    },
+    {
+      "id": "splatter",
+      "label": "Splatter: paint splash",
+      "file": "splatter.png"
+    },
+    {
+      "id": "cracks",
+      "label": "Cracks: branching fractures",
+      "file": "cracks.png"
+    },
+    {
+      "id": "scratches",
+      "label": "Scratches: thin parallel scuffs",
+      "file": "scratches.png"
+    },
+    {
+      "id": "grunge_1",
+      "label": "Grunge stamp 1",
+      "file": "grunge_1.png"
+    },
+    {
+      "id": "grunge_2",
+      "label": "Grunge stamp 2",
+      "file": "grunge_2.png"
+    },
+    {
+      "id": "leaves",
+      "label": "Leaves: a scatter of leaf shapes",
+      "file": "leaves.png"
+    },
+    {
+      "id": "dots",
+      "label": "Dots: random round specks",
+      "file": "dots.png"
+    }
+  ]
+}

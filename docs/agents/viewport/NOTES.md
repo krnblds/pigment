@@ -44,7 +44,7 @@ at night, and one call shows an asset from every side.
   into a wash.
 - **Contact sheets** (`pigment_core::sheet`) lay tiles out in a grid with
   labels, using a built-in 3x5 pixel font.
-- **UI** (viewport → Lighting menu): Studio / Night city / Overcast buttons, a
+- **UI** (viewport → Lighting menu): Studio / Neon night / Overcast buttons, a
   Bloom checkbox with threshold / intensity / radius sliders, and the existing
   HDRI loader, exposure and rotation.
 - **`tools/blender_lookdev.py`** renders a Pigment-textured asset in headless

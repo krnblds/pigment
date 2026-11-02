@@ -21,7 +21,7 @@ const DESPAWN_FAR := 170.0
 const CHECK_EVERY := 0.25
 
 var focus: Node3D                ## the player's car
-var audio: Node                  ## damage_audio.gd (impact clatter)
+var audio: Node                  ## damage_audio.gd (debris lands silently: bounce clatter was too much)
 var bodies: Array = []           ## entries {rb, t, life, kind, pinned, on_free}
 var stats := {"spawned": 0, "released": 0, "frozen_budget": 0, "max_awake": 0, "max_bodies": 0}
 var _pool: Array[RigidBody3D] = []
@@ -134,7 +134,7 @@ func spawn(nodes: Array, shapes: Array, xf: Transform3D, mass: float, opts := {}
 	rb.angular_velocity = opts.get("angvel", Vector3.ZERO)
 	rb.reset_physics_interpolation()
 	var e := {"rb": rb, "t": 0.0, "life": float(opts.get("life", 0.0)), "kind": String(opts.get("kind", "metal")),
-		"pinned": bool(opts.get("pinned", false)), "on_free": opts.get("on_free", Callable()), "snd_t": 0.0}
+		"pinned": bool(opts.get("pinned", false)), "on_free": opts.get("on_free", Callable())}
 	bodies.append(e)
 	_by_rb[rb] = e
 	stats.spawned += 1
@@ -192,26 +192,8 @@ func _new_body() -> RigidBody3D:
 	rb.can_sleep = true
 	rb.linear_damp = 0.05
 	rb.angular_damp = 0.3
-	rb.contact_monitor = true
-	rb.max_contacts_reported = 1
 	var pm := PhysicsMaterial.new()
 	pm.friction = 0.7
 	pm.bounce = 0.1
 	rb.physics_material_override = pm
-	rb.body_entered.connect(_on_hit.bind(rb))
 	return rb
-
-
-const KIND_SOUND := {"metal": "metal_crunch_light", "plastic": "plastic_clatter", "glass": "plastic_clatter", "wood": "wood_knock",
-	"cardboard": "cardboard_thud", "bag": "bag_thump", "concrete": "wood_knock", "pole": "pole_clang"}
-
-
-func _on_hit(_other: Node, rb: RigidBody3D) -> void:
-	var e: Dictionary = _by_rb.get(rb, {})
-	if e.is_empty() or audio == null:
-		return
-	var v := rb.linear_velocity.length()
-	if v < 2.2 or e.t - float(e.snd_t) < 0.35:
-		return
-	e.snd_t = e.t
-	audio.play(KIND_SOUND.get(e.kind, "plastic_clatter"), rb.global_position, clampf(v / 9.0, 0.1, 0.8))

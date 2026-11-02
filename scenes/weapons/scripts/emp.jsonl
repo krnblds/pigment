@@ -1,0 +1,10 @@
+{"tool": "new_project", "args": {"mesh": "assets/weapons/src/emp.glb", "resolution": 1024}}
+{"tool": "bake", "args": {"curvature_radius": 0.002, "ao_distance": 0.03}}
+{"tool": "add_layer", "args": {"name": "glow_cyan", "mask": {"parts": [1]}, "values": {"base_color": [0.08, 0.25, 0.3], "roughness": 0.3, "metallic": 0.0, "emissive": [0.35, 0.95, 1.0], "emissive_strength": 4.0}}}
+{"tool": "add_layer", "args": {"name": "gunmetal", "mask": {"parts": [0]}, "values": {"base_color": [0.085, 0.09, 0.1], "roughness": 0.36, "metallic": 1.0}}}
+{"tool": "add_layer", "args": {"name": "steel", "mask": {"parts": [2, 3]}, "values": {"base_color": [0.42, 0.43, 0.45], "roughness": 0.3, "metallic": 1.0}}}
+{"tool": "add_layer", "args": {"name": "Edge wear", "mask": {"parts": [0, 2, 3], "generator": "edge_wear", "amount": 0.32, "softness": 0.15, "scale": 8.0, "breakup": 0.6}, "values": {"base_color": [0.62, 0.62, 0.64], "roughness": 0.28, "metallic": 1.0}, "opacity": 0.75, "channels": {"height": false}}}
+{"tool": "add_layer", "args": {"name": "Scratches", "mask": {"parts": [0, 2, 3], "generator": "scratches", "amount": 0.15, "scale": 22.0}, "values": {"base_color": [0.5, 0.5, 0.52], "roughness": 0.25, "metallic": 1.0}, "opacity": 0.3, "channels": {"height": false}}}
+{"tool": "add_layer", "args": {"name": "Grime", "material": "Grime", "mask": {"generator": "grunge", "amount": 0.3, "scale": 5.0, "softness": 0.4}, "opacity": 0.3}}
+{"tool": "render", "args": {"yaw": 70, "pitch": 12, "width": 640, "height": 400, "exposure": 0.2, "path": "C:\\Users\\kiera\\Documents\\Workspaces\\Vibe Projects\\are-senior-graphics-engineer-who\\.claude\\worktrees\\agent-police\\scenes\\weapons\\proof\\emp.png"}}
+{"tool": "export_textures", "args": {"dir": "scenes/weapons/textures/emp", "preset": "separate", "name": "emp"}}

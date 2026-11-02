@@ -25,13 +25,14 @@ impl Panel for BrushPanel {
         PanelId::Brush
     }
 
-    fn ui(&mut self, app: &mut PigmentApp, ui: &mut egui::Ui, _rs: &RenderState) {
+    fn ui(&mut self, app: &mut PigmentApp, ui: &mut egui::Ui, rs: &RenderState) {
         let p = ds::pal(ui);
         let painting_mask = matches!(app.paint_target(), Ok(Target::Mask(_)));
         ds::slider_row_ex(ui, "Size", &mut app.brush.size, 2.0..=800.0, ds::Unit::Suffix(" px", 0), true, Some("[ and ] change it"));
         ds::slider_row(ui, "Strength", &mut app.brush.opacity, 0.0..=1.0, ds::Unit::Percent);
         ds::slider_row(ui, "Hardness", &mut app.brush.hardness, 0.0..=1.0, ds::Unit::Percent);
         ds::slider_row(ui, "Spacing", &mut app.brush.spacing, 0.02..=1.0, ds::Unit::Percent);
+        super::brush::brush_engine_ui(app, ui, rs);
         if painting_mask {
             ds::card(ui, |ui| {
                 ui.label(ds::strong("You're painting a mask", font::BODY));
@@ -216,7 +217,7 @@ impl Panel for VariantsPanel {
 
 // ------------------------------------------------------------------ lighting
 
-/// Lighting preset cards (studio, night city, overcast, the game skies).
+/// Lighting preset cards (studio, neon night, overcast, the game skies).
 pub fn lighting_presets(app: &mut PigmentApp, ui: &mut egui::Ui, rs: &RenderState) {
     let p = ds::pal(ui);
     ui.horizontal_wrapped(|ui| {
@@ -289,20 +290,47 @@ impl Panel for HistoryPanel {
             return;
         }
         let mut jump: Option<usize> = None;
-        let row = |ui: &mut egui::Ui, label: &str, on: bool, future: bool| {
-            let (r, resp) = ui.allocate_exact_size(egui::vec2(ui.available_width(), size::CONTROL_H), egui::Sense::click());
+        let total = labels.len();
+        // undo / redo and where you are
+        ui.horizontal(|ui| {
+            if ui.add(Btn::ghost("Undo").icon(Icon::Undo).small().shortcut("Ctrl+Z").enabled(applied > 0)).clicked() {
+                jump = Some(applied - 1);
+            }
+            if ui.add(Btn::ghost("Redo").icon(Icon::Redo).small().shortcut("Ctrl+Y").enabled(applied < total)).clicked() {
+                jump = Some(applied + 1);
+            }
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                ui.label(ds::mono(format!("step {applied} of {total}")).color(p.text_muted));
+            });
+        });
+        ui.add_space(space::XXS);
+        let m = ds::metrics(ui);
+        let row = |ui: &mut egui::Ui, n: usize, label: &str, on: bool, future: bool| {
+            let (r, resp) = ui.allocate_exact_size(egui::vec2(ui.available_width(), m.control_h), egui::Sense::click());
             let bg = if on { p.accent_subtle } else if resp.hovered() { p.surface_hover } else { egui::Color32::TRANSPARENT };
             ui.painter().rect_filled(r, egui::CornerRadius::same(ds::radius::MD), bg);
+            if on {
+                ui.painter().rect_filled(egui::Rect::from_min_size(r.min, egui::vec2(2.0, r.height())), egui::CornerRadius::same(ds::radius::SM), p.accent);
+            }
+            let num = ui.painter().layout_no_wrap(format!("{n:>3}"), ds::fonts::mono(font::CAPTION), if on { p.accent } else { p.text_muted });
+            ui.painter().galley(egui::pos2(r.left() + space::SM, r.center().y - num.size().y / 2.0), num, p.text_muted);
             let c = if future { p.text_disabled } else { p.text };
-            ui.painter().circle_filled(egui::pos2(r.left() + space::LG, r.center().y), 3.5, if on { p.accent } else if future { p.border } else { p.text_muted });
-            ui.painter().text(egui::pos2(r.left() + space::XL + space::MD, r.center().y), egui::Align2::LEFT_CENTER, label, ds::fonts::regular(font::SMALL), c);
+            let f = if on { ds::fonts::semibold(font::SMALL) } else { ds::fonts::regular(font::SMALL) };
+            let tag_w = if future { 52.0 } else if on { 40.0 } else { 0.0 };
+            let g = ds::elided(ui.painter(), label, f, c, r.width() - space::XXL - space::MD - tag_w);
+            ui.painter().galley(egui::pos2(r.left() + space::XXXL, r.center().y - g.size().y / 2.0), g, c);
+            let tag = if future { "undone" } else if on { "now" } else { "" };
+            if !tag.is_empty() {
+                ui.painter().text(egui::pos2(r.right() - space::SM, r.center().y), egui::Align2::RIGHT_CENTER, tag, ds::fonts::regular(font::CAPTION), if on { p.accent } else { p.text_disabled });
+            }
             resp
         };
-        if row(ui, "Opened", applied == 0, false).clicked() {
+        ui.spacing_mut().item_spacing.y = 1.0;
+        if row(ui, 0, "Opened", applied == 0, false).on_hover_text("Go back to how the project was opened").clicked() {
             jump = Some(0);
         }
         for (k, l) in labels.iter().enumerate() {
-            if row(ui, l, k + 1 == applied, k >= applied).on_hover_text(if k >= applied { "Undone: click to redo up to here" } else { "Click to go back to this step" }).clicked() {
+            if row(ui, k + 1, l, k + 1 == applied, k >= applied).on_hover_text(if k >= applied { "Undone: click to redo up to here" } else { "Click to go back to this step" }).clicked() {
                 jump = Some(k + 1);
             }
         }
@@ -387,7 +415,7 @@ pub fn export_body(app: &mut PigmentApp, ui: &mut egui::Ui, rs: &RenderState, co
         ui.end_row();
     });
     if !compact {
-        egui::CollapsingHeader::new(ds::caption(ui, "More options")).id_salt("export more").show(ui, |ui| {
+        ds::collapsible(ui, "export.more", "More options", false, |ui| {
             ui.horizontal(|ui| {
                 ds::prop_label(ui, "PNG compression", Some("Fast writes bigger files; best is slowest"));
                 egui::ComboBox::from_id_salt("png compression").selected_text(app.export_compression.id()).show_ui(ui, |ui| {
@@ -448,6 +476,7 @@ impl Panel for ExportPanel {
     }
     fn ui(&mut self, app: &mut PigmentApp, ui: &mut egui::Ui, rs: &RenderState) {
         export_body(app, ui, rs, true);
+        super::templates::templates_ui(app, ui, rs);
     }
 }
 
@@ -500,6 +529,8 @@ impl Panel for TextureSetPanel {
             app.bake(rs);
         }
         ds::hint(ui, "Edge wear, dirt and other generators read these maps. See them with the AO / Curvature chips on the viewport (Advanced).");
+        super::hibake::high_bake_ui(app, ui, rs);
+        super::texsets::split_ui(app, ui, rs);
         if let Some(t) = &app.doc.tile {
             ds::section(ui, "Sheet");
             ui.label(ds::text(format!("{} · {} cell(s)", t.kind.id(), t.cells.len()), font::SMALL));

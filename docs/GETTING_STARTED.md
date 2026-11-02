@@ -32,7 +32,7 @@ where they'd really be: on edges, in corners and crevices.
   piece of the model.
 - **How worn?** In **Weathering**, drag the slider or press *Brand new / Used / Worn /
   Battered*.
-- **Light it** with *Studio*, *Night city*, *Overcast* or one of the skies. Lighting only
+- **Light it** with *Studio*, *Neon night*, *Overcast* or one of the skies. Lighting only
   changes the preview, not the textures.
 
 ## 3. Paint and stick decals
@@ -92,6 +92,13 @@ theme and the interface size (Ctrl + / Ctrl -).
 
 - **Ctrl+K** opens the command palette: type "rust", "export", "night" or "folder".
 - **?** shows every keyboard shortcut.
+- **The status bar** (bottom left) always shows what the mouse buttons and keys do with
+  the current tool, or with the control under the pointer.
+- **Number fields** show their value inside the bar: drag to change it (Shift for fine,
+  Ctrl to snap to round steps), double-click to type a value (`2*3` and units work).
+- **Right-click** a layer, decal or panel tab for its actions; with the pointer over the
+  Layers panel, F2 renames, Ctrl+D duplicates, Ctrl+G groups, H hides and Delete deletes.
+- **Too dense?** Settings (Ctrl+,) > Density > Comfortable brings back the roomier spacing.
 - **Help > Learn in 2 minutes** walks you through orbit, paint, undo, wear, masks and
   export, pointing at each control as you go.
 

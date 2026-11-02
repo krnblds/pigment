@@ -93,9 +93,9 @@ func _ready() -> void:
 	_ticker.position = Vector2(0, 10)
 	_ticker_x = 0.0
 	# controls hint (bottom left)
-	_hint = _label(root, "W/S or RT/LT  drive / brake (hold at a stop to reverse)     A/D or stick  steer     SPACE / A  handbrake\nT  traction     J  stability     B  ABS     K  steer assist     R / Y  reset to road     C / RB  camera     L / X  light bar     F  rain (wet road)     G  GI     F3  stats     V  GARAGE / SHOWROOM     ESC  menu", 18, Color(0.75, 0.85, 0.95))
+	_hint = _label(root, "W/S or RT/LT  drive / brake (hold at a stop to reverse)     A/D or stick  steer     SPACE / A  handbrake\nT  traction     J  stability     B  ABS     K  steer assist     R / Y  reset to road     C / RB  camera     L / X  light bar + siren     F / Y  get out / in     F4  rain (wet road)     G  GI     F3  stats     V  GARAGE / SHOWROOM     ESC  menu\nON FOOT  WASD move   SHIFT sprint   ALT walk   CTRL crouch   SPACE jump / vault   RMB aim   LMB fire   R reload   1-6 kit   Z EMP   H holster   X shoulder   Q resonance   E wake   TAB case log", 18, Color(0.75, 0.85, 0.95))
 	_hint.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
-	_hint.position = Vector2(24, -80)
+	_hint.position = Vector2(24, -104)
 	_fps_label = _label(root, "", 16, Color(0.6, 0.7, 0.8))
 	_fps_label.set_anchors_preset(Control.PRESET_TOP_RIGHT)
 	_fps_label.position = Vector2(-420, 56)

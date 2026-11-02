@@ -647,7 +647,7 @@ pub fn card_mesh(set: &FoliageSet, uvs: &[Option<CellUv>], name: &str) -> Mesh {
             indices.extend_from_slice(&[base, base + 1, base + 2, base, base + 2, base + 3]);
         }
     }
-    Mesh { name: name.into(), vertices, indices, has_uvs: true }
+    Mesh { name: name.into(), vertices, indices, has_uvs: true, ..Default::default() }
 }
 
 /// Godot / engine friendly instance lists: per palette cell, its UV rect,
@@ -722,7 +722,7 @@ mod tests {
         };
         quad(&mut vertices, &mut indices, &|u, w| [-2.0 + 4.0 * u, 0.0, -2.0 + 4.0 * w], [0.0, 1.0, 0.0]);
         quad(&mut vertices, &mut indices, &|u, w| [-2.0 + 4.0 * u, 3.0 * w, -2.0], [0.0, 0.0, 1.0]);
-        Mesh { name: "yard".into(), vertices, indices, has_uvs: true }
+        Mesh { name: "yard".into(), vertices, indices, has_uvs: true, ..Default::default() }
     }
 
     fn defs() -> Vec<FoliageCell> {

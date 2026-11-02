@@ -258,6 +258,9 @@ func _run() -> void:
 		main.cam.snap()
 		await _wait(0.5)
 		var target: Vector3 = gar.global_transform * Vector3(0, 0.5, gar.size.z * 0.5 - 3.0)
+		# this checks the garage trigger, not traffic: keep passing cars out of the approach
+		if main.traffic and main.traffic.has_method("clear_around"):
+			main.traffic.clear_around(xf.origin.lerp(target, 0.5), 30.0)
 		var d := await _drive(9.0, target)
 		var t_in := 0.0
 		while (g.busy or not g.inside) and t_in < 3.0:
