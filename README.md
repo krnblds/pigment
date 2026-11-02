@@ -184,7 +184,7 @@ Real examples: [`scenes/town/scripts/`](scenes/town/scripts) and [`scenes/cyberp
 | **UI** | welcome screen, Simple/Advanced modes, dockable panels with saved layouts, design system (dark/light), command palette, history, autosave and recovery |
 | **Export** | templates with file patterns and per-channel packing: Unreal, Unity (incl. HDRP mask map), Godot ORM, glTF/Blender, Arnold, or your own; PNG 8/16, TGA, EXR f16/f32; UDIM naming; a `material.json` sidecar |
 
-## The showcase: a cyberpunk driving game
+## The showcase: a night taxi game
 
 Pigment was pushed by using it, through MCP, to texture a whole open-world city. The city is a 4×4 km night
 bay with islands, bridges and a mountain road, run by the Hoshikawa corporation and the MERIDIAN AI. The world,
@@ -192,8 +192,10 @@ its assets and a drivable Godot 4.7 game are in this repo:
 
 ![A town building in Pigment, and 16 more assets from the game](docs/readme/hero.png)
 
-- **[`game/`](game)**: the Godot project. Open `game/project.godot` and press **F5**. It has wet neon streets,
-  traffic, a security cruiser with a light bar, and a simulated car with easy handling (`--sim` for full simulation).
+- **[`game/`](game)**: the Godot project. Open `game/project.godot` and press **F5**. You drive a cab through wet
+  neon streets: people hail you from the kerb, you follow the route line to their address and get paid by distance,
+  with tips and a star rating for punctual, smooth driving. There's traffic, pedestrians, crash damage, drive-in
+  garages to customise the car, and easy handling (`--sim` for full simulation).
 - **[`tools/world/`](tools/world)**: the procedural world generator.
 - **[`tools/city/`](tools/city)**: the incremental city build with smart models and live hot-swap into the
   running game. See [docs/CITY_BUILD.md](docs/CITY_BUILD.md).

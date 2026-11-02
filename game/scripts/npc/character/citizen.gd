@@ -1,7 +1,7 @@
 extends Node3D
 ## One character from the citizen catalogue: the imported MPFB model (skeleton renamed to
 ## SkeletonProfileHumanoid bones, "%GeneralSkeleton"), LOD0/LOD1 skinned meshes with the atlas shader,
-## the shared AnimationTree setup (citizen_anim.gd), an optional umbrella, the sleepwalker look and the
+## the shared AnimationTree setup (citizen_anim.gd), an optional umbrella and the
 ## ragdoll + get-up component (ragdoll.gd).  Make them with citizen_library.gd: CitizenLib.spawn(id).
 ##
 ##   set_speed(v)                     ground speed in m/s (drives idle / walk / jog / sprint and their rates)
@@ -9,7 +9,6 @@ extends Node3D
 ##   play_action(clip) -> bool        any library clip once (flinch, roll, dodge_jump, yes, no, interact, extra_* ...)
 ##   set_activity(clip, amount)       a looping clip blended over everything (sit_idle, idle_phone, extra_smoking ...)
 ##   set_umbrella(kind)               "clear" / "black" / "neon" / "" (none)
-##   set_sleepwalker(on)              faint cyan glow at the temples and eyes, slack posture, slower idle
 ##   ragdoll(impulse, at)             throw them (Jolt physical bones); signal stood_up when back on their feet
 ##   is_down() -> bool                ragdolling or getting up
 ##   anim_auto = false + advance(dt)  drive the animation yourself (the crowd does: staggered / reduced rates)
@@ -32,7 +31,6 @@ var tree: AnimationTree
 var rag: Node
 var umbrella: Node3D
 var umbrella_kind := ""
-var sleepwalker := false
 var hips_h := 0.9
 var speed := 0.0
 var anim_auto := true:
@@ -125,14 +123,6 @@ func action_playing() -> bool:
 
 func set_activity(clip: String, amount := 1.0) -> void:
 	CitizenAnim.set_activity(tree, clip, amount)
-
-
-func set_sleepwalker(on: bool) -> void:
-	sleepwalker = on
-	for mi in [lod0, lod1]:
-		if mi:
-			mi.set_instance_shader_parameter("sleepwalker", 1.0 if on else 0.0)
-	CitizenAnim.set_sleepwalker(tree, 1.0 if on else 0.0)
 
 
 func set_trim_glow(v: float) -> void:

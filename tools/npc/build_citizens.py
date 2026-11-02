@@ -10,7 +10,7 @@ Per recipe (tools/npc/recipes.py) it
      CC0 clothes; the basemesh is dropped (the proxy is the body), clothes delete-groups hide the body;
   2. adds the procedural outer layer ("shell"): the body proxy's torso/arms pushed out and smoothed into a
      jacket / bomber / hoodie / hi-vis vest / raincoat / coat, a lofted coat skirt rigged to the pelvis and
-     thighs, collar or hood, and for the Wakers a temple-mounted resonance band; everything under the shell
+     thighs, collar or hood; everything under the shell
      (body, shirts) is deleted, so nothing pokes through;
   3. lays every part into one 1024 atlas (UV cells; compose_atlas.py paints it: textures, tints, trims,
      emission / wetness / roughness masks) and merges the parts into one skinned mesh (2 surfaces:
@@ -513,28 +513,6 @@ def make_collar(template, M, spec, uv_rect):
     return loft("collar", rings, weights, uv_rect)
 
 
-def make_band(M, head_obj_pts, uv_rect):
-    """Waker resonance band: a slim arc over the left ear, emissive cyan."""
-    # temple centre: left side of the head at eye height
-    zc = M["head"].z + (M["head_top"].z - M["head"].z) * 0.32
-    side = [p for p in head_obj_pts if abs(p.z - zc) < 0.02 and p.x > 0]
-    if not side:
-        return None
-    xs = max(p.x for p in side) + 0.006
-    yc = sum(p.y for p in side) / len(side) + 0.01
-    rings, weights = [], []
-    n = 6
-    for j, t in enumerate([i / 9 for i in range(10)]):
-        a = math.radians(-60 + 200 * t)                   # from the temple over the top of the ear to behind it
-        c = Vector((xs, yc + 0.045 * math.cos(a) - 0.03, zc - 0.012 + 0.04 * math.sin(a) * 0.8))
-        tang = Vector((0, -math.sin(a), math.cos(a) * 0.8)).normalized()
-        nrm = Vector((1, 0, 0))
-        bi = tang.cross(nrm).normalized()
-        rings.append([tuple(c + (nrm * math.cos(2 * math.pi * k / n) + bi * math.sin(2 * math.pi * k / n)) * 0.0055) for k in range(n)])
-        weights.append([{"head": 1.0}] * n)
-    return loft("band", rings, weights, uv_rect)
-
-
 # ------------------------------------------------------------------ atlas
 class Atlas:
     """Buddy allocator over a power-of-two square (cells are powers of two)."""
@@ -651,13 +629,11 @@ def build(rc):
             if p[1] in ("body", "clothes"):
                 removed += delete_under(p[0], M, shell["kind"], 0.02)
         log(rc["id"], "shell", shell["kind"], "faces hidden under it:", removed)
-    if "resonance_band" in rc.get("accessories", []):
-        extra.append([None, "band", "band"])
     # ---- atlas cells
     A = Atlas(ATLAS)
-    order = {"body": 0, "shell": 1, "clothes": 2, "shoes": 4, "hair": 3, "acc": 5, "eyes": 7, "brows": 6, "skirt": 4, "collar": 6, "band": 8}
+    order = {"body": 0, "shell": 1, "clothes": 2, "shoes": 4, "hair": 3, "acc": 5, "eyes": 7, "brows": 6, "skirt": 4, "collar": 6}
     size = {"body": 512, "shell": 512, "clothes": 512, "shoes": 128, "hair": 256, "acc": 128, "eyes": 64, "brows": 128,
-            "skirt": 256, "collar": 128, "band": 32}
+            "skirt": 256, "collar": 128}
     allp = parts + extra
     nclothes = sum(1 for p in allp if p[1] == "clothes")
     if shell and nclothes >= 1:
@@ -682,11 +658,6 @@ def build(rc):
             p[0] = make_skirt(template, M, shell, uvr)
         elif p[1] == "collar":
             p[0] = make_collar(template, M, shell, uvr)
-        elif p[1] == "band":
-            head = next(q[0] for q in parts if q[1] == "body")
-            W = vweights(head)
-            pts = [v.co.copy() for v, w in zip(head.data.vertices, W) if w.get("head", 0) > 0.8]
-            p[0] = make_band(M, pts, uvr)
     allp = [p for p in allp if p[0] is not None]
     for p in allp:
         o, cat, name = p
@@ -700,17 +671,15 @@ def build(rc):
         for u in o.data.uv_layers:
             u.name = "UVMap" if u == o.data.uv_layers.active else u.name
         r = rects[id(p)]
-        if cat not in ("skirt", "collar", "band"):
+        if cat not in ("skirt", "collar"):
             to_cell(o, r)
         src = o.data.materials[0] if len(o.data.materials) else None
         cell = {"part": name, "cat": cat, "rect": list(r), "albedo": image_of(src, "albedo"), "normal": image_of(src, "normal")}
         if cat in ("shell", "skirt", "collar"):
             cell.update({"fill": list(shell["colour"]), "kind": shell["kind"], "sheen": shell.get("sheen", 0.6)})
-        if cat == "band":
-            cell.update({"fill": [0.02, 0.03, 0.035], "emit_rgb": [0.1, 0.85, 1.0], "emit": 1.0})
         spec["cells"].append(cell)
         # position maps (bind-pose xyz per texel) for the parts compose_atlas.py paints by 3D rules:
-        # shell trims / piping / reflective bands, sleepwalker temples on the body
+        # shell trims / piping / reflective bands on the body
         if cat in ("shell", "skirt", "collar") or cat == "body":
             spec["posmaps"].append({"cat": cat, "rect": list(r), "tris": pos_tris(o)})
         # one material per surface kind
@@ -822,7 +791,7 @@ def pose_arms_down(arm):
 
 
 def main():
-    recs = R.make_recipes(SEED, COUNT) + R.WAKERS
+    recs = R.make_recipes(SEED, COUNT)
     if ONLY:
         recs = [r for r in recs if r["id"] in ONLY]
     os.makedirs(OUT, exist_ok=True)

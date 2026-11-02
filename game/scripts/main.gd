@@ -1,5 +1,6 @@
 extends Node3D
-## Neon Hill: loads the Pigment town, the hero car, night lighting, rain, HUD.
+## Neon Hill: a night taxi game in the rain city. Loads the Pigment town, the cab, night lighting, rain,
+## traffic, pedestrians, the HUD and the fares (scripts/taxi/).
 ##
 ## User args (after "--" on the Godot command line):
 ##   --autoshot=<dir>   scripted drive, saves PNGs + perf.json to <dir>, quits
@@ -26,12 +27,9 @@ extends Node3D
 ##                      drive each car a few metres (scripts/garage/garage_test.gd), exit code 0 = pass
 ##   --showroom-shot=<dir>  garage exterior / interior / menu screenshots, quits
 ##   --garage-save=<path>   customisation save file (default user://garage.json)   --no-garage-save  ignore it
+##   --no-taxi          no fares (free drive)   --taxi-save=<path>  earnings save (default user://taxi.json)
+##   --taxi-test        taxi test (headless OK): fare maths, hail, route, boarding, ride, payout, save
 ##   --no-npc           no pedestrians (scripts/npc/)   --npc=<n> walkers   --npc-test (headless OK)   --npc-shots=<dir>   --npc-bench
-##   --no-cases         no Sleepwalker cases (on foot, weapons and the car door still work; scripts/waker/)
-##   --onfoot-test      on-foot test (headless OK): walk, sprint, jump, vault, slope, stairs, car door, camera collision
-##   --weapons-test     weapons test (headless OK): fire, reload, damage, headshot, stun, EMP, pooled tracers, perf
-##   --waker-test       case test (headless OK): dispatch, scan, echo, every archetype, wake / stun-wake / kill, choices, save
-##   --waker-shots=<dir>   Waker proof screenshots (windowed)   --waker-save=<path>  case save (default user://waker.json)
 
 const TownLoader := preload("res://scripts/town_loader.gd")
 const Car := preload("res://scripts/car.gd")
@@ -67,8 +65,7 @@ var damage: Node3D                      ## damage + destruction (scripts/damage/
 var garage: Node                        ## drive-in garages + showroom (scripts/garage/), V / pause menu
 var pause_menu: CanvasLayer
 var npc: Node3D                         ## pedestrians (scripts/npc/), --no-npc to skip
-var waker: Node3D                       ## on foot, weapons, Sleepwalker cases (scripts/waker/), F gets out
-var player_focus: Node3D                ## the on-foot player while out of the car (null when driving)
+var taxi: Node3D                        ## fares (scripts/taxi/), --no-taxi to skip
 
 
 func _ready() -> void:
@@ -152,16 +149,21 @@ func _ready() -> void:
 	garage = Garage.new()
 	add_child(garage)
 	garage.setup(self, garage_lots)
+	if not args.has("no-taxi") and (args.has("taxi-test") or args.has("taxi-shots") or not _automation()):
+		taxi = preload("res://scripts/taxi/taxi.gd").new()
+		add_child(taxi)
+		taxi.setup(self)
 	pause_menu = preload("res://scripts/pause_menu.gd").new()
 	pause_menu.main = self
 	add_child(pause_menu)
-	waker = preload("res://scripts/waker/waker.gd").new()
-	add_child(waker)
-	waker.setup(self)
 	if args.has("damage-test") or args.has("damage-shots") or args.has("damage-bench"):
 		var dt := preload("res://scripts/damage/damage_tests.gd").new()
 		dt.main = self
 		add_child(dt)
+	elif args.has("taxi-test") or args.has("taxi-shots"):
+		var tt := preload("res://scripts/taxi/taxi_tests.gd").new()
+		tt.main = self
+		add_child(tt)
 	elif args.has("npc-test") or args.has("npc-shots") or args.has("npc-bench"):
 		var nt := preload("res://scripts/npc/npc_tests.gd").new()
 		nt.main = self
@@ -178,10 +180,6 @@ func _ready() -> void:
 		var vt := preload("res://scripts/vehicle/vehicle_tests.gd").new()
 		vt.main = self
 		add_child(vt)
-	elif args.has("onfoot-test") or args.has("weapons-test") or args.has("waker-test") or args.has("waker-shots"):
-		var wt := preload("res://scripts/waker/waker_tests.gd").new()
-		wt.main = self
-		add_child(wt)
 	elif args.has("road-clear-test"):
 		var rc := preload("res://scripts/road_clear_test.gd").new()
 		rc.main = self
@@ -258,6 +256,14 @@ func _unhandled_input(event: InputEvent) -> void:
 			pause_menu.toggle()            # ESC: pause menu (resume / garage / quit)
 		else:
 			get_tree().quit()
+
+
+## A scripted test / screenshot / benchmark run (no fares unless the run is about them).
+func _automation() -> bool:
+	for k in args:
+		if String(k).ends_with("-test") or String(k).ends_with("-shots") or String(k).ends_with("-shot") 				or String(k).begins_with("bench") or k in ["autoshot", "drive-old", "car-cost", "foliage-demo", "damage-bench"]:
+			return true
+	return false
 
 
 ## Stream the world in around `p` right now (teleports: automation camera spots).

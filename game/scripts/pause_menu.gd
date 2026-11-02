@@ -29,7 +29,7 @@ func _ready() -> void:
 	panel.add_theme_stylebox_override("panel", sb)
 	panel.set_anchors_preset(Control.PRESET_CENTER)
 	panel.position = Vector2(-220, -170)
-	panel.size = Vector2(440, 420)
+	panel.size = Vector2(440, 340)
 	add_child(panel)
 	var title := Label.new()
 	title.text = "PAUSED  //  MERIDIAN"
@@ -37,7 +37,7 @@ func _ready() -> void:
 	title.add_theme_color_override("font_color", MAGENTA)
 	title.position = Vector2(24, 18)
 	panel.add_child(title)
-	_items = [["RESUME", resume], ["GARAGE  /  SHOWROOM    [V]", _garage], ["CASE LOG    [TAB]", _case_log], ["QUIT", func(): get_tree().quit()]]
+	_items = [["RESUME", resume], ["GARAGE  /  SHOWROOM    [V]", _garage], ["QUIT", func(): get_tree().quit()]]
 	for i in _items.size():
 		var b := Button.new()
 		b.text = _items[i][0]
@@ -82,14 +82,6 @@ func _garage() -> void:
 	var g = main.get_node_or_null("Garage") if main else null
 	if g:
 		g.open(null)
-
-
-## The Waker's case log (scripts/waker/case_log.gd).
-func _case_log() -> void:
-	resume()
-	var w = main.get("waker") if main else null
-	if w and w.cases:
-		w.cases.open_log()
 
 
 func _highlight() -> void:

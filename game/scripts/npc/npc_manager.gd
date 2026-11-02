@@ -15,7 +15,7 @@ extends Node3D
 ##     hits stagger instead), they get up after a few seconds and hurry off, shaken.
 ##   * traffic: walkers on a crossing (and anyone lying in the road) are obstacles the traffic AI brakes
 ##     for (traffic_manager.ped_provider); traffic cars that hit someone throw them too.
-## API for other systems: agents_near(p, r), set_sleepwalker(agent, on), hit(agent, impulse, at), count(),
+## API for other systems: agents_near(p, r), hit(agent, impulse, at), count(),
 ## summary(); the Citizen nodes themselves are scripts/npc/character/citizen.gd.
 
 signal pedestrian_hit(pos: Vector3, speed: float)
@@ -60,7 +60,6 @@ class Agent:
 	var dodge_v := Vector3.ZERO
 	var poi = null
 	var umbrella := ""
-	var sleep := false
 	var shaken := 0.0
 	var think_t := 0.0
 	var gy := 0.0
@@ -128,8 +127,7 @@ func setup(m: Node3D, opts := {}) -> bool:
 	if not CitizenLib.available() or not AnimLib.has_assets():
 		push_warning("npc: no citizens built (python tools/npc/build_all.py) - keeping the traffic silhouettes")
 		return false
-	models = CitizenLib.ids(false)
-	add_to_group("npc_civilians")          # scripts/waker case_manager: call_group("npc_civilians", "on_incident", pos, r)
+	models = CitizenLib.ids()
 	if main.get("traffic") and main.traffic:
 		main.traffic.ped_provider = self
 	var wpath := "res://assets/world/world.json"
@@ -405,8 +403,6 @@ func _wants_poi(a: Agent, poi: Dictionary) -> bool:
 				p = 0.45                           # shelter under the awnings
 			if occupied:
 				p += 0.15                          # join someone for a chat
-	if a.sleep:
-		p *= 0.3
 	return rng.randf() < p
 
 
@@ -611,7 +607,7 @@ func _move(a: Agent, dt: float) -> void:
 			_pose(a, dt, Vector3.ZERO)
 			return
 	var e = net.edges[a.edge]
-	var want := a.speed * (0.6 if a.sleep else 1.0) * (1.7 if a.shaken > 0.0 else 1.0)
+	var want := a.speed * (1.7 if a.shaken > 0.0 else 1.0)
 	if a.state == POI_GO:
 		want = minf(want, 1.0)
 	if e.kind == Sidewalks.CROSSING:
@@ -878,7 +874,6 @@ func _respawn(a: Agent, c: Vector3) -> void:
 	if not _place_random(a, c, 40.0, spawn_radius, true):
 		_place_random(a, c, 30.0, spawn_radius, false)
 	a.shaken = 0.0
-	a.sleep = a.sleep
 	if rng.randf() < 0.2:
 		_try_poi_now(a)
 	stats.respawned += 1
@@ -912,7 +907,6 @@ func _attach_node(a: Agent, force := false) -> void:
 	c.set_meta("agent_cb", cb)
 	c.global_position = a.pos
 	c.rotation = Vector3(0, a.yaw, 0)
-	c.set_sleepwalker(a.sleep)
 	c.set_umbrella(a.umbrella if raining and a.umbrella != "" else "")
 	c.set_idle(a.idle if a.state == POI_STAY else String(a.info.get("idle", "idle")).to_lower())
 	c.set_activity(a.activity, 1.0 if a.activity != "" else 0.0)
@@ -1001,7 +995,7 @@ func _draw_crowd(_dt: float) -> void:
 		b[i + 11] = a.pos.z
 		b[i + 12] = a.phase
 		b[i + 13] = clampf(a.v / 1.2, 0.0, 1.0)
-		b[i + 14] = 1.0 if a.sleep else 0.0
+		b[i + 14] = 0.0
 		b[i + 15] = 0.0
 		_bufs[a.model] = b
 	for mdl in _crowd:
@@ -1033,35 +1027,8 @@ func add_obstacles(list: Array) -> void:
 			list.append([a.pos, vel, 0.35, false, null, 0.45])
 
 
-## Something frightening at pos (a case's echo, gunfire): walkers within radius hurry away from it.
-func on_incident(pos: Vector3, radius := 30.0) -> void:
-	if not ready_ok:
-		return
-	for a in agents:
-		if a.state == DOWN or a.pos.distance_to(pos) > radius:
-			continue
-		if a.state == POI_STAY or a.state == POI_GO:
-			_leave_poi(a)
-		if a.state == WAIT_CROSS:
-			a.state = WALK
-		var e = net.edges[a.edge]
-		var d: Vector3 = e.dir_at(clampf(a.s, 0.0, e.length))
-		a.dir = 1 if d.dot(a.pos - pos) >= 0.0 else -1      # walk the pavement away from it
-		a.shaken = 12.0
-		a.speed = maxf(a.speed, 1.6)
-		if a.node and rng.randf() < 0.5:
-			a.node.play_action("flinch_head" if rng.randf() < 0.5 else "flinch")
-	stats["incidents"] = stats.get("incidents", 0) + 1
-
-
 func agents_near(p: Vector3, r: float) -> Array:
 	return agents.filter(func(a): return a.pos.distance_to(p) < r)
-
-
-func set_sleepwalker(a: Agent, on: bool) -> void:
-	a.sleep = on
-	if a.node:
-		a.node.set_sleepwalker(on)
 
 
 func summary() -> Dictionary:

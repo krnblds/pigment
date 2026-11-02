@@ -3,7 +3,7 @@
     python tools/npc/build_all.py [--jobs 3] [--no-fetch] [--no-pigment] [--blender <exe>] [--godot <console exe>]
 
   1. fetch_assets.py      CC0 MakeHuman packs -> MPFB user data; Quaternius UAL 1 + 2 -> .npccache/ual/
-  2. build_citizens.py    32 citizens + 2 Waker player characters (headless Blender, --jobs processes)
+  2. build_citizens.py    32 citizens (headless Blender, --jobs processes)
   3. compose_atlas.py     the 1024 atlases (colour, normal, roughness / rain / emission masks)
   4. paint_citizens.py    Pigment weathering pass (grime, rain splash) when pigment-mcp is built
   5. sync_godot.py        -> game/assets/npc/ (+ import settings, Godot import, animation library)
@@ -37,7 +37,7 @@ def main():
     blender = arg("--blender", os.environ.get("BLENDER", BLENDER))
     if "--no-fetch" not in sys.argv:
         py("fetch_assets.py")
-    ids = [r["id"] for r in R.make_recipes() + R.WAKERS]
+    ids = [r["id"] for r in R.make_recipes()]
     logs = os.path.join(ROOT, ".npccache", "logs")
     os.makedirs(logs, exist_ok=True)
     procs = []

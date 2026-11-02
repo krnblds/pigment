@@ -1,8 +1,0 @@
-{
-	"id": "taser", "name": "HS-T2 TASER", "slot": 2, "kind": "hitscan", "lethal": false,
-	"damage": 3, "stun": 1.0, "headshot": 1.0, "range": 16, "rate": 1.4, "auto": false, "pellets": 1,
-	"spread_hip": 1.6, "spread_aim": 0.5, "bloom": 1.0, "bloom_max": 3.0, "recoil": 1.2,
-	"mag": 2, "reserve": 24, "reload": 1.6, "tracer": "arc", "casing": false, "hold": "pistol",
-	"sounds": {"fire": "taser_zap", "reload": "reload_cell", "dry": "dry_fire"},
-	"note": "Two darts per cartridge; a hit stuns most sleepers outright."
-}

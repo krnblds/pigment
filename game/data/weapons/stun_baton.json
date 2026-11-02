@@ -1,6 +1,0 @@
-{
-	"id": "stun_baton", "name": "KOMORI STUN BATON", "slot": 1, "kind": "melee", "lethal": false,
-	"damage": 6, "stun": 0.55, "range": 2.4, "cone_deg": 55, "rate": 1.5, "mag": 0, "reserve": 0,
-	"hold": "baton", "sounds": {"fire": "baton_swing", "hit": "baton_hit"},
-	"note": "Close range. Each hit adds stun; a stunned sleeper can be woken."
-}

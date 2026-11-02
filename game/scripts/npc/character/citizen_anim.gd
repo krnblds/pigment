@@ -4,7 +4,6 @@ extends RefCounted
 ##   idle_kind (Transition: idle / idle_talk / idle_fold / idle_phone / look_around / idle_rail / sit)
 ##        -> idle_ts (TimeScale)  ─┐
 ##   gait (BlendSpace1D walk 0 / jog 1 / sprint 2) -> gait_ts ─┴ move (Blend2 by speed)
-##   zombie (Blend2 zombie_idle / zombie_walk) ── sleep (Blend2: the sleepwalker's slack posture)
 ##   idle_lantern ── umbrella (Blend2, right arm only: holding the umbrella up)
 ##   act_loop (Animation, any looping clip) ── activity (Blend2: sitting, smoking, phone ...)
 ##   act_shot (Animation, any one-shot clip) ── action (OneShot: flinch, dodge, get-up ...)  -> output
@@ -14,7 +13,7 @@ extends RefCounted
 ##   CitizenAnim.set_idle(tree, "idle_phone")        # idle kinds above
 ##   CitizenAnim.play_action(tree, "flinch")         # any clip in the library, once
 ##   CitizenAnim.set_activity(tree, "sit_idle", 1.0) # any looping clip, blended in (0 = off)
-##   CitizenAnim.set_umbrella(tree, on), set_sleepwalker(tree, amount)
+##   CitizenAnim.set_umbrella(tree, on)
 
 const AnimLib := preload("res://scripts/npc/character/anim_library.gd")
 const IDLES := ["idle", "idle_talk", "idle_fold", "idle_phone", "look_around", "idle_rail", "sit_idle", "consume"]
@@ -61,17 +60,6 @@ static func make(lib: AnimationLibrary) -> AnimationTree:
 	bt.add_node("move", AnimationNodeBlend2.new(), Vector2(650, 200))
 	bt.connect_node("move", 0, "idle_ts")
 	bt.connect_node("move", 1, "gait_ts")
-	# sleepwalker
-	bt.add_node("z_idle", _anim("zombie_idle" if "zombie_idle" in have else "idle"), Vector2(250, 700))
-	bt.add_node("z_walk", _anim("zombie_walk" if "zombie_walk" in have else "walk"), Vector2(250, 780))
-	bt.add_node("zombie", AnimationNodeBlend2.new(), Vector2(450, 740))
-	bt.connect_node("zombie", 0, "z_idle")
-	bt.connect_node("zombie", 1, "z_walk")
-	bt.add_node("z_ts", AnimationNodeTimeScale.new(), Vector2(600, 740))
-	bt.connect_node("z_ts", 0, "zombie")
-	bt.add_node("sleep", AnimationNodeBlend2.new(), Vector2(850, 300))
-	bt.connect_node("sleep", 0, "move")
-	bt.connect_node("sleep", 1, "z_ts")
 	# umbrella arm
 	bt.add_node("lantern", _anim("idle_lantern" if "idle_lantern" in have else "idle"), Vector2(850, 500))
 	var um := AnimationNodeBlend2.new()
@@ -79,7 +67,7 @@ static func make(lib: AnimationLibrary) -> AnimationTree:
 	for b in RIGHT_ARM:
 		um.set_filter_path(NodePath(SKEL + b), true)
 	bt.add_node("umbrella", um, Vector2(1050, 300))
-	bt.connect_node("umbrella", 0, "sleep")
+	bt.connect_node("umbrella", 0, "move")
 	bt.connect_node("umbrella", 1, "lantern")
 	# looping activity + one-shot action
 	bt.add_node("act_loop", _anim("idle"), Vector2(1050, 500))
@@ -100,7 +88,6 @@ static func make(lib: AnimationLibrary) -> AnimationTree:
 	t.tree_root = bt
 	t.set("parameters/idle_ts/scale", 1.0)
 	t.set("parameters/gait_ts/scale", 1.0)
-	t.set("parameters/z_ts/scale", 1.0)
 	t.set_meta("idles", idles)
 	return t
 
@@ -115,10 +102,8 @@ static func set_speed(t: AnimationTree, v: float, hips: float) -> void:
 		g = 1.0 + clampf((v - 5.0) / 2.5, 0.0, 1.0)
 	var ref := lerpf(AnimLib.SPEED.walk, AnimLib.SPEED.jog, clampf(g, 0.0, 1.0)) if g <= 1.0 else lerpf(AnimLib.SPEED.jog, AnimLib.SPEED.sprint, g - 1.0)
 	t.set("parameters/move/blend_amount", clampf(v / 0.45, 0.0, 1.0))
-	t.set("parameters/zombie/blend_amount", clampf(v / 0.45, 0.0, 1.0))
 	t.set("parameters/gait/blend_position", g)
 	t.set("parameters/gait_ts/scale", clampf(v / (ref * k), 0.55, 1.8) if v > 0.05 else 1.0)
-	t.set("parameters/z_ts/scale", clampf(v / (AnimLib.SPEED.zombie_walk * k), 0.5, 1.4) if v > 0.05 else 0.8)
 
 
 static func set_idle(t: AnimationTree, kind: String) -> void:
@@ -157,7 +142,3 @@ static func set_activity(t: AnimationTree, clip: String, amount: float) -> void:
 static func set_umbrella(t: AnimationTree, on: float) -> void:
 	t.set("parameters/umbrella/blend_amount", on)
 
-
-static func set_sleepwalker(t: AnimationTree, amount: float) -> void:
-	t.set("parameters/sleep/blend_amount", 0.45 * amount)
-	t.set("parameters/idle_ts/scale", lerpf(1.0, 0.65, amount))

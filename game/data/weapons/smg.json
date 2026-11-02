@@ -1,8 +1,0 @@
-{
-	"id": "smg", "name": "HS-K SHRIKE SMG", "slot": 4, "kind": "hitscan", "lethal": true,
-	"damage": 15, "stun": 0.0, "headshot": 2.0, "range": 90, "rate": 13.0, "auto": true, "pellets": 1,
-	"spread_hip": 3.0, "spread_aim": 1.0, "bloom": 0.45, "bloom_max": 5.0, "recoil": 1.1,
-	"mag": 32, "reserve": 160, "reload": 1.9, "tracer": "bullet", "casing": true, "hold": "rifle",
-	"sounds": {"fire": "smg_shot", "reload": "reload_mag", "dry": "dry_fire"},
-	"unlock": {"meridian": 640}
-}

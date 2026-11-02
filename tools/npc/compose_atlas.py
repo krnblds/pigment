@@ -6,11 +6,10 @@ Per <id>.json it writes, next to it:
   <id>_albedo.png  RGB = colour (sRGB), A = alpha (hair / brows cut-out)
   <id>_normal.png  tangent-space normal (OpenGL convention, flat where a part has none)
   <id>_mask.png    R = roughness, G = rain response (how much the surface darkens / glosses when wet),
-                   B = emission (1.0 = trims / Waker band, always lit; 0.5 = sleepwalker glow, off unless
-                   the character is a sleepwalker)
+                   B = emission (1.0 = glowing trims)
 Cells: MakeHuman textures resized into their cell and tinted (recipe "tints"); the procedural shell gets a
-fabric for its kind (fleece, ripstop, satin nylon, twill, PVC, hi-vis mesh) in the recipe colour; trims and the
-sleepwalker temples are painted from the UV triangles in the spec.
+fabric for its kind (fleece, ripstop, satin nylon, twill, PVC, hi-vis mesh) in the recipe colour; trims are
+painted from the UV triangles in the spec.
 """
 import json
 import math
@@ -170,35 +169,12 @@ def trim_mask(P, C, M, sh):
     hem = z < zs.min() + 0.018
     cuffs = (wr < 0.075) & (wr > 0.045) & (C == 2)
     m = hem | cuffs
-    if kind != "hoodie" and not sh.get("waker"):
+    if kind != "hoodie":
         m |= (np.abs(x) < 0.004) & front & (C == 2)                      # zip
     if kind == "hivis" or (kind == "raincoat" and sh.get("trim")):
         for zz in (M["spine3"][2] - 0.08, M["pelvis"][2] + 0.12):
             m |= (np.abs(z - zz) < 0.016) & (C == 2)
-    if sh.get("waker"):
-        # piping down both front edges, round the collar top and the hem; subtle
-        m = hem | ((np.abs(np.abs(x) - 0.055) < 0.0035) & front & (z > zmin + 0.02) & (C != 4)) | cuffs
-        if (C == 4).any():
-            m |= (C == 4) & (z > z[C == 4].max() - 0.008)
     return (m & shell).astype(np.float32)
-
-
-def sleep_mask(P, C, M):
-    """Temples (both sides of the head at eye height, a little forward) on the body skin."""
-    head_z = M["head"][2] + (M["head_top"][2] - M["head"][2]) * 0.3
-    body = C == 1
-    out = np.zeros(C.shape, np.float32)
-    if not body.any():
-        return out
-    for sx in (1, -1):
-        hx = P[..., 0][body & (np.abs(P[..., 2] - head_z) < 0.01)]
-        if hx.size == 0:
-            continue
-        edge = hx.max() if sx > 0 else hx.min()
-        c = np.array([edge - sx * 0.006, M["head"][1] - 0.035, head_z], np.float32)
-        d = np.linalg.norm(P - c, axis=-1)
-        out = np.maximum(out, np.clip(1.0 - d / 0.022, 0, 1) * body)
-    return out
 
 
 def compose(spec_path):
@@ -247,9 +223,7 @@ def compose(spec_path):
             nrm[sl] = load(c["normal"], s, "RGB")
         msk[sl][..., 0] = ROUGH.get(cat, 0.7)
         msk[sl][..., 1] = WET.get(cat, 0.5)
-        if cat == "eyes":
-            msk[sl][..., 2] = 0.5                      # sleepwalker eyes glow
-    # trims, piping, reflective bands and the sleepwalker temples: rules on the bind-pose position map
+    # trims, piping and reflective bands: rules on the bind-pose position map
     P, C = posmap(sp.get("posmaps", []))
     M = {k: np.asarray(v, np.float32) for k, v in sp.get("metrics", {}).items()}
     sh = rc.get("shell")
@@ -260,10 +234,6 @@ def compose(spec_path):
         msk[..., 0] = msk[..., 0] * (1 - tm[..., 0]) + 0.3 * tm[..., 0]
         if sh.get("trim_glow", 0) > 0:
             msk[..., 2] = np.maximum(msk[..., 2], tm[..., 0])
-    if M:
-        sw = sleep_mask(P, C, M)
-        sw = np.asarray(Image.fromarray((sw * 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(3.0)), np.float32) / 255.0
-        msk[..., 2] = np.where(msk[..., 2] >= 0.99, msk[..., 2], np.maximum(msk[..., 2], 0.5 * np.minimum(1.0, sw * 1.5)))
     base = os.path.splitext(spec_path)[0]
     Image.fromarray((np.clip(alb, 0, 1) * 255 + 0.5).astype(np.uint8), "RGBA").save(base + "_albedo.png", optimize=False)
     Image.fromarray((np.clip(nrm, 0, 1) * 255 + 0.5).astype(np.uint8), "RGB").save(base + "_normal.png")

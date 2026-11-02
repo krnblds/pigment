@@ -1,7 +1,7 @@
 # npc: pedestrians in the rain city
 
-Real people on the pavements of the open world: 34 MPFB-generated citizens (32 walkers + the two
-Hoshikawa "Waker" player characters) with CC0 clothes, procedural rain coats / jackets / hoodies and
+Real people on the pavements of the open world: 32 MPFB-generated citizens
+with CC0 clothes, procedural rain coats / jackets / hoodies and
 Pigment-weathered atlases, animated with the CC0 Quaternius Universal Animation Library through Godot's
 humanoid retargeting.  They walk the sidewalks of `world.json`, keep left, weave round street furniture,
 stop at bus stops, benches, vending machines and shop fronts, shelter from the rain or put their
@@ -11,7 +11,7 @@ hurry off.  `--no-npc` turns it all off.
 
 | | |
 |---|---|
-| `lineup.png` | all 34 citizens (LOD0, bind pose): the last two are the Waker player characters |
+| `lineup.png` | all 32 citizens (LOD0, bind pose) |
 | `npc_chase_view.png` | the game camera behind the car: people on both pavements in the rain |
 | `npc_closeup.png` | a walker with an umbrella (right arm blended to the umbrella pose) |
 | `npc_ragdoll.png` | 40 km/h hit: thrown by the impact (physical bones, momentum from the car) |
@@ -58,12 +58,9 @@ warning and keeps the old traffic silhouettes.
   upright collar, hoodies a hood-down roll.  Everything under the shell (body, shirts) is deleted - no
   poke-through.  Trims are painted from a bind-pose position map (zips, hems, cuffs, reflective bands,
   neon piping).
-* **Wakers** (`WAKERS`, ids `waker_m`, `waker_f`): long charcoal Hoshikawa field coat with subtle cyan
-  Dreamlink piping (front edges, collar, hem, cuffs; emissive at 0.55), a small temple-mounted resonance
-  band over the left ear (emissive cyan), cargo trousers, ankle boots.  Same skeleton and LODs.
 * **Atlas** (`compose_atlas.py`): every part in one 1024 atlas (buddy allocator): `_albedo` (RGB + alpha
-  for hair/brows), `_normal`, `_mask` (R roughness, G rain response, B emission: 1 = trims / band,
-  0.5 = sleepwalker glow at the temples and the eyes).  Clothes / hair tinted per recipe; shell fabrics
+  for hair/brows), `_normal`, `_mask` (R roughness, G rain response, B emission: 1 = glowing trims).
+  Clothes / hair tinted per recipe; shell fabrics
   procedural per kind (fleece, ripstop, satin quilting, twill, PVC, hi-vis mesh).
 * **Pigment** (`paint_citizens.py`, `pigment-mcp --script`): per citizen a project on its LOD0, the
   atlas as a UV image fill, a "Grime" dirt layer and a dark glossy "Rain splash" gradient on hems and
@@ -83,11 +80,11 @@ warning and keeps the old traffic silhouettes.
   idle_phone, idle_rail, look_around (generated: idle + head/neck turns), walk, walk_formal, jog, sprint,
   sit_enter/idle/talk/exit, flinch, flinch_head, knockback, roll, dodge_jump, jump_*, getup_back (lying
   on the back), getup_front (generated: kneel -> stand, the ragdoll blends into it), consume, interact,
-  zombie_idle / zombie_walk (sleepwalkers) ...) and `library_lite.res` (no finger / toe tracks: walkers
+  ...) and `library_lite.res` (no finger / toe tracks: walkers
   beyond 14 m).  Positions are kept on the hips only, scales dropped.
 * `citizen_anim.gd`: the AnimationTree - idle kinds (Transition) / gait BlendSpace1D (walk, jog,
   sprint) blended by speed with time scales matched to the clips' measured speeds and the character's
-  size, sleepwalker blend, umbrella arm (filtered Blend2), looping activity, one-shot actions.
+  size, umbrella arm (filtered Blend2), looping activity, one-shot actions.
 
 ### 3. Behaviour (`game/scripts/npc/sidewalks.gd`, `npc_manager.gd`)
 
@@ -117,8 +114,6 @@ warning and keeps the old traffic silhouettes.
   1 -> 0 over 0.55 s, and they walk back onto the pavement, faster, for 10 s.  At most 6 ragdolls at once:
   further hits play a knockback stagger.  A hit also gives the car a small `apply_impact` on its damage
   node (chips, a thud, no deformation), a camera shake and a slight slowdown.  No blood or gore.
-* **Sleepwalkers** (for the cases system): `set_sleepwalker(on)` - faint cyan glow at the temples and
-  eyes (mask B = 0.5, instance uniform), 45 % zombie posture blend, slower idle and walk.
 
 ### 4. Performance
 
@@ -167,16 +162,15 @@ the test's lamp).
 ```gdscript
 const CitizenLib := preload("res://scripts/npc/character/citizen_library.gd")
 CitizenLib.available() -> bool
-CitizenLib.ids(include_players := false) -> PackedStringArray      # "citizen_00".."citizen_31", "waker_m", "waker_f"
+CitizenLib.ids() -> PackedStringArray                              # "citizen_00".."citizen_31"
 CitizenLib.info(id) -> Dictionary                                  # sex, height, hips, archetype, umbrella, clothes ...
-var c = CitizenLib.spawn("waker_f", {"lite": false, "umbrella": "", "ragdoll": true, "shadows": true})
+var c = CitizenLib.spawn("citizen_07", {"lite": false, "umbrella": "", "ragdoll": true, "shadows": true})
 add_child(c)                                                        # c: scripts/npc/character/citizen.gd (Node3D)
 c.set_speed(v)                     # m/s: idle / walk / jog / sprint, rates matched to the character's size
 c.set_idle("idle_phone")           # idle, idle_talk, idle_fold, idle_phone, look_around, idle_rail, sit_idle, consume
 c.play_action("flinch")            # any library clip once; c.action_playing()
 c.set_activity("sit_idle", 1.0)    # any looping clip over everything (0 / "" = off)
 c.set_umbrella("clear")            # clear / black / neon / ""
-c.set_sleepwalker(true)            # temples + eyes glow, slack posture, slower idle
 c.ragdoll(impulse, at, exclude_body)   # signals fell, stood_up; c.is_down()
 c.skeleton(), c.anim_tree()        # %GeneralSkeleton (SkeletonProfileHumanoid names), the AnimationTree
 c.anim_auto = false; c.advance(dt) # drive the animation yourself (the crowd does)
@@ -184,32 +178,14 @@ c.anim_auto = false; c.advance(dt) # drive the animation yourself (the crowd doe
 
 * The animation library: `preload("res://scripts/npc/character/anim_library.gd").get_library(lite)`;
   the tree: `citizen_anim.gd` `make(lib)`, `set_speed / set_idle / play_action / set_activity /
-  set_umbrella / set_sleepwalker`.  Any humanoid model works once it is imported with a
+  set_umbrella`.  Any humanoid model works once it is imported with a
   SkeletonProfileHumanoid bone map and `GeneralSkeleton` as the unique skeleton name (see
   `tools/npc/sync_godot.py` `RETARGET`).
 * The ragdoll alone: `character/ragdoll.gd` `setup(skeleton, anim_tree, root, hips_height)`,
-  `throw(impulse, at)`, `exclude(body)`, signals `fell`, `stood_up`; and the static
-  `Ragdoll.ragdoll(body, skeleton, impulse) -> bool` (any humanoid, stays down - the sleepwalkers'
-  deaths use it through `sleepwalker.gd _death_hook`).
-* The crowd (`main.npc`, `npc_manager.gd`, group `npc_civilians`): `on_incident(pos, radius)` (walkers
-  near it hurry away along the pavement - the case manager calls it when an echo is found),
-  `agents_near(p, r)`, `set_sleepwalker(agent, on)`, `hit(agent, impulse, at, by)`, signal
+  `throw(impulse, at)`, `exclude(body)`, signals `fell`, `stood_up`.
+* The crowd (`main.npc`, `npc_manager.gd`): `agents_near(p, r)`, `clear_around(p, r)`,
+  `hit(agent, impulse, at, by)`, signal
   `pedestrian_hit(pos, speed)`, `summary()`, `count()`.
-
-### Waker integration (after merging main)
-
-* `player/player_body.gd`: `model` defaults by look - `"waker"` -> `res://assets/npc/citizens/waker_m.glb`
-  (`WAKER_MODELS.female` = `waker_f.glb`; set `body.model` before `add_child` to choose), every other
-  look (sleepers, ghosts) -> a citizen picked from the node id; the UAL mannequin when the citizens
-  aren't built.  Citizens are dressed by `CitizenLib.dress()` (atlas materials, LODs, no crowd LOD2).
-  `ANIMS` stays on the UAL glTF with the existing `CLIP` table; position tracks are kept on the hips
-  only so the clips fit the MPFB proportions.  With a citizen body `set_look` adds no tint or gear
-  primitives (the officer wears the Hoshikawa coat and resonance band); looks with a Dreamlink halo turn
-  on the citizens' sleepwalker glow instead (temples + eyes), "civilian" (woken) turns it off.
-* Sleepwalker deaths: `ragdoll.gd` static `ragdoll(body, skeleton, impulse)`.
-* Traffic: the Waker-on-foot and sleeper obstacles from main and the pedestrians' obstacles both go
-  into `_collect_obstacles`; the crossing gap check only counts vehicles that actually drive over the
-  crosswalk (not the queue at the stop line or the cross traffic).
 
 ## Extra clips (Mixamo etc.) - the user's drop-in
 
@@ -265,9 +241,6 @@ shop / bar fronts; without them they use the CC0 idles (fold arms, phone, look a
   `elif` in the test chain.
 * `game/scripts/traffic/traffic_manager.gd`: `var ped_provider` and 3 lines in `_late_setup`
   (`peds = ped_provider` replaces the silhouettes; obstacles / `count()` go through it).
-* `game/scripts/player/player_body.gd` (main's on-foot adapter): `CITIZEN_LIB` / `WAKER_MODELS`
-  consts, `model` default + `_pick_model()`, the `dress()` call, `_hips_positions_only()`, the citizen
-  branch at the top of `set_look()`.
 * `.gitignore` (+ `.npccache/`) and `game/.gitignore` (+ `assets/npc/`).
 * New: `game/scripts/npc/**`, `tools/npc/**`, `docs/agents/npc/**`.  Nothing in the damage scripts
   changed (the hit uses `damage.hero_damage.apply_impact`).

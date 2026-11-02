@@ -6,7 +6,6 @@ accessories, and gameplay tags (umbrella, walk speed, idle style).  Asset names 
 first one MPFB can find is used (packs missing -> system assets), so the build never fails on a missing pack.
 
     make_recipes(seed, n) -> [recipe]   (deterministic)
-    WAKERS                            -> the two Hoshikawa "Waker" player characters
 """
 import random
 
@@ -172,22 +171,3 @@ def make_recipes(seed=2077, n=32):
         out.append(make_recipe(i, rng, sex, deck[i]))
     return out
 
-
-WAKER_COAT = {"kind": "coat", "colour": (0.035, 0.04, 0.05), "trim": (0.1, 0.85, 1.0), "trim_glow": 0.55, "length": 0.75,
-              "sheen": 0.32, "waker": True}
-WAKERS = [
-    {"id": "waker_m", "sex": "male", "archetype": "waker",
-     "phenotype": {"gender": 1.0, "age": 0.55, "muscle": 0.65, "weight": 0.5, "height": 0.62, "proportions": 0.7,
-                   "cupsize": 0.5, "firmness": 0.5, "race": {"asian": 0.8, "caucasian": 0.15, "african": 0.05}},
-     "skin": ["young_asian_male"], "hair": ["short02", "short03"],
-     "clothes": [["elvs_crude_t-shirt_male", "toigo_basic_tucked_t-shirt", "male_casualsuit06"], ["cortu_cargo_pants", "toigo_wool_pants"], BOOTS_M],
-     "shell": dict(WAKER_COAT), "accessories": ["resonance_band"],
-     "tints": {"base": {"value": 0.3, "sat": 0.2, "hue": 0.0}, "hair": {"value": 0.3}}, "umbrella": None, "walk_speed": 1.45, "idle": "Idle"},
-    {"id": "waker_f", "sex": "female", "archetype": "waker",
-     "phenotype": {"gender": 0.0, "age": 0.52, "muscle": 0.6, "weight": 0.45, "height": 0.6, "proportions": 0.7,
-                   "cupsize": 0.45, "firmness": 0.5, "race": {"asian": 0.75, "caucasian": 0.2, "african": 0.05}},
-     "skin": ["young_asian_female"], "hair": ["toigo_inverted_bob", "ponytail01", "bob02", "bob01"],
-     "clothes": [["toigo_turtleneck_halter_top", "joepal_crude_t-shirt_female", "female_sportsuit01"], ["cortu_cargo_pants", "toigo_wool_pants"], BOOTS_F],
-     "shell": dict(WAKER_COAT), "accessories": ["resonance_band"],
-     "tints": {"base": {"value": 0.3, "sat": 0.2, "hue": 0.0}, "hair": {"value": 0.28}}, "umbrella": None, "walk_speed": 1.45, "idle": "Idle"},
-]

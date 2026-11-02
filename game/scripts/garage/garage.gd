@@ -22,7 +22,7 @@ const DATA := "res://data/garages.json"
 ## Automation / tests: never load the player's saved car there.
 const NO_SAVE_FLAGS := ["autoshot", "bench", "bench-spots", "bench-matrix", "drive-old", "drive-test", "curb-test",
 	"physics-shots", "car-cost", "traffic-test", "traffic-shots", "bench-traffic", "road-clear-test", "foliage-demo",
-	"interior-shots", "bridge-shots", "vehicle", "showroom-test", "no-garage-save"]
+	"interior-shots", "bridge-shots", "vehicle", "showroom-test", "no-garage-save", "taxi-test"]
 
 signal opened
 signal closed
@@ -88,10 +88,14 @@ func setup(m: Node3D, list: Array) -> void:
 	if not NO_SAVE_FLAGS.any(func(f): return main.args.has(f)):
 		var saved := Tuning.load_cfg(save_path)
 		if not saved.is_empty():
+			if String(saved.vehicle) == "tsubame" and String(saved.variant) == "security":
+				saved.variant = "cab"                # it's a taxi game now: the security cruiser becomes a cab
 			var xf: Transform3D = main.car.global_transform
 			install_car(build_car(saved), xf)
 			Tuning.apply(main.car, saved)
 			print("garage: loaded the saved car (%s, %s) from %s" % [saved.vehicle, saved.variant, save_path])
+		else:
+			Tuning.apply(main.car, Tuning.default_cfg(_car_vehicle_id()))       # a fresh start drives the cab
 	print("garage: %d garages %s" % [garages.size(), ", ".join(garages.map(func(g): return "%s @ %s" % [g.data.id, g.global_position.snapped(Vector3.ONE * 0.1)]))])
 
 
@@ -464,6 +468,8 @@ func install_car(new_car: RigidBody3D, xf: Transform3D) -> void:
 			main.traffic._hero_rid = new_car.get_rid()
 	if "damage" in main and main.damage and main.damage.has_method("set_hero"):
 		main.damage.set_hero(new_car)
+	if main.taxi and main.taxi.has_method("set_car"):
+		main.taxi.set_car(new_car)
 	for g in garages:
 		g.set_meta("player", new_car)
 	new_car.place(xf)

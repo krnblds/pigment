@@ -41,25 +41,7 @@ var _blend := 0.0
 var _up_len := 1.5
 var face_up := true
 var max_time := 5.0
-var stay_down := false          ## dead: no get-up (the static ragdoll() below)
 
-
-## For other systems (scripts/waker/sleepwalker.gd _death_hook): throw any humanoid body that has a
-## SkeletonProfileHumanoid skeleton and leave it lying (no get-up).  impulse in kg m/s (small = collapse).
-static func ragdoll(body: Node3D, skeleton: Skeleton3D, impulse: Vector3) -> bool:
-	if body == null or skeleton == null or skeleton.find_bone("Hips") < 0:
-		return false
-	var rd = load("res://scripts/npc/character/ragdoll.gd").new()
-	rd.name = "Ragdoll"
-	var trees := body.find_children("*", "AnimationTree", true, false)
-	var hips: float = skeleton.get_bone_global_rest(skeleton.find_bone("Hips")).origin.y * skeleton.global_basis.get_scale().y
-	rd.setup(skeleton, trees[0] if not trees.is_empty() else null, body, maxf(hips, 0.5))
-	rd.stay_down = true
-	body.add_child(rd)
-	if body is CollisionObject3D:
-		rd.exclude(body)
-	rd.throw(impulse, skeleton.global_transform * skeleton.get_bone_global_pose(skeleton.find_bone("Hips")).origin)
-	return true
 
 
 func setup(s: Skeleton3D, at: AnimationTree, root: Node3D, hips := 0.9) -> void:
@@ -183,8 +165,6 @@ func _physics_process(dt: float) -> void:
 		var hb: PhysicalBone3D = bones.get("Hips")
 		var sp := hb.linear_velocity.length() if hb else 0.0
 		_still = _still + dt if sp < 0.35 else 0.0
-		if stay_down:
-			return
 		if (_still > 0.7 and t > 1.6) or t > max_time:
 			_begin_getup()
 	elif state == 2:

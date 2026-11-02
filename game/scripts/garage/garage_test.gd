@@ -270,10 +270,10 @@ func _run() -> void:
 			t_in += get_process_delta_time()
 		var entered: bool = g.inside and g.current == gar
 		if not entered:
-			var car: RigidBody3D = main.car
-			var q := PhysicsRayQueryParameters3D.create(car.global_position + Vector3.UP * 0.6, car.global_position + Vector3.UP * 0.6 + car.global_basis.z * 4.0)
-			q.exclude = [car.get_rid()]
-			var hit := car.get_world_3d().direct_space_state.intersect_ray(q)
+			var hc: RigidBody3D = main.car
+			var q := PhysicsRayQueryParameters3D.create(hc.global_position + Vector3.UP * 0.6, hc.global_position + Vector3.UP * 0.6 + hc.global_basis.z * 4.0)
+			q.exclude = [hc.get_rid()]
+			var hit := hc.get_world_3d().direct_space_state.intersect_ray(q)
 			print("garage test: stopped short of %s; ahead: %s" % [gar.data.id, (str(hit.collider.name) + " " + str(hit.collider.get_parent().name)) if hit else "nothing"])
 		_check("drive_in_" + String(gar.data.id), entered, d)
 		if entered:

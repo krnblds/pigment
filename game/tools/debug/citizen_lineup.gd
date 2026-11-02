@@ -27,7 +27,7 @@ func _run() -> void:
 	var sun := DirectionalLight3D.new()
 	sun.rotation_degrees = Vector3(-35, 20, 0)
 	root.add_child(sun)
-	var ids := CitizenLib.ids(true)
+	var ids := CitizenLib.ids()
 	var cam := Camera3D.new()
 	root.add_child(cam)
 	cam.fov = 30.0

@@ -41,7 +41,7 @@ static func default_cfg(vehicle_id := "") -> Dictionary:
 				v = x
 				break
 	return {
-		"vehicle": v.id, "variant": v.default_variant,
+		"vehicle": v.id, "variant": "cab" if v.variants.any(func(x): return x.name == "cab") else v.default_variant,
 		"paint": {"on": false, "color": _arr(PALETTE[0][1]), "finish": "stock"},
 		"tint": 0.0,
 		"underglow": {"on": false, "color": _arr(PALETTE[1][1])},

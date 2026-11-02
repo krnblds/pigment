@@ -30,11 +30,11 @@ const CLIPS := {
 	"dodge_jump": ["ual2", "NinjaJump_Start"], "dodge_land": ["ual2", "NinjaJump_Land"],
 	"getup_back": ["ual2", "LayToIdle"], "kneel": ["ual1", "Fixing_Kneeling"], "crouch": ["ual1", "Crouch_Idle"],
 	"interact": ["ual1", "Interact"], "pickup": ["ual1", "PickUp_Table"], "push": ["ual1", "Push"],
-	"zombie_idle": ["ual2", "Zombie_Idle"], "zombie_walk": ["ual2", "Zombie_Walk_Fwd"], "death": ["ual1", "Death01"],
+	"death": ["ual1", "Death01"],
 	"dance": ["ual1", "Dance"], "tpose": ["ual1", "A_TPose"],
 }
 ## locomotion speeds of the clips at the mannequin's size (from the root-motion versions), m/s
-const SPEED := {"walk": 0.975, "walk_formal": 0.975, "walk_carry": 0.65, "jog": 5.36, "sprint": 8.25, "zombie_walk": 1.05}
+const SPEED := {"walk": 0.975, "walk_formal": 0.975, "walk_carry": 0.65, "jog": 5.36, "sprint": 8.25}
 const MANNEQUIN_HIPS := 0.917      ## hips height the speeds above belong to
 
 static var _cache := {}
@@ -104,7 +104,7 @@ static func build() -> Dictionary:
 			continue
 		var a: Animation = clean(lib.get_animation(s[1]).duplicate(true))
 		if name.begins_with("idle") or name in ["walk", "walk_formal", "walk_carry", "jog", "sprint", "sit_idle", "sit_talk",
-				"zombie_idle", "zombie_walk", "crouch", "dance", "consume"]:
+				"crouch", "dance", "consume"]:
 			a.loop_mode = Animation.LOOP_LINEAR
 		else:
 			a.loop_mode = Animation.LOOP_NONE

@@ -4,10 +4,10 @@ extends RefCounted
 ##
 ##   const CitizenLib := preload("res://scripts/npc/character/citizen_library.gd")
 ##   CitizenLib.available() -> bool                 citizens built + imported?
-##   CitizenLib.ids(include_players := false) -> PackedStringArray
+##   CitizenLib.ids() -> PackedStringArray
 ##   CitizenLib.info(id) -> Dictionary              manifest entry (sex, height, archetype, umbrella, ...)
 ##   CitizenLib.spawn(id_or_seed, opts := {}) -> Citizen (scripts/npc/character/citizen.gd), not yet in the tree
-##        id_or_seed: "citizen_07" / "waker_f", or an int seed (picks a non-player citizen)
+##        id_or_seed: "citizen_07", or an int seed
 ##        opts: {"lite": bool (no finger tracks), "umbrella": "clear"/"black"/"neon"/"" (override),
 ##               "ragdoll": true (default), "shadows": true}
 ##   CitizenLib.crowd_mesh(id) -> Mesh              the LOD2 mesh (static, ~360 tris, sway colours)
@@ -44,12 +44,11 @@ static func _load() -> void:
 			_list.append(c)
 
 
-static func ids(include_players := false) -> PackedStringArray:
+static func ids() -> PackedStringArray:
 	_load()
 	var out := PackedStringArray()
 	for c in _list:
-		if include_players or not c.get("player", false):
-			out.append(c.id)
+		out.append(c.id)
 	return out
 
 
@@ -59,7 +58,7 @@ static func info(id: String) -> Dictionary:
 
 
 static func pick(seed_value: int) -> String:
-	var l := ids(false)
+	var l := ids()
 	if l.is_empty():
 		return ""
 	return l[posmod(seed_value * 2654435761, l.size())]
@@ -119,28 +118,6 @@ static func crowd(id: String) -> Array:
 
 static func crowd_mesh(id: String) -> Mesh:
 	return crowd(id)[0]
-
-
-## Prepare an instanced citizen scene for use outside Citizen (player_body.gd): atlas materials on
-## LOD0 / LOD1, LOD switch distance, the crowd LOD2 removed.
-static func dress(root: Node, id: String, lod_switch := 12.0) -> void:
-	var l2 = root.find_child("LOD2", true, false)
-	if l2:
-		l2.get_parent().remove_child(l2)
-		l2.free()
-	var mats := materials(id)
-	var lod0: MeshInstance3D = root.find_child("LOD0", true, false)
-	var lod1: MeshInstance3D = root.find_child("LOD1", true, false)
-	for mi in [lod0, lod1]:
-		if mi == null:
-			continue
-		for s in mi.mesh.get_surface_count():
-			var src: Material = mi.mesh.surface_get_material(s)
-			mi.set_surface_override_material(s, mats[1] if src != null and String(src.resource_name).contains("cutout") else mats[0])
-	if lod0 and lod1:
-		lod0.visibility_range_end = lod_switch
-		lod1.visibility_range_begin = lod_switch
-		lod1.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
 
 static func spawn(id_or_seed, opts := {}) -> Node3D:

@@ -165,7 +165,7 @@ def main():
             "id": cid, "sex": rc["sex"], "archetype": rc["archetype"], "height": s["height"], "tris": s["tris"],
             "hips": round(M["pelvis"][2], 3), "shoulder": round(M["shoulder_l"][2], 3), "knee": round(M["knee_l"][2], 3),
             "umbrella": rc.get("umbrella"), "walk_speed": rc.get("walk_speed", 1.3), "idle": rc.get("idle", "Idle"),
-            "shell": (rc.get("shell") or {}).get("kind"), "player": rc["archetype"] == "waker",
+            "shell": (rc.get("shell") or {}).get("kind"),
             "clothes": s["used"].get("clothes", []), "hair": s["used"].get("hair"), "skin": s["used"].get("skin"),
             "glb": "res://assets/npc/citizens/%s.glb" % cid,
             "albedo": "res://assets/npc/citizens/%s_albedo.png" % cid, "normal": "res://assets/npc/citizens/%s_normal.png" % cid,
