@@ -75,24 +75,42 @@ def log(*a):
 
 # ------------------------------------------------------------------ assets
 def asset(kind, names):
-    """First of `names` MPFB can find in <data>/<kind>/<name>/<name>.mhclo (or .proxy)."""
+    """First of `names` MPFB can find in <data>/<kind>/<name>/<name>.mhclo (or .proxy) whose header says CC0."""
     for n in names:
         if not n:
             continue
         ext = ".proxy" if kind == "proxymeshes" else ".mhclo"
         p = AssetService.find_asset_absolute_path(f"{n}/{n}{ext}", asset_subdir=kind)
-        if p and os.path.isfile(p):
+        if p and os.path.isfile(p) and licence_ok(p):
             return n, p
     return None, None
 
 
 def licence_ok(path):
+    """Only assets whose own header declares CC0 (packs also hold AGPL / CC-BY headed items: skipped)."""
     try:
         with open(path, encoding="utf-8", errors="replace") as f:
-            head = f.read(4000).lower()
+            head = "".join(l for l in f.readlines()[:12] if l.startswith("#")).lower()
     except OSError:
         return False
-    return "cc0" in head and "cc-by" not in head.replace("cc0", "")
+    return "cc0" in head and not any(k in head for k in ("agpl", "cc-by", "cc by", "-nc", "gpl"))
+
+
+CREDITS = {}
+
+
+def credit(path):
+    """'author' line of an asset header (for docs/agents/npc/NOTES.md)."""
+    try:
+        with open(path, encoding="utf-8", errors="replace") as f:
+            for l in f.readlines()[:12]:
+                if l.lower().startswith("# author"):
+                    return l.split(None, 2)[2].strip()
+                if l.startswith("# ") and " - cc0" in l.lower():
+                    return l[2:].lower().split(" - cc0")[0].strip().title()
+    except OSError:
+        pass
+    return "MakeHuman team (system assets)"
 
 
 def find_keyword(kind, words, exclude=()):
@@ -196,20 +214,25 @@ def build_human(rc):
     if hn:
         info["hair"] = f"{hn}/{hn}.mhclo"
     used["hair"] = hn
+    used["credits"] = {}
+    if hn:
+        used["credits"][hn] = credit(hp)
     clothes = []
     for cands in rc["clothes"]:
         n, p = asset("clothes", cands)
         if n and n not in clothes:
             clothes.append(n)
+            used["credits"][n] = credit(p)
     rng = random.Random(rc["id"])
     for a in rc.get("accessories", []):
-        pool = {"cap": find_keyword("clothes", ["cap"], ("cape", "capri", "xmas", "santa", "party", "propeller", "jester")), "hat": ["fedora01", "fedora_cocked"],
-                "mask": find_keyword("clothes", ["mask"], ("eye", "gas", "carnival", "venetian", "skull", "ski")),
-                "glasses": find_keyword("clothes", ["glasses", "sunglass"], ("leopard", "heart", "star", "party", "3d"))}.get(a)
+        pool = {"cap": find_keyword("clothes", ["newsboy_cap", "cap"], ("cape", "capri", "xmas", "santa", "party", "propeller", "jester", "maga")), "hat": ["fedora01", "fedora_cocked", "aethelraed_unraed_cloche_hat"],
+                "mask": find_keyword("clothes", ["mouth_protection", "face_mask", "surgical"], ("hero", "bag")),
+                "glasses": find_keyword("clothes", ["glasses", "sunglass"], ("leopard", "heart", "star", "party", "3d", "doc_ock"))}.get(a)
         if pool:
             n, p = asset("clothes", [rng.choice(pool)] + pool)
             if n:
                 clothes.append(n)
+                used["credits"][n] = credit(p)
     info["clothes"] = [f"{c}/{c}.mhclo" for c in clothes]
     used["clothes"] = clothes
     for k in ("skin_material_type", "eyes_material_type", "clothes_material_type"):

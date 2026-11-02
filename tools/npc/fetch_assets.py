@@ -93,8 +93,10 @@ def licence_report():
                 low = line.lower()
                 if low.startswith("license") or "license" in low[:12]:
                     lic = line.split(None, 1)[1].strip() if len(line.split(None, 1)) > 1 else lic
-                if "explicitly released as cc0" in low:
+                if line.startswith("#") and ("cc0" in low or "explicitly released as cc0" in low):
                     lic = "CC0"
+                elif line.startswith("#") and ("cc-by" in low or "cc by" in low) and lic != "CC0":
+                    lic = "CC-BY"
                 if low.startswith("author"):
                     author = line.split(None, 1)[1].strip() if len(line.split(None, 1)) > 1 else ""
                 if low.startswith("verts") or low.startswith("obj_file"):

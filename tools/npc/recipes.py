@@ -26,9 +26,13 @@ WORK = ["male_worksuit01"]
 SHOES_SMART = ["shoes04", "shoes01"]
 SHOES_SNEAK = ["shoes05", "shoes06", "shoes02"]
 SHOES_BOOT = ["shoes03"]
-HAIR_M = ["short02", "short03", "short04", "short01"]
-HAIR_F = ["bob01", "bob02", "ponytail01", "long01", "braid01", "short01"]
+BOOTS_M = ["toigo_ankle_boots_male", "shoes03"]
+BOOTS_F = ["toigo_ankle_boots_female", "toigo_stiletto_booties", "shoes03"]
+HAIR_M = ["short02", "short03", "short04", "short01", "cortu_short_messy_hair"]
+HAIR_F = ["bob01", "bob02", "ponytail01", "long01", "braid01", "short01", "toigo_blunt_bob", "toigo_inverted_bob_with_bangs",
+          "toigo_curled_under_bob", "littleright_bobcut_hair", "rehmanpolanski_hair_bun_brown", "toigo_blunt_bob_with_bangs"]
 HAIR_ANY = ["afro01"]
+HAIR_PUNK = ["cortu_shaggy_green_hair", "cortu_strawberry_cloud_hair", "cortu_straight_bangs"]
 
 # dark wet-night palette + a few neon / hi-vis accents (linear-ish sRGB 0-1)
 DARKS = [(0.05, 0.055, 0.07), (0.09, 0.09, 0.1), (0.07, 0.09, 0.14), (0.12, 0.1, 0.08), (0.1, 0.12, 0.09), (0.16, 0.06, 0.07),
@@ -69,16 +73,16 @@ def _shell(kind, rng, colour=None, trim=None, trim_glow=0.0, length=None):
             "length": length, "sheen": {"coat": 0.35, "raincoat": 0.15, "jacket": 0.3, "bomber": 0.5}.get(kind, 0.75)}
 
 
-def make_recipe(i, rng):
-    sex = "female" if rng.random() < 0.48 else "male"
-    arch = rng.choices(list(ARCHETYPES), list(ARCHETYPES.values()))[0]
+def make_recipe(i, rng, sex=None, arch=None):
+    sex = sex or ("female" if rng.random() < 0.48 else "male")
+    arch = arch or rng.choices(list(ARCHETYPES), list(ARCHETYPES.values()))[0]
     agev = {"elder": rng.uniform(0.84, 0.98), "student": rng.uniform(0.44, 0.52)}.get(arch, rng.uniform(0.48, 0.82))
     race = _race(rng)
     r = {
         "id": "citizen_%02d" % i, "sex": sex, "archetype": arch,
         "phenotype": {"gender": 1.0 if sex == "male" else 0.0, "age": round(agev, 3),
                       "muscle": round(rng.uniform(0.3, 0.75), 3), "weight": round(rng.uniform(0.3, 0.8 if arch != "elder" else 0.7), 3),
-                      "height": round(rng.uniform(0.45, 0.78) if sex == "male" else rng.uniform(0.35, 0.65), 3), "proportions": round(rng.uniform(0.4, 0.8), 3),
+                      "height": round(rng.uniform(0.4, 0.62) if sex == "male" else rng.uniform(0.3, 0.55), 3), "proportions": round(rng.uniform(0.4, 0.8), 3),
                       "cupsize": round(rng.uniform(0.3, 0.6), 3), "firmness": 0.5, "race": race},
         "skin": _skin(rng, sex, agev, race),
         "hair": [], "clothes": [], "shell": None, "accessories": [], "tints": {},
@@ -87,10 +91,13 @@ def make_recipe(i, rng):
     hair_pool = HAIR_M if sex == "male" else HAIR_F
     if rng.random() < 0.08:
         hair_pool = HAIR_ANY + hair_pool
+    if arch in ("street", "techwear", "nightlife") and rng.random() < 0.15:
+        hair_pool = [rng.choice(HAIR_PUNK)] + hair_pool
     r["hair"] = [rng.choice(hair_pool)] + hair_pool
     if arch == "elder" and sex == "male" and rng.random() < 0.4:
         r["hair"] = ["short04", "short01"]
     tops = TOPS_M if sex == "male" else TOPS_F
+    boots = BOOTS_M if sex == "male" else BOOTS_F
     suits = SUITS_M if sex == "male" else SUITS_F
     if arch == "salaryman":
         r["clothes"] = [(FORMAL_M if sex == "male" else FORMAL_F) + suits, SHOES_SMART]
@@ -98,13 +105,13 @@ def make_recipe(i, rng):
         r["umbrella"] = rng.choice(["clear", "black", "black", None])
         r["walk_speed"] = round(rng.uniform(1.35, 1.6), 2)
     elif arch == "street":
-        r["clothes"] = [suits, rng.choice([SHOES_SNEAK, SHOES_BOOT])]
+        r["clothes"] = [suits, rng.choice([SHOES_SNEAK, boots])]
         r["shell"] = _shell(rng.choice(["hoodie", "jacket", "bomber"]), rng, rng.choice(DARKS + BRIGHTS[:2]),
                             trim=rng.choice([None, rng.choice(NEON)]), trim_glow=0.6)
         r["accessories"] = ["cap"] if rng.random() < 0.35 else []
         r["umbrella"] = rng.choice([None, None, "clear", "neon"])
     elif arch == "techwear":
-        r["clothes"] = [[rng.choice(tops)] + tops, PANTS[:1] + PANTS, SHOES_BOOT + SHOES_SNEAK]
+        r["clothes"] = [[rng.choice(tops)] + tops, PANTS[:1] + PANTS, boots + SHOES_SNEAK]
         r["shell"] = _shell(rng.choice(["jacket", "coat", "hoodie"]), rng, rng.choice(DARKS[:4] + [DARKS[-1]]),
                             trim=rng.choice(NEON), trim_glow=1.0, length=rng.uniform(0.35, 0.6))
         r["accessories"] = ["mask"] if rng.random() < 0.6 else []
@@ -128,7 +135,7 @@ def make_recipe(i, rng):
         r["umbrella"] = rng.choice([None, "clear", "neon"])
         r["walk_speed"] = round(rng.uniform(1.3, 1.55), 2)
     elif arch == "nightlife":
-        r["clothes"] = [[rng.choice(tops)] + tops, PANTS + suits, SHOES_BOOT + SHOES_SMART]
+        r["clothes"] = [[rng.choice(tops)] + tops, PANTS + suits, boots + SHOES_SMART]
         r["shell"] = _shell(rng.choice(["coat", "jacket"]), rng, rng.choice([(0.25, 0.02, 0.06), (0.02, 0.02, 0.025), (0.5, 0.48, 0.5),
                                                                           (0.05, 0.12, 0.2)]),
                             trim=rng.choice([None, rng.choice(NEON)]), trim_glow=0.8, length=rng.uniform(0.45, 0.9))
@@ -150,17 +157,19 @@ def make_recipe(i, rng):
 
 
 def make_recipes(seed=2077, n=32):
+    """n citizens: sexes alternate (a few swapped), archetypes dealt out in proportion to their weights."""
     rng = random.Random(seed)
-    out = [make_recipe(i, rng) for i in range(n)]
-    # make sure the crowd has both sexes, every archetype and enough umbrellas for a rainy night
-    have = {r["archetype"] for r in out}
-    for k, arch in enumerate(a for a in ARCHETYPES if a not in have):
-        rr = random.Random(seed * 31 + k)
-        while True:
-            c = make_recipe(n - 1 - k, rr)
-            if c["archetype"] == arch:
-                out[n - 1 - k] = c
-                break
+    tot = sum(ARCHETYPES.values())
+    deck = []
+    for a, w in ARCHETYPES.items():
+        deck += [a] * max(1, round(w * n / tot))
+    while len(deck) < n:
+        deck.append(rng.choice(list(ARCHETYPES)))
+    rng.shuffle(deck)
+    out = []
+    for i in range(n):
+        sex = "male" if (i % 2 == 0) != (rng.random() < 0.05) else "female"
+        out.append(make_recipe(i, rng, sex, deck[i]))
     return out
 
 
@@ -171,14 +180,14 @@ WAKERS = [
      "phenotype": {"gender": 1.0, "age": 0.55, "muscle": 0.65, "weight": 0.5, "height": 0.62, "proportions": 0.7,
                    "cupsize": 0.5, "firmness": 0.5, "race": {"asian": 0.8, "caucasian": 0.15, "african": 0.05}},
      "skin": ["young_asian_male"], "hair": ["short02", "short03"],
-     "clothes": [["elvs_crude_t-shirt_male", "toigo_basic_tucked_t-shirt", "male_casualsuit06"], ["cortu_cargo_pants", "toigo_wool_pants"], SHOES_BOOT],
+     "clothes": [["elvs_crude_t-shirt_male", "toigo_basic_tucked_t-shirt", "male_casualsuit06"], ["cortu_cargo_pants", "toigo_wool_pants"], BOOTS_M],
      "shell": dict(WAKER_COAT), "accessories": ["resonance_band"],
      "tints": {"base": {"value": 0.3, "sat": 0.2, "hue": 0.0}, "hair": {"value": 0.3}}, "umbrella": None, "walk_speed": 1.45, "idle": "Idle"},
     {"id": "waker_f", "sex": "female", "archetype": "waker",
      "phenotype": {"gender": 0.0, "age": 0.52, "muscle": 0.6, "weight": 0.45, "height": 0.6, "proportions": 0.7,
                    "cupsize": 0.45, "firmness": 0.5, "race": {"asian": 0.75, "caucasian": 0.2, "african": 0.05}},
-     "skin": ["young_asian_female"], "hair": ["ponytail01", "bob02", "bob01"],
-     "clothes": [["toigo_turtleneck_halter_top", "joepal_crude_t-shirt_female", "female_sportsuit01"], ["cortu_cargo_pants", "toigo_wool_pants"], SHOES_BOOT],
+     "skin": ["young_asian_female"], "hair": ["toigo_inverted_bob", "ponytail01", "bob02", "bob01"],
+     "clothes": [["toigo_turtleneck_halter_top", "joepal_crude_t-shirt_female", "female_sportsuit01"], ["cortu_cargo_pants", "toigo_wool_pants"], BOOTS_F],
      "shell": dict(WAKER_COAT), "accessories": ["resonance_band"],
      "tints": {"base": {"value": 0.3, "sat": 0.2, "hue": 0.0}, "hair": {"value": 0.28}}, "umbrella": None, "walk_speed": 1.45, "idle": "Idle"},
 ]
