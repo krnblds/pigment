@@ -69,9 +69,9 @@ func setup(id: String, inf: Dictionary, opts := {}) -> void:
 			var cut := src != null and String(src.resource_name).contains("cutout")
 			mi.set_surface_override_material(s, mats[1] if cut else mats[0])
 	if lod0 and lod1:
-		lod0.visibility_range_end = 16.0
+		lod0.visibility_range_end = 12.0
 		lod0.visibility_range_end_margin = 1.0
-		lod1.visibility_range_begin = 16.0
+		lod1.visibility_range_begin = 12.0
 		lod1.visibility_range_begin_margin = 1.0
 		lod1.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	if not opts.get("shadows", true):
@@ -191,7 +191,7 @@ func set_umbrella(kind: String) -> void:
 	var mi: MeshInstance3D = umbrella.get_child(0)
 	mi.mesh = m[0]
 	mi.material_override = m[1]
-	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF if kind == "clear" else GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	CitizenAnim.set_umbrella(tree, 1.0)
 
 

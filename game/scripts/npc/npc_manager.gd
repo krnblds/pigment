@@ -969,6 +969,7 @@ func _draw_crowd(_dt: float) -> void:
 	for mdl in _crowd:
 		var mm: MultiMesh = _crowd[mdl].multimesh
 		var n: int = fill[mdl]
+		_crowd[mdl].visible = n > 0
 		if n == 0:
 			if mm.visible_instance_count != 0:
 				mm.visible_instance_count = 0
