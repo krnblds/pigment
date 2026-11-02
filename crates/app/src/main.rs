@@ -19,7 +19,9 @@ fn main() -> eframe::Result {
             .with_title(if gallery { "Pigment design gallery" } else { "Pigment" })
             .with_inner_size(size)
             .with_min_inner_size([800.0, 500.0])
-            .with_drag_and_drop(true),
+            .with_drag_and_drop(true)
+            .with_app_id("pigment") // matches StartupWMClass in packaging/linux/pigment.desktop
+            .with_icon(eframe::icon_data::from_png_bytes(app::design::WINDOW_ICON_PNG).expect("embedded app icon is a valid PNG")),
         renderer: eframe::Renderer::Wgpu,
         // the layer compositor needs more sampled textures than wgpu's default
         wgpu_options: eframe::egui_wgpu::WgpuConfiguration {
