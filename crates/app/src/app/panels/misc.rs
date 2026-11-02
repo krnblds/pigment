@@ -217,7 +217,7 @@ impl Panel for VariantsPanel {
 
 // ------------------------------------------------------------------ lighting
 
-/// Lighting preset cards (studio, night city, overcast, the game skies).
+/// Lighting preset cards (studio, neon night, overcast, the game skies).
 pub fn lighting_presets(app: &mut PigmentApp, ui: &mut egui::Ui, rs: &RenderState) {
     let p = ds::pal(ui);
     ui.horizontal_wrapped(|ui| {
