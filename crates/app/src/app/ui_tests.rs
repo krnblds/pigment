@@ -758,3 +758,23 @@ fn texture_set_switcher_and_viewport() {
     assert!(reds(&after) > reds(&before) + 100, "the parked lid set is drawn ({} -> {})", reds(&before), reds(&after));
     assert_eq!(h.app.active_set_name(), "body");
 }
+
+/// Export templates in the Export panel: the picker and the editor on a copy
+/// of a built-in render; a copy saved with the project is found by id.
+#[test]
+fn export_template_editor() {
+    let Some(mut h) = Harness::new([1440.0, 1800.0], 1.0) else { return };
+    settle(&mut h);
+    super::panels::templates::edit_copy_for_tests(&h.app, "unity_hdrp");
+    *h.app.ui.prefs.layout_mut() = DockLayout { root: super::dock::Node::Split { vertical: false, ratio: 0.45, a: Box::new(super::dock::Node::Leaf { tabs: vec![PanelId::Viewport], active: 0 }), b: Box::new(super::dock::Node::Leaf { tabs: vec![PanelId::Export], active: 0 }) }, floating: vec![] };
+    h.run(6);
+    let mut t = h.app.find_template("unity_hdrp").unwrap();
+    t.id = "hdrp_custom".into();
+    t.outputs[1].channels[2] = "const:0".into();
+    h.app.save_template(t, super::templates_app::TemplateScope::Project).unwrap();
+    assert_eq!(h.app.find_template("hdrp_custom").unwrap().outputs[1].channels[2], "const:0");
+    assert!(h.app.save_template(h.app.find_template("unreal").unwrap(), super::templates_app::TemplateScope::Builtin).is_err());
+    if std::env::var("PIGMENT_SHOTS").is_ok() {
+        h.save_png(&docs().join("agents/parity/templates_ui.png"));
+    }
+}

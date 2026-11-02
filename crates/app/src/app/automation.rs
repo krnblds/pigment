@@ -13,6 +13,7 @@ type Res<T> = Result<T, String>;
 
 mod bake_tools;
 pub mod set_tools;
+mod template_tools;
 mod brush_tools;
 mod decal_tools;
 mod filter_tools;
@@ -1377,6 +1378,9 @@ impl Session {
                 format!("`compression` = {c}: expected one of {}", export::Compression::ALL.map(|c| c.id()).join(", "))
             })?,
         };
+        if a.get("template").is_some() {
+            return self.export_template(a, &dir, compression);
+        }
         self.app.doc.export_preset = preset.to_string();
         self.app.export_dir = Some(dir.clone());
         self.app.export_name = s(a, "name").map(String::from).unwrap_or_else(|| self.app.mesh.name.clone());

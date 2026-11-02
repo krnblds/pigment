@@ -449,6 +449,7 @@ impl Panel for ExportPanel {
     }
     fn ui(&mut self, app: &mut PigmentApp, ui: &mut egui::Ui, rs: &RenderState) {
         export_body(app, ui, rs, true);
+        super::templates::templates_ui(app, ui, rs);
     }
 }
 

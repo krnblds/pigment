@@ -226,3 +226,44 @@ A **Texture set** switcher at the top of the Layers panel (name · resolution ·
 - Each set keeps its own GPU textures and accumulation buffers (VRAM grows with the number of sets).
 - Saving a multi-set project rewrites every set's pixels, and opening bakes each set twice (once alone, once with the whole-mesh occluder).
 - The UDIM move cuts islands that span the selection boundary (a wall spanning floors gets a seam at 3.6 m). Re-baked normals stay continuous, but painted textures meet at a cut.
+
+## 5. Custom export templates, EXR and bit depth
+
+![PNG vs EXR](templates_before_after.png)
+
+*The town overhead sign plus a stacked "deep dents" layer, false colour of the stored values on the same scales. Before: the `separate` template (8-bit emission normalised to its peak, 16-bit height clamped to -1..1). After: the built-in `arnold` template (EXR), where emission keeps its linear HDR range (peak 2.7) and height its raw range (down to -3).* Reproduce: `python docs/agents/parity/templates_demo.py`.
+
+![template editor](templates_ui.png)
+
+*Export panel: template picker, Export with template, and the editor on a copy of the HDRP template (pattern, four channel sources, format, bit depth, colour space, padding, skip-when-empty).*
+
+### What it does (`crates/core/src/templates.rs`)
+
+- A **template** is a list of outputs. Each output has a **file name pattern** (`{name}`, `{set}`, `{udim}`), 1 / 3 / 4 **channel sources**, a **format** and **bit depth** (PNG u8 / u16, TGA u8, EXR f16 / f32), a **colour space** (sRGB as painted, or linear for base colour and emission), **padding** (dilate = the compositor's seam padding, or none = zero and alpha 0 outside the UV islands, using the part-id map), and *skip when empty*.
+- **Channel sources** are strings: `base_color.r|g|b`, `opacity`, `roughness`, `smoothness`, `metallic`, `ao`, `height`, `normal.x|y|z` (OpenGL), `normal_dx.x|y|z` (green flipped), `emissive.r|g|b`, `transmission`, `coat`, `coat_roughness`, `flake`, `const:<v>`, plus a `1-` prefix to invert. Errors name the bad token.
+- **HDR**: float outputs read extra planes from the GPU (`io::read_hdr_planes`): the raw composited height (R16F) and the linear emission × strength (RGBA16F). So EXR keeps the HDR range, while 8/16-bit outputs keep the old encodings.
+- **EXR** is written with the `exr` crate (already in the lock file through `image`): `Y`, `RGB` or `RGBA` channels, f16 or f32, lossless compression. **TGA** uses `image`'s encoder (its `tga` feature is now on).
+- **Built-in templates**: `unreal`, `unity`, `godot` and `separate` produce the same files as the old presets (a test checks every file name); new are `orm`, `unreal_packed` (ORM + height in alpha), `unity_hdrp` (Mask Map: metallic, AO, detail mask, smoothness), `godot_orm`, `gltf` (occlusionRoughnessMetallic, clearcoat) and `arnold` (aiStandardSurface, linear EXR).
+- **Saved** as JSON: user templates in `<prefs>/export_templates.json`, project templates in the manifest (`Document::export_templates`, serde default). The lookup order is project, then user, then built-in. Built-in ids can't be overwritten.
+- **Texture sets / UDIM**: a template export writes every set and tile. With several sets, a pattern without `{set}` gets `_<set>` after the name and `.<udim>` at the end, matching feature 4's naming.
+
+### MCP
+
+| tool | args |
+|---|---|
+| `list_export_templates` | → every template with `scope` (builtin / user / project) and its outputs |
+| `save_export_template` | `template {id, label, outputs: [{pattern, channels, format, bit_depth, color_space, padding, skip_if_neutral}]}`, `scope: project \| user` (default project) |
+| `export_textures` | `template`: an id or an inline template (overrides `preset`, which still works as before) → `{template, files, texture_sets}` |
+
+### Tests
+
+- core `templates::tests`: channel strings parse (and errors name the problem); every built-in validates and the four old presets keep their file names; format / depth / channel-count validation and duplicate files; writing 8-bit PNG with `{name}_{set}_ORM.{udim}`, a 16-bit inverted roughness, a TGA, an f32 EXR height that keeps 2.5 and zeroes the uncovered texel (padding none), an f16 EXR emission that keeps 4.0, and skipping a neutral optional map.
+- Session `export_templates_over_mcp`: built-ins listed; `unity_hdrp` writes a MaskMap; `arnold` EXR emission peaks above 2 on a neon material; a custom template is saved with the project, used by id (16-bit RGB PNG, linear TGA, EXR height), and survives save / reopen; an inline template works; bad templates and built-in ids are rejected.
+- UI `export_template_editor`: the Export panel renders the picker and editor on a HDRP copy; a project template is saved and found; saving over a built-in is refused.
+
+### Known limits
+
+- `padding: none` uses the part-id map's coverage (texels a triangle touches), not the jump-flood padding's exact island edge.
+- EXR has no layered (multi-part) output: one file per output.
+- 8-bit and 16-bit outputs of HDR sources keep the old encodings (emission normalised to its peak, with the scale in the Blender sidecar; height mapped from -1..1). Use EXR for the raw range.
+- The Blender bridge sidecar and `send_to_blender` still use the presets, not templates.

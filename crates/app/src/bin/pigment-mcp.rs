@@ -382,7 +382,8 @@ fn tools_base() -> Value {
           json!({ "dir": { "type": "string" }, "name": { "type": "string", "description": "file prefix (default: mesh name)" }, "layer": { "type": ["string", "integer"], "description": "only this foliage layer (default: every visible one)" } }), &["dir"]),
         t("export_textures", "Export PNG texture maps. Presets: unreal, unity, godot, separate (glTF/Blender: BaseColor, Roughness, Metallic, AO, Normal_OpenGL, Height, Emissive, plus Opacity / Transmission when the material has any). unreal/unity/godot put opacity in the base colour's alpha (RGBA) when it isn't solid.",
           json!({ "dir": { "type": "string" }, "preset": { "type": "string", "enum": pigment_core::export::presets().iter().map(|p| p.id).collect::<Vec<_>>(), "description": "default separate" }, "name": { "type": "string", "description": "file name prefix (default: the mesh name)" },
-                  "compression": { "type": "string", "enum": ["none", "fastest", "fast", "balanced", "best"], "description": "PNG compression effort (default fast). fastest/none write quickest but bigger files; maps are encoded in parallel either way" } }), &["dir"]),
+                  "compression": { "type": "string", "enum": ["none", "fastest", "fast", "balanced", "best"], "description": "PNG compression effort (default fast). fastest/none write quickest but bigger files; maps are encoded in parallel either way" },
+                  "template": { "type": ["string", "object"], "description": "an export template id (list_export_templates: unreal, unity, godot, separate, orm, unreal_packed, unity_hdrp, godot_orm, gltf, arnold, or a saved one) or an inline template {id, outputs: [...]}; overrides `preset`. Supports 8/16-bit PNG, TGA, f16/f32 EXR (HDR height and emission)" } }), &["dir"]),
         t("export_variants", "Export N texture sets from this project without re-running the script: one folder per variant, <dir>/<name>__<variant>/<name>_<map>.png. Each variant starts from the authored stack, sets `seed` (random part subsets such as lit windows, and generator noise), switches off `disable` then on `enable` (layer names, decal names, variant groups, or \"*\" = everything tagged), and swaps decal images (decals on changed layers are replayed). Definitions are stored in the project (save_project to keep them); omit `variants` to reuse the stored ones.",
           json!({ "dir": { "type": "string" }, "name": { "type": "string", "description": "file/folder name (default: mesh name)" },
                   "preset": { "type": "string", "description": "export preset (default separate)" },
@@ -443,10 +444,28 @@ fn tools_base() -> Value {
           json!({ "layer": { "type": ["string", "integer"], "description": "layer name, path or index" }, "target": { "type": "string", "enum": ["layer", "mask"], "description": "default layer" }, "index": { "type": "integer", "minimum": 0 } }), &["layer", "index"]),
         t("set_anchor", "Make a layer or folder an anchor point: the stack as composited right after it (height, the layer's mask x coverage, colour luminance) can be read by generators of layers above through mask.input {anchor, channel}, e.g. edge wear on painted scratches or dirt in painted dents; the `anchor` generator uses a channel directly as a mask.",
           json!({ "layer": { "type": ["string", "integer"], "description": "layer name, path or index" }, "anchor": { "type": ["string", "null"], "description": "anchor name (default: the layer name); null removes it" } }), &["layer"]),
+        t("list_export_templates", "Export templates: built-in (the presets, ORM, Unreal packed, Unity HDRP mask map, Godot ORM, glTF, Arnold EXR), user (prefs) and project ones, with their outputs (file pattern, channel sources, format, bit depth, colour space, padding).", json!({}), &[]),
+        t("save_export_template", "Save a custom export template: outputs -> file name pattern ({name}, {set}, {udim}) -> per-channel sources (base_color.r/g/b, opacity, roughness, smoothness, metallic, ao, height, normal.x/y/z, normal_dx.x/y/z, emissive.r/g/b, transmission, coat, coat_roughness, flake, const:<v>, '1-' prefix inverts) with format png | tga | exr, bit depth u8 | u16 | f16 | f32, colour space srgb | linear and padding dilate | none. Use it with export_textures {template: id}.",
+          json!({ "template": template_schema(), "scope": { "type": "string", "enum": ["project", "user"], "description": "save with the project (default) or in the user preferences" } }), &["template"]),
         t("list_texture_sets", "The project's texture sets (one per material / UDIM tile, each with its own resolution and layer stack): name, materials, UDIM tile, resolution, triangles, layer count, which is active; plus the mesh's UDIM tiles.", json!({}), &[]),
         t("undo", "Undo the last action.", json!({}), &[]),
         t("redo", "Redo.", json!({}), &[]),
     ])
+}
+
+/// Schema of an export template (`pigment_core::templates`).
+fn template_schema() -> Value {
+    json!({ "type": "object", "additionalProperties": false, "required": ["id", "outputs"], "description": "an export template",
+        "properties": { "id": { "type": "string" }, "label": { "type": "string" },
+            "outputs": { "type": "array", "items": { "type": "object", "additionalProperties": false, "required": ["pattern", "channels", "format", "bit_depth"],
+                "properties": {
+                    "pattern": { "type": "string", "description": "file name without extension, tokens {name} {set} {udim}" },
+                    "channels": { "type": "array", "items": { "type": "string" }, "description": "1, 3 or 4 sources, e.g. ao, roughness, metallic" },
+                    "format": { "type": "string", "enum": ["png", "tga", "exr"] },
+                    "bit_depth": { "type": "string", "enum": ["u8", "u16", "f16", "f32"], "description": "png: u8/u16, tga: u8, exr: f16/f32" },
+                    "color_space": { "type": "string", "enum": ["srgb", "linear"], "description": "base colour / emission encoding (default srgb)" },
+                    "padding": { "type": "string", "enum": ["dilate", "none"], "description": "dilate: seam padding (default); none: zero outside the UV islands" },
+                    "skip_if_neutral": { "type": "boolean", "description": "don't write the file when it holds nothing (opacity / transmission / coat of a material without any)" } } } } } })
 }
 
 /// Schema of one filter (`pigment_core::filters`). `top` = tool arguments
@@ -829,6 +848,8 @@ fn call(session: &mut Option<Session>, name: &str, args: &Value) -> Result<Vec<V
         "list_library" => text(s.library()),
         "list_layers" => text(s.list_layers(args)),
         "list_texture_sets" => text(s.list_texture_sets()),
+        "list_export_templates" => text(s.list_export_templates()),
+        "save_export_template" => text(s.save_export_template(args)?),
         "save_smart_material" => text(s.save_smart_material(args)?),
         "apply_smart_material" => text(s.apply_smart_material(args)?),
         "list_parts" => text(s.list_parts_query(args)?),

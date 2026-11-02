@@ -873,6 +873,9 @@ pub struct Document {
     /// load: (tile, triangle indices of the original mesh, margin).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub udim_moves: Vec<crate::texsets::UdimMove>,
+    /// Export templates saved with the project (see `templates`).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub export_templates: Vec<crate::templates::ExportTemplate>,
 }
 
 fn default_preset() -> String {
@@ -895,6 +898,7 @@ impl Default for Document {
             texture_set: None,
             extra_sets: Vec::new(),
             udim_moves: Vec::new(),
+            export_templates: Vec::new(),
         }
     }
 }

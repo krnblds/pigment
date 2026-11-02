@@ -29,6 +29,7 @@ mod bridge;
 mod brush_tools;
 mod decals;
 pub(crate) mod hibake_app;
+pub(crate) mod templates_app;
 pub(crate) mod texsets_app;
 mod foliage;
 mod tour;
