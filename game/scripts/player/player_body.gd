@@ -38,9 +38,9 @@ const ACTIONS := ["shoot", "reload", "hit", "melee", "interact", "punch"]
 
 ## Looks: body tint, gear, Dreamlink glow. Gear pieces are simple primitives on bone attachments.
 const LOOKS := {
-	"waker": {"tint": Color(0.06, 0.07, 0.1), "trim": Color(0.35, 0.95, 1.0), "gear": ["helmet", "vest", "shoulder_lamp"]},
-	"courier": {"tint": Color(0.32, 0.12, 0.06), "trim": Color(0.25, 0.9, 1.0), "gear": ["halo", "pack"]},
-	"soldier": {"tint": Color(0.16, 0.18, 0.12), "trim": Color(0.25, 0.9, 1.0), "gear": ["halo", "vest", "helmet_soft"]},
+	"waker": {"tint": Color(0.06, 0.07, 0.1), "trim": Color(0.35, 0.95, 1.0), "gear": ["helmet", "shoulder_lamp"]},
+	"courier": {"tint": Color(0.32, 0.12, 0.06), "trim": Color(0.25, 0.9, 1.0), "gear": ["halo"]},
+	"soldier": {"tint": Color(0.16, 0.18, 0.12), "trim": Color(0.25, 0.9, 1.0), "gear": ["halo", "helmet_soft"]},
 	"climber": {"tint": Color(0.1, 0.1, 0.13), "trim": Color(0.25, 0.9, 1.0), "gear": ["halo", "hood"]},
 	"parent": {"tint": Color(0.35, 0.33, 0.3), "trim": Color(0.25, 0.9, 1.0), "gear": ["halo", "coat"]},
 	"swarm": {"tint": Color(0.22, 0.16, 0.26), "trim": Color(0.25, 0.9, 1.0), "gear": ["halo"]},
@@ -368,8 +368,9 @@ func _add_gear(g: String, L: Dictionary) -> void:
 				_prim(ba, st, L.trim, Vector3(0, 0.2, 0.13), 2.5)
 		"shoulder_lamp":
 			var ba := _attach("LeftShoulder")
-			var b := BoxMesh.new()
-			b.size = Vector3(0.05, 0.05, 0.05)
+			var b := SphereMesh.new()
+			b.radius = 0.022
+			b.height = 0.044
 			_prim(ba, b, L.trim, Vector3(0, 0.05, 0.08), 4.0)
 		"halo":
 			var ba := _attach("Head")
