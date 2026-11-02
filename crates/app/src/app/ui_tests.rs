@@ -53,7 +53,7 @@ fn welcome_sample_material_export() {
     assert!(h.app.ui.prefs.layout().contains(PanelId::Library), "simple layout shows the library");
     // 2: click "Rusty" in the library
     h.run(2);
-    let lib = h.app.ui.dock_rects.iter().find(|(p, _)| *p == PanelId::Library).map(|(_, r)| *r).expect("library visible");
+    let lib = h.app.ui.dock_rects.iter().filter(|(p, _)| *p == PanelId::Library).map(|(_, r)| *r).max_by(|a, b| a.width().total_cmp(&b.width())).expect("library visible");
     assert!(lib.width() > 100.0);
     h.app.apply_library(&h.rs.clone(), &LibItem::Smart("Rusty steel".into()), None);
     settle(&mut h);

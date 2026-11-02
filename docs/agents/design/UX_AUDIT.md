@@ -63,8 +63,8 @@ often they get in the way. **Status** is filled in after the pass (see the botto
 18. **Active tool indication in the viewport** is only the rail highlight and the
     cursor; nothing in the status area says what the mouse buttons will do *now*.
 19. **Escape is inconsistent:** it closes the shortcut sheet and resets the tool, but
-    not an open context menu's parent palette state, and it doesn't clear the
-    command palette query.
+    the command palette keeps its old query when reopened, a search box can't be
+    cleared from the keyboard, and dialogs have no visible close affordance.
 
 ## Consistency
 
@@ -78,4 +78,50 @@ often they get in the way. **Status** is filled in after the pass (see the botto
 
 ## Status after the pass
 
-(see below; updated when the pass landed)
+Fixed:
+
+- **1–3 (chrome, density, cards):** new near-black, low-chroma palette (a test keeps
+  every chrome colour's chroma <= 10 and the greys in the Blender range), Compact
+  density by default (22 pt controls, 20 pt fields, 28 pt layer rows, 24 pt tabs, 8 pt
+  padding) with a Comfortable option, radii 2–4 pt, short shadows. The accent is now
+  only on the selection, the active tool, the active tab underline and the primary
+  action; slider fills are neutral grey.
+- **4–5 (sliders):** one Blender-style `DragField` everywhere (value inside the bar,
+  drag / Shift fine / Ctrl snap / double-click to type / arrow ends). Raw `egui::Slider`
+  is now rejected by the lint. The tool options bar uses drag fields with inline labels.
+- **6:** names elide with an ellipsis; the full name and kind show on hover.
+- **7:** the layers hint no longer refers to a glyph the font lacks.
+- **8:** `tabs` have a hover fill and readable inactive labels.
+- **9:** the paint target and the mask black / white switch (with its X key) sit right
+  after the brush controls.
+- **10, 18:** the hint pill is gone; the status bar shows the active tool's mouse and key
+  hints with mouse glyphs (or the hovered control's), and a small chip in the viewport
+  names the active tool. The tool rail shows each tool's key letter.
+- **11:** the layer context menu has Rename, Duplicate, Group, Hide / Show, Lock,
+  Move up / down, Into / out of folder and Delete, with icons and keys, the same
+  `MenuItem` row everywhere. Double-click or F2 renames inline; Ctrl+D, Ctrl+G, H and
+  Delete work while the pointer is over the panel.
+- **12 (partly):** decal tiles have a right-click menu (stick it on, scatter copies).
+- **13:** `collapsible` sections with small chevrons; open / closed state is remembered
+  in `prefs.json` (also used by the brush, filter and export panels).
+- **14:** quick search in the decal browser (across folders) and the foliage library.
+- **15:** History has Undo / Redo buttons with keys, "step n of m", numbered steps, a
+  "now" marker and "undone" tags.
+- **16:** menus show keys for Settings (Ctrl+,), view modes (M); the shortcut sheet has
+  Layers and Number-field sections.
+- **17:** the palette's fuzzy match requires substrings or word-initial runs (no
+  scattered letters), highlights matched letters, lists Recent first then groups on
+  an empty query, scrolls, and supports Tab / PgUp / PgDn and click-outside.
+- **19:** Esc clears a focused search box, closes the palette with its query reset;
+  dialogs have a close button.
+- **20:** "Use the decal tool", "Use the foliage brush" and "Bake from high poly" are
+  secondary; panels keep at most one primary.
+- **21:** Settings has a Density control next to Theme.
+
+Left for later:
+
+- Context menus on Parts rows and on library materials (12).
+- Light theme is kept working and readable but not tuned to the same degree (22).
+- `egui::DragValue` pairs (UV tiling, offsets, normal tilt) still use egui's own field,
+  themed but without the fill bar.
+- Drag-and-drop of library materials onto layers / parts in the viewport.

@@ -318,7 +318,7 @@ impl Panel for HistoryPanel {
             let f = if on { ds::fonts::semibold(font::SMALL) } else { ds::fonts::regular(font::SMALL) };
             let tag_w = if future { 52.0 } else if on { 40.0 } else { 0.0 };
             let g = ds::elided(ui.painter(), label, f, c, r.width() - space::XXL - space::MD - tag_w);
-            ui.painter().galley(egui::pos2(r.left() + space::XXL + space::XS, r.center().y - g.size().y / 2.0), g, c);
+            ui.painter().galley(egui::pos2(r.left() + space::XXXL, r.center().y - g.size().y / 2.0), g, c);
             let tag = if future { "undone" } else if on { "now" } else { "" };
             if !tag.is_empty() {
                 ui.painter().text(egui::pos2(r.right() - space::SM, r.center().y), egui::Align2::RIGHT_CENTER, tag, ds::fonts::regular(font::CAPTION), if on { p.accent } else { p.text_disabled });
