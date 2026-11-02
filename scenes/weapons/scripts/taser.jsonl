@@ -1,0 +1,11 @@
+{"tool": "new_project", "args": {"mesh": "assets/weapons/src/taser.glb", "resolution": 1024}}
+{"tool": "bake", "args": {"curvature_radius": 0.002, "ao_distance": 0.03}}
+{"tool": "add_layer", "args": {"name": "glow_cyan", "mask": {"parts": [4, 5, 7]}, "values": {"base_color": [0.08, 0.25, 0.3], "roughness": 0.3, "metallic": 0.0, "emissive": [0.35, 0.95, 1.0], "emissive_strength": 4.0}}}
+{"tool": "add_layer", "args": {"name": "polymer", "mask": {"parts": [1, 3, 6]}, "values": {"base_color": [0.032, 0.034, 0.04], "roughness": 0.58, "metallic": 0.0}}}
+{"tool": "add_layer", "args": {"name": "polymer_grip", "mask": {"parts": [2]}, "values": {"base_color": [0.028, 0.028, 0.031], "roughness": 0.82, "metallic": 0.0}}}
+{"tool": "add_layer", "args": {"name": "grip stipple", "mask": {"parts": [2], "generator": "grunge", "amount": 0.55, "scale": 40.0, "softness": 0.1}, "values": {"base_color": [0.05, 0.05, 0.055], "roughness": 0.95}, "opacity": 0.8, "channels": {"height": false}}}
+{"tool": "add_layer", "args": {"name": "polymer_yellow", "mask": {"parts": [0]}, "values": {"base_color": [0.82, 0.58, 0.05], "roughness": 0.45, "metallic": 0.0}}}
+{"tool": "add_layer", "args": {"name": "Polymer scuffs", "mask": {"parts": [0, 1, 2, 3, 6], "generator": "edge_wear", "amount": 0.25, "softness": 0.3, "scale": 6.0}, "values": {"base_color": [0.12, 0.12, 0.13], "roughness": 0.7}, "opacity": 0.6, "channels": {"height": false}}}
+{"tool": "add_layer", "args": {"name": "Grime", "material": "Grime", "mask": {"generator": "grunge", "amount": 0.3, "scale": 5.0, "softness": 0.4}, "opacity": 0.3}}
+{"tool": "render", "args": {"yaw": 70, "pitch": 12, "width": 640, "height": 400, "exposure": 0.2, "path": "C:\\Users\\kiera\\Documents\\Workspaces\\Vibe Projects\\are-senior-graphics-engineer-who\\.claude\\worktrees\\agent-police\\scenes\\weapons\\proof\\taser.png"}}
+{"tool": "export_textures", "args": {"dir": "scenes/weapons/textures/taser", "preset": "separate", "name": "taser"}}

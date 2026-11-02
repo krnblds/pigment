@@ -22,3 +22,6 @@ assets/.live/
 assets/trees/
 # interior atlas + kit window maps (tools/interiors/interiors.py sync)
 assets/interiors/
+# weapon textures Godot extracts from the weapon glbs on import (tools/weapons/export_weapons.py)
+assets/weapons/*.png
+assets/weapons/*.png.import

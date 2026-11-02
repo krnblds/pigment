@@ -31,12 +31,12 @@ func run() -> void:
 	cm.unlocks = []
 	cm.clock = 60.0
 	t.main.hud.score = 612
-	await t.build_yard()
-	await t.put_car(Vector3(40, 0, 40))
-	t.player.armour = 1.0e6                  # the test Waker doesn't go down
 	if shots_dir != "":
 		await preload("res://scripts/waker/waker_shots.gd").new().run(self)
 		return
+	await t.build_yard()
+	await t.put_car(Vector3(40, 0, 40))
+	t.player.armour = 1.0e6                  # the test Waker doesn't go down
 	if OS.get_environment("WAKER_ONLY") == "climber":
 		await _climber()
 		return

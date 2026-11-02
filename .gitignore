@@ -40,3 +40,7 @@ scenes/trees/impostors/
 # ground masks (regenerate: python tools/world/ground_masks.py)
 scenes/world/ground_masks*
 scenes/world/ground_spots.json
+
+# Waker kit (tools/weapons): Pigment texture sets and proof renders are regenerated
+scenes/weapons/textures/
+scenes/weapons/proof/
