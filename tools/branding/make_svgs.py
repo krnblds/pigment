@@ -151,7 +151,7 @@ def svg(s: Spec) -> str:
 SPECS = {
     "pigment-icon.svg": Spec("icon (master)"),
     "pigment-icon-small.svg": Spec("icon (16-32 px)", r=122, band=24, bristles=4, ragged=18, a_end=-58, jitter=0.05,
-                                   ball=("#8C919A", "#4A4E56", "#202226"), rim=0.05, rim_alpha=0.55),
+                                   ball=("#6E737C", "#33363C", "#131416"), rim=0.05, rim_alpha=0.6),
 }
 
 

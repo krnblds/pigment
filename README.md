@@ -226,6 +226,14 @@ cargo test -p pigment --release perf_targets -- --ignored --nocapture
   pip install resvg-py pillow
   python tools/branding/make_icons.py
   ```
+
+  Sizes from 48 px up come from a Cycles render of the same design modelled in 3D
+  (`assets/branding/render/pigment-icon-1024.png`). After changing the design, re-render it
+  before running `make_icons.py`:
+
+  ```bash
+  blender -b --factory-startup --python tools/branding/render_icon.py
+  ```
 - The app crate:
   - validates every WGSL shader with naga;
   - runs headless GPU tests that paint, composite, bake and export on a real device;
