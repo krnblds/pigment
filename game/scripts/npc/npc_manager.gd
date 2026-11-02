@@ -129,6 +129,7 @@ func setup(m: Node3D, opts := {}) -> bool:
 		push_warning("npc: no citizens built (python tools/npc/build_all.py) - keeping the traffic silhouettes")
 		return false
 	models = CitizenLib.ids(false)
+	add_to_group("npc_civilians")          # scripts/waker case_manager: call_group("npc_civilians", "on_incident", pos, r)
 	if main.get("traffic") and main.traffic:
 		main.traffic.ped_provider = self
 	var wpath := "res://assets/world/world.json"
@@ -547,19 +548,26 @@ func _may_cross(e, a: Agent) -> bool:
 	return true
 
 
-func _blocks_crossing(p: Vector3, v: Vector3, c0: Vector3, c1: Vector3, mid: Vector3) -> bool:
+## Would this car (position p, velocity v) be on the crosswalk c0-c1 soon?  Only cars that drive
+## over the crosswalk count (not the cross traffic passing the junction).
+func _blocks_crossing(p: Vector3, v: Vector3, c0: Vector3, c1: Vector3, _mid: Vector3) -> bool:
 	var ab := Vector2(c1.x - c0.x, c1.z - c0.z)
-	var ap := Vector2(p.x - c0.x, p.z - c0.z)
-	var t := clampf(ap.dot(ab) / maxf(ab.length_squared(), 1e-4), 0.0, 1.0)
-	if (ap - ab * t).length() < 3.0:
-		return true                     # on (or right at) the crosswalk
-	var rel := mid - p
-	rel.y = 0.0
-	var sp := Vector2(v.x, v.z).length()
-	if sp < 1.0:
+	var L := ab.length()
+	if L < 0.1:
 		return false
-	var closing := rel.normalized().dot(Vector3(v.x, 0, v.z) / sp)
-	return closing > 0.5 and rel.length() / sp < 4.0
+	var u := ab / L
+	var n := Vector2(-u.y, u.x)
+	var ap := Vector2(p.x - c0.x, p.z - c0.z)
+	var along := ap.dot(u)
+	var off := ap.dot(n)                   # signed distance from the crosswalk line
+	if along < -1.5 or along > L + 1.5:
+		return false                        # beside the crosswalk, not on its road
+	if absf(off) < 2.6:
+		return true                         # on it (or the bumper over it)
+	var vn := Vector2(v.x, v.z).dot(n)
+	if absf(vn) < 0.8 or signf(vn) == signf(off):
+		return false                        # not moving towards it
+	return absf(off) / absf(vn) < 4.0
 
 
 # ================================================================== motion
@@ -1013,6 +1021,27 @@ func add_obstacles(list: Array) -> void:
 		if a.state == DOWN or (a.edge >= 0 and net.edges[a.edge].kind == Sidewalks.CROSSING and a.state != WAIT_CROSS) or a.displace.length() > 1.5:
 			var vel: Vector3 = Vector3(sin(a.yaw), 0, cos(a.yaw)) * a.v
 			list.append([a.pos, vel, 0.35, false, null, 0.45])
+
+
+## Something frightening at pos (a case's echo, gunfire): walkers within radius hurry away from it.
+func on_incident(pos: Vector3, radius := 30.0) -> void:
+	if not ready_ok:
+		return
+	for a in agents:
+		if a.state == DOWN or a.pos.distance_to(pos) > radius:
+			continue
+		if a.state == POI_STAY or a.state == POI_GO:
+			_leave_poi(a)
+		if a.state == WAIT_CROSS:
+			a.state = WALK
+		var e = net.edges[a.edge]
+		var d: Vector3 = e.dir_at(clampf(a.s, 0.0, e.length))
+		a.dir = 1 if d.dot(a.pos - pos) >= 0.0 else -1      # walk the pavement away from it
+		a.shaken = 12.0
+		a.speed = maxf(a.speed, 1.6)
+		if a.node and rng.randf() < 0.5:
+			a.node.play_action("flinch_head" if rng.randf() < 0.5 else "flinch")
+	stats["incidents"] = stats.get("incidents", 0) + 1
 
 
 func agents_near(p: Vector3, r: float) -> Array:

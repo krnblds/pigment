@@ -152,7 +152,7 @@ func ragdoll(impulse: Vector3, at: Vector3, exclude: PhysicsBody3D = null) -> vo
 		rag.exclude(exclude)
 	if umbrella:
 		umbrella.visible = false
-	rag.ragdoll(impulse, at)
+	rag.throw(impulse, at)
 
 
 func advance(dt: float) -> void:

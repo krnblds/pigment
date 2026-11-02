@@ -2,10 +2,11 @@ extends Node
 ## Ragdoll + get-up for any SkeletonProfileHumanoid character (Jolt, PhysicalBoneSimulator3D).
 ##
 ##   var rd := Ragdoll.new(); rd.setup(skeleton, anim_tree, character_root, hips_height); add_child(rd)
-##   rd.ragdoll(impulse, at)        throw the body: impulse (kg m/s, world) at a world point
+##   rd.throw(impulse, at)          throw the body: impulse (kg m/s, world) at a world point
 ##   signal fell / stood_up         stood_up after the get-up animation (face up: getup_back, face down: getup_front)
 ##   rd.active() -> bool            simulating or getting up
 ##   rd.exclude(body)               no collisions with this body (the car that hit them)
+##   Ragdoll.ragdoll(body, skeleton, impulse) -> bool   static: any humanoid, stays down (deaths)
 ## Physical bones are created on the first hit and freed after the get-up, so idle citizens cost nothing.
 ## Collision layer 64 (only scans layer 1: the world, props, the player car unless excluded).
 
@@ -40,6 +41,25 @@ var _blend := 0.0
 var _up_len := 1.5
 var face_up := true
 var max_time := 5.0
+var stay_down := false          ## dead: no get-up (the static ragdoll() below)
+
+
+## For other systems (scripts/waker/sleepwalker.gd _death_hook): throw any humanoid body that has a
+## SkeletonProfileHumanoid skeleton and leave it lying (no get-up).  impulse in kg m/s (small = collapse).
+static func ragdoll(body: Node3D, skeleton: Skeleton3D, impulse: Vector3) -> bool:
+	if body == null or skeleton == null or skeleton.find_bone("Hips") < 0:
+		return false
+	var rd = load("res://scripts/npc/character/ragdoll.gd").new()
+	rd.name = "Ragdoll"
+	var trees := body.find_children("*", "AnimationTree", true, false)
+	var hips: float = skeleton.get_bone_global_rest(skeleton.find_bone("Hips")).origin.y * skeleton.global_basis.get_scale().y
+	rd.setup(skeleton, trees[0] if not trees.is_empty() else null, body, maxf(hips, 0.5))
+	rd.stay_down = true
+	body.add_child(rd)
+	if body is CollisionObject3D:
+		rd.exclude(body)
+	rd.throw(impulse, skeleton.global_transform * skeleton.get_bone_global_pose(skeleton.find_bone("Hips")).origin)
+	return true
 
 
 func setup(s: Skeleton3D, at: AnimationTree, root: Node3D, hips := 0.9) -> void:
@@ -118,7 +138,7 @@ func _build() -> void:
 		bones[bn] = pb
 
 
-func ragdoll(impulse: Vector3, at: Vector3) -> void:
+func throw(impulse: Vector3, at: Vector3) -> void:
 	if state == 1:
 		_kick(impulse * 0.5, at)
 		return
@@ -134,7 +154,8 @@ func ragdoll(impulse: Vector3, at: Vector3) -> void:
 	state = 1
 	t = 0.0
 	_still = 0.0
-	CitizenAnim.stop_action(tree)
+	if tree:
+		CitizenAnim.stop_action(tree)
 	_kick(impulse, at)
 	fell.emit()
 
@@ -162,6 +183,8 @@ func _physics_process(dt: float) -> void:
 		var hb: PhysicalBone3D = bones.get("Hips")
 		var sp := hb.linear_velocity.length() if hb else 0.0
 		_still = _still + dt if sp < 0.35 else 0.0
+		if stay_down:
+			return
 		if (_still > 0.7 and t > 1.6) or t > max_time:
 			_begin_getup()
 	elif state == 2:
@@ -178,6 +201,9 @@ func _physics_process(dt: float) -> void:
 
 func _begin_getup() -> void:
 	var hb: PhysicalBone3D = bones.get("Hips")
+	if tree == null:
+		_finish()
+		return
 	var head: PhysicalBone3D = bones.get("Head", bones.get("UpperChest"))
 	if hb == null:
 		_finish()

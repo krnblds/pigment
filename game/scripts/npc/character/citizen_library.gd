@@ -121,6 +121,28 @@ static func crowd_mesh(id: String) -> Mesh:
 	return crowd(id)[0]
 
 
+## Prepare an instanced citizen scene for use outside Citizen (player_body.gd): atlas materials on
+## LOD0 / LOD1, LOD switch distance, the crowd LOD2 removed.
+static func dress(root: Node, id: String, lod_switch := 12.0) -> void:
+	var l2 = root.find_child("LOD2", true, false)
+	if l2:
+		l2.get_parent().remove_child(l2)
+		l2.free()
+	var mats := materials(id)
+	var lod0: MeshInstance3D = root.find_child("LOD0", true, false)
+	var lod1: MeshInstance3D = root.find_child("LOD1", true, false)
+	for mi in [lod0, lod1]:
+		if mi == null:
+			continue
+		for s in mi.mesh.get_surface_count():
+			var src: Material = mi.mesh.surface_get_material(s)
+			mi.set_surface_override_material(s, mats[1] if src != null and String(src.resource_name).contains("cutout") else mats[0])
+	if lod0 and lod1:
+		lod0.visibility_range_end = lod_switch
+		lod1.visibility_range_begin = lod_switch
+		lod1.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+
+
 static func spawn(id_or_seed, opts := {}) -> Node3D:
 	_load()
 	var id := String(id_or_seed) if id_or_seed is String else pick(int(id_or_seed))
