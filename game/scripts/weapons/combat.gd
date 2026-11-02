@@ -100,6 +100,8 @@ func hitscan(from: Vector3, dir: Vector3, w: Dictionary, source: Node, exclude: 
 	var h := {"amount": float(w.get("damage", 10.0)), "stun": float(w.get("stun", 0.0)), "pos": hit.position,
 		"normal": hit.normal, "dir": dir, "source": source, "weapon": String(w.id), "lethal": bool(w.get("lethal", true)),
 		"headshot_mult": float(w.get("headshot", 1.0))}
+	if source and "damage_scale" in source:
+		h.amount *= float(source.damage_scale)
 	if target:
 		target.take_hit(h)
 		stats.hits += 1

@@ -285,8 +285,8 @@ func _foot(dt: float) -> void:
 	var pre_v := velocity
 	move_and_slide()
 	# step up stairs / kerbs the capsule stops at
-	if is_on_floor() and is_on_wall() and hv.length() > 0.5:
-		_try_step(pre, pre_v * dt)
+	if is_on_floor() and is_on_wall() and target.length() > 0.5:
+		_try_step(pre, target.normalized() * maxf(Vector2(pre_v.x, pre_v.z).length(), 1.5) * dt)
 	# facing: towards the aim while aiming or just after firing, else towards travel
 	var face_yaw := _yaw
 	if aiming or _fire_face > 0.0 or (weapons.current != "" and _in("fire")):
@@ -316,26 +316,33 @@ func _foot(dt: float) -> void:
 		cam.crouch = _crouch_s
 
 
+## Stairs and kerbs: a ray just ahead of the capsule finds the tread; if it's a step (not a wall) and
+## the raised capsule fits there, lift onto it. (Treads can be shallower than the capsule radius, so
+## a downward shape cast would catch the next nosing first; the ray doesn't.)
 func _try_step(pre: Vector3, motion: Vector3) -> void:
 	var m := Vector3(motion.x, 0, motion.z)
 	if m.length() < 0.001:
 		return
-	var probe := m.normalized() * (RADIUS + 0.05)
-	var xf := Transform3D(Basis(), pre)
-	if test_move(xf, Vector3.UP * STEP):
+	var dir := m.normalized()
+	var space := get_world_3d().direct_space_state
+	_ray.collision_mask = 1 | 2
+	_ray.exclude = [get_rid()]
+	for ahead in [RADIUS + 0.06, RADIUS + 0.16]:
+		var at: Vector3 = pre + dir * ahead
+		_ray.from = at + Vector3.UP * (STEP + 0.05)
+		_ray.to = at + Vector3.UP * 0.02
+		var h := space.intersect_ray(_ray)
+		if not h or (h.normal as Vector3).y < 0.75:
+			continue
+		var rise: float = (h.position as Vector3).y - pre.y
+		if rise < 0.03 or rise > STEP:
+			continue
+		var to := pre + Vector3.UP * (rise + 0.02) + dir * maxf(m.length(), 0.08)
+		if test_move(Transform3D(Basis(), to), Vector3.UP * 0.01):
+			continue
+		global_position = to
+		stats.steps += 1
 		return
-	var up := xf.translated(Vector3.UP * STEP)
-	if test_move(up, probe):
-		return
-	var fw := up.translated(probe)
-	var col := KinematicCollision3D.new()
-	if test_move(fw, Vector3.DOWN * (STEP + 0.05), col) and col.get_normal().y > 0.7:
-		var h := (fw.origin + col.get_travel()).y - pre.y
-		if h > 0.03:
-			var to := pre + m.normalized() * maxf(m.length(), 0.06) + Vector3.UP * (h + 0.01)
-			if not test_move(Transform3D(Basis(), to), Vector3.UP * 0.01):
-				global_position = to
-				stats.steps += 1
 
 
 ## Vault over / mantle onto a low obstacle in front. True when it started.

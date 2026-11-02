@@ -161,19 +161,19 @@ func _build_tree() -> void:
 	loco.min_space = -4.5
 	loco.max_space = 7.0
 	loco.sync = true
-	loco.add_blend_point(_clip("Jog_Fwd_Back"), -4.0)
-	loco.add_blend_point(_clip("Walk_Back"), -1.6)
-	loco.add_blend_point(_clip("idle"), 0.0)
-	loco.add_blend_point(_clip("walk"), 1.6)
-	loco.add_blend_point(_clip("jog"), 4.0)
-	loco.add_blend_point(_clip("sprint"), 6.5)
+	loco.add_blend_point(_clip("Jog_Fwd_Back"), -4.0, -1, &"Jog_Fwd_Back")
+	loco.add_blend_point(_clip("Walk_Back"), -1.6, -1, &"Walk_Back")
+	loco.add_blend_point(_clip("idle"), 0.0, -1, &"idle")
+	loco.add_blend_point(_clip("walk"), 1.6, -1, &"walk")
+	loco.add_blend_point(_clip("jog"), 4.0, -1, &"jog")
+	loco.add_blend_point(_clip("sprint"), 6.5, -1, &"sprint")
 	bt.add_node("loco", loco, Vector2(0, 0))
 	var cr := AnimationNodeBlendSpace1D.new()
 	cr.min_space = -2.0
 	cr.max_space = 2.0
-	cr.add_blend_point(_clip("Crouch_Fwd_Back"), -1.8)
-	cr.add_blend_point(_clip("crouch_idle"), 0.0)
-	cr.add_blend_point(_clip("crouch_fwd"), 1.8)
+	cr.add_blend_point(_clip("Crouch_Fwd_Back"), -1.8, -1, &"Crouch_Fwd_Back")
+	cr.add_blend_point(_clip("crouch_idle"), 0.0, -1, &"crouch_idle")
+	cr.add_blend_point(_clip("crouch_fwd"), 1.8, -1, &"crouch_fwd")
 	bt.add_node("crouch", cr, Vector2(0, 200))
 	bt.add_node("crouch_mix", AnimationNodeBlend2.new(), Vector2(250, 100))
 	bt.connect_node("crouch_mix", 0, "loco")
@@ -186,9 +186,9 @@ func _build_tree() -> void:
 	var aimbs := AnimationNodeBlendSpace1D.new()
 	aimbs.min_space = -1.0
 	aimbs.max_space = 1.0
-	aimbs.add_blend_point(_clip("aim_down"), -1.0)
-	aimbs.add_blend_point(_clip("aim_mid"), 0.0)
-	aimbs.add_blend_point(_clip("aim_up"), 1.0)
+	aimbs.add_blend_point(_clip("aim_down"), -1.0, -1, &"aim_down")
+	aimbs.add_blend_point(_clip("aim_mid"), 0.0, -1, &"aim_mid")
+	aimbs.add_blend_point(_clip("aim_up"), 1.0, -1, &"aim_up")
 	bt.add_node("aim_pitch", aimbs, Vector2(250, 500))
 	bt.add_node("stance", _clip("pistol_idle"), Vector2(250, 650))
 	bt.add_node("aim_mix", AnimationNodeBlend2.new(), Vector2(450, 550))
