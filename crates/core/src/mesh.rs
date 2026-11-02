@@ -509,8 +509,60 @@ fn load_obj(path: &Path) -> Result<Mesh> {
     Ok(mesh.finish(had_normals))
 }
 
+/// `gltf::import`, but also accepting scenes without a `nodes` array. The
+/// glTF spec makes it optional and Blender writes one for every extra scene
+/// in the file (an empty "Scene" next to the exported one); gltf-json 1.4
+/// insists on it, so on that error the JSON gets `"nodes": []` and is read again.
+fn import_gltf(path: &Path) -> Result<(gltf::Document, Vec<gltf::buffer::Data>)> {
+    match gltf::import(path) {
+        Ok((doc, buffers, _)) => Ok((doc, buffers)),
+        Err(e) if e.to_string().contains("missing field `nodes`") => {
+            let patched = with_scene_nodes(&std::fs::read(path)?)?;
+            let g = gltf::Gltf::from_slice(&patched)?;
+            let buffers = gltf::import_buffers(&g.document, path.parent(), g.blob)?;
+            Ok((g.document, buffers))
+        }
+        Err(e) => Err(e.into()),
+    }
+}
+
+/// The same .glb / .gltf bytes with `"nodes": []` added to scenes that lack it.
+fn with_scene_nodes(bytes: &[u8]) -> Result<Vec<u8>> {
+    let fix = |json: &[u8]| -> Result<Vec<u8>> {
+        let mut v: serde_json::Value = serde_json::from_slice(json)?;
+        for s in v.get_mut("scenes").and_then(|s| s.as_array_mut()).into_iter().flatten() {
+            if let Some(o) = s.as_object_mut() {
+                o.entry("nodes").or_insert_with(|| serde_json::json!([]));
+            }
+        }
+        Ok(serde_json::to_vec(&v)?)
+    };
+    if !bytes.starts_with(b"glTF") {
+        return fix(bytes);
+    }
+    // GLB: 12-byte header, then the JSON chunk (length, "JSON", data), then the rest
+    if bytes.len() < 20 {
+        bail!("truncated .glb");
+    }
+    let json_len = u32::from_le_bytes(bytes[12..16].try_into().unwrap()) as usize;
+    let rest = bytes.get(20 + json_len..).context("truncated .glb")?;
+    let mut json = fix(&bytes[20..20 + json_len])?;
+    while json.len() % 4 != 0 {
+        json.push(b' ');
+    }
+    let total = 12 + 8 + json.len() + rest.len();
+    let mut out = Vec::with_capacity(total);
+    out.extend_from_slice(&bytes[..8]);
+    out.extend_from_slice(&(total as u32).to_le_bytes());
+    out.extend_from_slice(&(json.len() as u32).to_le_bytes());
+    out.extend_from_slice(b"JSON");
+    out.extend_from_slice(&json);
+    out.extend_from_slice(rest);
+    Ok(out)
+}
+
 fn load_gltf(path: &Path) -> Result<Mesh> {
-    let (doc, buffers, _images) = gltf::import(path)?;
+    let (doc, buffers) = import_gltf(path)?;
     let mut mesh = Mesh { has_uvs: true, ..Default::default() };
     mesh.material_names = doc.materials().enumerate().map(|(k, m)| m.name().map(String::from).unwrap_or_else(|| format!("material_{k}"))).collect();
     let mut colors: Vec<[f32; 3]> = Vec::new();
@@ -594,6 +646,47 @@ mod tests {
         let p = dir.join(name);
         std::fs::File::create(&p).unwrap().write_all(contents).unwrap();
         p
+    }
+
+    #[test]
+    fn glb_with_an_empty_extra_scene_loads() {
+        // one UV'd triangle, plus a second scene without `nodes`, the way
+        // Blender exports from a file that has more than one scene
+        let pos: [f32; 9] = [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0];
+        let uv: [f32; 6] = [0.0, 0.0, 1.0, 0.0, 0.0, 1.0];
+        let mut bin: Vec<u8> = bytemuck::cast_slice(&pos).to_vec();
+        bin.extend_from_slice(bytemuck::cast_slice(&uv));
+        let json = serde_json::json!({
+            "asset": {"version": "2.0"}, "scene": 0,
+            "scenes": [{"name": "Room", "nodes": [0]}, {"name": "Scene"}],
+            "nodes": [{"mesh": 0}],
+            "meshes": [{"primitives": [{"attributes": {"POSITION": 0, "TEXCOORD_0": 1}}]}],
+            "accessors": [
+                {"bufferView": 0, "componentType": 5126, "count": 3, "type": "VEC3", "min": [0.0, 0.0, 0.0], "max": [1.0, 1.0, 0.0]},
+                {"bufferView": 1, "componentType": 5126, "count": 3, "type": "VEC2"}
+            ],
+            "bufferViews": [{"buffer": 0, "byteOffset": 0, "byteLength": 36}, {"buffer": 0, "byteOffset": 36, "byteLength": 24}],
+            "buffers": [{"byteLength": 60}]
+        });
+        let mut j = serde_json::to_vec(&json).unwrap();
+        while j.len() % 4 != 0 {
+            j.push(b' ');
+        }
+        let total = 12 + 8 + j.len() + 8 + bin.len();
+        let mut glb = b"glTF".to_vec();
+        glb.extend_from_slice(&2u32.to_le_bytes());
+        glb.extend_from_slice(&(total as u32).to_le_bytes());
+        glb.extend_from_slice(&(j.len() as u32).to_le_bytes());
+        glb.extend_from_slice(b"JSON");
+        glb.extend_from_slice(&j);
+        glb.extend_from_slice(&(bin.len() as u32).to_le_bytes());
+        glb.extend_from_slice(b"BIN\0");
+        glb.extend_from_slice(&bin);
+        let p = temp_file("two_scenes.glb", &glb);
+        assert!(gltf::import(&p).is_err(), "gltf-json now accepts this: import_gltf's fallback can go");
+        let m = Mesh::load(&p).unwrap();
+        assert_eq!(m.indices.len(), 3);
+        assert!(m.has_uvs);
     }
 
     const QUAD_OBJ: &str = "\
