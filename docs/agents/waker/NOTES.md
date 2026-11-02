@@ -163,7 +163,10 @@ stipple, scuffs, grime, 1024 export) -> `blender ... tools/weapons/export_weapon
 | `--no-cases` | no case loop; on foot / kit / door still work |
 
 Results on this branch (headless): `--onfoot-test`, `--weapons-test`, `--waker-test` PASS; `--drive-test`,
-`--traffic-test=60`, `--damage-test`, `--showroom-test` PASS.
+`--traffic-test=60`, `--damage-test` PASS. `--showroom-test` passes most runs but its drive-in check for
+the `yoimachi_mods` garage is intermittent (the car stops 6-15 m short, 9 s budget); it failed 1 in 5
+runs with the original traffic manager as well, so it looks like traffic randomly in the way rather than
+this branch, but worth a look at merge.
 
 ## Performance
 
