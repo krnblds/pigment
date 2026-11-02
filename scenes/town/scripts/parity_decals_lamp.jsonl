@@ -1,0 +1,6 @@
+{"tool": "new_project", "args": {"mesh": "assets/town/street_lamp.glb", "resolution": 2048, "material": "Gunmetal"}}
+{"tool": "add_layer", "args": {"kind": "decal", "name": "Stickers"}}
+{"tool": "project_decal", "args": {"image": "assets/decals/story/poster_unplug.png", "layer": "Stickers", "position": [0.0, 1.2, 0.4], "normal": [0, 0, 1], "size": 0.42, "projection": "box", "name": "sticker_box"}}
+{"tool": "project_decal", "args": {"image": "assets/decals/story/poster_unplug.png", "layer": "Stickers", "position": [0.0, 2.1, 0.4], "normal": [0, 0, 1], "size": 0.42, "projection": "wrap", "name": "sticker_wrap"}}
+{"tool": "render", "args": {"yaw": 20, "pitch": 4, "target": [0.0, 1.65, 0.0], "distance": 2.2, "width": 900, "height": 640, "path": "target/pd/dec_lamp_0.png"}}
+{"tool": "render", "args": {"yaw": 95, "pitch": 4, "target": [0.0, 1.65, 0.0], "distance": 2.2, "width": 900, "height": 640, "path": "target/pd/dec_lamp_1.png"}}

@@ -11,7 +11,13 @@ use serde_json::{json, Value};
 
 type Res<T> = Result<T, String>;
 
+mod bake_tools;
+pub mod set_tools;
+mod template_tools;
+mod brush_tools;
+mod decal_object_tools;
 mod decal_tools;
+mod filter_tools;
 mod foliage_tools;
 mod interior_tools;
 mod sheet_tools;
@@ -161,7 +167,13 @@ impl Session {
         let _ = self.app.history.clear();
         self.app.select(self.app.doc.layers.last().map(|l| l.id), false);
         self.settle();
-        Ok(json!({ "mesh": self.app.mesh.name, "triangles": self.app.mesh.triangle_count(), "layers": self.layers() }))
+        let sets = self.configure_sets(a)?;
+        let mut out = json!({ "mesh": self.app.mesh.name, "triangles": self.app.mesh.triangle_count(), "layers": self.layers() });
+        if let Some(v) = sets {
+            out["texture_sets"] = v["texture_sets"].clone();
+            out["udim_moves"] = v["udim_moves"].clone();
+        }
+        Ok(out)
     }
 
     pub fn open_project(&mut self, a: &Value) -> Res<Value> {
@@ -179,7 +191,11 @@ impl Session {
             None => self.app.project_dir.clone().ok_or("no project folder yet: pass `path` (e.g. C:/work/crate.pigment)")?,
         };
         self.app.status = None;
-        self.app.save_to(&self.rs, dir.clone());
+        if self.app.has_sets() {
+            self.app.save_sets(&self.rs, dir.clone());
+        } else {
+            self.app.save_to(&self.rs, dir.clone());
+        }
         Ok(json!({ "saved": dir, "status": self.status()? }))
     }
 
@@ -203,6 +219,7 @@ impl Session {
             "tile_sets": pigment_core::image_fill::list_tile_sets(Path::new("assets/tiles")).iter().map(|n| format!("assets/tiles/{n}")).collect::<Vec<_>>(),
             "image_projections": ["uv", "triplanar"],
             "foliage": self.foliage_library(),
+            "brush_tips": self.brush_tips(),
         })
     }
 
@@ -217,7 +234,7 @@ impl Session {
                     let mut o = json!({
                         "index": i,
                         "name": l.name,
-                        "kind": if l.is_folder() { "folder" } else if l.is_paint() { "paint" } else { "fill" },
+                        "kind": if l.is_folder() { "folder" } else if l.decals.is_some() { "decal" } else if l.is_paint() { "paint" } else if matches!(l.kind, LayerKind::Filter {}) { "filter" } else { "fill" },
                         "visible": l.visible,
                         "opacity": l.opacity,
                         "channels": Channel::ALL.iter().filter(|c| l.channels.get(**c).enabled).map(|c| c.file_stem()).collect::<Vec<_>>(),
@@ -253,6 +270,20 @@ impl Session {
                             "parts": m.parts,
                             "invert": m.invert,
                         });
+                    }
+                    if !l.filters.is_empty() {
+                        o["filters"] = filter_tools::filters_json(&l.filters);
+                    }
+                    if let Some(a) = &l.anchor {
+                        o["anchor"] = json!(a);
+                    }
+                    if let Some(m) = &l.mask {
+                        if !m.filters.is_empty() {
+                            o["mask"]["filters"] = filter_tools::filters_json(&m.filters);
+                        }
+                        if let Some(inp) = m.generator.as_ref().and_then(|g| g.input.as_ref()) {
+                            o["mask"]["input"] = json!({ "anchor": inp.anchor, "channel": inp.channel.id(), "strength": inp.strength, "radius": inp.radius });
+                        }
                     }
                     if !l.variant.is_empty() {
                         o["variant"] = json!({
@@ -495,7 +526,8 @@ impl Session {
                     mask.invert = inv;
                 }
                 if let Some(ps) = m.get("parts") {
-                    let n = app.parts.info.len();
+                    // with texture sets, part ids are the whole mesh's
+                    let n = app.multi.as_ref().map(|m| m.part_count).unwrap_or(app.parts.info.len());
                     let ps = ps.as_array().ok_or("`mask.parts` must be an array of part ids (see list_parts)")?;
                     let mut ids = Vec::with_capacity(ps.len());
                     for (k, p) in ps.iter().enumerate() {
@@ -545,6 +577,7 @@ impl Session {
                 }
             }
         }
+        filter_tools::configure_filters(app, i, a)?;
         match a.get("variant") {
             None => {}
             Some(Value::Null) => app.doc.layers[i].variant.group.clear(),
@@ -638,7 +671,13 @@ impl Session {
             "fill" => self.app.doc.fill_with(&name, s(a, "material").unwrap_or("White plastic"), None),
             "folder" => self.app.doc.new_folder(if s(a, "name").is_some() { &name } else { "Folder" }),
             "foliage" => self.app.doc.new_foliage_layer(&name),
-            _ => return Err("`kind` must be \"fill\", \"paint\", \"folder\" or \"foliage\"".into()),
+            "decal" => {
+                let mut l = self.app.doc.new_paint_layer(if s(a, "name").is_some() { &name } else { "Decals" });
+                l.decals = Some(Default::default());
+                l
+            }
+            "filter" => self.app.doc.new_filter_layer(if s(a, "name").is_some() { &name } else { "Filter" }, Vec::new()),
+            _ => return Err("`kind` must be \"fill\", \"paint\", \"folder\", \"filter\", \"decal\" or \"foliage\"".into()),
         };
         if let Some(p) = parent {
             // inside a folder: `index` is the position among its children
@@ -663,7 +702,7 @@ impl Session {
         }
         let at = match a.get("index").and_then(Value::as_u64) {
             Some(i) => (i as usize).min(self.app.doc.layers.len()),
-            None if kind == "paint" => self.app.doc.layers.len(),
+            None if kind == "paint" || kind == "filter" || kind == "decal" => self.app.doc.layers.len(),
             None => self.app.doc.layers.iter().rposition(|l| l.is_paint()).unwrap_or(self.app.doc.layers.len()),
         };
         let id = l.id;
@@ -772,6 +811,9 @@ impl Session {
     }
 
     pub fn bake(&mut self, a: &Value) -> Res<Value> {
+        if a.get("high_mesh").is_some() || a.get("maps").is_some() {
+            return self.bake_high(a);
+        }
         let b = &mut self.app.doc.bake;
         if let Some(n) = a.get("ao_samples").and_then(Value::as_u64) {
             b.ao_samples = (n as u32).clamp(8, 1024);
@@ -889,7 +931,13 @@ impl Session {
 
     fn draw(&mut self) {
         self.app.viewport.ensure_targets(&self.rs.device, self.size);
-        self.app.viewport.draw(&self.rs.device, &self.rs.queue, &self.app.camera, &self.app.view, self.app.mesh_gpu.as_ref(), &self.app.env, &self.app.ts);
+        self.app.composite_parked(&self.rs);
+        let app = &mut self.app;
+        let mut sets = vec![(app.mesh_gpu.as_ref(), &app.ts)];
+        if let Some(m) = &app.multi {
+            sets.extend(m.parked.iter().map(|s| (s.mesh_gpu.as_ref(), &s.ts)));
+        }
+        app.viewport.draw_sets(&self.rs.device, &self.rs.queue, &app.camera, &app.view, &sets, &app.env);
     }
 
     /// Paint one stroke. `points` are viewport positions in 0..1 (x right, y down)
@@ -912,7 +960,7 @@ impl Session {
         // target layer: given, else the topmost paint layer (created if missing)
         let i = match a.get("layer") {
             Some(r) => self.find_layer(r)?,
-            None => match self.app.doc.layers.iter().rposition(|l| l.is_paint()) {
+            None => match self.app.doc.layers.iter().rposition(|l| l.is_paint() && l.decals.is_none()) {
                 Some(i) => i,
                 None => {
                     let l = self.app.doc.new_paint_layer("Paint");
@@ -958,23 +1006,36 @@ impl Session {
         b.size = f(a, "size").unwrap_or(40.0);
         b.opacity = f(a, "opacity").unwrap_or(1.0);
         b.hardness = f(a, "hardness").unwrap_or(0.6);
-        b.spacing = 0.1;
+        b.spacing = f(a, "spacing").unwrap_or(0.1).clamp(0.01, 4.0);
         b.erase = a.get("erase").and_then(Value::as_bool).unwrap_or(false);
         b.mask_white = s(a, "mask_value").unwrap_or("white") != "black";
+        // brush engine: every call starts from the defaults, so scripts replay exactly
+        let px = Vec2::new(self.size[0] as f32, self.size[1] as f32);
+        let pressures = brush_tools::configure_brush(&mut self.app, &self.rs, a, pts.len(), px)?;
         self.app.ppp = 1.0;
         self.draw();
-        let px = Vec2::new(self.size[0] as f32, self.size[1] as f32);
         let to_px = |p: Vec2| p * px;
+        // clone source: the UV under a viewport point (camera of this call)
+        if let Some(src) = a.get("clone_source") {
+            let v = src.as_array().filter(|v| v.len() == 2).ok_or("`clone_source` must be [x, y] in 0..1 (a viewport point on the model)")?;
+            let p = Vec2::new(v[0].as_f64().unwrap_or(0.0) as f32, v[1].as_f64().unwrap_or(0.0) as f32);
+            let uv = self.app.uv_at_px(to_px(p), px).ok_or("`clone_source` is not on the model")?;
+            self.app.brush.clone_source = Some(uv);
+            self.app.brush.clone_offset = None;
+        }
+        if self.app.brush.tool == super::BrushTool::Clone && self.app.brush.clone_source.is_none() {
+            return Err("tool \"clone\" needs `clone_source` ([x, y] viewport point to copy from)".into());
+        }
+        self.app.brush.pressure = pressures[0];
         self.app.begin_stroke(&self.rs, to_px(pts[0]), px);
         if self.app.stroke.is_none() {
             return Err(self.status().err().unwrap_or_else(|| "couldn't start the stroke".into()));
         }
-        let spacing = (self.app.brush.size * self.app.brush.spacing).max(1.0);
-        for p in &pts[1..] {
-            let stamps = self.app.stroke.as_mut().map(|st| st.sampler.move_to(to_px(*p), spacing)).unwrap_or_default();
-            self.app.apply_stamps(&self.rs, stamps);
+        for (k, p) in pts.iter().enumerate().skip(1) {
+            self.app.stroke_to(&self.rs, to_px(*p), pressures[k]);
         }
         self.app.end_stroke(&self.rs);
+        self.app.brush.pressure = 1.0;
         self.settle();
         Ok(json!({ "painted_on": self.app.doc.layers[i].name, "mask": on_mask }))
     }
@@ -1021,7 +1082,7 @@ impl Session {
         };
         let i = match a.get("layer") {
             Some(r) => self.find_layer(r)?,
-            None => match self.app.doc.layers.iter().rposition(|l| l.is_paint()) {
+            None => match self.app.doc.layers.iter().rposition(|l| l.is_paint() && l.decals.is_none()) {
                 Some(i) => i,
                 None => {
                     let l = self.app.doc.new_paint_layer("Decals");
@@ -1323,11 +1384,20 @@ impl Session {
                 format!("`compression` = {c}: expected one of {}", export::Compression::ALL.map(|c| c.id()).join(", "))
             })?,
         };
+        if a.get("template").is_some() {
+            return self.export_template(a, &dir, compression);
+        }
         self.app.doc.export_preset = preset.to_string();
         self.app.export_dir = Some(dir.clone());
         self.app.export_name = s(a, "name").map(String::from).unwrap_or_else(|| self.app.mesh.name.clone());
         self.app.export_compression = compression;
         self.app.status = None;
+        if self.app.has_sets() {
+            // one file per texture set and UDIM tile: <name>_<set>_<map>.<udim>.png
+            let name = self.app.export_name.clone();
+            let files = self.app.export_sets(&self.rs, &dir, &name)?;
+            return Ok(json!({ "files": files, "texture_sets": self.app.set_names(), "compression": compression.id() }));
+        }
         self.app.export(&self.rs);
         let msg = self.status()?;
         let [wait_ms, read_ms, encode_ms, total_ms] = self.app.last_export_ms.map(|x| (x * 10.0).round() / 10.0);

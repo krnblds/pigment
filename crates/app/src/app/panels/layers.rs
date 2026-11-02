@@ -39,6 +39,7 @@ fn layer_subtitle(doc: &Document, l: &Layer) -> String {
             None => "Fill · painted mask".to_string(),
         },
         (LayerKind::Fill { .. }, None) => if l.image.is_some() { "Image fill · everywhere" } else { "Fill · everywhere" }.to_string(),
+        (LayerKind::Filter {}, _) => format!("Filter · {}", l.filters.iter().filter(|f| f.enabled).map(|f| f.kind.label().to_lowercase()).collect::<Vec<_>>().join(", ")),
         (LayerKind::Foliage { foliage }, _) => format!("Foliage · {} card{}", foliage.instances.len(), if foliage.instances.len() == 1 { "" } else { "s" }),
         (LayerKind::Folder { .. }, m) => format!(
             "Folder · {kids} item{}{}",
@@ -66,6 +67,10 @@ fn paint_thumb(pa: &egui::Painter, r: egui::Rect, l: &Layer, p: &ds::Palette) {
         LayerKind::Foliage { .. } => {
             pa.rect_filled(r, egui::CornerRadius::same(ds::radius::SM), p.well);
             Icon::Leaf.paint(pa, r.shrink(space::SM), p.success);
+        }
+        LayerKind::Filter {} => {
+            pa.rect_filled(r, egui::CornerRadius::same(ds::radius::SM), p.well);
+            Icon::Sliders.paint(pa, r.shrink(space::SM), p.info);
         }
     }
 }
@@ -113,6 +118,7 @@ impl Panel for LayersPanel {
                 }
             }
         }
+        super::texsets::set_switcher(app, ui, rs);
         ui.horizontal(|ui| {
             let add = ui.menu_button(ds::strong("+ Add", font::BODY), |ui| add_layer_menu(app, ui, rs));
             app.anchors.insert("add_layer", add.response.rect);
@@ -365,6 +371,10 @@ pub fn add_layer_menu(app: &mut PigmentApp, ui: &mut egui::Ui, rs: &RenderState)
         app.add_folder();
         ui.close();
     }
+    if item(ui, Icon::Sliders, "Filter layer", "Levels, HSL, blur, warp... on everything below it (inside its mask)") {
+        super::filters::add_filter_layer(app);
+        ui.close();
+    }
     ui.separator();
     ui.label(ds::caption(ui, "Smart layers"));
     if item(ui, Icon::Sparkle, "Edge wear", "Bare metal on the edges") {
@@ -570,6 +580,12 @@ impl Panel for PropertiesPanel {
                     ds::slider_row(ui, "Wind (preview)", &mut foliage.wind, 0.0..=1.0, ds::Unit::Percent);
                 });
             }
+            LayerKind::Filter {} => {
+                ds::card(ui, |ui| {
+                    ui.label(ds::strong("Filter layer", font::BODY));
+                    ds::hint(ui, "Filters the whole stack below it, inside its mask and opacity (levels, blur, warp...).");
+                });
+            }
             LayerKind::Folder { .. } => {
                 ds::card(ui, |ui| {
                     ui.label(ds::strong("Folder", font::BODY));
@@ -581,6 +597,8 @@ impl Panel for PropertiesPanel {
                 });
             }
         }
+        super::decal_objects::decal_objects_ui(app, ui, _rs, i);
+        super::filters::layer_filters_ui(app, ui, i);
         if save_smart {
             app.save_smart_dialog();
         }
@@ -777,6 +795,7 @@ fn generator_blurb(k: GeneratorKind) -> &'static str {
         GeneratorKind::Rock => "Ridged, warped rock with strata ledges, block-joint cracks and downhill streaks.",
         GeneratorKind::Blades => "A dense field of grass blades in clumps, leaning; Amount = density. Tips variant for dry tips.",
         GeneratorKind::Ripples => "Wind ripples in sand: asymmetric crests that curve, fork and fade.",
+        GeneratorKind::Anchor => "Uses an anchor's channel (painted height, an anchor layer's mask or colour) directly as the mask. Pick the anchor under Input.",
     }
 }
 
@@ -965,6 +984,7 @@ impl Panel for MaskPanel {
                 });
             });
         }
+        super::filters::generator_input_ui(app, ui, i);
         let gen_rect = egui::Rect::from_min_max(top, egui::pos2(ui.max_rect().right(), ui.cursor().min.y));
         if gen_rect.height() > 10.0 {
             app.anchors.insert("generator", gen_rect);
@@ -1007,6 +1027,9 @@ impl Panel for MaskPanel {
                 }
             });
         }
+        super::filters::mask_filters_ui(app, ui, i);
+        super::hibake::id_mask_ui(app, ui, i);
+        let m = app.doc.layers[i].mask.as_mut().unwrap();
         ds::section(ui, "Parts");
         let n = m.parts.len();
         ds::card(ui, |ui| {

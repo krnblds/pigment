@@ -1258,9 +1258,17 @@ impl PigmentApp {
             _ => {}
         }
 
-        // painting
+        // painting (brush tools first: stencil transform, clone source, path, line)
         let paints = matches!(tool, Tool::Paint | Tool::Erase);
-        if paints && click && self.stroke.is_none() {
+        self.read_pen(ui);
+        // decal layers: the viewport edits their decal objects instead of painting
+        let gizmo = paints && self.stroke.is_none() && self.decal_gizmo_input(ui, &response, rect, viewport_px, latest, click, alt);
+        let consumed = gizmo || (paints && self.stroke.is_none() && self.brush_tool_input(ui, rs, &response, rect, viewport_px, latest, click, alt));
+        if paints {
+            self.brush_overlay(ui, rect);
+            self.decal_overlay(ui, rect);
+        }
+        if paints && click && !consumed && self.stroke.is_none() {
             if locked {
                 self.ui.toasts.push(ToastKind::Warn, "This layer is locked", "Unlock it in the Layers panel to paint on it.");
             } else if let Some(p) = latest {
@@ -1268,9 +1276,7 @@ impl PigmentApp {
             }
         } else if (down || released) && self.stroke.is_some() {
             if let Some(p) = latest {
-                let spacing = (self.brush.size * ppp * self.brush.spacing).max(1.0);
-                let pts = self.stroke.as_mut().map(|s| s.sampler.move_to(to_px(p), spacing)).unwrap_or_default();
-                self.apply_stamps(rs, pts);
+                self.stroke_to(rs, to_px(p), self.brush.pressure);
             }
         }
         if (released || !down) && self.stroke.is_some() {
@@ -1291,7 +1297,8 @@ impl PigmentApp {
                 self.camera.orbit(d);
             }
         }
-        if response.hovered() {
+        // (Ctrl+wheel scales the selected decal on a decal layer instead)
+        if response.hovered() && !(gizmo && self.decal_sel.is_some() && pinch != 1.0) {
             let steps = if scroll.y != 0.0 { scroll.y / 50.0 } else if pinch != 1.0 { pinch.ln() / 0.105 } else { 0.0 };
             if steps != 0.0 {
                 self.zoom_towards(steps, self.hover.map(to_px), viewport_px);
@@ -1306,7 +1313,13 @@ impl PigmentApp {
         }
         self.ensure_composited(rs);
         let size = [viewport_px.x as u32, viewport_px.y as u32];
-        if let Some(tex) = self.viewport.render(rs, size, &self.camera, &self.view, self.mesh_gpu.as_ref(), &self.env, &self.ts) {
+        // every texture set (the active one first)
+        self.composite_parked(rs);
+        let mut sets = vec![(self.mesh_gpu.as_ref(), &self.ts)];
+        if let Some(m) = &self.multi {
+            sets.extend(m.parked.iter().map(|s| (s.mesh_gpu.as_ref(), &s.ts)));
+        }
+        if let Some(tex) = self.viewport.render_sets(rs, size, &self.camera, &self.view, &sets, &self.env) {
             let uv = Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0));
             ui.painter().image(tex, rect, uv, ds::IMAGE_TINT);
         }

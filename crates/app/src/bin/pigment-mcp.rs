@@ -28,7 +28,19 @@ use std::time::Instant;
 
 const PROTOCOL: &str = "2025-06-18";
 
+/// Every tool, plus `texture_set` on the tools that work on one set's layers.
 fn tools() -> Value {
+    let mut v = tools_base();
+    for t in v.as_array_mut().unwrap() {
+        if pigment_engine::app::automation::set_tools::SET_TOOLS.contains(&t["name"].as_str().unwrap_or("")) {
+            t["inputSchema"]["properties"]["texture_set"] = json!({ "type": ["string", "integer"],
+                "description": "texture set to work on (name or index, see list_texture_sets; default: the active one); \"*\" = every set (paint_stroke paints across sets on its own)" });
+        }
+    }
+    v
+}
+
+fn tools_base() -> Value {
     let mut layer_fields = json!({
         "name": { "type": "string" },
         "material": { "type": "string", "description": "Material preset name (see list_library)" },
@@ -42,6 +54,8 @@ fn tools() -> Value {
         "channels": { "type": "object", "description": "e.g. {\"height\": false, \"roughness\": true}" },
         "blend": { "type": "object", "description": "per channel, e.g. {\"base_color\": \"multiply\", \"height\": \"add\"}" },
         "mask": mask_schema(),
+        "filters": { "type": "array", "items": filter_schema(false), "description": "replace the layer's filter stack (run in order on the stack right after this layer, inside its mask; on a filter layer: on the stack below). [] removes them" },
+        "anchor": { "type": ["string", "null"], "description": "make this layer an anchor point with this name (null removes): generators above can read its height / mask / colour (mask.input)" },
         "variant": { "type": ["string", "null"], "description": "variant group tag: export_variants can enable/disable every layer or decal in a group" },
         "part_subset": { "type": ["object", "null"], "additionalProperties": false,
             "properties": { "from": { "type": "number" }, "to": { "type": "number" }, "salt": { "type": "integer", "minimum": 0 } },
@@ -94,7 +108,7 @@ fn tools() -> Value {
     let mut add_props = layer_fields.clone();
     let layer_ref = |d: &str| json!({ "type": ["string", "integer"], "description": d });
     let folder_ref = |d: &str| json!({ "type": ["string", "integer", "null"], "description": d });
-    add_props["kind"] = json!({ "type": "string", "enum": ["fill", "paint", "folder", "foliage"], "description": "folder = a group with its own opacity, blend, mask and visibility; its mask multiplies its children's. foliage = cards on the model (see scatter_foliage / paint_foliage / grow_ivy)" });
+    add_props["kind"] = json!({ "type": "string", "enum": ["fill", "paint", "folder", "filter", "decal", "foliage"], "description": "decal = a decal layer: project_decal / scatter_decals / place_decal on it make editable decal objects (list_decals, update_decal, delete_decal; the layer re-composites). filter = an adjustment layer: its `filters` run on the whole stack below, inside its mask and opacity (default position: top). folder = a group with its own opacity, blend, mask and visibility; its mask multiplies its children's. foliage = cards on the model (see scatter_foliage / paint_foliage / grow_ivy)" });
     add_props["index"] = json!({ "type": "integer", "minimum": 0, "description": "stack position (0 = bottom); default: below the top paint layer. With `parent`: position among the folder's children (default: top)" });
     add_props["parent"] = folder_ref("folder to put the new layer in (name, \"Folder/Sub\" path or index); null/omitted = top level");
     let mut upd_props = layer_fields;
@@ -115,6 +129,36 @@ fn tools() -> Value {
         ("mask_value", json!({ "type": "string", "enum": ["white", "black"] })),
         ("erase", json!({ "type": "boolean" })),
         ("values", brush_values.clone()),
+    ] {
+        paint_props[k] = v;
+    }
+    // brush engine (pigment_core::brush): every call starts from the defaults
+    let curve = |d: &str| json!({ "type": ["boolean", "object"], "additionalProperties": false, "description": d,
+        "properties": { "enabled": { "type": "boolean" }, "min": { "type": "number", "description": "value at zero pressure, 0..1 (default 0.1)" }, "gamma": { "type": "number", "description": "response curve: > 1 needs more pressure (default 1)" } } });
+    for (k, v) in [
+        ("tip", json!({ "type": ["string", "null"], "description": "brush tip (alpha) from the library (list_library brush_tips: round, square, chalk, spray, splatter, cracks, scratches, grunge_1, grunge_2, leaves, dots); default: round falloff with `hardness`" })),
+        ("pressure", json!({ "type": ["number", "array"], "items": { "type": "number" }, "description": "pen pressure 0..1: one number for the whole stroke or one per point (interpolated between points). Drives size (pressure_size, on by default), flow and opacity curves" })),
+        ("pressure_size", curve("pressure -> size (default on, min 0.1)")),
+        ("pressure_flow", curve("pressure -> flow (default off)")),
+        ("pressure_opacity", curve("pressure -> opacity (default off)")),
+        ("spacing", json!({ "type": "number", "description": "distance between dabs as a fraction of the diameter (default 0.1)" })),
+        ("flow", json!({ "type": "number", "description": "per-dab strength 0..1 (default 1 = a stroke never exceeds `opacity`; lower = dabs build up towards it)" })),
+        ("angle", json!({ "type": "number", "description": "tip angle, degrees" })),
+        ("follow_angle", json!({ "type": "boolean", "description": "the tip turns with the stroke direction (+ angle)" })),
+        ("jitter", json!({ "type": "object", "additionalProperties": false, "description": "random variation per dab",
+            "properties": { "size": { "type": "number", "description": "0..1 fraction" }, "angle": { "type": "number", "description": "degrees either way" }, "position": { "type": "number", "description": "scatter, in diameters" }, "flow": { "type": "number", "description": "0..1 fraction" } } })),
+        ("lazy", json!({ "type": "number", "description": "lazy mouse: the brush trails the points by this many pixels (smooths the path)" })),
+        ("seed", json!({ "type": "integer", "minimum": 0, "description": "jitter seed" })),
+        ("symmetry", json!({ "type": ["object", "null"], "additionalProperties": false, "description": "object-space symmetry: mirror planes through `center` (default: the mesh centre) and/or radial copies around an axis",
+            "properties": { "x": { "type": "boolean" }, "y": { "type": "boolean" }, "z": { "type": "boolean" }, "radial": { "type": "integer", "minimum": 0, "description": "copies around the axis" },
+                            "axis": { "type": ["string", "integer"], "description": "radial axis x | y | z (default y)" }, "center": { "type": "array", "items": { "type": "number" }, "description": "[x, y, z]" } } })),
+        ("stencil", json!({ "type": ["object", "null"], "additionalProperties": false, "required": ["image"], "description": "paint through an image laid over the view (luminance x alpha = how much paint gets through)",
+            "properties": { "image": { "type": "string" }, "center": { "type": "array", "items": { "type": "number" }, "description": "[x, y] in 0..1 of the view (default centre)" },
+                            "rotation": { "type": "number", "description": "degrees" }, "scale": { "type": "number", "description": "image height as a fraction of the view height (default 1)" },
+                            "opacity": { "type": "number", "description": "0 = no effect, 1 = full (default)" }, "invert": { "type": "boolean" } } })),
+        ("tool", json!({ "type": "string", "enum": ["paint", "clone", "smudge"], "description": "paint (default); clone copies the layer from `clone_source` keeping the offset to the stroke start; smudge drags the existing pixels along the stroke" })),
+        ("clone_source", json!({ "type": "array", "items": { "type": "number" }, "description": "clone: [x, y] viewport point (0..1, this call's camera) to copy from" })),
+        ("smudge", json!({ "type": "number", "description": "smudge drag length in brush diameters (default 0.5)" })),
     ] {
         paint_props[k] = v;
     }
@@ -159,7 +203,7 @@ fn tools() -> Value {
         "rotation": { "type": "number", "description": "with anchor/position: degrees, counter-clockwise seen from outside" }
     });
     let scatter_props = {
-        let mut p = json!({
+        let mut p = json!({ "projection": { "type": "string", "enum": ["box", "triplanar", "wrap"], "description": "decal layers: box (planar, default), triplanar (wraps over corners in the decal frame) or wrap (conforms: the surface is unfolded from the decal centre)" },
             "images": { "type": "array", "items": { "type": "string" }, "description": "PNGs to scatter; dealt in shuffled rounds so each appears before any repeats" },
             "count": { "type": "integer", "minimum": 0, "description": "how many (default 6, max 500; fewer if the surface can't fit them)" },
             "seed": { "type": "integer", "minimum": 0 },
@@ -196,6 +240,12 @@ fn tools() -> Value {
     json!([
         t("new_project", "Start a project from a mesh (.glb/.gltf/.obj with UVs), or a flat sheet with `tile` instead of `mesh`: a seamless tile (size_m; strokes, decals, generator noise and normals wrap across the edges), a trim sheet (strips stacked in V, wrapping along U; one part + folder per strip) or a decal atlas (cells packed with padding; one part + folder per cell, transparent base). The sheet lies in world XZ (y up, metres; u -> +x, v -> +z). export_textures then also writes <name>_layout.json (strip/cell UV rects) and, for atlases, <name>_BaseColorAlpha.png. Bakes AO + curvature. Optionally starts from a smart material or a base material; a paint layer goes on top.",
           json!({ "mesh": { "type": "string" }, "resolution": { "type": "integer", "enum": [512, 1024, 2048, 4096] }, "smart_material": { "type": "string" }, "material": { "type": "string" },
+                  "texture_sets": { "type": ["string", "array"], "description": "several texture sets, each with its own resolution and layer stack: \"materials\" (one per mesh material), \"udim\" (one per UDIM tile), or [{name, materials: [ids or names], udim, resolution}]. Each starts with a copy of the initial stack",
+                      "items": { "type": "object", "additionalProperties": false, "required": ["name"], "properties": { "name": { "type": "string" }, "materials": { "type": "array", "items": { "type": ["integer", "string"] } }, "udim": { "type": "integer" }, "resolution": { "type": "integer", "enum": [512, 1024, 2048, 4096] } } } },
+                  "udim": { "type": "boolean", "description": "one texture set per UDIM tile the mesh's UVs use (UVs beyond 0..1 -> tiles 1001+)" },
+                  "udim_tiles": { "type": "array", "description": "move part of the mesh to its own UDIM tile, its UVs repacked to fill the tile (more texel density there); then one texture set per tile unless texture_sets says otherwise",
+                      "items": { "type": "object", "additionalProperties": false, "required": ["tile"], "properties": { "tile": { "type": "integer", "description": "1002..1100" }, "below_y": { "type": "number", "description": "triangles whose centre is below this height (m)" }, "above_y": { "type": "number" },
+                          "parts": { "type": "array", "items": { "type": "integer" } }, "parts_where": { "type": "object", "description": "a part shape query as in list_parts" }, "margin": { "type": "number", "description": "UV margin in the tile (default 0.01)" } } } },
                   "tile": { "type": "object", "additionalProperties": false, "description": "flat sheet instead of a mesh",
                             "properties": {
                                 "size_m": { "type": ["number", "array"], "items": { "type": "number" }, "description": "seamless tile: [width, height] in metres (or one number); trim: width (height = sum of strips)" },
@@ -241,11 +291,18 @@ fn tools() -> Value {
               p["shape"] = json!({ "type": "object", "properties": list_parts_props(), "additionalProperties": false, "description": "shape query instead of points (see list_parts)" });
               p
           }, &[]),
-        t("bake", "Re-bake AO and curvature.", json!({ "ao_samples": { "type": "integer" }, "ao_distance": { "type": "number" }, "curvature_radius": { "type": "number" }, "curvature_strength": { "type": "number" } }), &[]),
-        t("paint_stroke", "Paint a brush stroke projected from a camera view onto the model.", paint_props, &["points"]),
+        t("bake", "Re-bake AO and curvature from the project mesh. With `high_mesh` (and/or `maps`): high-to-low bake onto the project mesh's UVs (CPU BVH; rays from a cage along the low normal, both ways): normal (tangent, OpenGL), normal_object, position, thickness, ao, curvature, height (displacement), color_id (the high mesh's materials or vertex colours), material_id (the project mesh's own materials, no high mesh needed). Maps are written as PNGs to `dir` (default <project>/bakes); AO + curvature replace the mesh bakes generators read, the tangent normal becomes a 'Baked normal' fill layer, and the color / material ID map feeds mask.id_color.",
+          json!({ "ao_samples": { "type": "integer", "description": "AO rays (mesh bake: directions; high bake: per texel, default 48)" }, "ao_distance": { "type": "number" }, "curvature_radius": { "type": "number" }, "curvature_strength": { "type": "number" },
+                  "high_mesh": { "type": "string", "description": "high-poly mesh (.obj / .gltf / .glb) to bake from" },
+                  "cage": { "type": ["number", "string", "null"], "description": "max distance between the low and high surfaces in metres, or \"auto\" (default: measured from the meshes)" },
+                  "maps": { "type": "array", "items": { "type": "string", "enum": pigment_core::hibake::BakeMap::ALL.iter().map(|m| m.id()).collect::<Vec<_>>() }, "description": "default with high_mesh: normal, ao, curvature, height, color_id; without: material_id" },
+                  "id_source": { "type": "string", "enum": ["material", "vertex_color"], "description": "color_id from the high mesh's materials (default) or its vertex colours" },
+                  "dir": { "type": "string", "description": "where to write the maps" },
+                  "normal_layer": { "type": "boolean", "description": "add / update the 'Baked normal' fill layer (default true)" } }), &[]),
+        t("paint_stroke", "Paint a brush stroke projected from a camera view onto the model. Brush engine: tip (alphas), per-point pen pressure with size / flow / opacity curves, spacing, flow, angle (or follow_angle), jitter, lazy mouse, object-space symmetry (mirror x/y/z, radial), a screen-space stencil, and tools clone (clone_source) and smudge. `points` is a polyline (line / path tool).", paint_props, &["points"]),
         t("project_decal", "Project an image (PNG with alpha: sign, logo, label, poster, graffiti) onto the model like a sticker. Ways to place it: `rect` over a camera view; `part` alone (fit to the part's outward face); a world-space `box` (+ `facing`); or precisely with `anchor` [u,v] on a part's `face` (or `position` + `normal`) plus `size` in metres and `rotation`. Anchored decals can be torn / faded (`wear`, `fade`) and stacked with `overlap_order`. Colour comes from the image times `tint`; optional emission, height, opacity / transmission (`values` + `channels`). Every decal on a paint layer is recorded for export_variants (`name`, `variant`, `enabled`). Lands on the top paint layer unless `layer` / `overlap_order` is given. One undo step.",
           {
-              let mut p = json!({ "image": { "type": "string" }, "rect": { "type": "array", "items": { "type": "number" }, "description": "[x0, y0, x1, y1] viewport area in 0..1 (y down)" },
+              let mut p = json!({ "projection": { "type": "string", "enum": ["box", "triplanar", "wrap"], "description": "decal layers: box (planar, default), triplanar (wraps over corners in the decal frame) or wrap (conforms: the surface is unfolded from the decal centre)" }, "image": { "type": "string" }, "rect": { "type": "array", "items": { "type": "number" }, "description": "[x0, y0, x1, y1] viewport area in 0..1 (y down)" },
                   "part": { "type": "integer", "description": "instead of rect + camera: put the image on this mesh part's outward face (see list_parts)" },
                   "fit": { "type": "string", "enum": ["contain", "fill"], "description": "with `part`: keep the image's aspect (contain, default) or stretch (fill)" },
                   "margin": { "type": "number", "description": "with `part`: border as a fraction (default 0.05)" },
@@ -325,7 +382,8 @@ fn tools() -> Value {
           json!({ "dir": { "type": "string" }, "name": { "type": "string", "description": "file prefix (default: mesh name)" }, "layer": { "type": ["string", "integer"], "description": "only this foliage layer (default: every visible one)" } }), &["dir"]),
         t("export_textures", "Export PNG texture maps. Presets: unreal, unity, godot, separate (glTF/Blender: BaseColor, Roughness, Metallic, AO, Normal_OpenGL, Height, Emissive, plus Opacity / Transmission when the material has any). unreal/unity/godot put opacity in the base colour's alpha (RGBA) when it isn't solid.",
           json!({ "dir": { "type": "string" }, "preset": { "type": "string", "enum": pigment_core::export::presets().iter().map(|p| p.id).collect::<Vec<_>>(), "description": "default separate" }, "name": { "type": "string", "description": "file name prefix (default: the mesh name)" },
-                  "compression": { "type": "string", "enum": ["none", "fastest", "fast", "balanced", "best"], "description": "PNG compression effort (default fast). fastest/none write quickest but bigger files; maps are encoded in parallel either way" } }), &["dir"]),
+                  "compression": { "type": "string", "enum": ["none", "fastest", "fast", "balanced", "best"], "description": "PNG compression effort (default fast). fastest/none write quickest but bigger files; maps are encoded in parallel either way" },
+                  "template": { "type": ["string", "object"], "description": "an export template id (list_export_templates: unreal, unity, godot, separate, orm, unreal_packed, unity_hdrp, godot_orm, gltf, arnold, or a saved one) or an inline template {id, outputs: [...]}; overrides `preset`. Supports 8/16-bit PNG, TGA, f16/f32 EXR (HDR height and emission)" } }), &["dir"]),
         t("export_variants", "Export N texture sets from this project without re-running the script: one folder per variant, <dir>/<name>__<variant>/<name>_<map>.png. Each variant starts from the authored stack, sets `seed` (random part subsets such as lit windows, and generator noise), switches off `disable` then on `enable` (layer names, decal names, variant groups, or \"*\" = everything tagged), and swaps decal images (decals on changed layers are replayed). Definitions are stored in the project (save_project to keep them); omit `variants` to reuse the stored ones.",
           json!({ "dir": { "type": "string" }, "name": { "type": "string", "description": "file/folder name (default: mesh name)" },
                   "preset": { "type": "string", "description": "export preset (default separate)" },
@@ -369,9 +427,104 @@ fn tools() -> Value {
         t("batch", "Run several tool calls in one request, in order: {calls: [{tool, args}, ...]}. Returns {ok, failed, results: [{index, tool, ok, ms, result | error}]}. Stops at the first error unless stop_on_error is false. Images from render are saved to disk (path in the result) rather than returned.",
           json!({ "calls": { "type": "array", "items": { "type": "object", "properties": { "tool": { "type": "string" }, "args": { "type": "object" } }, "required": ["tool"], "additionalProperties": false } },
                   "stop_on_error": { "type": "boolean", "description": "default true" } }), &["calls"]),
+        t("add_filter", "Add a filter to a layer's filter stack. target \"layer\" (default): runs on the composited stack right after the layer, inside its mask (for a filter layer: on the stack below, gated by its mask and opacity); target \"mask\": runs on the layer's evaluated mask. Spatial filters are seam-aware (taps stay on their UV island). Filters run in order; `index` inserts (0 = first).",
+          { let mut p = filter_schema(true)["properties"].clone();
+            p["layer"] = json!({ "type": ["string", "integer"], "description": "layer name, path or index" });
+            p["target"] = json!({ "type": "string", "enum": ["layer", "mask"], "description": "default layer" });
+            p["index"] = json!({ "type": "integer", "minimum": 0, "description": "position in the stack (default: last)" });
+            p }, &["layer", "kind"]),
+        t("update_filter", "Change, toggle or reorder filter `index` of a layer's (or its mask's) filter stack. Giving a different `kind` resets its parameters.",
+          { let mut p = filter_schema(true)["properties"].clone();
+            p["layer"] = json!({ "type": ["string", "integer"], "description": "layer name, path or index" });
+            p["target"] = json!({ "type": "string", "enum": ["layer", "mask"], "description": "default layer" });
+            p["index"] = json!({ "type": "integer", "minimum": 0, "description": "which filter (0 = runs first)" });
+            p["move_to"] = json!({ "type": "integer", "minimum": 0, "description": "new position in the stack" });
+            p }, &["layer", "index"]),
+        t("remove_filter", "Remove filter `index` from a layer's (or its mask's) filter stack.",
+          json!({ "layer": { "type": ["string", "integer"], "description": "layer name, path or index" }, "target": { "type": "string", "enum": ["layer", "mask"], "description": "default layer" }, "index": { "type": "integer", "minimum": 0 } }), &["layer", "index"]),
+        t("set_anchor", "Make a layer or folder an anchor point: the stack as composited right after it (height, the layer's mask x coverage, colour luminance) can be read by generators of layers above through mask.input {anchor, channel}, e.g. edge wear on painted scratches or dirt in painted dents; the `anchor` generator uses a channel directly as a mask.",
+          json!({ "layer": { "type": ["string", "integer"], "description": "layer name, path or index" }, "anchor": { "type": ["string", "null"], "description": "anchor name (default: the layer name); null removes it" } }), &["layer"]),
+        t("list_export_templates", "Export templates: built-in (the presets, ORM, Unreal packed, Unity HDRP mask map, Godot ORM, glTF, Arnold EXR), user (prefs) and project ones, with their outputs (file pattern, channel sources, format, bit depth, colour space, padding).", json!({}), &[]),
+        t("save_export_template", "Save a custom export template: outputs -> file name pattern ({name}, {set}, {udim}) -> per-channel sources (base_color.r/g/b, opacity, roughness, smoothness, metallic, ao, height, normal.x/y/z, normal_dx.x/y/z, emissive.r/g/b, transmission, coat, coat_roughness, flake, const:<v>, '1-' prefix inverts) with format png | tga | exr, bit depth u8 | u16 | f16 | f32, colour space srgb | linear and padding dilate | none. Use it with export_textures {template: id}.",
+          json!({ "template": template_schema(), "scope": { "type": "string", "enum": ["project", "user"], "description": "save with the project (default) or in the user preferences" } }), &["template"]),
+        t("list_decals", "Decal objects on decal layers (add_layer kind \"decal\"): id, name, group, layer, image, centre, normal, size, rotation, depth, projection, wear, enabled. Bottom to top per layer.",
+          json!({ "layer": { "type": ["string", "integer"], "description": "only this layer" } }), &[]),
+        t("update_decal", "Edit a decal object non-destructively (the layer re-composites): move (position snapped to the surface, or `move` [dx, dy] metres in its plane), rotate, scale / size, projection, image, tint, opacity, wear, fade, enable / hide, rename, re-order (move_to), align upright / vertical, snap to the centre or nearest edge of the flat window-free area it sits on.",
+          json!({ "decal": { "type": ["string", "integer"], "description": "decal id or name (list_decals)" }, "layer": { "type": ["string", "integer"], "description": "the decal's layer (default: search every decal layer)" },
+                  "position": { "type": "array", "items": { "type": "number" }, "description": "[x, y, z] world point, snapped onto the surface along the normal" },
+                  "normal": { "type": "array", "items": { "type": "number" } },
+                  "move": { "type": "array", "items": { "type": "number" }, "description": "[dx, dy] metres along the decal's right / up" },
+                  "size": { "type": ["number", "array"], "items": { "type": "number" }, "description": "width (keeps the aspect) or [w, h] metres" },
+                  "scale": { "type": "number" }, "rotation": { "type": "number", "description": "degrees" }, "rotate": { "type": "number", "description": "add degrees" },
+                  "depth": { "type": "number" }, "projection": { "type": "string", "enum": ["box", "triplanar", "wrap"] }, "image": { "type": "string" },
+                  "tint": { "type": "array", "items": { "type": "number" } }, "opacity": { "type": "number" }, "wear": { "type": "number" }, "fade": { "type": "number" },
+                  "wear_scale": { "type": "number" }, "wear_seed": { "type": "number" }, "paper_rim": { "type": "number" },
+                  "enabled": { "type": "boolean" }, "name": { "type": "string" }, "variant": { "type": "string", "description": "variant group" },
+                  "move_to": { "type": "integer", "minimum": 0, "description": "new position in the layer's decal order (0 = bottom)" },
+                  "align": { "type": "string", "enum": ["upright", "vertical"] }, "snap": { "type": "string", "enum": ["center", "edge"] }, "margin": { "type": "number", "description": "snap edge margin (m)" } }), &["decal"]),
+        t("delete_decal", "Delete a decal object.", json!({ "decal": { "type": ["string", "integer"], "description": "decal id or name (list_decals)" }, "layer": { "type": ["string", "integer"] } }), &["decal"]),
+        t("place_decal", "Place decal objects in the largest flat, window-free wall area: `region: \"auto\"` (optionally limited by parts / parts_where / height band / facing, `pick` the n-th largest) or {min, max} (the largest area inside a world box). One image fitted into it, or a `grid` {rows, cols, gap} of `images` (a poster wall). Goes on a decal layer (`layer`, `overlap_order`, or the top decal layer / a new one).",
+          json!({ "image": { "type": "string" }, "images": { "type": "array", "items": { "type": "string" }, "description": "for a grid: cycled over the cells" },
+                  "region": { "type": ["string", "object"], "description": "\"auto\" or {min: [x,y,z], max: [x,y,z]}" }, "pick": { "type": "integer", "minimum": 0 },
+                  "parts": { "type": "array", "items": { "type": "integer" } }, "parts_where": { "type": "object", "description": "part shape query (list_parts)" },
+                  "height": { "type": "array", "items": { "type": "number" }, "description": "[min, max] metres above the mesh's lowest point" },
+                  "facing": { "type": "string", "enum": ["walls", "any"] }, "margin": { "type": "number", "description": "kept free inside the area (m, default 0.05)" },
+                  "fill": { "type": "number", "description": "fraction of the area (or grid cell) the image fills (default 0.9)" },
+                  "grid": { "type": "object", "additionalProperties": false, "properties": { "rows": { "type": "integer" }, "cols": { "type": "integer" }, "gap": { "type": "number" } } },
+                  "layer": { "type": ["string", "integer"] }, "overlap_order": { "type": "integer" }, "name": { "type": "string" }, "variant": { "type": "string" },
+                  "projection": { "type": "string", "enum": ["box", "triplanar", "wrap"] },
+                  "tint": { "type": "array", "items": { "type": "number" } }, "material": { "type": "string" }, "emissive_strength": { "type": "number" }, "opacity": { "type": "number" },
+                  "wear": { "type": "number" }, "fade": { "type": "number" }, "wear_style": { "type": "string", "enum": ["noise", "grunge"] }, "wear_scale": { "type": "number" }, "wear_seed": { "type": "number" }, "paper_rim": { "type": "number" },
+                  "alpha_from_luminance": { "type": "boolean" }, "channels": { "type": "array", "items": { "type": "string" } }, "values": { "type": "object" } }), &[]),
+        t("list_texture_sets", "The project's texture sets (one per material / UDIM tile, each with its own resolution and layer stack): name, materials, UDIM tile, resolution, triangles, layer count, which is active; plus the mesh's UDIM tiles.", json!({}), &[]),
         t("undo", "Undo the last action.", json!({}), &[]),
         t("redo", "Redo.", json!({}), &[]),
     ])
+}
+
+/// Schema of an export template (`pigment_core::templates`).
+fn template_schema() -> Value {
+    json!({ "type": "object", "additionalProperties": false, "required": ["id", "outputs"], "description": "an export template",
+        "properties": { "id": { "type": "string" }, "label": { "type": "string" },
+            "outputs": { "type": "array", "items": { "type": "object", "additionalProperties": false, "required": ["pattern", "channels", "format", "bit_depth"],
+                "properties": {
+                    "pattern": { "type": "string", "description": "file name without extension, tokens {name} {set} {udim}" },
+                    "channels": { "type": "array", "items": { "type": "string" }, "description": "1, 3 or 4 sources, e.g. ao, roughness, metallic" },
+                    "format": { "type": "string", "enum": ["png", "tga", "exr"] },
+                    "bit_depth": { "type": "string", "enum": ["u8", "u16", "f16", "f32"], "description": "png: u8/u16, tga: u8, exr: f16/f32" },
+                    "color_space": { "type": "string", "enum": ["srgb", "linear"], "description": "base colour / emission encoding (default srgb)" },
+                    "padding": { "type": "string", "enum": ["dilate", "none"], "description": "dilate: seam padding (default); none: zero outside the UV islands" },
+                    "skip_if_neutral": { "type": "boolean", "description": "don't write the file when it holds nothing (opacity / transmission / coat of a material without any)" } } } } } })
+}
+
+/// Schema of one filter (`pigment_core::filters`). `top` = tool arguments
+/// (the tool marks `kind` required itself).
+fn filter_schema(top: bool) -> Value {
+    let kinds: Vec<&str> = pigment_core::filters::FilterKind::ALL.iter().map(|k| k.id()).collect();
+    let num = |d: &str| json!({ "type": "number", "description": d });
+    let lv = |d: &str| json!({ "type": ["number", "array"], "items": { "type": "number" }, "description": d });
+    let rgb = |d: &str| json!({ "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3, "description": d });
+    let mut v = json!({ "type": "object", "additionalProperties": false, "properties": {
+        "kind": { "type": "string", "enum": kinds, "description": "levels, hsl, color_balance, invert, clamp (point filters); blur, directional_blur, sharpen, warp, slope_blur, edge_detect, height_to_normal (spatial, seam-aware); fill_holes, grow, shrink (masks only); noise_overlay (MatFinish-style world noise)" },
+        "enabled": { "type": "boolean" },
+        "radius": num("blur / sharpen / grow / shrink / fill_holes / edge radius, warp / slope_blur distance: texels at 2048 (scales with the resolution)"),
+        "amount": num("strength: sharpen, warp, slope_blur, noise_overlay, edge gain, height_to_normal"),
+        "strength": num("alias of amount"),
+        "angle": num("directional_blur: degrees (0 = along +u)"),
+        "scale": num("noise frequency per metre (warp, slope_blur, noise_overlay)"),
+        "seed": { "type": "integer", "minimum": 0 },
+        "levels": { "type": "object", "additionalProperties": false, "description": "each a number (master) or [r, g, b] / [r, g, b, master]",
+            "properties": { "in_black": lv("input black"), "in_white": lv("input white"), "gamma": lv("gamma (1 = linear, > 1 brighter)"), "out_black": lv("output black"), "out_white": lv("output white") } },
+        "hue": num("hsl: hue shift, degrees"), "saturation": num("hsl: -1..1"), "lightness": num("hsl: -1..1"),
+        "shadows": rgb("color_balance: rgb offsets -1..1"), "midtones": rgb("color_balance"), "highlights": rgb("color_balance"),
+        "min": num("clamp minimum (0..1)"), "max": num("clamp maximum (0..1)"),
+        "use_height": { "type": "boolean", "description": "slope_blur: follow the stack's height instead of noise; height_to_normal: keep the height (adds normal detail on top) instead of converting it" },
+        "channels": { "type": "array", "items": { "type": "string", "enum": ["base_color", "roughness", "metallic", "height", "normal", "emissive"] }, "description": "layer filters: channels to change (default per kind: colour filters base_color, spatial ones colour/roughness/metallic/height/emission)" }
+    } });
+    if !top {
+        v["required"] = json!(["kind"]);
+    }
+    v
 }
 
 /// Schema of a layer `mask` argument.
@@ -403,6 +556,15 @@ fn mask_schema() -> Value {
         "description": "part ids from list_parts / pick_parts: limit the layer to those mesh pieces ([] = whole model)" });
     gen_fields["parts_where"] = json!({ "type": "object", "properties": list_parts_props(), "additionalProperties": false,
         "description": "select parts by shape instead of ids (same filters as list_parts, e.g. {\"max_thickness\": 0.02, \"min_area\": 0.5}); resolved to ids when set; combined with `parts` as a union" });
+    gen_fields["input"] = json!({ "type": ["object", "null"], "additionalProperties": false, "required": ["anchor"],
+        "description": "generator input: read an anchor below this layer instead of only the mesh bakes. The anchor channel's relief (value minus its local average) is added to the curvature (raised rims = edges, dents = cavities); the `anchor` generator uses the channel directly. null = bakes",
+        "properties": { "anchor": { "type": "string", "description": "anchor name (set_anchor)" }, "channel": { "type": "string", "enum": ["height", "mask", "color"], "description": "default height" },
+                        "strength": { "type": "number", "description": "relief -> curvature gain (default 4)" }, "radius": { "type": "number", "description": "relief neighbourhood, texels at 2048 (default 6)" } } });
+    gen_fields["id_color"] = json!({ "type": ["object", "null"], "additionalProperties": false, "required": ["color"],
+        "description": "ID mask: only where the project's ID map (bake color_id / material_id) has this colour; null removes it",
+        "properties": { "color": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3, "description": "sRGB 0..1, as in the ID map (pick it from the baked PNG or list_layers id colours)" },
+                        "tolerance": { "type": "number", "description": "RGB distance that still matches (default 0.1)" } } });
+    gen_fields["filters"] = json!({ "type": "array", "items": filter_schema(false), "description": "replace the mask's filter stack (blur, grow, shrink, fill_holes, warp, levels...), run in order on the evaluated mask. [] removes them" });
     gen_fields["effects"] = json!({ "type": "array", "maxItems": 2, "description": "up to 2 more generators combined in order",
         "items": { "type": "object", "properties": effect, "required": ["generator"], "additionalProperties": false } });
     json!({ "type": ["string", "object", "null"], "properties": gen_fields, "additionalProperties": false,
@@ -670,6 +832,42 @@ fn call(session: &mut Option<Session>, name: &str, args: &Value) -> Result<Vec<V
     if session.is_none() {
         *session = Some(Session::new()?);
     }
+    // `texture_set`: run the tool on that set ("*": on every set), then go back
+    if let Some(ts) = args.get("texture_set").filter(|_| pigment_engine::app::automation::set_tools::SET_TOOLS.contains(&name)) {
+        let s = session.as_mut().unwrap();
+        let mut names = s.texture_set_scope(ts)?;
+        if name == "paint_stroke" {
+            names.truncate(1); // a stroke already paints across sets
+        }
+        let prev = s.active_texture_set();
+        let mut a = args.clone();
+        a.as_object_mut().unwrap().remove("texture_set");
+        let mut results = serde_json::Map::new();
+        let mut missed = Vec::new();
+        for n in &names {
+            session.as_mut().unwrap().activate_texture_set(n)?;
+            match call(session, name, &a) {
+                Ok(content) => {
+                    results.insert(n.clone(), content_json(&content));
+                }
+                // with "*", a decal only lands on the sets it touches
+                Err(e) if names.len() > 1 && (name == "project_decal" || name == "scatter_decals") && (e.contains("no surface") || e.contains("no spot") || e.contains("nothing to place") || e.contains("placed 0")) => {
+                    missed.push(n.clone());
+                }
+                Err(e) => {
+                    let _ = session.as_mut().unwrap().activate_texture_set(&prev);
+                    return Err(format!("texture set `{n}`: {e}"));
+                }
+            }
+        }
+        if results.is_empty() && !missed.is_empty() {
+            let _ = session.as_mut().unwrap().activate_texture_set(&prev);
+            return Err(format!("{name}: touches no surface in any texture set"));
+        }
+        session.as_mut().unwrap().activate_texture_set(&prev)?;
+        let v = if results.len() == 1 { results.into_iter().next().unwrap().1 } else { Value::Object(results) };
+        return Ok(vec![json!({ "type": "text", "text": serde_json::to_string_pretty(&v).unwrap() })]);
+    }
     let s = session.as_mut().unwrap();
     let text = |v: Value| Ok(vec![json!({ "type": "text", "text": serde_json::to_string_pretty(&v).unwrap() })]);
     match name {
@@ -678,6 +876,13 @@ fn call(session: &mut Option<Session>, name: &str, args: &Value) -> Result<Vec<V
         "save_project" => text(s.save_project(args)?),
         "list_library" => text(s.library()),
         "list_layers" => text(s.list_layers(args)),
+        "list_texture_sets" => text(s.list_texture_sets()),
+        "list_decals" => text(s.list_decals(args)?),
+        "update_decal" => text(s.update_decal(args)?),
+        "delete_decal" => text(s.delete_decal(args)?),
+        "place_decal" => text(s.place_decal_region(args)?),
+        "list_export_templates" => text(s.list_export_templates()),
+        "save_export_template" => text(s.save_export_template(args)?),
         "save_smart_material" => text(s.save_smart_material(args)?),
         "apply_smart_material" => text(s.apply_smart_material(args)?),
         "list_parts" => text(s.list_parts_query(args)?),
@@ -686,6 +891,10 @@ fn call(session: &mut Option<Session>, name: &str, args: &Value) -> Result<Vec<V
         "add_smart_material" => text(s.add_smart_material(args)?),
         "add_layer" => text(s.add_layer(args)?),
         "update_layer" => text(s.update_layer(args)?),
+        "add_filter" => text(s.add_filter(args)?),
+        "update_filter" => text(s.update_filter(args)?),
+        "remove_filter" => text(s.remove_filter(args)?),
+        "set_anchor" => text(s.set_anchor(args)?),
         "delete_layer" => text(s.delete_layer(args)?),
         "bake" => text(s.bake(args)?),
         "paint_stroke" => text(s.paint_stroke(args)?),

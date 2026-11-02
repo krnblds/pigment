@@ -617,3 +617,221 @@ fn foliage_screenshots() {
     h.app.camera.pitch = 12f32.to_radians();
     shot(&mut h, "ui_simple_plants");
 }
+
+/// Filters and anchors in the Properties and Mask panels: a filter layer's
+/// stack, a mask filter and the anchor toggle; clicking a filter's switch
+/// turns it off (and the composite follows).
+#[test]
+fn filter_stacks_and_anchor_in_panels() {
+    use pigment_core::filters::{Filter, FilterKind};
+    // tall, so the mask panel's filter section is on screen
+    let Some(mut h) = Harness::new([1440.0, 2400.0], 1.0) else { return };
+    settle(&mut h);
+    let layout = |p: PanelId| DockLayout { root: super::dock::Node::Split { vertical: false, ratio: 0.5, a: Box::new(super::dock::Node::Leaf { tabs: vec![PanelId::Viewport], active: 0 }), b: Box::new(super::dock::Node::Leaf { tabs: vec![p], active: 0 }) }, floating: vec![] };
+    super::panels::filters::add_filter_layer(&mut h.app);
+    let id = h.app.doc.layers.iter().find(|l| matches!(l.kind, LayerKind::Filter {})).unwrap().id;
+    h.app.select(Some(id), true);
+    *h.app.ui.prefs.layout_mut() = layout(PanelId::Properties);
+    h.run(4);
+    let r = anchor(&h, "layer_filter_0");
+    h.click(r.center());
+    h.run(3);
+    let l = h.app.doc.layer(id).unwrap();
+    assert!(!l.filters[0].enabled, "clicking the switch disables the filter");
+    // mask filters in the Mask panel
+    let i = h.app.edge_wear_layer().unwrap();
+    let wid = h.app.doc.layers[i].id;
+    h.app.doc.layers[i].mask.as_mut().unwrap().filters.push(Filter::new(FilterKind::Blur));
+    h.app.doc.layers[i].anchor = Some("Wear".into());
+    h.app.select(Some(wid), true);
+    *h.app.ui.prefs.layout_mut() = layout(PanelId::Mask);
+    h.run(4);
+    let r = anchor(&h, "mask_filter_0");
+    h.click(r.center());
+    h.run(3);
+    assert!(!h.app.doc.layers[i].mask.as_ref().unwrap().filters[0].enabled);
+    *h.app.ui.prefs.layout_mut() = layout(PanelId::Properties);
+    h.run(4);
+}
+
+/// Brush engine in the viewport: pen pressure from touch force, Shift-click
+/// line from the last stroke's end, the path tool (click points, Enter), and
+/// the Brush panel with clone / stencil / symmetry sections.
+#[test]
+fn brush_engine_pen_line_and_path() {
+    let Some(mut h) = harness() else { return };
+    settle(&mut h);
+    let paint = h.app.doc.layers.iter().rposition(|l| l.is_paint()).unwrap();
+    let id = h.app.doc.layers[paint].id;
+    h.app.select(Some(id), false);
+    h.app.set_tool(Tool::Paint);
+    h.run(3);
+    let vp = anchor(&h, "viewport");
+    let a = vp.center() + egui::vec2(-40.0, 0.0);
+    let b = vp.center() + egui::vec2(40.0, 20.0);
+    // pen pressure
+    h.hover(a);
+    h.push_event(egui::Event::Touch { device_id: egui::TouchDeviceId(1), id: egui::TouchId(1), phase: egui::TouchPhase::Move, pos: a, force: Some(0.3) });
+    h.step();
+    assert!((h.app.brush.pressure - 0.3).abs() < 1e-4, "pen force read: {}", h.app.brush.pressure);
+    h.push_event(egui::Event::Touch { device_id: egui::TouchDeviceId(1), id: egui::TouchId(1), phase: egui::TouchPhase::End, pos: a, force: Some(0.0) });
+    h.step();
+    assert_eq!(h.app.brush.pressure, 1.0, "lifting the pen resets pressure");
+    // a click paints, Shift-click paints a line from there
+    let n0 = h.app.counters.strokes;
+    h.click(a);
+    assert_eq!(h.app.counters.strokes, n0 + 1);
+    assert!(h.app.brush.last_end.is_some());
+    h.click_with(b, egui::Modifiers::SHIFT);
+    assert_eq!(h.app.counters.strokes, n0 + 2, "Shift-click paints a straight line");
+    // path tool: clicks add points, Enter paints once
+    h.app.brush.path_mode = true;
+    for p in [a, b, vp.center() + egui::vec2(0.0, -50.0)] {
+        h.click(p);
+    }
+    assert_eq!(h.app.brush.path.len(), 3);
+    assert_eq!(h.app.counters.strokes, n0 + 2, "clicks only add path points");
+    h.key(egui::Key::Enter, Default::default());
+    assert_eq!(h.app.counters.strokes, n0 + 3, "Enter paints the path");
+    assert!(h.app.brush.path.is_empty());
+    h.app.brush.path_mode = false;
+    // the Brush panel with the engine sections open
+    h.app.brush.tool = super::BrushTool::Clone;
+    h.app.brush.symmetry.x = true;
+    *h.app.ui.prefs.layout_mut() = DockLayout { root: super::dock::Node::Split { vertical: false, ratio: 0.5, a: Box::new(super::dock::Node::Leaf { tabs: vec![PanelId::Viewport], active: 0 }), b: Box::new(super::dock::Node::Leaf { tabs: vec![PanelId::Brush], active: 0 }) }, floating: vec![] };
+    h.run(4);
+    assert!(h.app.brush.tips.len() >= 10, "the tip library loads ({} tips)", h.app.brush.tips.len());
+}
+
+/// High-to-low bake and ID masks in the panels: bake the generated pair, then
+/// the Texture set & bake panel shows the high bake, and the Mask panel offers
+/// the ID map's colours.
+#[test]
+fn high_bake_and_id_mask_panels() {
+    let Some(mut h) = harness() else { return };
+    settle(&mut h);
+    let (low, high) = pigment_core::hibake::test_pair();
+    let rs = h.rs.clone();
+    h.app.new_project(&rs, low, None, Document::new_default());
+    let hb = pigment_core::hibake::HighBake::new("generated", vec![pigment_core::hibake::BakeMap::Normal, pigment_core::hibake::BakeMap::ColorId]);
+    h.app.bake_high(&rs, Some(&high), hb, true).unwrap();
+    let path = pigment_core::image_fill::resolve_path(h.app.doc.id_map.as_ref().unwrap(), &h.app.image_bases()).unwrap();
+    assert_eq!(super::panels::hibake::id_palette(&path).len(), 3, "three materials, three ID colours");
+    let layout = |p: PanelId| DockLayout { root: super::dock::Node::Split { vertical: false, ratio: 0.5, a: Box::new(super::dock::Node::Leaf { tabs: vec![PanelId::Viewport], active: 0 }), b: Box::new(super::dock::Node::Leaf { tabs: vec![p], active: 0 }) }, floating: vec![] };
+    *h.app.ui.prefs.layout_mut() = layout(PanelId::TextureSet);
+    h.run(4);
+    let i = h.app.doc.layers.len() - 1;
+    let res = h.app.doc.mint();
+    h.app.ts.new_mask(&rs.device, &rs.queue, res, true);
+    h.app.doc.layers[i].mask = Some(Mask::new(res));
+    let id = h.app.doc.layers[i].id;
+    h.app.select(Some(id), true);
+    *h.app.ui.prefs.layout_mut() = layout(PanelId::Mask);
+    h.run(4);
+}
+
+/// Texture sets in the UI: split a two-material box, the Layers panel shows
+/// the switcher, switching changes the stack, and the viewport draws both
+/// sets (the parked one too).
+#[test]
+fn texture_set_switcher_and_viewport() {
+    let Some(mut h) = harness() else { return };
+    settle(&mut h);
+    let mut mesh = pigment_core::hibake::rounded_box(glam::Vec3::new(0.5, 0.35, 0.4), 0.06, 8, None, Some(&|p: glam::Vec3| if p.y > 0.33 { 1 } else { 0 }));
+    mesh.material_names = vec!["body".into(), "lid".into()];
+    let rs = h.rs.clone();
+    h.app.new_project(&rs, mesh, None, Document::new_default());
+    let specs = pigment_core::texsets::sets_by_material(&h.app.mesh);
+    assert_eq!(h.app.split_sets(&rs, specs, &[]).unwrap(), vec!["body".to_string(), "lid".to_string()]);
+    *h.app.ui.prefs.layout_mut() = DockLayout { root: super::dock::Node::Split { vertical: false, ratio: 0.6, a: Box::new(super::dock::Node::Leaf { tabs: vec![PanelId::Viewport], active: 0 }), b: Box::new(super::dock::Node::Leaf { tabs: vec![PanelId::Layers, PanelId::TextureSet], active: 0 }) }, floating: vec![] };
+    h.run(4);
+    let before = h.render();
+    // paint the lid set's base red: the viewport (showing the body set active) changes
+    h.app.activate_set(&rs, "lid").unwrap();
+    if let LayerKind::Fill { values } = &mut h.app.doc.layers[0].kind {
+        values.base_color = [1.0, 0.0, 0.0];
+    }
+    h.app.activate_set(&rs, "body").unwrap();
+    h.run(4);
+    let after = h.render();
+    let reds = |img: &image::RgbaImage| img.pixels().filter(|p| p.0[0] > 150 && p.0[1] < 70 && p.0[2] < 70).count();
+    assert!(reds(&after) > reds(&before) + 100, "the parked lid set is drawn ({} -> {})", reds(&before), reds(&after));
+    assert_eq!(h.app.active_set_name(), "body");
+}
+
+/// Export templates in the Export panel: the picker and the editor on a copy
+/// of a built-in render; a copy saved with the project is found by id.
+#[test]
+fn export_template_editor() {
+    let Some(mut h) = Harness::new([1440.0, 1800.0], 1.0) else { return };
+    settle(&mut h);
+    super::panels::templates::edit_copy_for_tests(&h.app, "unity_hdrp");
+    *h.app.ui.prefs.layout_mut() = DockLayout { root: super::dock::Node::Split { vertical: false, ratio: 0.45, a: Box::new(super::dock::Node::Leaf { tabs: vec![PanelId::Viewport], active: 0 }), b: Box::new(super::dock::Node::Leaf { tabs: vec![PanelId::Export], active: 0 }) }, floating: vec![] };
+    h.run(6);
+    let mut t = h.app.find_template("unity_hdrp").unwrap();
+    t.id = "hdrp_custom".into();
+    t.outputs[1].channels[2] = "const:0".into();
+    h.app.save_template(t, super::templates_app::TemplateScope::Project).unwrap();
+    assert_eq!(h.app.find_template("hdrp_custom").unwrap().outputs[1].channels[2], "const:0");
+    assert!(h.app.save_template(h.app.find_template("unreal").unwrap(), super::templates_app::TemplateScope::Builtin).is_err());
+    if std::env::var("PIGMENT_SHOTS").is_ok() {
+        h.save_png(&docs().join("agents/parity/templates_ui.png"));
+    }
+}
+
+/// Decal objects in the viewport: on a decal layer, a click selects the
+/// decal under the cursor, a drag slides it over the surface, Ctrl+wheel
+/// scales it; the Properties panel lists it.
+#[test]
+fn decal_gizmo_select_drag_scale() {
+    let Some(mut h) = harness() else { return };
+    settle(&mut h);
+    let rs = h.rs.clone();
+    h.app.new_project(&rs, Mesh::tile_grid(1), None, Document::new_default());
+    let mut l = h.app.doc.new_paint_layer("Decals");
+    l.decals = Some(Default::default());
+    let lid = l.id;
+    h.app.doc.layers.push(l);
+    let img = super::panels::decals::asset_dir("decals").unwrap().join("hazard_triangle.png");
+    let i = h.app.doc.layers.len() - 1;
+    h.app.doc.layers[i].decals.as_mut().unwrap().add(pigment_core::decal_layer::DecalObject {
+        id: 0,
+        name: "tri".into(),
+        group: String::new(),
+        image: img.to_string_lossy().into_owned(),
+        center: [0.0, 0.0, 0.0],
+        normal: [0.0, 0.0, 1.0],
+        size: [0.6, 0.6],
+        rotation: 0.0,
+        depth: 0.1,
+        projection: Default::default(),
+        wear: Default::default(),
+        values: pigment_core::decal_layer::white_decal(),
+        channels: pigment_core::decal_layer::default_channels(),
+        enabled: true,
+    });
+    h.app.select(Some(lid), false);
+    h.app.set_tool(Tool::Paint);
+    h.app.camera.yaw = 0.0;
+    h.app.camera.pitch = 0.0;
+    *h.app.ui.prefs.layout_mut() = DockLayout { root: super::dock::Node::Split { vertical: false, ratio: 0.6, a: Box::new(super::dock::Node::Leaf { tabs: vec![PanelId::Viewport], active: 0 }), b: Box::new(super::dock::Node::Leaf { tabs: vec![PanelId::Properties], active: 0 }) }, floating: vec![] };
+    h.run(4);
+    let vp = anchor(&h, "viewport");
+    h.click(vp.center());
+    assert_eq!(h.app.decal_sel, Some(0), "the click selects the decal under the cursor");
+    let strokes = h.app.counters.strokes;
+    h.drag(vp.center(), vp.center() + egui::vec2(60.0, 0.0), 6);
+    h.run(2);
+    let o = &h.app.doc.layers[i].decals.as_ref().unwrap().objects[0];
+    assert!(o.center[0] > 0.05, "dragging slides it along the surface: {:?}", o.center);
+    assert_eq!(h.app.counters.strokes, strokes, "no paint stroke on a decal layer");
+    let w0 = o.size[0];
+    h.hover(vp.center() + egui::vec2(60.0, 0.0));
+    h.push_event(egui::Event::ModifiersChanged(egui::Modifiers::CTRL));
+    h.push_event(egui::Event::MouseWheel { unit: egui::MouseWheelUnit::Point, delta: egui::vec2(0.0, 120.0), modifiers: egui::Modifiers::CTRL, phase: egui::TouchPhase::Move, source: egui::MouseWheelSource::Wheel });
+    h.run(4);
+    h.push_event(egui::Event::ModifiersChanged(Default::default()));
+    h.run(2);
+    let w1 = h.app.doc.layers[i].decals.as_ref().unwrap().objects[0].size[0];
+    assert!(w1 > w0 * 1.02, "Ctrl+wheel scales ({w0} -> {w1})");
+}

@@ -18,7 +18,7 @@ struct BoxDecal {
     right: vec4<f32>,    // unit xyz, half width (m)
     up: vec4<f32>,       // unit xyz, half height (m)
     normal: vec4<f32>,   // unit xyz, opacity
-    params: vec4<f32>,   // alpha from luminance (0/1), min facing, -, -
+    params: vec4<f32>,   // alpha from luminance (0/1), min facing, projection (0 box, 1 triplanar, 2 wrap), -
     wear: vec4<f32>,     // tear 0..1, fade 0..1, noise scale, seed
     wear2: vec4<f32>,    // style (0 noise / 1 grunge), paper rim width, -, -
 };
@@ -28,6 +28,8 @@ struct BoxOut {
     @builtin(position) pos: vec4<f32>,
     @location(0) world: vec3<f32>,
     @location(1) normal: vec3<f32>,
+    // wrap projection: unfolded decal-plane coordinates (m along right, up), 1 where reached
+    @location(2) wrap: vec3<f32>,
 };
 
 struct BoxDecalOut {
@@ -41,6 +43,18 @@ fn vs_box(v: MeshIn) -> BoxOut {
     o.pos = uv_to_clip(v.uv);
     o.world = v.position;
     o.normal = v.normal;
+    o.wrap = vec3<f32>(0.0);
+    return o;
+}
+
+// Wrap (conform) projection: per-vertex unfolded coordinates in a second buffer.
+@vertex
+fn vs_wrap(v: MeshIn, @location(4) w: vec3<f32>) -> BoxOut {
+    var o: BoxOut;
+    o.pos = uv_to_clip(v.uv);
+    o.world = v.position;
+    o.normal = v.normal;
+    o.wrap = w;
     return o;
 }
 
@@ -54,21 +68,53 @@ fn wear_noise(p: vec3<f32>, style: f32) -> f32 {
     return fbm(p);
 }
 
+// Image coordinates of a fragment for the decal's projection mode, its
+// sample and how much it counts (facing / triplanar weight). (x, y in -1..1.)
 @fragment
 fn fs_box(i: BoxOut) -> BoxDecalOut {
     let rel = i.world - d.center.xyz;
     let lx = dot(rel, d.right.xyz) / d.right.w;
     let ly = dot(rel, d.up.xyz) / d.up.w;
     let lz = dot(rel, d.normal.xyz);
-    let uv = vec2<f32>(lx * 0.5 + 0.5, 0.5 - ly * 0.5);
+    let mode = u32(d.params.z + 0.5);
+    var uv = vec2<f32>(lx * 0.5 + 0.5, 0.5 - ly * 0.5);
+    if (mode == 2u) {
+        uv = vec2<f32>(i.wrap.x / d.right.w * 0.5 + 0.5, 0.5 - i.wrap.y / d.up.w * 0.5);
+    }
     // texel-space derivatives pick the right mip; taken before any discard
     let gx = dpdx(uv);
     let gy = dpdy(uv);
-    if (abs(lx) > 1.0 || abs(ly) > 1.0 || abs(lz) > d.center.w) { discard; }
-    let facing = dot(normalize(i.normal), d.normal.xyz);
-    let fw = smoothstep(d.params.y, d.params.y + 0.25, facing);
-
-    let c = textureSampleGrad(img, samp, uv, gx, gy);
+    let n = normalize(i.normal);
+    var fw = 1.0;
+    var c = vec4<f32>(0.0);
+    if (mode == 1u) {
+        // triplanar in the decal frame: front plane, plus the image continued
+        // over the side (along right) and top / bottom (along up) faces
+        if (abs(lz) > d.center.w) { discard; }
+        let nl = vec3<f32>(dot(n, d.right.xyz), dot(n, d.up.xyz), dot(n, d.normal.xyz));
+        var w = pow(abs(nl), vec3<f32>(4.0));
+        w = w / max(w.x + w.y + w.z, 1e-6);
+        let back = max(-lz, 0.0);
+        let xs = lx + sign(nl.x) * back / d.right.w;
+        let ys = ly + sign(nl.y) * back / d.up.w;
+        let planes = array<vec2<f32>, 3>(vec2<f32>(xs, ly), vec2<f32>(lx, ys), vec2<f32>(lx, ly));
+        for (var k = 0; k < 3; k++) {
+            let q = planes[k];
+            if (w[k] < 0.01 || abs(q.x) > 1.0 || abs(q.y) > 1.0) { continue; }
+            c += textureSampleGrad(img, samp, vec2<f32>(q.x * 0.5 + 0.5, 0.5 - q.y * 0.5), gx, gy) * w[k];
+        }
+        uv = vec2<f32>(clamp(lx, -1.0, 1.0) * 0.5 + 0.5, 0.5 - clamp(ly, -1.0, 1.0) * 0.5);
+    } else {
+        if (mode == 2u) {
+            if (i.wrap.z < 0.999 || abs(lx) > 3.0 || abs(ly) > 3.0) { discard; }
+            if (any(uv < vec2<f32>(0.0)) || any(uv > vec2<f32>(1.0))) { discard; }
+        } else {
+            if (abs(lx) > 1.0 || abs(ly) > 1.0 || abs(lz) > d.center.w) { discard; }
+            let facing = dot(n, d.normal.xyz);
+            fw = smoothstep(d.params.y, d.params.y + 0.25, facing);
+        }
+        c = textureSampleGrad(img, samp, uv, gx, gy);
+    }
     var a = c.a;
     if (d.params.x > 0.5) { a = a * dot(c.rgb, vec3<f32>(0.299, 0.587, 0.114)); }
     var rgb = c.rgb;

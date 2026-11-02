@@ -218,6 +218,17 @@ pub fn copy_mesh(dir: &Path, src: &Path) -> Result<String> {
     let dst = mesh_dir.join(name);
     if src.canonicalize().ok() != dst.canonicalize().ok() {
         std::fs::copy(src, &dst).with_context(|| format!("copying {}", src.display()))?;
+        // OBJ materials (texture sets, ID bakes): the .mtl files it names
+        if src.extension().is_some_and(|e| e.eq_ignore_ascii_case("obj")) {
+            let src_dir = src.parent().unwrap_or(Path::new("."));
+            for line in std::fs::read_to_string(src).unwrap_or_default().lines().filter(|l| l.starts_with("mtllib ")) {
+                let mtl = line[7..].trim();
+                let from = src_dir.join(mtl);
+                if from.is_file() {
+                    std::fs::copy(&from, mesh_dir.join(mtl)).with_context(|| format!("copying {}", from.display()))?;
+                }
+            }
+        }
         if src.extension().is_some_and(|e| e.eq_ignore_ascii_case("gltf")) {
             let json: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(src)?)?;
             let src_dir = src.parent().unwrap_or(Path::new("."));
@@ -307,7 +318,7 @@ mod tests {
         let dir = tmp("mask");
         let mut doc = Document::new_default();
         let res = doc.mint();
-        doc.layers[1].mask = Some(Mask { res, generator: None, invert: false, enabled: true, parts: Vec::new(), effects: Vec::new() });
+        doc.layers[1].mask = Some(Mask { res, generator: None, invert: false, enabled: true, parts: Vec::new(), effects: Vec::new(), filters: Vec::new(), id_color: None });
         let px: Vec<u8> = (0..16).map(|i| i * 16).collect();
         write_mask(&dir, res, 4, &px).unwrap();
         write_mask(&dir, 999, 4, &px).unwrap();
