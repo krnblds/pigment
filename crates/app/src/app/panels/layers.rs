@@ -90,6 +90,7 @@ impl Panel for LayersPanel {
 
     fn ui(&mut self, app: &mut PigmentApp, ui: &mut egui::Ui, rs: &RenderState) {
         let p = ds::pal(ui);
+        super::texsets::set_switcher(app, ui, rs);
         ui.horizontal(|ui| {
             let add = ui.menu_button(ds::strong("+ Add", font::BODY), |ui| add_layer_menu(app, ui, rs));
             app.anchors.insert("add_layer", add.response.rect);

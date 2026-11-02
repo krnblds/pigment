@@ -28,7 +28,19 @@ use std::time::Instant;
 
 const PROTOCOL: &str = "2025-06-18";
 
+/// Every tool, plus `texture_set` on the tools that work on one set's layers.
 fn tools() -> Value {
+    let mut v = tools_base();
+    for t in v.as_array_mut().unwrap() {
+        if pigment_engine::app::automation::set_tools::SET_TOOLS.contains(&t["name"].as_str().unwrap_or("")) {
+            t["inputSchema"]["properties"]["texture_set"] = json!({ "type": ["string", "integer"],
+                "description": "texture set to work on (name or index, see list_texture_sets; default: the active one); \"*\" = every set (paint_stroke paints across sets on its own)" });
+        }
+    }
+    v
+}
+
+fn tools_base() -> Value {
     let mut layer_fields = json!({
         "name": { "type": "string" },
         "material": { "type": "string", "description": "Material preset name (see list_library)" },
@@ -227,6 +239,12 @@ fn tools() -> Value {
     json!([
         t("new_project", "Start a project from a mesh (.glb/.gltf/.obj with UVs), or a flat sheet with `tile` instead of `mesh`: a seamless tile (size_m; strokes, decals, generator noise and normals wrap across the edges), a trim sheet (strips stacked in V, wrapping along U; one part + folder per strip) or a decal atlas (cells packed with padding; one part + folder per cell, transparent base). The sheet lies in world XZ (y up, metres; u -> +x, v -> +z). export_textures then also writes <name>_layout.json (strip/cell UV rects) and, for atlases, <name>_BaseColorAlpha.png. Bakes AO + curvature. Optionally starts from a smart material or a base material; a paint layer goes on top.",
           json!({ "mesh": { "type": "string" }, "resolution": { "type": "integer", "enum": [512, 1024, 2048, 4096] }, "smart_material": { "type": "string" }, "material": { "type": "string" },
+                  "texture_sets": { "type": ["string", "array"], "description": "several texture sets, each with its own resolution and layer stack: \"materials\" (one per mesh material), \"udim\" (one per UDIM tile), or [{name, materials: [ids or names], udim, resolution}]. Each starts with a copy of the initial stack",
+                      "items": { "type": "object", "additionalProperties": false, "required": ["name"], "properties": { "name": { "type": "string" }, "materials": { "type": "array", "items": { "type": ["integer", "string"] } }, "udim": { "type": "integer" }, "resolution": { "type": "integer", "enum": [512, 1024, 2048, 4096] } } } },
+                  "udim": { "type": "boolean", "description": "one texture set per UDIM tile the mesh's UVs use (UVs beyond 0..1 -> tiles 1001+)" },
+                  "udim_tiles": { "type": "array", "description": "move part of the mesh to its own UDIM tile, its UVs repacked to fill the tile (more texel density there); then one texture set per tile unless texture_sets says otherwise",
+                      "items": { "type": "object", "additionalProperties": false, "required": ["tile"], "properties": { "tile": { "type": "integer", "description": "1002..1100" }, "below_y": { "type": "number", "description": "triangles whose centre is below this height (m)" }, "above_y": { "type": "number" },
+                          "parts": { "type": "array", "items": { "type": "integer" } }, "parts_where": { "type": "object", "description": "a part shape query as in list_parts" }, "margin": { "type": "number", "description": "UV margin in the tile (default 0.01)" } } } },
                   "tile": { "type": "object", "additionalProperties": false, "description": "flat sheet instead of a mesh",
                             "properties": {
                                 "size_m": { "type": ["number", "array"], "items": { "type": "number" }, "description": "seamless tile: [width, height] in metres (or one number); trim: width (height = sum of strips)" },
@@ -424,6 +442,7 @@ fn tools() -> Value {
           json!({ "layer": { "type": ["string", "integer"], "description": "layer name, path or index" }, "target": { "type": "string", "enum": ["layer", "mask"], "description": "default layer" }, "index": { "type": "integer", "minimum": 0 } }), &["layer", "index"]),
         t("set_anchor", "Make a layer or folder an anchor point: the stack as composited right after it (height, the layer's mask x coverage, colour luminance) can be read by generators of layers above through mask.input {anchor, channel}, e.g. edge wear on painted scratches or dirt in painted dents; the `anchor` generator uses a channel directly as a mask.",
           json!({ "layer": { "type": ["string", "integer"], "description": "layer name, path or index" }, "anchor": { "type": ["string", "null"], "description": "anchor name (default: the layer name); null removes it" } }), &["layer"]),
+        t("list_texture_sets", "The project's texture sets (one per material / UDIM tile, each with its own resolution and layer stack): name, materials, UDIM tile, resolution, triangles, layer count, which is active; plus the mesh's UDIM tiles.", json!({}), &[]),
         t("undo", "Undo the last action.", json!({}), &[]),
         t("redo", "Redo.", json!({}), &[]),
     ])
@@ -764,6 +783,33 @@ fn call(session: &mut Option<Session>, name: &str, args: &Value) -> Result<Vec<V
     if session.is_none() {
         *session = Some(Session::new()?);
     }
+    // `texture_set`: run the tool on that set ("*": on every set), then go back
+    if let Some(ts) = args.get("texture_set").filter(|_| pigment_engine::app::automation::set_tools::SET_TOOLS.contains(&name)) {
+        let s = session.as_mut().unwrap();
+        let mut names = s.texture_set_scope(ts)?;
+        if name == "paint_stroke" {
+            names.truncate(1); // a stroke already paints across sets
+        }
+        let prev = s.active_texture_set();
+        let mut a = args.clone();
+        a.as_object_mut().unwrap().remove("texture_set");
+        let mut results = serde_json::Map::new();
+        for n in &names {
+            session.as_mut().unwrap().activate_texture_set(n)?;
+            match call(session, name, &a) {
+                Ok(content) => {
+                    results.insert(n.clone(), content_json(&content));
+                }
+                Err(e) => {
+                    let _ = session.as_mut().unwrap().activate_texture_set(&prev);
+                    return Err(format!("texture set `{n}`: {e}"));
+                }
+            }
+        }
+        session.as_mut().unwrap().activate_texture_set(&prev)?;
+        let v = if results.len() == 1 { results.into_iter().next().unwrap().1 } else { Value::Object(results) };
+        return Ok(vec![json!({ "type": "text", "text": serde_json::to_string_pretty(&v).unwrap() })]);
+    }
     let s = session.as_mut().unwrap();
     let text = |v: Value| Ok(vec![json!({ "type": "text", "text": serde_json::to_string_pretty(&v).unwrap() })]);
     match name {
@@ -772,6 +818,7 @@ fn call(session: &mut Option<Session>, name: &str, args: &Value) -> Result<Vec<V
         "save_project" => text(s.save_project(args)?),
         "list_library" => text(s.library()),
         "list_layers" => text(s.list_layers(args)),
+        "list_texture_sets" => text(s.list_texture_sets()),
         "save_smart_material" => text(s.save_smart_material(args)?),
         "apply_smart_material" => text(s.apply_smart_material(args)?),
         "list_parts" => text(s.list_parts_query(args)?),

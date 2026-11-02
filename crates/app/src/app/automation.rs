@@ -12,6 +12,7 @@ use serde_json::{json, Value};
 type Res<T> = Result<T, String>;
 
 mod bake_tools;
+pub mod set_tools;
 mod brush_tools;
 mod decal_tools;
 mod filter_tools;
@@ -164,7 +165,13 @@ impl Session {
         let _ = self.app.history.clear();
         self.app.select(self.app.doc.layers.last().map(|l| l.id), false);
         self.settle();
-        Ok(json!({ "mesh": self.app.mesh.name, "triangles": self.app.mesh.triangle_count(), "layers": self.layers() }))
+        let sets = self.configure_sets(a)?;
+        let mut out = json!({ "mesh": self.app.mesh.name, "triangles": self.app.mesh.triangle_count(), "layers": self.layers() });
+        if let Some(v) = sets {
+            out["texture_sets"] = v["texture_sets"].clone();
+            out["udim_moves"] = v["udim_moves"].clone();
+        }
+        Ok(out)
     }
 
     pub fn open_project(&mut self, a: &Value) -> Res<Value> {
@@ -182,7 +189,11 @@ impl Session {
             None => self.app.project_dir.clone().ok_or("no project folder yet: pass `path` (e.g. C:/work/crate.pigment)")?,
         };
         self.app.status = None;
-        self.app.save_to(&self.rs, dir.clone());
+        if self.app.has_sets() {
+            self.app.save_sets(&self.rs, dir.clone());
+        } else {
+            self.app.save_to(&self.rs, dir.clone());
+        }
         Ok(json!({ "saved": dir, "status": self.status()? }))
     }
 
@@ -513,7 +524,8 @@ impl Session {
                     mask.invert = inv;
                 }
                 if let Some(ps) = m.get("parts") {
-                    let n = app.parts.info.len();
+                    // with texture sets, part ids are the whole mesh's
+                    let n = app.multi.as_ref().map(|m| m.part_count).unwrap_or(app.parts.info.len());
                     let ps = ps.as_array().ok_or("`mask.parts` must be an array of part ids (see list_parts)")?;
                     let mut ids = Vec::with_capacity(ps.len());
                     for (k, p) in ps.iter().enumerate() {
@@ -912,7 +924,13 @@ impl Session {
 
     fn draw(&mut self) {
         self.app.viewport.ensure_targets(&self.rs.device, self.size);
-        self.app.viewport.draw(&self.rs.device, &self.rs.queue, &self.app.camera, &self.app.view, self.app.mesh_gpu.as_ref(), &self.app.env, &self.app.ts);
+        self.app.composite_parked(&self.rs);
+        let app = &mut self.app;
+        let mut sets = vec![(app.mesh_gpu.as_ref(), &app.ts)];
+        if let Some(m) = &app.multi {
+            sets.extend(m.parked.iter().map(|s| (s.mesh_gpu.as_ref(), &s.ts)));
+        }
+        app.viewport.draw_sets(&self.rs.device, &self.rs.queue, &app.camera, &app.view, &sets, &app.env);
     }
 
     /// Paint one stroke. `points` are viewport positions in 0..1 (x right, y down)
@@ -1360,6 +1378,12 @@ impl Session {
         self.app.export_name = s(a, "name").map(String::from).unwrap_or_else(|| self.app.mesh.name.clone());
         self.app.export_compression = compression;
         self.app.status = None;
+        if self.app.has_sets() {
+            // one file per texture set and UDIM tile: <name>_<set>_<map>.<udim>.png
+            let name = self.app.export_name.clone();
+            let files = self.app.export_sets(&self.rs, &dir, &name)?;
+            return Ok(json!({ "files": files, "texture_sets": self.app.set_names(), "compression": compression.id() }));
+        }
         self.app.export(&self.rs);
         let msg = self.status()?;
         let [wait_ms, read_ms, encode_ms, total_ms] = self.app.last_export_ms.map(|x| (x * 10.0).round() / 10.0);

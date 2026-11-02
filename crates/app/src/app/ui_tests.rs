@@ -729,3 +729,32 @@ fn high_bake_and_id_mask_panels() {
     *h.app.ui.prefs.layout_mut() = layout(PanelId::Mask);
     h.run(4);
 }
+
+/// Texture sets in the UI: split a two-material box, the Layers panel shows
+/// the switcher, switching changes the stack, and the viewport draws both
+/// sets (the parked one too).
+#[test]
+fn texture_set_switcher_and_viewport() {
+    let Some(mut h) = harness() else { return };
+    settle(&mut h);
+    let mut mesh = pigment_core::hibake::rounded_box(glam::Vec3::new(0.5, 0.35, 0.4), 0.06, 8, None, Some(&|p: glam::Vec3| if p.y > 0.33 { 1 } else { 0 }));
+    mesh.material_names = vec!["body".into(), "lid".into()];
+    let rs = h.rs.clone();
+    h.app.new_project(&rs, mesh, None, Document::new_default());
+    let specs = pigment_core::texsets::sets_by_material(&h.app.mesh);
+    assert_eq!(h.app.split_sets(&rs, specs, &[]).unwrap(), vec!["body".to_string(), "lid".to_string()]);
+    *h.app.ui.prefs.layout_mut() = DockLayout { root: super::dock::Node::Split { vertical: false, ratio: 0.6, a: Box::new(super::dock::Node::Leaf { tabs: vec![PanelId::Viewport], active: 0 }), b: Box::new(super::dock::Node::Leaf { tabs: vec![PanelId::Layers, PanelId::TextureSet], active: 0 }) }, floating: vec![] };
+    h.run(4);
+    let before = h.render();
+    // paint the lid set's base red: the viewport (showing the body set active) changes
+    h.app.activate_set(&rs, "lid").unwrap();
+    if let LayerKind::Fill { values } = &mut h.app.doc.layers[0].kind {
+        values.base_color = [1.0, 0.0, 0.0];
+    }
+    h.app.activate_set(&rs, "body").unwrap();
+    h.run(4);
+    let after = h.render();
+    let reds = |img: &image::RgbaImage| img.pixels().filter(|p| p.0[0] > 150 && p.0[1] < 70 && p.0[2] < 70).count();
+    assert!(reds(&after) > reds(&before) + 100, "the parked lid set is drawn ({} -> {})", reds(&before), reds(&after));
+    assert_eq!(h.app.active_set_name(), "body");
+}

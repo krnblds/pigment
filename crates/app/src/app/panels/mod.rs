@@ -16,6 +16,7 @@ pub mod foliage;
 pub mod layers;
 pub mod library;
 pub mod misc;
+pub mod texsets;
 
 /// A dockable panel.
 pub trait Panel {

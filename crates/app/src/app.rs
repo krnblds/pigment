@@ -29,6 +29,7 @@ mod bridge;
 mod brush_tools;
 mod decals;
 pub(crate) mod hibake_app;
+pub(crate) mod texsets_app;
 mod foliage;
 mod tour;
 #[cfg(test)]
@@ -174,6 +175,8 @@ struct Stroke {
     last_uv: Option<(Vec2, Vec2)>,
     /// Last pointer position (px).
     last_px: Vec2,
+    /// Everything stamped, for replaying the stroke on other texture sets.
+    log: texsets_app::StrokeLog,
 }
 
 #[derive(Clone)]
@@ -247,6 +250,8 @@ pub struct PigmentApp {
     ui: ui::UiState,
     /// Foliage: generated layers, card atlases, the foliage brush.
     foliage: foliage::FoliageState,
+    /// Texture sets besides the active one (None = a single-set project).
+    multi: Option<Box<texsets_app::MultiSets>>,
 }
 
 impl PigmentApp {
@@ -318,6 +323,7 @@ impl PigmentApp {
             wrap_mesh: None,
             ui: ui::UiState::new(prefs),
             foliage: Default::default(),
+            multi: None,
         };
         app.load_brush_tips(rs);
         app.new_project(rs, Mesh::demo_crate(96), None, Document::demo());
@@ -416,6 +422,7 @@ impl PigmentApp {
     }
 
     fn new_project(&mut self, rs: &RenderState, mesh: Mesh, source: Option<PathBuf>, mut doc: Document) {
+        self.multi = None;
         doc.resolution = self.doc.resolution;
         self.reset_state(rs, doc);
         self.ts.ensure_resources(&rs.device, &rs.queue, &self.doc);
@@ -462,11 +469,26 @@ impl PigmentApp {
 
     fn open_project(&mut self, rs: &RenderState, path: &Path) {
         let dir = if path.is_dir() { path.to_path_buf() } else { path.parent().map(Path::to_path_buf).unwrap_or_default() };
+        self.multi = None;
+        // texture sets: the main manifest lists the others' folders
+        match project::load_manifest(&dir) {
+            Ok(doc) if !doc.extra_sets.is_empty() => self.open_sets(rs, &dir, &doc.extra_sets),
+            _ => self.open_project_one(rs, &dir),
+        }
+    }
+
+    /// Open one texture set's folder (or a single-set project).
+    fn open_project_one(&mut self, rs: &RenderState, dir: &Path) {
+        let dir = dir.to_path_buf();
         let result = (|| -> anyhow::Result<()> {
             // Read everything first: a corrupt file must not leave a half-loaded
             // project that a later Save would write over the previous one.
             let doc = project::load_manifest(&dir)?;
-            let mesh = Mesh::load(&dir.join(&doc.mesh))?;
+            // a texture set paints part of the mesh (UDIM moves applied first)
+            let mesh = texsets_app::prepare_set_mesh(Mesh::load(&dir.join(&doc.mesh))?, &doc).0;
+            if mesh.triangle_count() == 0 {
+                anyhow::bail!("texture set `{}` has no triangles in {}", texsets_app::set_name(&doc), doc.mesh);
+            }
             let size = doc.resolution;
             let mut layer_px = Vec::new();
             let mut mask_px = Vec::new();
@@ -520,7 +542,11 @@ impl PigmentApp {
                 p
             }
         };
-        self.save_to(rs, dir);
+        if self.multi.is_some() {
+            self.save_sets(rs, dir);
+        } else {
+            self.save_to(rs, dir);
+        }
     }
 
     fn save_to(&mut self, rs: &RenderState, dir: PathBuf) {
@@ -932,6 +958,7 @@ impl PigmentApp {
             tool_off: Vec2::ZERO,
             last_uv: None,
             last_px: pos_px,
+            log: texsets_app::StrokeLog { dabs: Vec::new(), stamps: Vec::new(), brush: self.brush_gpu(), fx, view, view_proj: vp, viewport_px, eye, reach: 1.0 },
         };
         // clone: the offset from the stroke start to the source, kept until a new source is set
         if self.brush.tool == BrushTool::Clone {
@@ -1073,6 +1100,10 @@ impl PigmentApp {
             })
             .collect();
         stroke.tiles.union(&frame_tiles);
+        stroke.log.dabs.extend_from_slice(&dabs);
+        stroke.log.stamps.extend_from_slice(&stamps);
+        stroke.log.brush = brush;
+        stroke.log.reach = reach;
         let Some(rect) = frame_tiles.texel_bounds(self.ts.res) else { return };
         let view = stroke.view;
         let (Some(depth), Some(mg)) = (self.viewport.paint_depth(), self.mesh_gpu.as_ref()) else { return };
@@ -1196,6 +1227,7 @@ impl PigmentApp {
     fn end_stroke(&mut self, rs: &RenderState) {
         let Some(stroke) = self.stroke.take() else { return };
         self.brush.last_end = Some(stroke.last_px);
+        let replay = (self.multi.is_some() && self.brush.tool == BrushTool::Paint).then(|| stroke.log.clone());
         // back to plain stamping (decals and fills share the stamp pass)
         self.painter.set_fx(&rs.queue, &FxGpu::default());
         if let Some(snap) = self.painter.end(&rs.device, &rs.queue, &stroke.tiles) {
@@ -1216,6 +1248,9 @@ impl PigmentApp {
         }
         // full pass refreshes seam padding outside the dirty rectangles
         self.composited = None;
+        if let Some(log) = replay {
+            self.replay_on_other_sets(rs, &log);
+        }
     }
 
     fn brush_radius_px(&self) -> f32 {

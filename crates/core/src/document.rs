@@ -861,6 +861,18 @@ pub struct Document {
     /// Colour ID map (PNG, relative to the project folder) for ID masks.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub id_map: Option<String>,
+    /// The texture set this document paints (see `texsets`); None = the
+    /// whole mesh, tile 1001 (single-set projects).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub texture_set: Option<crate::texsets::SetSpec>,
+    /// Main manifest only: the project's other texture sets, as folders
+    /// (relative to the project) holding their own manifest and pixels.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub extra_sets: Vec<String>,
+    /// UDIM tiles moved by `new_project.udim_tiles`, re-applied to the mesh on
+    /// load: (tile, triangle indices of the original mesh, margin).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub udim_moves: Vec<crate::texsets::UdimMove>,
 }
 
 fn default_preset() -> String {
@@ -880,6 +892,9 @@ impl Default for Document {
             variants: Default::default(),
             tile: None,
             id_map: None,
+            texture_set: None,
+            extra_sets: Vec::new(),
+            udim_moves: Vec::new(),
         }
     }
 }

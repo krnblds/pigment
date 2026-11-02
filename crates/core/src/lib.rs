@@ -24,6 +24,7 @@ pub mod mesh;
 pub mod partquery;
 pub mod project;
 pub mod sheet;
+pub mod texsets;
 pub mod smart;
 pub mod stroke;
 pub mod tile;

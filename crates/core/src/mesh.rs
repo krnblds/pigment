@@ -47,6 +47,10 @@ pub struct Mesh {
     pub material_names: Vec<String>,
     /// Linear vertex colours (glTF COLOR_0); empty = none.
     pub colors: Vec<[f32; 3]>,
+    /// Part id per triangle, when this mesh is a piece of a bigger one (a
+    /// texture set): part ids then stay those of the whole mesh. Empty =
+    /// computed from connectivity.
+    pub tri_part: Vec<u32>,
 }
 
 impl Mesh {
@@ -261,6 +265,9 @@ impl Mesh {
     /// or more triangles on an edge, or only a corner) stay separate parts.
     pub fn parts(&self) -> Parts {
         let n = self.indices.len() / 3;
+        if !self.tri_part.is_empty() && self.tri_part.len() == n {
+            return self.parts_from(self.tri_part.clone());
+        }
         let mut parent: Vec<u32> = (0..n as u32).collect();
         fn find(p: &mut [u32], mut x: u32) -> u32 {
             while p[x as usize] != x {
@@ -306,7 +313,12 @@ impl Mesh {
             let next = id_of_root.len() as u32;
             tri_part.push(*id_of_root.entry(r).or_insert(next));
         }
-        let count = id_of_root.len();
+        self.parts_from(tri_part)
+    }
+
+    /// Parts info from a part id per triangle.
+    fn parts_from(&self, tri_part: Vec<u32>) -> Parts {
+        let count = tri_part.iter().copied().max().map(|m| m as usize + 1).unwrap_or(0);
         let mut info = vec![PartInfo { triangles: 0, min: [f32::MAX; 3], max: [f32::MIN; 3] }; count];
         let mut vertex_part = vec![0u32; self.vertices.len()];
         for (t, tri) in self.indices.chunks_exact(3).enumerate() {

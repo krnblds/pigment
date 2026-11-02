@@ -1219,7 +1219,13 @@ impl PigmentApp {
         }
         self.ensure_composited(rs);
         let size = [viewport_px.x as u32, viewport_px.y as u32];
-        if let Some(tex) = self.viewport.render(rs, size, &self.camera, &self.view, self.mesh_gpu.as_ref(), &self.env, &self.ts) {
+        // every texture set (the active one first)
+        self.composite_parked(rs);
+        let mut sets = vec![(self.mesh_gpu.as_ref(), &self.ts)];
+        if let Some(m) = &self.multi {
+            sets.extend(m.parked.iter().map(|s| (s.mesh_gpu.as_ref(), &s.ts)));
+        }
+        if let Some(tex) = self.viewport.render_sets(rs, size, &self.camera, &self.view, &sets, &self.env) {
             let uv = Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0));
             ui.painter().image(tex, rect, uv, ds::IMAGE_TINT);
         }

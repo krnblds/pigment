@@ -656,6 +656,13 @@ impl TexSet {
         &self.mipgen
     }
 
+    /// Noise space and bounds of the whole object, for texture sets that
+    /// paint part of it (generators stay continuous across sets).
+    pub fn set_frame(&mut self, center: Vec3, radius: f32, lo: Vec3, hi: Vec3) {
+        self.center_radius = [center.x, center.y, center.z, radius];
+        self.bounds = [[lo.x, lo.y, lo.z, 0.0], [hi.x, hi.y, hi.z, 0.0]];
+    }
+
     /// Set the colour ID map (RGBA8, `w` x `h`, row 0 = v 0); None clears it.
     pub fn set_id_map(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, img: Option<(&[u8], u32, u32)>) {
         self.id_map = match img {
