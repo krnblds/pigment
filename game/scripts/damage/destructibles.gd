@@ -128,9 +128,9 @@ func _physics_process(delta: float) -> void:
 
 
 func _tick(delta: float) -> void:
-	var hero: RigidBody3D = world.hero
-	if not is_instance_valid(hero):
+	if not is_instance_valid(world.hero):
 		return
+	var hero: RigidBody3D = world.hero
 	_arm_t -= delta
 	if _arm_t <= 0.0 and hero.global_position.distance_to(_arm_at) > 8.0:
 		_arm_t = ARM_EVERY

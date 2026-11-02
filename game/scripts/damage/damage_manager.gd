@@ -48,19 +48,27 @@ func setup(m: Node) -> void:
 	debris.focus = hero
 	debris.audio = audio
 	add_child(debris)
-	# debris collides with the hero (its body, not its wheel rays)
-	hero.collision_mask |= Debris.LAYER
-	hero_damage = attach(hero, true)
 	destructibles = Destructibles.new()
 	add_child(destructibles)
 	destructibles.setup(self, m.town if m.town and m.town.layout else null)
-	if hero_damage:
-		hero_damage.hit.connect(func(p: Vector3, j: float): destructibles.on_car_hit(p, j, hero))
 	if m.hud:
 		hud = DamageHud.new()
-		hud.damage = hero_damage
 		m.hud.add_child(hud)
+	set_hero(hero)
 	print("damage: %d destructible props indexed, hero panels %d" % [destructibles.stats.indexed, hero_damage.panels.size() if hero_damage else 0])
+
+
+## A new player car (start, or a garage swap): panels, debris focus, prop hits and the HUD follow it.
+func set_hero(car: RigidBody3D) -> void:
+	hero = car
+	debris.focus = car
+	# debris collides with the hero (its body, not its wheel rays)
+	car.collision_mask |= Debris.LAYER
+	hero_damage = attach(car, true)
+	if hero_damage:
+		hero_damage.hit.connect(func(p: Vector3, j: float): destructibles.on_car_hit(p, j, car))
+	if hud:
+		hud.damage = hero_damage
 
 
 ## Damage on a vehicle body: the hero (car.gd: meshes under Visual) or a traffic car (LOD0 meshes).

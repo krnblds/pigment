@@ -462,6 +462,8 @@ func install_car(new_car: RigidBody3D, xf: Transform3D) -> void:
 		new_car.collision_mask |= 2
 		if "_hero_rid" in main.traffic:
 			main.traffic._hero_rid = new_car.get_rid()
+	if "damage" in main and main.damage and main.damage.has_method("set_hero"):
+		main.damage.set_hero(new_car)
 	for g in garages:
 		g.set_meta("player", new_car)
 	new_car.place(xf)
