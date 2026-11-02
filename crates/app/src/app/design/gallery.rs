@@ -11,6 +11,8 @@ pub struct GalleryState {
     pub tab: u8,
     pub slider: f32,
     pub pct: f32,
+    pub size_px: f32,
+    pub density: Density,
     pub color: [f32; 3],
     pub search: String,
     pub palette: Palette2State,
@@ -27,9 +29,11 @@ impl Default for GalleryState {
             tab: 0,
             slider: 0.35,
             pct: 0.62,
+            size_px: 60.0,
+            density: Density::Compact,
             color: [0.86, 0.36, 0.08],
             search: "rust".into(),
-            palette: Palette2State { open: false, query: "exp".into(), cursor: 0 },
+            palette: Palette2State { open: false, query: "exp".into(), cursor: 0, recent: vec![] },
             toasts: Toasts::default(),
             seeded: false,
         }
@@ -40,7 +44,7 @@ fn swatch_row(ui: &mut Ui, items: &[(&str, egui::Color32)]) {
     ui.horizontal_wrapped(|ui| {
         for (name, c) in items {
             ui.vertical(|ui| {
-                let (r, _) = ui.allocate_exact_size(vec2(64.0, 36.0), egui::Sense::hover());
+                let (r, _) = ui.allocate_exact_size(vec2(56.0, 28.0), egui::Sense::hover());
                 ui.painter().rect(r, egui::CornerRadius::same(radius::MD), *c, egui::Stroke::new(1.0, pal(ui).border), egui::StrokeKind::Inside);
                 ui.label(text(*name, font::CAPTION).color(pal(ui).text_muted));
             });
@@ -58,8 +62,14 @@ pub fn show(ui: &mut Ui, st: &mut GalleryState) {
     }
     egui::ScrollArea::vertical().show(ui, |ui| {
         ui.label(strong("Pigment design system", font::DISPLAY));
-        ui.label(muted(ui, "Tokens and components in every state. Theme, type, icons, controls, surfaces, feedback."));
-        ui.add_space(space::XL);
+        ui.label(muted(ui, "Dark, compact, keyboard-first. Tokens and components in every state: theme, type, icons, controls, surfaces, feedback."));
+        ui.horizontal(|ui| {
+            ui.label(text("Density", font::SMALL).color(p.text_secondary));
+            if segmented(ui, &mut st.density, &[(Density::Compact, None, "Compact"), (Density::Comfortable, None, "Comfortable")]) {
+                set_density(ui.ctx(), st.density);
+            }
+        });
+        ui.add_space(space::MD);
         ui.columns(2, |cols| {
             let ui = &mut cols[0];
             section(ui, "Colour roles");
@@ -68,17 +78,17 @@ pub fn show(ui: &mut Ui, st: &mut GalleryState) {
             swatch_row(ui, &[("accent", p.accent), ("hover", p.accent_hover), ("pressed", p.accent_pressed), ("subtle", p.accent_subtle), ("success", p.success), ("warn", p.warn)]);
             swatch_row(ui, &[("danger", p.danger), ("info", p.info), ("focus", p.focus), ("selection", p.selection)]);
             section(ui, "Type scale (Inter, JetBrains Mono)");
-            ui.label(strong("Display 28", font::DISPLAY));
-            ui.label(strong("Heading 18 semibold", font::HEADING));
-            ui.label(strong("Title 15 semibold", font::TITLE));
-            ui.label(text("Body 13.5: paint PBR textures onto 3D models.", font::BODY));
+            ui.label(strong("Display 24", font::DISPLAY));
+            ui.label(strong("Heading 15 semibold", font::HEADING));
+            ui.label(strong("Title 13.5 semibold", font::TITLE));
+            ui.label(text("Body 12.5: paint PBR textures onto 3D models.", font::BODY));
             ui.label(text("Small 12: secondary information", font::SMALL).color(p.text_secondary));
-            ui.label(caption(ui, "Caption 11 section header"));
-            ui.label(mono("0.62  2048 px  -0.35"));
+            ui.label(caption(ui, "Caption 11 upper case, tracked"));
+            ui.label(mono("Mono 11.5  0.62  2048 px  -0.35"));
             section(ui, "Spacing, radii, elevation");
             ui.horizontal(|ui| {
                 for s in [space::XXS, space::XS, space::SM, space::MD, space::LG, space::XL, space::XXL, space::XXXL] {
-                    let (r, _) = ui.allocate_exact_size(vec2(s, 20.0), egui::Sense::hover());
+                    let (r, _) = ui.allocate_exact_size(vec2(s, 14.0), egui::Sense::hover());
                     ui.painter().rect_filled(r, egui::CornerRadius::ZERO, p.accent);
                 }
             });
@@ -123,14 +133,32 @@ pub fn show(ui: &mut Ui, st: &mut GalleryState) {
             });
 
             let ui = &mut cols[1];
+            section(ui, "Drag fields: drag, Shift fine, Ctrl snap, double-click to type");
+            ui.add(DragField::new(&mut st.size_px, 2.0..=800.0).suffix(" px").decimals(0).logarithmic(true).label("Size"));
+            ui.add(DragField::new(&mut st.pct, 0.0..=1.0).percent().label("Strength"));
+            slider_row(ui, "Roughness", &mut st.slider, 0.0..=1.0, Unit::Plain(2));
+            slider_row(ui, "How worn?", &mut st.pct, 0.0..=1.0, Unit::Percent);
+            collapsible(ui, "gallery.more", "Collapsible section (open)", true, |ui| {
+                slider_row(ui, "Threshold", &mut st.slider, 0.0..=1.0, Unit::Plain(2));
+            });
+            collapsible(ui, "gallery.closed", "Collapsed section", false, |ui| {
+                ui.label("hidden");
+            });
+            section(ui, "Menu items and status hints");
+            egui::Frame::new().fill(p.overlay).stroke(egui::Stroke::new(1.0, p.border_strong)).corner_radius(egui::CornerRadius::same(radius::LG)).inner_margin(egui::Margin::same(space::XS as i8)).show(ui, |ui| {
+                ui.set_width(240.0);
+                ui.add(MenuItem::new("Rename").icon(Icon::Sliders).shortcut("F2"));
+                ui.add(MenuItem::new("Duplicate").icon(Icon::Duplicate).shortcut("Ctrl+D"));
+                ui.add(MenuItem::new("Show in viewport").checked(true));
+                ui.add(MenuItem::new("Move down").enabled(false));
+                ui.add(MenuItem::new("Delete").icon(Icon::Trash).shortcut("Del").danger());
+            });
+            hint_row(ui, &[hint_mouse(MouseBtn::Left, "Paint"), hint_mouse(MouseBtn::Right, "Orbit"), hint_mouse(MouseBtn::Middle, "Pan"), hint_mouse(MouseBtn::Wheel, "Zoom"), hint_key("F", "Frame")]);
             section(ui, "Toggles, segmented, tabs");
             toggle(ui, &mut st.toggle_a, "Bloom");
             toggle(ui, &mut st.toggle_b, "Show environment");
             segmented(ui, &mut st.seg, &[(0, Some(Icon::Sparkle), "Simple"), (1, Some(Icon::Sliders), "Advanced")]);
             tabs(ui, &mut st.tab, &[(0, "Layer"), (1, "Mask"), (2, "Channels")]);
-            section(ui, "Sliders with value fields");
-            slider_row(ui, "Size", &mut st.slider, 0.0..=1.0, Unit::Plain(2));
-            slider_row(ui, "How worn?", &mut st.pct, 0.0..=1.0, Unit::Percent);
             section(ui, "Swatches and picker");
             ui.horizontal(|ui| {
                 for (k, c) in [p.accent, p.success, p.info, p.danger].into_iter().enumerate() {
@@ -169,7 +197,7 @@ pub fn show(ui: &mut Ui, st: &mut GalleryState) {
             search_field(ui, &mut st.search, "Search materials");
             prop_grid(ui, "gallery props", |ui| {
                 prop_label(ui, "Roughness", Some("How blurry reflections are"));
-                ui.add(egui::Slider::new(&mut st.slider, 0.0..=1.0));
+                ui.add(DragField::new(&mut st.slider, 0.0..=1.0));
                 ui.end_row();
                 prop_label(ui, "Base color", None);
                 color_picker(ui, &mut st.color);

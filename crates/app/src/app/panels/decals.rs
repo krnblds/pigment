@@ -60,6 +60,8 @@ pub struct DecalsPanel {
     images: Option<Vec<PathBuf>>,
     thumbs: library::ImageThumbs,
     folder: Option<String>,
+    /// Quick search over every decal image (all folders).
+    search: String,
 }
 
 impl Panel for DecalsPanel {
@@ -74,10 +76,9 @@ impl Panel for DecalsPanel {
         let active = app.tool() == super::super::ui::Tool::Decal;
         if !active {
             ui.horizontal(|ui| {
-                if ui.add(Btn::primary("Use the decal tool").icon(Icon::Stamp)).clicked() {
+                if ui.add(Btn::secondary("Use the decal tool").icon(Icon::Stamp).shortcut("D")).clicked() {
                     app.set_tool(super::super::ui::Tool::Decal);
                 }
-                ui.label(ds::text("D", font::SMALL).color(p.text_muted));
             });
             ui.add_space(space::SM);
         }
@@ -142,6 +143,10 @@ impl Panel for DecalsPanel {
             f.dedup();
             f
         };
+        ds::search_field(ui, &mut self.search, "Search decals");
+        let query = self.search.trim().to_string();
+        ui.add_space(space::XS);
+        if query.is_empty() {
         ui.horizontal_wrapped(|ui| {
             ui.spacing_mut().item_spacing = egui::vec2(space::XS, space::XS);
             for f in &folders {
@@ -151,15 +156,42 @@ impl Panel for DecalsPanel {
                 }
             }
         });
+        }
         let sel_folder = self.folder.clone().unwrap_or_default();
         let w = 72.0;
+        let folder_of = |i: &PathBuf| i.parent().and_then(|d| root.as_ref().and_then(|r| d.strip_prefix(r).ok())).map(|r| r.to_string_lossy().to_string()).unwrap_or_default();
+        let shown: Vec<&PathBuf> = if query.is_empty() {
+            images.iter().filter(|i| folder_of(i) == sel_folder).collect()
+        } else {
+            let mut v: Vec<(i32, &PathBuf)> = images.iter().filter_map(|i| ds::fuzzy_score(&query, &format!("{} {}", i.file_stem().map(|s| s.to_string_lossy().replace('_', " ")).unwrap_or_default(), folder_of(i))).map(|sc| (sc, i))).collect();
+            v.sort_by(|a, b| b.0.cmp(&a.0));
+            v.into_iter().map(|(_, i)| i).collect()
+        };
+        if shown.is_empty() {
+            ds::empty_state(ui, Icon::Search, "No decals match", "Try another word, or clear the search to browse folders.", None);
+        }
         ui.horizontal_wrapped(|ui| {
             ui.spacing_mut().item_spacing = egui::vec2(space::SM, space::SM);
-            for img in images.iter().filter(|i| i.parent().and_then(|d| root.as_ref().and_then(|r| d.strip_prefix(r).ok())).map(|r| r.to_string_lossy().to_string()).unwrap_or_default() == sel_folder) {
+            for img in shown {
                 let tex = self.thumbs.get(ui.ctx(), img);
                 let name = img.file_stem().map(|s| s.to_string_lossy().replace('_', " ")).unwrap_or_default();
                 let on = app.ui.decal.image.as_deref() == Some(img.as_path());
                 let r = ds::asset_tile(ui, w, tex, |pa, r| Icon::Image.paint(pa, r.shrink(space::LG), p.text_muted), &name, "", on);
+                r.context_menu(|ui| {
+                    if ui.add(ds::MenuItem::new("Stick it on (decal tool)").icon(Icon::Stamp).shortcut("D")).clicked() {
+                        app.ui.decal.image = Some(img.clone());
+                        app.decal_tool = Some((img.clone(), None));
+                        app.ui.decal.mode = DecalMode::Stamp;
+                        app.set_tool(super::super::ui::Tool::Decal);
+                        ui.close();
+                    }
+                    if ui.add(ds::MenuItem::new("Scatter copies…").icon(Icon::Scatter)).clicked() {
+                        app.ui.decal.image = Some(img.clone());
+                        app.ui.decal.mode = DecalMode::Scatter;
+                        app.set_tool(super::super::ui::Tool::Decal);
+                        ui.close();
+                    }
+                });
                 if r.clicked() {
                     app.ui.decal.image = Some(img.clone());
                     app.decal_tool = Some((img.clone(), None));

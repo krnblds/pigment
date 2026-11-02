@@ -60,13 +60,13 @@ pub fn brush_engine_ui(app: &mut PigmentApp, ui: &mut egui::Ui, rs: &RenderState
         let d = &mut app.brush.dynamics;
         ds::slider_row_ex(ui, "Flow", &mut d.flow, 0.02..=1.0, ds::Unit::Percent, false, Some("Below 100%: dabs build up towards the strength as you paint over"));
         ds::slider_row_ex(ui, "Lazy mouse", &mut d.lazy, 0.0..=200.0, ds::Unit::Suffix(" px", 0), false, Some("The brush trails the pointer by this distance: smooth, steady lines"));
-        egui::CollapsingHeader::new("Jitter").id_salt("brush jitter").show(ui, |ui| {
+        ds::collapsible(ui, "brush.jitter", "Jitter", false, |ui| {
             ds::slider_row(ui, "Size", &mut d.jitter.size, 0.0..=1.0, ds::Unit::Percent);
             ds::slider_row(ui, "Angle", &mut d.jitter.angle, 0.0..=180.0, ds::Unit::Suffix("°", 0));
             ds::slider_row(ui, "Position", &mut d.jitter.position, 0.0..=2.0, ds::Unit::Plain(2));
             ds::slider_row(ui, "Flow", &mut d.jitter.flow, 0.0..=1.0, ds::Unit::Percent);
         });
-        egui::CollapsingHeader::new("Pen pressure").id_salt("brush pressure").show(ui, |ui| {
+        ds::collapsible(ui, "brush.pressure", "Pen pressure", false, |ui| {
             ds::hint(ui, "Tablet pressure (pen or touch force). A mouse paints at full pressure.");
             curve_ui(ui, "Pressure → size", &mut d.pressure_size);
             curve_ui(ui, "Pressure → flow", &mut d.pressure_flow);

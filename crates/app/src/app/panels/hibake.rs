@@ -78,7 +78,7 @@ pub fn high_bake_ui(app: &mut PigmentApp, ui: &mut egui::Ui, rs: &RenderState) {
         });
         ds::toggle(ui, &mut hb.id_from_vertex_colors, "Color ID from vertex colours");
         let hb = hb.clone();
-        if ui.add(Btn::primary("Bake from high poly").icon(Icon::Tile).enabled(!hb.maps.is_empty())).clicked() {
+        if ui.add(Btn::secondary("Bake from high poly").icon(Icon::Tile).enabled(!hb.maps.is_empty())).clicked() {
             let high = if hb.maps.iter().any(|m| m.needs_high()) {
                 match Mesh::load(Path::new(&hb.mesh)) {
                     Ok(m) => Some(m),

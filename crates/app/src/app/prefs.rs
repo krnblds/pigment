@@ -3,7 +3,7 @@
 //! named custom layouts, recent files, window size and the autosave folder.
 
 use super::dock::DockLayout;
-use crate::app::design::ThemeKind;
+use crate::app::design::{Density, ThemeKind};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
@@ -37,6 +37,12 @@ pub struct Prefs {
     pub autosave_minutes: f32,
     pub export_dir: Option<PathBuf>,
     pub export_target: String,
+    /// Compact (default) or Comfortable spacing.
+    pub density: Density,
+    /// Collapsible panel sections the user opened or closed, by id.
+    pub sections: std::collections::BTreeMap<String, bool>,
+    /// Command palette: most recently run command ids, newest first.
+    pub recent_commands: Vec<String>,
 }
 
 impl Default for Prefs {
@@ -56,6 +62,9 @@ impl Default for Prefs {
             autosave_minutes: 3.0,
             export_dir: None,
             export_target: "blender".into(),
+            density: Density::Compact,
+            sections: Default::default(),
+            recent_commands: Vec::new(),
         }
     }
 }
@@ -152,6 +161,8 @@ mod tests {
         assert_eq!(p.mode, Mode::Simple);
         p.mode = Mode::Advanced;
         p.theme = ThemeKind::Light;
+        p.density = Density::Comfortable;
+        p.sections.insert("props.glow".into(), true);
         p.ui_scale = 1.25;
         p.layout_advanced = DockLayout::compact();
         p.custom_layouts.push(("Mine".into(), DockLayout::painting()));
@@ -160,6 +171,8 @@ mod tests {
         assert_eq!(q.mode, Mode::Advanced);
         assert_eq!(q.theme, ThemeKind::Light);
         assert_eq!(q.ui_scale, 1.25);
+        assert_eq!(q.density, Density::Comfortable);
+        assert_eq!(q.sections.get("props.glow"), Some(&true));
         assert_eq!(q.layout_advanced, DockLayout::compact());
         assert_eq!(q.custom_layouts, p.custom_layouts);
         // a corrupt file falls back to defaults instead of failing

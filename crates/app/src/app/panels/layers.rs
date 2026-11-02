@@ -81,6 +81,8 @@ fn paint_thumb(pa: &egui::Painter, r: egui::Rect, l: &Layer, p: &ds::Palette) {
 pub struct LayersPanel {
     /// Last drop hint, for tests.
     pub last_drop: Option<(LayerId, DropZone)>,
+    /// Inline rename in progress: layer, text, first frame.
+    pub renaming: Option<(LayerId, String, bool)>,
 }
 
 impl Panel for LayersPanel {
@@ -90,24 +92,50 @@ impl Panel for LayersPanel {
 
     fn ui(&mut self, app: &mut PigmentApp, ui: &mut egui::Ui, rs: &RenderState) {
         let p = ds::pal(ui);
+        // keyboard: F2 rename, Ctrl+D duplicate, Ctrl+G group, Delete, H hide (pointer over the panel)
+        if ui.ui_contains_pointer() && !ui.ctx().egui_wants_keyboard_input() && self.renaming.is_none() {
+            if let Some(sel) = app.selected {
+                use egui::{Key, KeyboardShortcut as K, Modifiers as M};
+                let (f2, dup, group, del, hide) = ui.input_mut(|i| {
+                    (i.consume_key(M::NONE, Key::F2), i.consume_shortcut(&K::new(M::COMMAND, Key::D)), i.consume_shortcut(&K::new(M::COMMAND, Key::G)), i.consume_key(M::NONE, Key::Delete), i.consume_key(M::NONE, Key::H))
+                });
+                if f2 {
+                    self.renaming = app.doc.layer(sel).map(|l| (sel, l.name.clone(), true));
+                }
+                if dup {
+                    app.duplicate_selected(rs);
+                }
+                if group {
+                    app.group_selected();
+                }
+                if del {
+                    app.delete_selected();
+                }
+                if hide {
+                    if let Some(l) = app.doc.layers.iter_mut().find(|l| l.id == sel) {
+                        l.visible = !l.visible;
+                    }
+                }
+            }
+        }
         super::texsets::set_switcher(app, ui, rs);
         ui.horizontal(|ui| {
             let add = ui.menu_button(ds::strong("+ Add", font::BODY), |ui| add_layer_menu(app, ui, rs));
             app.anchors.insert("add_layer", add.response.rect);
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 let sel = app.selected.is_some();
-                if ui.add(IconBtn::new(Icon::Trash, "Delete (a folder goes with its contents)").enabled(sel)).clicked() {
+                if ui.add(IconBtn::new(Icon::Trash, "Delete (a folder goes with its contents)").shortcut("Del").enabled(sel)).clicked() {
                     app.delete_selected();
                 }
-                if ui.add(IconBtn::new(Icon::Duplicate, "Duplicate").enabled(sel)).clicked() {
+                if ui.add(IconBtn::new(Icon::Duplicate, "Duplicate").shortcut("Ctrl+D").enabled(sel)).clicked() {
                     app.duplicate_selected(rs);
                 }
-                if ui.add(IconBtn::new(Icon::Folder, "Group the selection into a new folder").enabled(sel)).clicked() {
+                if ui.add(IconBtn::new(Icon::Folder, "Group the selection into a new folder").shortcut("Ctrl+G").enabled(sel)).clicked() {
                     app.group_selected();
                 }
             });
         });
-        ui.add_space(space::XS);
+        ui.add_space(space::XXS);
         if app.doc.layers.is_empty() {
             if ds::empty_state(ui, Icon::Layers, "No layers yet", "Add a material from the library, or a paint layer to paint on.", Some("Add a paint layer")) {
                 let l = app.doc.new_paint_layer("Paint");
@@ -122,7 +150,7 @@ impl Panel for LayersPanel {
         let mut drop: Option<(LayerId, DropZone)> = None;
         let mut toggles: Vec<(LayerId, u64)> = vec![];
         let n = app.doc.layers.len();
-        ui.spacing_mut().item_spacing.y = space::XXS;
+        ui.spacing_mut().item_spacing.y = 1.0;
         for i in (0..n).rev() {
             let l = &app.doc.layers[i];
             let lid = l.id;
@@ -159,6 +187,27 @@ impl Panel for LayersPanel {
             if r.clicked {
                 select = Some((lid, false));
             }
+            if r.double_clicked {
+                self.renaming = Some((lid, app.doc.layers[i].name.clone(), true));
+            }
+            if let Some((rid, buf, fresh)) = &mut self.renaming {
+                if *rid == lid {
+                    let eid = egui::Id::NULL.with(("layer rename", lid));
+                    let mut child = ui.new_child(egui::UiBuilder::new().max_rect(r.name_rect).layout(egui::Layout::left_to_right(egui::Align::Center)));
+                    let te = child.add(egui::TextEdit::singleline(buf).id(eid).desired_width(r.name_rect.width()).font(ds::fonts::regular(font::BODY)));
+                    if *fresh {
+                        te.request_focus();
+                        *fresh = false;
+                    } else if te.lost_focus() {
+                        let esc = ui.input(|i| i.key_pressed(egui::Key::Escape));
+                        let name = buf.trim().to_string();
+                        if !esc && !name.is_empty() {
+                            app.doc.layers[i].name = name;
+                        }
+                        toggles.push((lid, 99));
+                    }
+                }
+            }
             if r.mask_clicked {
                 select = Some((lid, true));
             }
@@ -172,42 +221,58 @@ impl Panel for LayersPanel {
                 toggles.push((lid, 2));
             }
             if let Some(c) = r.context {
+                let (visible, locked) = (app.doc.layers[i].visible, app.ui.locked.contains(&lid));
                 c.context_menu(|ui| {
-                    if ui.button("Duplicate").clicked() {
-                        select = Some((lid, false));
+                    ui.set_min_width(200.0);
+                    app.select(Some(lid), app.paint_mask && selected);
+                    if ui.add(ds::MenuItem::new("Rename").icon(Icon::Sliders).shortcut("F2")).clicked() {
+                        toggles.push((lid, 9));
+                        ui.close();
+                    }
+                    if ui.add(ds::MenuItem::new("Duplicate").icon(Icon::Duplicate).shortcut("Ctrl+D")).clicked() {
                         toggles.push((lid, 3));
                         ui.close();
                     }
-                    if ui.button("Delete").clicked() {
-                        toggles.push((lid, 4));
-                        ui.close();
-                    }
-                    if ui.button("Group into folder").clicked() {
+                    if ui.add(ds::MenuItem::new("Group into folder").icon(Icon::Folder).shortcut("Ctrl+G")).clicked() {
                         toggles.push((lid, 5));
                         ui.close();
                     }
-                    app.select(Some(lid), app.paint_mask && selected);
-                    if ui.add_enabled(app.can_nudge(1), egui::Button::new("Move up")).clicked() {
+                    ui.separator();
+                    if ui.add(ds::MenuItem::new(if visible { "Hide" } else { "Show" }).icon(if visible { Icon::EyeOff } else { Icon::Eye }).shortcut("H")).clicked() {
+                        toggles.push((lid, 0));
+                        ui.close();
+                    }
+                    if ui.add(ds::MenuItem::new(if locked { "Unlock" } else { "Lock" }).icon(if locked { Icon::Unlock } else { Icon::Lock })).clicked() {
+                        toggles.push((lid, 1));
+                        ui.close();
+                    }
+                    ui.separator();
+                    if ui.add(ds::MenuItem::new("Move up").enabled(app.can_nudge(1))).clicked() {
                         toggles.push((lid, 7));
                         ui.close();
                     }
-                    if ui.add_enabled(app.can_nudge(-1), egui::Button::new("Move down")).clicked() {
+                    if ui.add(ds::MenuItem::new("Move down").enabled(app.can_nudge(-1))).clicked() {
                         toggles.push((lid, 8));
                         ui.close();
                     }
                     let targets = app.folder_targets();
                     if !targets.is_empty() {
-                        ui.menu_button("Into folder", |ui| {
+                        ui.menu_button(ds::text("     Into folder", font::BODY), |ui| {
                             for (fid, path) in targets {
-                                if ui.button(path).clicked() {
+                                if ui.add(ds::MenuItem::new(path).icon(Icon::Folder)).clicked() {
                                     toggles.push((lid, 1000 + fid));
                                     ui.close();
                                 }
                             }
                         });
                     }
-                    if app.doc.layer(lid).is_some_and(|l| l.parent.is_some()) && ui.button("Move out of folder").clicked() {
+                    if app.doc.layer(lid).is_some_and(|l| l.parent.is_some()) && ui.add(ds::MenuItem::new("Move out of folder").icon(Icon::Export)).clicked() {
                         toggles.push((lid, 6));
+                        ui.close();
+                    }
+                    ui.separator();
+                    if ui.add(ds::MenuItem::new("Delete").icon(Icon::Trash).shortcut("Del").danger()).clicked() {
+                        toggles.push((lid, 4));
                         ui.close();
                     }
                 });
@@ -263,6 +328,10 @@ impl Panel for LayersPanel {
                     app.select(Some(id), false);
                     app.nudge_selected(if what == 7 { 1 } else { -1 });
                 }
+                9 => {
+                    self.renaming = app.doc.layer(id).map(|l| (id, l.name.clone(), true));
+                }
+                99 => self.renaming = None,
                 f => {
                     app.select(Some(id), false);
                     if let Some(fid) = app.folder_targets().into_iter().map(|(f, _)| f).find(|x| 1000 + *x == f) {
@@ -282,7 +351,7 @@ impl Panel for LayersPanel {
             ui.ctx().set_cursor_icon(egui::CursorIcon::Grabbing);
         }
         ui.add_space(space::SM);
-        ds::hint(ui, "Drag the ⠿ handle to reorder; drop on the middle of a folder to put a layer inside.");
+        ds::hint(ui, "Drag a row by its grip (left edge) to reorder; drop it on the middle of a folder to nest it. Double-click to rename, right-click for more.");
     }
 }
 
@@ -382,13 +451,13 @@ pub fn material_editor(ui: &mut egui::Ui, id: &str, v: &mut MaterialValues, mut 
         ds::color_picker(ui, &mut v.base_color);
         ui.end_row();
         row(ui, 1, "Roughness", "0 = mirror-glossy, 1 = matte");
-        ui.add(egui::Slider::new(&mut v.roughness, 0.0..=1.0));
+        ui.add(ds::DragField::new(&mut v.roughness, 0.0..=1.0));
         ui.end_row();
         row(ui, 2, "Metallic", "1 for bare metal, 0 for everything else");
-        ui.add(egui::Slider::new(&mut v.metallic, 0.0..=1.0));
+        ui.add(ds::DragField::new(&mut v.metallic, 0.0..=1.0));
         ui.end_row();
         row(ui, 3, "Height", "Raise (+) or engrave (-) the surface");
-        ui.add(egui::Slider::new(&mut v.height, -1.0..=1.0));
+        ui.add(ds::DragField::new(&mut v.height, -1.0..=1.0));
         ui.end_row();
         row(ui, 4, "Normal tilt", "Bend the surface normal (x, y)");
         ui.horizontal(|ui| {
@@ -397,7 +466,7 @@ pub fn material_editor(ui: &mut egui::Ui, id: &str, v: &mut MaterialValues, mut 
         });
         ui.end_row();
     });
-    egui::CollapsingHeader::new(ds::caption(ui, "Glow")).id_salt((id, "glow")).default_open(v.emissive_strength > 0.0).show(ui, |ui| {
+    ds::collapsible(ui, &format!("{id}.glow"), "Glow", v.emissive_strength > 0.0, |ui| {
         ds::prop_grid(ui, &format!("{id} glow"), |ui| {
             row(ui, 5, "Emission", "Light the surface gives off (neon, screens, LEDs)");
             ui.horizontal(|ui| {
@@ -407,26 +476,26 @@ pub fn material_editor(ui: &mut egui::Ui, id: &str, v: &mut MaterialValues, mut 
             ui.end_row();
         });
     });
-    egui::CollapsingHeader::new(ds::caption(ui, "Glass & cut-out")).id_salt((id, "glass")).default_open(v.opacity < 1.0 || v.transmission > 0.0).show(ui, |ui| {
+    ds::collapsible(ui, &format!("{id}.glass"), "Glass & cut-out", v.opacity < 1.0 || v.transmission > 0.0, |ui| {
         ds::prop_grid(ui, &format!("{id} glass"), |ui| {
             row(ui, 6, "Opacity", "1 = solid, 0 = a hole (cut-out)");
-            ui.add(egui::Slider::new(&mut v.opacity, 0.0..=1.0));
+            ui.add(ds::DragField::new(&mut v.opacity, 0.0..=1.0));
             ui.end_row();
             row(ui, 7, "Transmission", "Glass: light passes through instead of scattering");
-            ui.add(egui::Slider::new(&mut v.transmission, 0.0..=1.0));
+            ui.add(ds::DragField::new(&mut v.transmission, 0.0..=1.0));
             ui.end_row();
         });
     });
-    egui::CollapsingHeader::new(ds::caption(ui, "Car paint (coat & flake)")).id_salt((id, "coat")).default_open(v.coat > 0.0 || v.flake > 0.0).show(ui, |ui| {
+    ds::collapsible(ui, &format!("{id}.coat"), "Car paint (coat & flake)", v.coat > 0.0 || v.flake > 0.0, |ui| {
         ds::prop_grid(ui, &format!("{id} coat"), |ui| {
             row(ui, 8, "Clearcoat", "A glossy varnish over the base (car paint, lacquer)");
-            ui.add(egui::Slider::new(&mut v.coat, 0.0..=1.0));
+            ui.add(ds::DragField::new(&mut v.coat, 0.0..=1.0));
             ui.end_row();
             row(ui, 9, "Coat rough", "Roughness of the clearcoat");
-            ui.add(egui::Slider::new(&mut v.coat_roughness, 0.0..=1.0));
+            ui.add(ds::DragField::new(&mut v.coat_roughness, 0.0..=1.0));
             ui.end_row();
             row(ui, 10, "Flake", "Metallic flake sparkle under the coat");
-            ui.add(egui::Slider::new(&mut v.flake, 0.0..=1.0));
+            ui.add(ds::DragField::new(&mut v.flake, 0.0..=1.0));
             ui.end_row();
         });
     });
@@ -613,7 +682,7 @@ fn image_fill_editor(ui: &mut egui::Ui, image: &mut Option<ImageFill>, channels:
                 ui.add(egui::DragValue::new(&mut f.tile_size).speed(0.01).range(0.01..=100.0).suffix(" m"));
                 ui.end_row();
                 ds::prop_label(ui, "Blend sharpness", None);
-                ui.add(egui::Slider::new(&mut f.blend_sharpness, 1.0..=16.0));
+                ui.add(ds::DragField::new(&mut f.blend_sharpness, 1.0..=16.0).decimals(1));
                 ui.end_row();
             }
         }
@@ -624,7 +693,7 @@ fn image_fill_editor(ui: &mut egui::Ui, image: &mut Option<ImageFill>, channels:
         });
         ui.end_row();
         ds::prop_label(ui, "Rotation", None);
-        ui.add(egui::Slider::new(&mut f.rotation, -180.0..=180.0).suffix("°"));
+        ui.add(ds::DragField::new(&mut f.rotation, -180.0..=180.0).decimals(0).suffix("°"));
         ui.end_row();
         ds::prop_label(ui, "Tint", None);
         ds::color_picker(ui, &mut f.tint);
@@ -639,7 +708,7 @@ fn image_fill_editor(ui: &mut egui::Ui, image: &mut Option<ImageFill>, channels:
         ui.add(egui::DragValue::new(&mut f.height_scale).speed(0.01).range(-4.0..=4.0));
         ui.end_row();
         ds::prop_label(ui, "Normal strength", None);
-        ui.add(egui::Slider::new(&mut f.normal_strength, 0.0..=3.0));
+        ui.add(ds::DragField::new(&mut f.normal_strength, 0.0..=3.0));
         ui.end_row();
     });
     ds::prop_grid(ui, "image fill channels", |ui| {

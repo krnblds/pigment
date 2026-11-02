@@ -200,6 +200,14 @@ impl PigmentApp {
                     ds::apply(ui.ctx(), theme);
                 }
             });
+            let mut density = self.ui.prefs.density;
+            ui.horizontal(|ui| {
+                ds::prop_label(ui, "Density", Some("Compact fits more on screen (Blender-like rows); Comfortable has the roomier spacing of earlier versions"));
+                if ds::segmented(ui, &mut density, &[(ds::Density::Compact, None, "Compact"), (ds::Density::Comfortable, None, "Comfortable")]) {
+                    self.ui.prefs.density = density;
+                    ds::set_density(ui.ctx(), density);
+                }
+            });
             let mut scale = ui.ctx().zoom_factor();
             if ds::slider_row_ex(ui, "Interface size", &mut scale, 0.75..=2.0, ds::Unit::Percent, false, Some("Also Ctrl + and Ctrl -")).changed() {
                 ui.ctx().set_zoom_factor(scale);

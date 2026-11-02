@@ -25,7 +25,7 @@ fn filter_params_ui(ui: &mut egui::Ui, f: &mut Filter, target: FilterTarget, sal
             ds::slider_row(ui, "Out black", &mut lv.out_black[3], 0.0..=1.0, ds::Unit::Plain(2));
             ds::slider_row(ui, "Out white", &mut lv.out_white[3], 0.0..=1.0, ds::Unit::Plain(2));
             if target == FilterTarget::Layer {
-                egui::CollapsingHeader::new("Per channel (R, G, B)").id_salt(("levels rgb", salt)).show(ui, |ui| {
+                ds::collapsible(ui, &format!("filters.levels_rgb.{}.{}", salt.0, salt.1), "Per channel (R, G, B)", false, |ui| {
                     for (c, name) in ["R", "G", "B"].iter().enumerate() {
                         ds::slider_row(ui, &format!("{name} gamma"), &mut lv.gamma[c], 0.1..=10.0, ds::Unit::Plain(2));
                         ds::slider_row(ui, &format!("{name} out white"), &mut lv.out_white[c], 0.0..=1.0, ds::Unit::Plain(2));

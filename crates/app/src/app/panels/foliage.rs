@@ -115,6 +115,8 @@ fn atlas_of(app: &mut PigmentApp) -> Option<Arc<AtlasMeta>> {
 #[derive(Default)]
 pub struct FoliageLibraryPanel {
     thumbs: CellThumbs,
+    /// Quick search over the cards.
+    search: String,
 }
 
 /// One-click plants, shared by this panel and the Simple-mode Weathering panel.
@@ -150,15 +152,20 @@ impl Panel for FoliageLibraryPanel {
             return;
         };
         ds::section(ui, &format!("Cards · {}", if meta.key == "builtin" { "built-in library" } else { meta.key.as_str() }));
-        if app.tool() != Tool::Foliage && ui.add(Btn::primary("Use the foliage brush").icon(Icon::Leaf)).clicked() {
+        if app.tool() != Tool::Foliage && ui.add(Btn::secondary("Use the foliage brush").icon(Icon::Leaf).shortcut("V")).clicked() {
             app.set_tool(Tool::Foliage);
         }
         ds::hint(ui, "Click cards to choose what the brush paints (several = a random mix).");
+        ds::search_field(ui, &mut self.search, "Search cards");
+        let query = self.search.trim().to_string();
         let w = 92.0;
         ui.horizontal_wrapped(|ui| {
             ui.spacing_mut().item_spacing = egui::vec2(space::SM, space::SM);
             for k in 0..meta.cells.len() {
                 let c = &meta.cells[k];
+                if !query.is_empty() && ds::fuzzy_score(&query, &c.name.replace('_', " ")).is_none() {
+                    continue;
+                }
                 let on = app.foliage.brush.cells.iter().any(|n| *n == c.name);
                 let t = self.thumbs.get(ui.ctx(), &meta, k);
                 let sub = format!("{} · {}", c.mount.id(), c.mesh.id());
@@ -191,7 +198,7 @@ impl Panel for FoliageBrushPanel {
 
     fn ui(&mut self, app: &mut PigmentApp, ui: &mut egui::Ui, _rs: &RenderState) {
         let active = app.tool() == Tool::Foliage;
-        if !active && ui.add(Btn::primary("Use the foliage brush").icon(Icon::Leaf)).clicked() {
+        if !active && ui.add(Btn::secondary("Use the foliage brush").icon(Icon::Leaf).shortcut("V")).clicked() {
             app.set_tool(Tool::Foliage);
         }
         ds::section(ui, "Brush");

@@ -49,6 +49,7 @@ pub enum Icon {
     Grid,
     ChevronRight,
     ChevronDown,
+    ChevronLeft,
     More,
     Trash,
     Duplicate,
@@ -74,7 +75,7 @@ pub enum Icon {
 }
 
 impl Icon {
-    pub const ALL: [Icon; 63] = [
+    pub const ALL: [Icon; 64] = [
         Icon::Brush,
         Icon::Eraser,
         Icon::Bucket,
@@ -116,6 +117,7 @@ impl Icon {
         Icon::Grid,
         Icon::ChevronRight,
         Icon::ChevronDown,
+        Icon::ChevronLeft,
         Icon::More,
         Icon::Trash,
         Icon::Duplicate,
@@ -408,6 +410,7 @@ impl Pen<'_> {
             }
             ChevronRight => self.poly(&[(7.0, 4.0), (12.0, 9.0), (7.0, 14.0)], false),
             ChevronDown => self.poly(&[(4.0, 7.0), (9.0, 12.0), (14.0, 7.0)], false),
+            ChevronLeft => self.poly(&[(11.0, 4.0), (6.0, 9.0), (11.0, 14.0)], false),
             More => {
                 for x in [4.0, 9.0, 14.0] {
                     self.dot((x, 9.0), 1.4);
