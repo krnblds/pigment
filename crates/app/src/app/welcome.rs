@@ -121,13 +121,9 @@ impl PigmentApp {
         ui.scope_builder(egui::UiBuilder::new().max_rect(rect), |ui| {
             egui::ScrollArea::vertical().show(ui, |ui| {
                 ui.add_space(space::XXL);
-                ui.horizontal(|ui| {
-                    ds::logo(ui, icon::XL);
-                    ui.vertical(|ui| {
-                        ui.label(ds::strong("Paint your 3D models", font::DISPLAY));
-                        ui.label(ds::text("Pick a model, pick a material, export. Edge wear and dirt appear where they belong.", font::TITLE).color(p.text_secondary));
-                    });
-                });
+                // the mark lives in the top bar only; the welcome screen leads with words
+                ui.label(ds::strong("Paint your 3D models", font::DISPLAY));
+                ui.label(ds::text("Pick a model, pick a material, export. Edge wear and dirt appear where they belong.", font::TITLE).color(p.text_secondary));
                 ui.add_space(space::XXL);
                 if let Some((_, name)) = self.recovery() {
                     ds::card(ui, |ui| {

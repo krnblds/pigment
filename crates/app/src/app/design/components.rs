@@ -624,17 +624,33 @@ pub fn segmented<T: PartialEq + Copy>(ui: &mut Ui, value: &mut T, options: &[(T,
     let frame = egui::Frame::new().fill(p.well).corner_radius(cr(radius::MD)).inner_margin(egui::Margin::same(1)).stroke(Stroke::new(1.0, p.border));
     frame.show(ui, |ui| {
         ui.spacing_mut().item_spacing = vec2(1.0, 1.0);
+        // stay on one row when it can: tighten the padding, then drop the icons, before wrapping
+        let avail = ui.available_width() - 2.0;
+        let text_w: Vec<f32> = options.iter().map(|(_, _, l)| ui.painter().layout_no_wrap(l.to_string(), fonts::regular(font::SMALL), p.text).size().x).collect();
+        let total = |pad: f32, icons: bool| -> f32 {
+            options.iter().zip(&text_w).map(|((_, ic, l), tw)| if l.is_empty() { m.control_h_sm + space::XS } else { tw + pad * 2.0 + if icons { ic.map_or(0.0, |_| icon::SM + space::XS) } else { 0.0 } } + 1.0).sum()
+        };
+        let (pad, icons) = if total(space::MD, true) <= avail {
+            (space::MD, true)
+        } else if total(space::SM, true) <= avail {
+            (space::SM, true)
+        } else if total(space::XS, true) <= avail {
+            (space::XS, true)
+        } else {
+            (space::SM, false)
+        };
         ui.horizontal_wrapped(|ui| {
             for (v, ic, label) in options {
+                let ic = if icons || label.is_empty() { *ic } else { None };
                 let on = *value == *v;
                 let g = ui.painter().layout_no_wrap(label.to_string(), fonts::regular(font::SMALL), p.text);
-                let w = g.size().x + space::MD * 2.0 + ic.map_or(0.0, |_| icon::SM + space::XS);
+                let w = g.size().x + pad * 2.0 + ic.map_or(0.0, |_| icon::SM + space::XS);
                 let w = if label.is_empty() { m.control_h_sm + space::XS } else { w };
                 let (rect, resp) = ui.allocate_exact_size(vec2(w, m.control_h_sm), Sense::click());
                 let bg = if on { p.surface_hover } else if resp.hovered() { p.surface_raised } else { Color32::TRANSPARENT };
                 ui.painter().rect_filled(rect, cr(radius::SM), bg);
                 let fg = if on { p.text } else if resp.hovered() { p.text_secondary } else { p.text_muted };
-                let mut x = rect.center().x - (w - space::MD * 2.0) / 2.0;
+                let mut x = rect.center().x - (w - pad * 2.0) / 2.0;
                 if label.is_empty() {
                     x = rect.center().x - icon::SM / 2.0;
                 }

@@ -550,12 +550,16 @@ pub fn show(ui: &mut Ui, layout: &mut DockLayout, mut panel: impl FnMut(&mut Ui,
         let active = active.min(tabs.len() - 1);
         let only_viewport = tabs.len() == 1 && tabs[0] == PanelId::Viewport;
         let lrect = lrect.shrink(0.5);
-        let content = if only_viewport { lrect } else { Rect::from_min_max(pos2(lrect.left(), lrect.top() + m.tab_h), lrect.max) };
+        // every leaf is a card on the canvas: graphite fill, hairline edge
+        let t_active = tabs[active];
+        ui.painter().rect_filled(lrect, CornerRadius::same(radius::LG), if only_viewport || t_active == PanelId::Viewport { p.bg } else { p.surface });
+        let content = if only_viewport { lrect.shrink(1.0) } else { Rect::from_min_max(pos2(lrect.left() + 1.0, lrect.top() + m.tab_h), pos2(lrect.right() - 1.0, lrect.bottom() - 1.0)) };
         if !only_viewport {
-            // the tab strip sits on the darker background; the active tab joins the panel below
+            // the tab strip is part of the card: quiet labels, the active tab underlined in the accent
             let bar = Rect::from_min_max(lrect.min, pos2(lrect.right(), lrect.top() + m.tab_h));
-            ui.painter().rect_filled(bar, CornerRadius { nw: radius::LG, ne: radius::LG, sw: 0, se: 0 }, p.bg.lerp_to_gamma(p.surface, 0.45));
-            let mut x = bar.left();
+            ui.painter().rect_filled(bar, CornerRadius { nw: radius::LG, ne: radius::LG, sw: 0, se: 0 }, p.surface);
+            ui.painter().hline(bar.x_range(), bar.bottom() - 0.5, Stroke::new(1.0, p.border));
+            let mut x = bar.left() + space::XXS;
             let isz = icon::SM - 1.0;
             for (k, t) in tabs.iter().enumerate() {
                 let on = k == active;
@@ -568,11 +572,15 @@ pub fn show(ui: &mut Ui, layout: &mut DockLayout, mut panel: impl FnMut(&mut Ui,
                 let tr = Rect::from_min_size(pos2(x, bar.top()), vec2(w, m.tab_h));
                 let id = ui.scope_id().with(("dock tab", *t));
                 let r = ui.interact(tr, id, Sense::click_and_drag());
-                let bg = if on { p.surface } else if r.hovered() { p.surface_raised } else { egui::Color32::TRANSPARENT };
-                ui.painter().rect_filled(tr, CornerRadius { nw: radius::LG, ne: radius::LG, sw: 0, se: 0 }, bg);
+                if r.hovered() && !on {
+                    ui.painter().rect_filled(tr.shrink2(vec2(0.0, space::XXS)), CornerRadius::same(radius::MD), p.surface_raised);
+                }
+                if on {
+                    ui.painter().hline(tr.shrink2(vec2(space::SM, 0.0)).x_range(), tr.bottom() - 1.0, Stroke::new(2.0, p.accent));
+                }
                 let fg = if on { p.text } else if r.hovered() { p.text_secondary } else { p.text_muted };
                 let painter = ui.painter().with_clip_rect(tr);
-                t.icon().paint(&painter, Rect::from_min_size(pos2(tr.left() + space::MD, tr.center().y - isz / 2.0), vec2(isz, isz)), if on { p.text_secondary } else { fg });
+                t.icon().paint(&painter, Rect::from_min_size(pos2(tr.left() + space::MD, tr.center().y - isz / 2.0), vec2(isz, isz)), if on { p.accent } else { fg });
                 painter.galley(pos2(tr.left() + space::MD + isz + space::SM, tr.center().y - g.size().y / 2.0), g, fg);
                 if t.closable() && r.hovered() {
                     let cr = Rect::from_center_size(pos2(tr.right() - space::SM - isz / 2.0 + 2.0, tr.center().y), vec2(isz - 3.0, isz - 3.0));
@@ -610,8 +618,7 @@ pub fn show(ui: &mut Ui, layout: &mut DockLayout, mut panel: impl FnMut(&mut Ui,
                 x += w + 1.0;
             }
         }
-        let t = tabs[active];
-        ui.painter().rect_filled(content, CornerRadius { nw: 0, ne: 0, sw: radius::LG, se: radius::LG }, if t == PanelId::Viewport { p.bg } else { p.surface });
+        let t = t_active;
         let mut child = ui.new_child(egui::UiBuilder::new().max_rect(content).id_salt(("dock panel", t)).layout(egui::Layout::top_down(egui::Align::Min)));
         child.set_clip_rect(content.intersect(ui.clip_rect()));
         if t == PanelId::Viewport {
@@ -625,6 +632,7 @@ pub fn show(ui: &mut Ui, layout: &mut DockLayout, mut panel: impl FnMut(&mut Ui,
             });
         }
         out.rects.push((t, content));
+        ui.painter().rect_stroke(lrect, CornerRadius::same(radius::LG), Stroke::new(1.0, p.border), StrokeKind::Inside);
 
         // drop target highlight
         if let (Some(d), Some(pos)) = (dragging, pointer) {

@@ -74,34 +74,36 @@ const fn rgb(r: u8, g: u8, b: u8) -> Color32 {
 }
 
 impl Palette {
+    /// Carbon: graphite panels floating on a near-black canvas, separated by
+    /// hairlines and gutters rather than by fill steps.
     pub const DARK: Palette = Palette {
-        bg: rgb(22, 22, 24),
-        surface: rgb(30, 31, 33),
-        surface_raised: rgb(38, 39, 42),
-        surface_hover: rgb(48, 49, 53),
-        well: rgb(21, 22, 24),
-        field_fill: rgb(56, 59, 66),
-        overlay: rgb(36, 37, 40),
-        glass: Color32::from_rgba_premultiplied(16, 16, 18, 214),
-        border: rgb(46, 47, 50),
-        border_strong: rgb(60, 62, 67),
-        text: rgb(228, 229, 232),
-        text_secondary: rgb(168, 171, 177),
-        text_muted: rgb(128, 132, 140),
-        text_disabled: rgb(84, 87, 93),
+        bg: rgb(11, 11, 12),
+        surface: rgb(19, 19, 21),
+        surface_raised: rgb(26, 26, 29),
+        surface_hover: rgb(34, 34, 38),
+        well: rgb(13, 13, 15),
+        field_fill: rgb(48, 49, 54),
+        overlay: rgb(23, 23, 26),
+        glass: Color32::from_rgba_premultiplied(10, 10, 11, 220),
+        border: rgb(36, 36, 40),
+        border_strong: rgb(52, 52, 58),
+        text: rgb(236, 236, 239),
+        text_secondary: rgb(164, 164, 172),
+        text_muted: rgb(118, 118, 128),
+        text_disabled: rgb(76, 76, 84),
         accent: rgb(240, 138, 60),
         accent_hover: rgb(255, 160, 88),
         accent_pressed: rgb(214, 116, 42),
-        accent_subtle: rgb(58, 42, 30),
+        accent_subtle: rgb(46, 32, 22),
         on_accent: rgb(26, 16, 6),
         success: rgb(76, 195, 138),
         warn: rgb(242, 179, 61),
         danger: rgb(240, 96, 90),
         info: rgb(96, 170, 240),
         focus: rgb(125, 183, 255),
-        selection: rgb(84, 58, 36),
-        scrim: Color32::from_rgba_premultiplied(0, 0, 0, 140),
-        shadow: Color32::from_rgba_premultiplied(0, 0, 0, 90),
+        selection: rgb(78, 52, 32),
+        scrim: Color32::from_rgba_premultiplied(0, 0, 0, 160),
+        shadow: Color32::from_rgba_premultiplied(0, 0, 0, 110),
     };
 
     pub const LIGHT: Palette = Palette {
@@ -209,7 +211,8 @@ pub mod size {
     pub const TILE: f32 = 80.0;
     pub const TAB_H: f32 = 24.0;
     pub const STATUS_H: f32 = 22.0;
-    pub const SPLITTER: f32 = 3.0;
+    /// Gutter between docked panels (the canvas shows through).
+    pub const SPLITTER: f32 = 4.0;
     pub const SLIDER_W: f32 = 120.0;
     /// Label column of property rows.
     pub const LABEL_W: f32 = 84.0;
@@ -450,12 +453,12 @@ pub fn panel_frame(p: &Palette) -> egui::Frame {
 
 /// The top bar and the status bar: flat surface, tight padding.
 pub fn bar_frame(p: &Palette) -> egui::Frame {
-    egui::Frame::new().fill(p.surface).inner_margin(Margin::symmetric(space::MD as i8, space::XS as i8)).stroke(Stroke::new(1.0, p.border))
+    egui::Frame::new().fill(p.bg).inner_margin(Margin::symmetric(space::MD as i8, space::XS as i8)).stroke(Stroke::new(1.0, p.border))
 }
 
 /// The tool options bar under the top bar.
 pub fn toolbar_frame(p: &Palette) -> egui::Frame {
-    egui::Frame::new().fill(p.surface).inner_margin(Margin::symmetric(space::MD as i8, space::XXS as i8))
+    egui::Frame::new().fill(p.bg).inner_margin(Margin::symmetric(space::MD as i8, space::XXS as i8))
 }
 
 /// Untinted image drawing (not a colour role).

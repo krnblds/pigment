@@ -42,24 +42,32 @@ See it live: `pigment --design-gallery`. Every screen offscreen:
    commands persist in `prefs.json`. Bakes, exports and autosaves run without freezing
    the window and report through toasts (hover a toast to keep it).
 
+## Layout: cards on a carbon canvas
+
+The window is a near-black canvas (`bg`). The top bar, tool options bar, tool rail and status bar sit
+directly on it. Every docked panel is a graphite card (`surface`) with a 1 px `border` hairline and
+`radius::LG` corners, separated from its neighbours by a 4 px gutter (`size::SPLITTER`) that doubles as
+the resize handle. A card's tab strip belongs to the card: quiet labels, the active tab marked by a
+2 px accent underline and an accent icon. The logo appears once, in the top bar.
+
 ## Tokens
 
 ### Colour roles (`design::Palette`)
 
 | Role | Dark | Light | Use |
 |---|---|---|---|
-| `bg` | #161618 | #D6D8DC | behind everything, viewport surround, tab strips |
-| `surface` | #1E1F21 | #ECEDF0 | panels, bars, the active tab |
-| `surface_raised` | #26272A | #F7F8FA | rows, cards, hovered tabs |
-| `surface_hover` | #303135 | #E0E2E6 | hovered rows and buttons |
-| `well` | #151618 | #FAFAFB | text fields, drag fields, tracks |
+| `bg` | #0B0B0C | #D6D8DC | behind everything, viewport surround, tab strips |
+| `surface` | #131315 | #ECEDF0 | panels, bars, the active tab |
+| `surface_raised` | #1A1A1D | #F7F8FA | rows, cards, hovered tabs |
+| `surface_hover` | #222226 | #E0E2E6 | hovered rows and buttons |
+| `well` | #0D0D0F | #FAFAFB | text fields, drag fields, tracks |
 | `field_fill` | #383B42 | #CCD2DC | the value part of a drag field (neutral, never the accent) |
-| `overlay` | #242528 | #FAFAFB | menus, toasts, dialogs, palette |
+| `overlay` | #17171A | #FAFAFB | menus, toasts, dialogs, palette |
 | `glass` | near-black 84% | white 84% | viewport HUD chips |
-| `border` / `border_strong` | #2E2F32 / #3C3E43 | #D0D3D8 / #B0B5BD | hairlines / hover and emphasis |
-| `text` | #E4E5E8 | #16181C | primary text (>= 7:1 on every surface) |
-| `text_secondary` | #A8ABB1 | #3E434B | labels (>= 4.5:1) |
-| `text_muted` | #80848C | #606771 | hints, captions (>= 3:1) |
+| `border` / `border_strong` | #242428 / #34343A | #D0D3D8 / #B0B5BD | hairlines / hover and emphasis |
+| `text` | #ECECEF | #16181C | primary text (>= 7:1 on every surface) |
+| `text_secondary` | #A4A4AC | #3E434B | labels (>= 4.5:1) |
+| `text_muted` | #767680 | #606771 | hints, captions (>= 3:1) |
 | `text_disabled` | #54575D | #A0A6AF | disabled |
 | `accent` / `hover` / `pressed` | #F08A3C / #FFA058 / #D6742A | #D26216 / #E67222 / #B85410 | selection, active tool, the primary action |
 | `accent_subtle` | #3A2A1E | #FAE0CA | selected rows and tools |

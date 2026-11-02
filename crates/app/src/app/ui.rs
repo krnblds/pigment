@@ -207,8 +207,8 @@ impl eframe::App for PigmentApp {
         } else {
             egui::Panel::top("tool options").frame(ds::toolbar_frame(&p)).show(ui, |ui| self.tool_options(ui, &rs));
             let rail = if m.tool_labels { (m.tool + space::LG * 2.0, space::SM) } else { (m.tool + space::MD, space::XS) };
-            egui::Panel::left("tool rail").exact_size(rail.0).resizable(false).frame(egui::Frame::new().fill(p.surface).inner_margin(egui::Margin::same(rail.1 as i8))).show(ui, |ui| self.tool_rail(ui));
-            egui::CentralPanel::default().frame(egui::Frame::new().fill(p.bg).inner_margin(egui::Margin::same(space::XXS as i8))).show(ui, |ui| {
+            egui::Panel::left("tool rail").exact_size(rail.0).resizable(false).frame(egui::Frame::new().fill(p.bg).inner_margin(egui::Margin::same(rail.1 as i8))).show(ui, |ui| self.tool_rail(ui));
+            egui::CentralPanel::default().frame(egui::Frame::new().fill(p.bg).inner_margin(egui::Margin { left: 0, right: space::XS as i8, top: 0, bottom: 0 })).show(ui, |ui| {
                 let mut layout = std::mem::take(self.ui.prefs.layout_mut());
                 let before = layout.clone();
                 let mut panels = self.ui.panels.take().unwrap_or_default();
