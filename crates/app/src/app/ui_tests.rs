@@ -398,6 +398,25 @@ fn design_gallery_screenshots() {
     h.save_png(&docs().join("design/gallery_light.png"));
 }
 
+/// The app icon in the top bar and on the welcome screen, dark and light
+/// (docs/branding/*). `cargo test -p pigment branding_screenshots -- --ignored`
+#[test]
+#[ignore]
+fn branding_screenshots() {
+    let Some(mut h) = Harness::new([1280.0, 640.0], 2.0) else { return };
+    let out = docs().join("branding");
+    std::fs::create_dir_all(&out).unwrap();
+    for (theme, name) in [(super::design::ThemeKind::Dark, "dark"), (super::design::ThemeKind::Light, "light")] {
+        super::design::apply(&h.ctx, theme);
+        h.app.ui.welcome = true;
+        h.run(40);
+        let img = h.save_png(&out.join(format!("welcome_{name}.png")));
+        // the left of the top bar: logo, name and the first menus
+        let bar = image::imageops::crop_imm(&img, 0, 0, 900, 80).to_image();
+        bar.save(out.join(format!("top_bar_{name}.png"))).unwrap();
+    }
+}
+
 /// Preview images for the welcome screen's samples (assets/samples/*.png).
 #[test]
 #[ignore]
