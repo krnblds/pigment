@@ -861,6 +861,16 @@ func _update_lod(initial: bool) -> void:
 			_detach_node(a)
 
 
+## Move walkers within `r` of `p` elsewhere (tests and scripted moments); ragdolls are left alone.
+func clear_around(p: Vector3, r: float) -> int:
+	var n := 0
+	for a in agents:
+		if a.pos.distance_to(p) < r and not (a.node and a.node.has_method("is_down") and a.node.is_down()):
+			_respawn(a, p)
+			n += 1
+	return n
+
+
 func _respawn(a: Agent, c: Vector3) -> void:
 	if OS.has_feature("debug") and stats.respawned < 6 and main.args.has("npc-debug"):
 		print("npc respawn #%d dist %.1f pos %s center %s state %d edge %d s %.1f" % [stats.respawned, a.dist, a.pos, c, a.state, a.edge, a.s])
