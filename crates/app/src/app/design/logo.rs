@@ -2,7 +2,7 @@
 //!
 //! The rasters come from `assets/branding` (see `tools/branding/make_icons.py`)
 //! and are embedded, so the logo shows whatever the working directory. Small
-//! sizes use the hand-simplified 32 px artwork; anything bigger uses the master.
+//! sizes use the simplified 32 px artwork; anything bigger uses the master.
 
 use eframe::egui;
 use egui::{Color32, Rect, Sense, TextureHandle, TextureOptions, Vec2};

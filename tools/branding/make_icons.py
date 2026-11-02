@@ -3,8 +3,9 @@
     pip install resvg-py pillow
     python tools/branding/make_icons.py
 
+First runs make_svgs.py, which builds the SVGs from geometry, then
 Reads   assets/branding/pigment-icon.svg        (master, used from 48 px up)
-        assets/branding/pigment-icon-small.svg  (hand-simplified, 16-32 px)
+        assets/branding/pigment-icon-small.svg  (simplified, 16-32 px)
 Writes  assets/branding/png/pigment-<N>.png     for N in 16 24 32 48 64 128 256 512 1024
         assets/branding/pigment.ico             (16 24 32 48 64 256)
         assets/branding/pigment.icns            (macOS, for a future bundle)
@@ -21,10 +22,13 @@ from pathlib import Path
 import resvg_py
 from PIL import Image, ImageDraw, ImageFont
 
+import make_svgs
+
 ROOT = Path(__file__).resolve().parents[2]
 SRC = ROOT / "assets" / "branding"
 MASTER = SRC / "pigment-icon.svg"
 SMALL = SRC / "pigment-icon-small.svg"
+
 PNG_DIR = SRC / "png"
 SHEET = ROOT / "docs" / "branding" / "icon_sizes.png"
 
@@ -78,6 +82,7 @@ def contact_sheet(imgs: dict[int, Image.Image]) -> Image.Image:
 
 
 def main() -> None:
+    make_svgs.main()
     PNG_DIR.mkdir(parents=True, exist_ok=True)
     SHEET.parent.mkdir(parents=True, exist_ok=True)
     imgs = {s: icon(s) for s in SIZES}

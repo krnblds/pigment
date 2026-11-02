@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="assets/branding/png/pigment-128.png" width="128" height="128" alt="Pigment icon: a drop of orange paint worn to bare metal at one edge">
+<img src="assets/branding/png/pigment-128.png" width="128" height="128" alt="Pigment icon: a graphite ball with one glossy orange brush stroke wrapped round it">
 
 # Pigment
 
@@ -217,9 +217,10 @@ cargo test -p pigment --release perf_targets -- --ignored --nocapture
 ```
 
 - The core crate is GPU-free: document model, blend maths, undo, strokes, project files, export packing.
-- The app icon is drawn in `assets/branding/pigment-icon.svg` (with a hand-simplified
-  `pigment-icon-small.svg` for 16-32 px). After editing either, regenerate every PNG, `pigment.ico`,
-  `pigment.icns` and the contact sheet `docs/branding/icon_sizes.png` with one command:
+- The app icon is generated: `tools/branding/make_svgs.py` builds the SVGs in `assets/branding`
+  (a graphite sphere with a brush stroke modelled on its surface, plus simplified 16-32 px artwork), and
+  `make_icons.py` runs it and then renders every PNG, `pigment.ico`, `pigment.icns` and the contact
+  sheet `docs/branding/icon_sizes.png`. One command regenerates the lot:
 
   ```bash
   pip install resvg-py pillow
