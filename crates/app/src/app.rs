@@ -423,6 +423,7 @@ impl PigmentApp {
 
     fn new_project(&mut self, rs: &RenderState, mesh: Mesh, source: Option<PathBuf>, mut doc: Document) {
         self.multi = None;
+        self.baker.occluder = None;
         doc.resolution = self.doc.resolution;
         self.reset_state(rs, doc);
         self.ts.ensure_resources(&rs.device, &rs.queue, &self.doc);
@@ -470,6 +471,7 @@ impl PigmentApp {
     fn open_project(&mut self, rs: &RenderState, path: &Path) {
         let dir = if path.is_dir() { path.to_path_buf() } else { path.parent().map(Path::to_path_buf).unwrap_or_default() };
         self.multi = None;
+        self.baker.occluder = None;
         // texture sets: the main manifest lists the others' folders
         match project::load_manifest(&dir) {
             Ok(doc) if !doc.extra_sets.is_empty() => self.open_sets(rs, &dir, &doc.extra_sets),

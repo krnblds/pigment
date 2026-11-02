@@ -159,9 +159,7 @@ impl PigmentApp {
             self.ts.ensure_resources(&rs.device, &rs.queue, &self.doc);
             self.load_mesh_gpu(rs, sub);
             self.ts.set_frame(c, r, lo, hi);
-            let async_bake = std::mem::replace(&mut self.ui.async_bake, false);
-            self.bake(rs);
-            self.ui.async_bake = async_bake;
+            // baked below, once every set exists (the whole mesh casts the shadows)
             slots.push(self.take_slot(rs));
         }
         if slots.is_empty() {
@@ -171,11 +169,33 @@ impl PigmentApp {
         self.swap_slot(&mut first);
         let part_count = full.parts().info.len();
         self.multi = Some(Box::new(MultiSets { parked: slots, order: names.clone(), full: full.clone(), part_count }));
+        // re-bake every set with the whole mesh casting AO / drip shadows
+        self.set_occluder(rs, &full);
+        self.rebake_all_sets(rs);
         self.painter.resize(&rs.device, self.ts.res);
         self.camera.frame(c, r);
         self.mesh_source = source;
         self.project_dir = project;
         Ok(names)
+    }
+
+    fn set_occluder(&mut self, rs: &RenderState, full: &Mesh) {
+        let (c, r) = full.bounding_sphere();
+        let (lo, hi) = full.bounds();
+        self.baker.occluder = Some((MeshGpu::new(&rs.device, full), c, r, lo, hi));
+    }
+
+    /// Bake every set again (synchronously).
+    pub(crate) fn rebake_all_sets(&mut self, rs: &RenderState) {
+        let home = self.active_set_name();
+        let async_bake = std::mem::replace(&mut self.ui.async_bake, false);
+        for n in self.set_names() {
+            if self.activate_set(rs, &n).is_ok() {
+                self.bake(rs);
+            }
+        }
+        self.ui.async_bake = async_bake;
+        let _ = self.activate_set(rs, &home);
     }
 
     /// Composite every parked set that is out of date (the viewport draws them).
@@ -287,9 +307,11 @@ impl PigmentApp {
         }
         self.composited = None;
         self.camera.frame(c, r);
+        self.set_occluder(rs, &full);
         let part_count = full.parts().info.len();
         self.multi = Some(Box::new(MultiSets { parked: slots, order: names, full, part_count }));
         self.project_dir = Some(dir.to_path_buf());
+        self.rebake_all_sets(rs);
     }
 
     /// Export every set: `<name>_<set>_<map>.<udim>.png`. Returns the files.

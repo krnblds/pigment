@@ -794,17 +794,26 @@ fn call(session: &mut Option<Session>, name: &str, args: &Value) -> Result<Vec<V
         let mut a = args.clone();
         a.as_object_mut().unwrap().remove("texture_set");
         let mut results = serde_json::Map::new();
+        let mut missed = Vec::new();
         for n in &names {
             session.as_mut().unwrap().activate_texture_set(n)?;
             match call(session, name, &a) {
                 Ok(content) => {
                     results.insert(n.clone(), content_json(&content));
                 }
+                // with "*", a decal only lands on the sets it touches
+                Err(e) if names.len() > 1 && (name == "project_decal" || name == "scatter_decals") && (e.contains("no surface") || e.contains("no spot") || e.contains("nothing to place") || e.contains("placed 0")) => {
+                    missed.push(n.clone());
+                }
                 Err(e) => {
                     let _ = session.as_mut().unwrap().activate_texture_set(&prev);
                     return Err(format!("texture set `{n}`: {e}"));
                 }
             }
+        }
+        if results.is_empty() && !missed.is_empty() {
+            let _ = session.as_mut().unwrap().activate_texture_set(&prev);
+            return Err(format!("{name}: touches no surface in any texture set"));
         }
         session.as_mut().unwrap().activate_texture_set(&prev)?;
         let v = if results.len() == 1 { results.into_iter().next().unwrap().1 } else { Value::Object(results) };

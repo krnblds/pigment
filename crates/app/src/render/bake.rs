@@ -32,6 +32,10 @@ pub struct Baker {
     blur_bgl: wgpu::BindGroupLayout,
     cmp_sampler: wgpu::Sampler,
     drip_pipe: wgpu::RenderPipeline,
+    /// Texture sets: the whole mesh (GPU, centre, radius, bounds) casts the
+    /// AO and drip shadows, so a set that paints part of a building still
+    /// sees the rest of it. None = the baked mesh itself.
+    pub occluder: Option<(MeshGpu, Vec3, f32, Vec3, Vec3)>,
 }
 
 #[repr(C)]
@@ -171,7 +175,7 @@ impl Baker {
             &gpu::layout(device, "drip", &[&accum_bgl]),
             &[gpu::target(wgpu::TextureFormat::R16Float, None)],
         );
-        Self { depth_pipe, accum_pipe, light_bgl, accum_bgl, curv_pipe, curv_bgl, resolve_pipe, resolve_bgl, blur_pipe, blur_bgl, cmp_sampler, drip_pipe }
+        Self { depth_pipe, accum_pipe, light_bgl, accum_bgl, curv_pipe, curv_bgl, resolve_pipe, resolve_bgl, blur_pipe, blur_bgl, cmp_sampler, drip_pipe, occluder: None }
     }
 
     /// Drip map (see `fs_drip`): for wall texels, 1 / (1 + metres down from
@@ -188,6 +192,9 @@ impl Baker {
         for v in &mesh.vertices {
             lo = lo.min(Vec3::from(v.position));
             hi = hi.max(Vec3::from(v.position));
+        }
+        if let Some(o) = &self.occluder {
+            (lo, hi) = (o.3, o.4);
         }
         let half = ((hi.x - lo.x).max(hi.z - lo.z) * 0.5 + 0.05).max(1e-3);
         let (cx, cz) = ((lo.x + hi.x) * 0.5, (lo.z + hi.z) * 0.5);
@@ -266,7 +273,12 @@ impl Baker {
 
     pub fn bake(&self, device: &wgpu::Device, queue: &wgpu::Queue, mesh: &Mesh, mg: &MeshGpu, ts: &mut TexSet, s: &BakeSettings) {
         let res = ts.res;
-        let (center, radius) = mesh.bounding_sphere();
+        let (center, radius) = match &self.occluder {
+            Some(o) => (o.1, o.2),
+            None => mesh.bounding_sphere(),
+        };
+        // shadow casters: the whole object (texture sets) or this mesh
+        let occ = self.occluder.as_ref().map(|o| &o.0).unwrap_or(mg);
         let radius = radius.max(1e-4);
 
         // ---- ambient occlusion ----
@@ -319,9 +331,9 @@ impl Baker {
                     });
                     pass.set_pipeline(&self.depth_pipe);
                     pass.set_bind_group(0, &lbg, &[]);
-                    pass.set_vertex_buffer(0, mg.vertices.slice(..));
-                    pass.set_index_buffer(mg.indices.slice(..), wgpu::IndexFormat::Uint32);
-                    pass.draw_indexed(0..mg.index_count, 0, 0..1);
+                    pass.set_vertex_buffer(0, occ.vertices.slice(..));
+                    pass.set_index_buffer(occ.indices.slice(..), wgpu::IndexFormat::Uint32);
+                    pass.draw_indexed(0..occ.index_count, 0, 0..1);
                 }
                 let abg = gpu::bind_group(
                     device,
@@ -344,7 +356,7 @@ impl Baker {
         }
 
         // ---- drip map (leaks generator) ----
-        let drip = self.bake_drip(device, queue, mesh, mg, ts);
+        let drip = self.bake_drip(device, queue, mesh, occ, ts);
 
         // ---- curvature ----
         let cd = curvature::compute(mesh);

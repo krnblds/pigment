@@ -178,3 +178,51 @@ Reproduce: `python docs/agents/parity/hibake_demo.py`.
 - Height is normalised to the cage (±cage → 0..1) and isn't applied as a layer automatically. Use it as an image fill height if wanted.
 - Curvature is a per-vertex estimate, so it needs a reasonably dense high mesh. Its contrast is fixed (5% of the bounding radius).
 - No explicit cage mesh: the cage is a distance along the averaged low normal. Very concave low meshes can catch the wrong surface; a per-part cage would help.
+
+## 4. Multiple texture sets and UDIM tiles
+
+![before / after](udim_before_after.png)
+
+*building_a at 4096, the west wall's missing-person posters, same town script. Before: one 4096 texture for the whole 26 m building, and the names are mush. After: `new_project.udim_tiles: [{tile: 1002, below_y: 3.6}]` moves the ground floor to UDIM 1002 with its UV islands repacked to fill the tile (1.52× texel density here), giving two 4096 texture sets. Every layer, decal and bake call runs on both (`texture_set: "*"`), and "AIKO TANAKA" / "REN MORIOKA" become readable. Bottom: the wide view is unchanged, because generators, leaks and decals carry over.*
+Reproduce: `python docs/agents/parity/udim_demo.py 4096` (writes `scenes/town/scripts/parity_udim_demo.jsonl`, about 3 min).
+
+### What it does
+
+- **Texture sets** (`crates/core/src/texsets.rs`). A `SetSpec` (name, materials, UDIM tile) selects part of the mesh. Its sub-mesh keeps only those triangles with UVs moved into 0..1, and keeps the **whole mesh's part ids** (`Mesh::tri_part`), so part masks in scripts work in every set. Each set is a full `Document`: its own layers, resolution, history, bakes and GPU `TexSet`.
+- Sets come **from materials** (glTF primitive materials / OBJ `usemtl`; meshes now carry `tri_material`), **from UDIM tiles** (`1001 + u + 10 v`, v up, UVs beyond 0..1), or from an explicit list.
+- **UDIM moves.** `move_to_tile` moves a triangle selection (`below_y` / `above_y` / `parts` / `parts_where`) to a new tile. It shelf-packs its UV islands at the largest uniform scale that fits, so the density gain is real. Moves are recorded (`Document::udim_moves`, triangle ranges) and re-applied on open.
+- **In the app** (`app/texsets_app.rs`) the active set lives in the usual fields, so every tool works unchanged, and the others are parked. Switching swaps them.
+  - The **viewport draws every set** (`Viewport::draw_sets`), each with its own material textures; the paint depth includes all of them.
+  - **Generators stay continuous**: every set uses the whole object's noise frame and bounds (`TexSet::set_frame`).
+  - **Bakes see the whole object**: AO and drip shadows are cast by the full mesh (`Baker::occluder`), so the ground-floor set still gets leaks from sills above it.
+  - **Painting crosses sets**: a finished stroke's dabs (with its view, brush, symmetry and stencil) are replayed on every other set that has a layer of the same name. The result is seamless across set and tile borders, with one undo step per set.
+- **Save / open.** The first set goes in the project folder, the others in `sets/<name>/`, each a normal project folder listed in the main manifest (`extra_sets`). Old single-set projects have neither field and load as one set, tile 1001. OBJ `.mtl` files are now copied into projects.
+- **Export.** One file per set and tile, `<name>_<set>_<map>.<udim>.png`.
+
+### MCP
+
+| tool | args |
+|---|---|
+| `new_project` | `texture_sets: "materials" \| "udim" \| [{name, materials: [ids or names], udim, resolution}]`, `udim: true`, `udim_tiles: [{tile, below_y, above_y, parts, parts_where, margin}]`. Returns `texture_sets` and `udim_moves` (with `density_gain`) |
+| `list_texture_sets` | → `{active, texture_sets: [{name, active, materials, udim, resolution, triangles, layers}], udim_tiles}` |
+| `texture_set` on `add_layer`, `update_layer`, `delete_layer`, `list_layers`, `add_smart_material`, `apply_smart_material`, `save_smart_material`, `add_filter`, `update_filter`, `remove_filter`, `set_anchor`, `paint_stroke`, `project_decal`, `scatter_decals`, `bake` | a set name or index (default: the active one), or `"*"` = every set. With `"*"`, results come back per set, and a decal or scatter that misses a set is skipped there. The active set is restored afterwards |
+| `export_textures` | with sets: every set and tile, `<name>_<set>_<map>.<udim>.png` |
+
+### UI
+
+A **Texture set** switcher at the top of the Layers panel (name · resolution · tile). The Texture set & bake panel has **One set per material** / **One set per UDIM tile**, enabled when the mesh has several.
+
+### Tests
+
+- core `texsets::tests`: UDIM numbering (v-down conversion), splitting by material covers every triangle once, the island repack gains density, sub-mesh UVs land in 0..1, export names, recorded moves round trip, old projects have no set fields.
+- Session `texture_sets_and_udims_over_mcp`: sets by material (the lid at 1024); a layer in one set only; `"*"` adds to all; a stroke paints yellow in both sets; save / reopen keeps both sets, their layers and resolution; export names; a UDIM move gives density gain > 1.5 and `tile_1001` / `tile_1002` exports; a bad `udim_tiles` entry errors.
+- UI `texture_set_switcher_and_viewport`: split by material; the panels render with the switcher; editing the parked lid set shows up in the viewport.
+
+### Known limits
+
+- Layers aren't *linked* across sets: each set has its own stack, and `"*"` applies the same edit to every set. Strokes replay by layer *name*.
+- Clone and smudge strokes aren't replayed across sets (their UV offsets are set-specific).
+- Undo history is per set. Undoing in one set doesn't undo the replayed part of a stroke in another.
+- Each set keeps its own GPU textures and accumulation buffers (VRAM grows with the number of sets).
+- Saving a multi-set project rewrites every set's pixels, and opening bakes each set twice (once alone, once with the whole-mesh occluder).
+- The UDIM move cuts islands that span the selection boundary (a wall spanning floors gets a seam at 3.6 m). Re-baked normals stay continuous, but painted textures meet at a cut.
