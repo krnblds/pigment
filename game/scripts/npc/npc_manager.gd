@@ -28,8 +28,9 @@ enum { WALK, WAIT_CROSS, POI_GO, POI_STAY, DODGE, DOWN, STAGGER }
 
 # --- tuning
 var max_agents := 100
-var max_near := 40
-var near_radius := 52.0
+var max_near := 32
+var near_radius := 46.0
+var full_anim_radius := 14.0      ## closer than this: finger tracks (full library); beyond: the lite one
 var spawn_radius := 110.0
 var despawn_radius := 128.0
 var max_ragdolls := 6
@@ -827,7 +828,7 @@ func _update_lod(initial: bool) -> void:
 			n += 1
 			if a.node == null:
 				_attach_node(a, initial)
-		elif a.node and a.dist > near_radius + 4.0:
+		elif a.node and a.state != DOWN and (a.dist > near_radius + 4.0 or n >= max_near + 2):
 			_detach_node(a)
 
 
@@ -845,13 +846,16 @@ func _respawn(a: Agent, c: Vector3) -> void:
 
 
 func _attach_node(a: Agent, force := false) -> void:
-	var pool: Array = _pool.get(a.model, [])
+	var lite := a.dist > full_anim_radius
+	var key := a.model + ("|lite" if lite else "")
+	var pool: Array = _pool.get(key, [])
 	var c: Node3D = null
 	if not pool.is_empty():
 		c = pool.pop_back()
 	elif force or _created_this_frame < max_creates_per_frame:
 		_created_this_frame += 1
-		c = CitizenLib.spawn(a.model, {"anim_auto": false, "umbrella": ""})
+		c = CitizenLib.spawn(a.model, {"anim_auto": false, "umbrella": "", "lite": lite})
+		c.set_meta("pool_key", key)
 		if c == null:
 			return
 		c.physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
@@ -883,20 +887,21 @@ func _detach_node(a: Agent) -> void:
 	if a.node == null:
 		return
 	var c: Node3D = a.node
-	a.node = null
 	if c.is_down():
 		return                          # keep it until it stands up (never pooled mid-ragdoll)
+	a.node = null
 	c.visible = false
 	c.process_mode = Node.PROCESS_MODE_DISABLED
-	if not _pool.has(a.model):
-		_pool[a.model] = []
-	_pool[a.model].append(c)
+	var key: String = c.get_meta("pool_key", a.model)
+	if not _pool.has(key):
+		_pool[key] = []
+	_pool[key].append(c)
 
 
 func _drive_node(a: Agent, dt: float) -> void:
 	var c: Node3D = a.node
 	a.anim_acc += dt
-	var every := 1 if a.dist < 16.0 or a.state == DOWN or a.state == DODGE else (2 if a.dist < 30.0 else 4)
+	var every := 1 if a.dist < 12.0 or a.state == DOWN or a.state == DODGE else (2 if a.dist < 24.0 else 4)
 	var step := (_tick + a.id) % every == 0
 	if a.state != DOWN:
 		# feet on the real ground near the camera (a ray every ~0.4 s, staggered)
