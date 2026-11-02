@@ -1,38 +1,31 @@
 ---
 name: Bug report
-about: Create a report to help us improve
+about: Something in Pigment is broken or wrong
 title: ''
-labels: ''
+labels: bug
 assignees: ''
 
 ---
 
-**Describe the bug**
-A clear and concise description of what the bug is.
+**What happened**
+A clear description of the bug.
 
-**To Reproduce**
-Steps to reproduce the behavior:
-1. Go to '...'
-2. Click on '....'
-3. Scroll down to '....'
-4. See error
+**Steps to reproduce**
+1. Open '...'
+2. Click '...'
+3. See the problem
 
-**Expected behavior**
-A clear and concise description of what you expected to happen.
+**What you expected**
+What should have happened instead.
 
-**Screenshots**
-If applicable, add screenshots to help explain your problem.
+**Screenshots or files**
+Screenshots help a lot. If it only happens with one model or project, attach it if you can.
 
-**Desktop (please complete the following information):**
- - OS: [e.g. iOS]
- - Browser [e.g. chrome, safari]
- - Version [e.g. 22]
+**Your setup**
+- Pigment version or commit:
+- OS:
+- GPU and driver:
+- Used from: app / MCP server (which client?) / Blender add-on / Godot game
 
-**Smartphone (please complete the following information):**
- - Device: [e.g. iPhone6]
- - OS: [e.g. iOS8.1]
- - Browser [e.g. stock browser, safari]
- - Version [e.g. 22]
-
-**Additional context**
-Add any other context about the problem here.
+**Anything else**
+Logs, error messages, or other context.

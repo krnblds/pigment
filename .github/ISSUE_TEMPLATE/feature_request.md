@@ -1,20 +1,20 @@
 ---
 name: Feature request
-about: Suggest an idea for this project
+about: Suggest an idea for Pigment
 title: ''
-labels: ''
+labels: enhancement
 assignees: ''
 
 ---
 
-**Is your feature request related to a problem? Please describe.**
-A clear and concise description of what the problem is. Ex. I'm always frustrated when [...]
+**What problem would this solve?**
+For example: "When I texture a car, I always have to ..."
 
-**Describe the solution you'd like**
-A clear and concise description of what you want to happen.
+**What you'd like**
+What should Pigment do?
 
-**Describe alternatives you've considered**
-A clear and concise description of any alternative solutions or features you've considered.
+**Other ways you've tried**
+Any workarounds or other tools you've used.
 
-**Additional context**
-Add any other context or screenshots about the feature request here.
+**Anything else**
+Screenshots, mockups or links to how other tools do it.
