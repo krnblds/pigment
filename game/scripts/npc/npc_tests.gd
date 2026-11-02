@@ -57,6 +57,25 @@ func _ready_npc() -> bool:
 	return false
 
 
+var _home := Transform3D()
+var _home_set := false
+
+
+## Back to where the test started (busy pavements round the spawn), then parked.
+func _go_home() -> void:
+	if _home_set:
+		car.place(_home)
+		if main.cam and main.cam.has_method("snap"):
+			main.cam.snap()
+		await _wait(2.5)
+	_park_car()
+	var withn: Array = npc.agents.filter(func(x): return x.node != null)
+	var md := INF
+	for x in withn:
+		md = minf(md, x.pos.distance_to(car.global_position))
+	print("npc test: home car %s cam %s nodes %d nearest %.1f m" % [car.global_position, npc._center(), withn.size(), md])
+
+
 func _park_car() -> void:
 	# keep the player's car still and out of the way (but where the camera is)
 	car.autopilot = true
@@ -86,6 +105,8 @@ func _test() -> void:
 		_fail("setup", "sidewalk network never finished")
 		return
 	_park_car()
+	_home = car.global_transform
+	_home_set = true
 	await _wait(3.0)
 	# ---- spawn
 	var near: int = npc.agents.filter(func(a): return a.node != null).size()
@@ -142,7 +163,7 @@ func _test() -> void:
 	res.cap = await _cap_test()
 	ok.cap = res.cap.get("ok", false)
 	# ---- perf (walking, nobody down)
-	_park_car()
+	await _go_home()
 	await _wait(2.0)
 	npc.reset_prof()
 	var f0 := Engine.get_process_frames()
@@ -235,7 +256,7 @@ func _crossing_test() -> Dictionary:
 
 ## Put a walker on the road, the car 26 m away at 60 km/h aimed at them.
 func _dodge_test() -> Dictionary:
-	_park_car()
+	await _go_home()
 	await _wait(0.5)
 	var a = _near_agent(car.global_position)
 	if a == null:
@@ -284,7 +305,7 @@ func _release(a) -> void:
 
 
 func _ragdoll_test() -> Dictionary:
-	_park_car()
+	await _go_home()
 	await _wait(0.5)
 	var a = _near_agent(car.global_position)
 	if a == null:
@@ -333,7 +354,7 @@ func _ragdoll_test() -> Dictionary:
 
 
 func _cap_test() -> Dictionary:
-	_park_car()
+	await _go_home()
 	await _wait(1.0)
 	var picked := []
 	for i in 9:
@@ -353,6 +374,10 @@ func _cap_test() -> Dictionary:
 	var stag: int = npc.stats.staggers - s0
 	await _wait(12.0)
 	var still: int = npc._ragdolls.size()
+	for x in npc._ragdolls:
+		print("npc test: still down: state %d down_t %.1f node %s rag_state %s rag_t %.1f pm %d pos %s" % [x.state, x.down_t,
+			x.node != null, x.node.rag.state if x.node else -1, x.node.rag.t if x.node else -1.0,
+			x.node.process_mode if x.node else -1, x.pos])
 	return {"ok": now <= npc.max_ragdolls and rags <= npc.max_ragdolls and stag >= picked.size() - npc.max_ragdolls and still == 0,
 		"hit": picked.size(), "ragdolls": rags, "staggers": stag, "ragdolls_at_once": now, "after_12s": still}
 

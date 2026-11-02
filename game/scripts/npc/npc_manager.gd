@@ -533,21 +533,33 @@ func _may_cross(e, a: Agent) -> bool:
 	var sig := crossing_signal(e)
 	if sig >= 0 and sig != 2:
 		return false
-	# gap: the player's car and traffic
+	# gap: nothing standing on the crosswalk, nothing moving that would reach it within ~4 s
+	var c0: Vector3 = e.pts[1]
+	var c1: Vector3 = e.pts[e.pts.size() - 2]
 	if main.car:
-		var cv: Vector3 = main.car.linear_velocity
-		var rel: Vector3 = mid - main.car.global_position
-		if rel.length() < 8.0 or (rel.length() < 45.0 and cv.length() > 3.0 and rel.normalized().dot(cv.normalized()) > 0.5):
+		if _blocks_crossing(main.car.global_position, main.car.linear_velocity, c0, c1, mid):
 			return false
 	if tr:
 		for c in tr.active:
-			var rel: Vector3 = mid - c.global_position
-			var d := rel.length()
-			if d < 6.0:
-				return false
-			if d < 30.0 and c.v > 1.5 and rel.normalized().dot(c.global_basis.z) > 0.6:
-				return false
+			if c.global_position.distance_squared_to(mid) < 2500.0:
+				if _blocks_crossing(c.global_position, c.global_basis.z * c.v, c0, c1, mid):
+					return false
 	return true
+
+
+func _blocks_crossing(p: Vector3, v: Vector3, c0: Vector3, c1: Vector3, mid: Vector3) -> bool:
+	var ab := Vector2(c1.x - c0.x, c1.z - c0.z)
+	var ap := Vector2(p.x - c0.x, p.z - c0.z)
+	var t := clampf(ap.dot(ab) / maxf(ab.length_squared(), 1e-4), 0.0, 1.0)
+	if (ap - ab * t).length() < 3.0:
+		return true                     # on (or right at) the crosswalk
+	var rel := mid - p
+	rel.y = 0.0
+	var sp := Vector2(v.x, v.z).length()
+	if sp < 1.0:
+		return false
+	var closing := rel.normalized().dot(Vector3(v.x, 0, v.z) / sp)
+	return closing > 0.5 and rel.length() / sp < 4.0
 
 
 # ================================================================== motion
@@ -560,6 +572,13 @@ func _move(a: Agent, dt: float) -> void:
 				if rag and rag.bones.has("Hips"):
 					a.pos = rag.bones.Hips.global_position
 			a.down_t += dt
+			if a.down_t > 14.0:              # watchdog: never leave anyone lying there for good
+				a.down_t = 0.0
+				if a.node and a.node.rag and a.node.rag.active():
+					a.node.rag._finish()
+				else:
+					_ragdolls.erase(a)
+					a.state = WALK
 			return
 		POI_STAY:
 			a.timer -= dt
@@ -823,13 +842,14 @@ func _update_lod(initial: bool) -> void:
 	var order := agents.duplicate()
 	order.sort_custom(func(x, y): return x.dist < y.dist)
 	var n := 0
-	for a in order:
+	for i in order.size():
+		var a: Agent = order[i]
 		var want: bool = (n < max_near and a.dist < near_radius) or a.state == DOWN
 		if want:
 			n += 1
 			if a.node == null:
 				_attach_node(a, initial)
-		elif a.node and a.state != DOWN and (a.dist > near_radius + 4.0 or n >= max_near + 2):
+		elif a.node and a.state != DOWN and (a.dist > near_radius + 4.0 or i >= max_near + 3):
 			_detach_node(a)
 
 
