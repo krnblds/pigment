@@ -39,7 +39,7 @@ func _initialize() -> void:
 		else:
 			var ap: AnimationPlayer = root.find_child("AnimationPlayer", true, false)
 			if ap:
-				var slug := p.get_file().get_basename().to_snake_case().replace(" ", "_")
+				var slug: String = p.get_file().get_basename().to_snake_case().replace(" ", "_")
 				var best: Animation = null
 				for ln in ap.get_animation_library_list():
 					var l := ap.get_animation_library(ln)
@@ -49,7 +49,7 @@ func _initialize() -> void:
 							best = a
 				if best:
 					var a := AnimLib.clean(best.duplicate(true))
-					var oneshot := slug.contains("death") or slug.contains("fall") or slug.contains("hit")
+					var oneshot: bool = slug.contains("death") or slug.contains("fall") or slug.contains("hit")
 					a.loop_mode = Animation.LOOP_NONE if oneshot else Animation.LOOP_LINEAR
 					if a.get_track_count() > 0 and String(a.track_get_path(0)).begins_with("%GeneralSkeleton"):
 						lib.add_animation("extra_" + slug, a)

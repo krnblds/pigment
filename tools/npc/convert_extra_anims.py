@@ -63,7 +63,7 @@ def bonemap_for(names):
 
 def main():
     godot = sys.argv[sys.argv.index("--godot") + 1] if "--godot" in sys.argv else os.environ.get("GODOT", SG.GODOT_DEFAULT)
-    drops = sorted(glob.glob(os.path.join(DROP, "*.fbx")) + glob.glob(os.path.join(DROP, "*.FBX")) + glob.glob(os.path.join(DROP, "*.glb")))
+    drops = sorted({os.path.normcase(p): p for p in glob.glob(os.path.join(DROP, "*.[fF][bB][xX]")) + glob.glob(os.path.join(DROP, "*.glb"))}.values())
     if not drops:
         print("no clips in", DROP, "- nothing to do (the game uses the CC0 idles)")
         return
@@ -74,12 +74,12 @@ def main():
         dst = os.path.join(SRC, slug + os.path.splitext(p)[1].lower())
         SG.copy(p, dst)
         staged.append(dst)
-        # pass 1: plain import (to read the skeleton)
+        # pass 1: Godot's default import (to read the skeleton); a previous retarget is redone
         imp = dst + ".import"
-        if not os.path.exists(imp) or "retarget/bone_map" not in open(imp).read():
-            with open(imp, "w", newline="\n") as f:
-                f.write(SG.SCENE_IMPORT.replace('importer="scene"', 'importer="%s"' % ("scene"))
-                        % {"src": SG.res(dst), "anim": "true", "sub": "{}"})
+        if os.path.exists(imp):
+            old = open(imp, encoding="utf-8").read()
+            if "retarget/bone_map" in old or "valid=false" in old:
+                os.remove(imp)
     r = run(godot, "--import")
     r = run(godot, "-s", "res://scripts/npc/character/build_extra_anims.gd", "--", "bones")
     found = 0
@@ -97,8 +97,12 @@ def main():
         with open(bm, "w", newline="\n") as f:
             f.write(text)
         sub = SG.RETARGET % {"skel": skel, "bonemap": SG.res(bm)}
-        with open(local + ".import", "w", newline="\n") as f:
-            f.write(SG.SCENE_IMPORT % {"src": path, "anim": "true", "sub": sub})
+        with open(local + ".import", encoding="utf-8") as f:
+            imp = f.read()
+        # keep Godot's own (FBX) import params, set only the skeleton's retarget sub-resource
+        imp = re.sub(r"_subresources=\{.*?\n\}\n|_subresources=\{\}\n", lambda m: "_subresources=" + sub + "\n", imp, count=1, flags=re.S)
+        with open(local + ".import", "w", newline="\n", encoding="utf-8") as f:
+            f.write(imp)
         found += 1
     print("%d of %d clips have a humanoid skeleton" % (found, len(staged)))
     run(godot, "--import")
