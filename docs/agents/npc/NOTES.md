@@ -188,9 +188,28 @@ c.anim_auto = false; c.advance(dt) # drive the animation yourself (the crowd doe
   SkeletonProfileHumanoid bone map and `GeneralSkeleton` as the unique skeleton name (see
   `tools/npc/sync_godot.py` `RETARGET`).
 * The ragdoll alone: `character/ragdoll.gd` `setup(skeleton, anim_tree, root, hips_height)`,
-  `ragdoll(impulse, at)`, `exclude(body)`, signals `fell`, `stood_up`.
-* The crowd (`main.npc`, `npc_manager.gd`): `agents_near(p, r)`, `set_sleepwalker(agent, on)`,
-  `hit(agent, impulse, at, by)`, signal `pedestrian_hit(pos, speed)`, `summary()`, `count()`.
+  `throw(impulse, at)`, `exclude(body)`, signals `fell`, `stood_up`; and the static
+  `Ragdoll.ragdoll(body, skeleton, impulse) -> bool` (any humanoid, stays down - the sleepwalkers'
+  deaths use it through `sleepwalker.gd _death_hook`).
+* The crowd (`main.npc`, `npc_manager.gd`, group `npc_civilians`): `on_incident(pos, radius)` (walkers
+  near it hurry away along the pavement - the case manager calls it when an echo is found),
+  `agents_near(p, r)`, `set_sleepwalker(agent, on)`, `hit(agent, impulse, at, by)`, signal
+  `pedestrian_hit(pos, speed)`, `summary()`, `count()`.
+
+### Waker integration (after merging main)
+
+* `player/player_body.gd`: `model` defaults by look - `"waker"` -> `res://assets/npc/citizens/waker_m.glb`
+  (`WAKER_MODELS.female` = `waker_f.glb`; set `body.model` before `add_child` to choose), every other
+  look (sleepers, ghosts) -> a citizen picked from the node id; the UAL mannequin when the citizens
+  aren't built.  Citizens are dressed by `CitizenLib.dress()` (atlas materials, LODs, no crowd LOD2).
+  `ANIMS` stays on the UAL glTF with the existing `CLIP` table; position tracks are kept on the hips
+  only so the clips fit the MPFB proportions.  With a citizen body `set_look` adds no tint or gear
+  primitives (the officer wears the Hoshikawa coat and resonance band); looks with a Dreamlink halo turn
+  on the citizens' sleepwalker glow instead (temples + eyes), "civilian" (woken) turns it off.
+* Sleepwalker deaths: `ragdoll.gd` static `ragdoll(body, skeleton, impulse)`.
+* Traffic: the Waker-on-foot and sleeper obstacles from main and the pedestrians' obstacles both go
+  into `_collect_obstacles`; the crossing gap check only counts vehicles that actually drive over the
+  crosswalk (not the queue at the stop line or the cross traffic).
 
 ## Extra clips (Mixamo etc.) - the user's drop-in
 
@@ -246,6 +265,9 @@ shop / bar fronts; without them they use the CC0 idles (fold arms, phone, look a
   `elif` in the test chain.
 * `game/scripts/traffic/traffic_manager.gd`: `var ped_provider` and 3 lines in `_late_setup`
   (`peds = ped_provider` replaces the silhouettes; obstacles / `count()` go through it).
+* `game/scripts/player/player_body.gd` (main's on-foot adapter): `CITIZEN_LIB` / `WAKER_MODELS`
+  consts, `model` default + `_pick_model()`, the `dress()` call, `_hips_positions_only()`, the citizen
+  branch at the top of `set_look()`.
 * `.gitignore` (+ `.npccache/`) and `game/.gitignore` (+ `assets/npc/`).
 * New: `game/scripts/npc/**`, `tools/npc/**`, `docs/agents/npc/**`.  Nothing in the damage scripts
   changed (the hit uses `damage.hero_damage.apply_impact`).
