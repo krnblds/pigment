@@ -23,6 +23,13 @@ pub struct Harness {
     textures: egui::TexturesDelta,
 }
 
+impl Drop for Harness {
+    fn drop(&mut self) {
+        // uploads queued after the last render() have nowhere to go
+        self.textures.clear();
+    }
+}
+
 impl Harness {
     /// A harness with a fresh app. `None` without a GPU adapter.
     pub fn new(size: [f32; 2], ppp: f32) -> Option<Harness> {
@@ -67,8 +74,9 @@ impl Harness {
         self.time += 1.0 / 60.0;
         let raw = self.raw_input();
         let (app, frame) = (&mut self.app, &mut self.frame);
-        let out = self.ctx.run_ui(raw, |ui| app.ui(ui, frame));
-        self.textures.append(out.textures_delta.clone());
+        let mut out = self.ctx.run_ui(raw, |ui| app.ui(ui, frame));
+        // move (not copy) the delta: epaint asserts that every delta is applied or cleared
+        self.textures.append(std::mem::take(&mut out.textures_delta));
         self.last_output = Some(out);
     }
 
@@ -195,7 +203,7 @@ impl Harness {
         let view = tex.create_view(&Default::default());
         let jobs = self.ctx.tessellate(out.shapes, out.pixels_per_point);
         let screen = eframe::egui_wgpu::ScreenDescriptor { size_in_pixels: [w, h], pixels_per_point: out.pixels_per_point };
-        let textures = std::mem::take(&mut self.textures);
+        let mut textures = std::mem::take(&mut self.textures);
         {
             let mut r = self.rs.renderer.write();
             for (id, deltas) in &textures.set {
@@ -223,6 +231,7 @@ impl Harness {
             for id in &textures.free {
                 r.free_texture(id);
             }
+            textures.clear(); // applied above; epaint asserts on dropping unapplied deltas
         }
         let t = crate::render::gpu::Tex { tex, view, size: w, height: h, format, mips: 1 };
         let px = crate::render::gpu::readback(d, q, &t);

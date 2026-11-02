@@ -122,7 +122,7 @@ impl PigmentApp {
             egui::ScrollArea::vertical().show(ui, |ui| {
                 ui.add_space(space::XXL);
                 ui.horizontal(|ui| {
-                    Icon::Palette.show(ui, icon::XL, p.accent);
+                    ds::logo(ui, icon::XL);
                     ui.vertical(|ui| {
                         ui.label(ds::strong("Paint your 3D models", font::DISPLAY));
                         ui.label(ds::text("Pick a model, pick a material, export. Edge wear and dirt appear where they belong.", font::TITLE).color(p.text_secondary));

@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="assets/branding/png/pigment-128.png" width="128" height="128" alt="Pigment icon: a graphite ball with one glossy orange brush stroke wrapped round it">
+
 # Pigment
 
 **An open-source PBR texture painter you can drive by hand or hand to an AI agent.**
@@ -225,6 +227,23 @@ cargo test -p pigment --release perf_targets -- --ignored --nocapture
 ```
 
 - The core crate is GPU-free: document model, blend maths, undo, strokes, project files, export packing.
+- The app icon is generated: `tools/branding/make_svgs.py` builds the SVGs in `assets/branding`
+  (a graphite sphere with a brush stroke modelled on its surface, plus simplified 16-32 px artwork), and
+  `make_icons.py` runs it and then renders every PNG, `pigment.ico`, `pigment.icns` and the contact
+  sheet `docs/branding/icon_sizes.png`. One command regenerates the lot:
+
+  ```bash
+  pip install resvg-py pillow
+  python tools/branding/make_icons.py
+  ```
+
+  Sizes from 48 px up come from a Cycles render of the same design modelled in 3D
+  (`assets/branding/render/pigment-icon-1024.png`). After changing the design, re-render it
+  before running `make_icons.py`:
+
+  ```bash
+  blender -b --factory-startup --python tools/branding/render_icon.py
+  ```
 - The app crate:
   - validates every WGSL shader with naga;
   - runs headless GPU tests that paint, composite, bake and export on a real device;
@@ -235,8 +254,8 @@ cargo test -p pigment --release perf_targets -- --ignored --nocapture
 ```text
 crates/core      GPU-free document model, generators config, export, projects
 crates/app       the app (egui + wgpu), renderer, shaders, MCP server (src/bin/pigment-mcp.rs)
-tools/           Blender add-on, asset generators, world generator, city build
-assets/          meshes, decals, tiles, props, vehicles, trees, skies
+tools/           Blender add-on, asset generators, world generator, city build, icon export
+assets/          app icon (assets/branding), meshes, decals, tiles, props, vehicles, trees, skies
 scenes/          Pigment projects and MCP scripts for the showcase
 game/            the Godot showcase game
 docs/            guides, design system, per-feature notes (docs/agents/*)

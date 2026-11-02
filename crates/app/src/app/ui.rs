@@ -554,9 +554,7 @@ impl PigmentApp {
         let p = ds::pal(ui);
         egui::MenuBar::new().ui(ui, |ui| {
             ui.set_min_height(size::CONTROL_H + space::XS);
-            // logo: a pigment drop
-            let (r, _) = ui.allocate_exact_size(vec2(icon::LG, icon::LG), egui::Sense::hover());
-            Icon::Palette.paint(ui.painter(), r, p.accent);
+            ds::logo(ui, icon::LG);
             ui.label(ds::strong("Pigment", font::TITLE));
             ui.add_space(space::SM);
             let file = ui.menu_button("File", |ui| self.file_menu(ui, rs));

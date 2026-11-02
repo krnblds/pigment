@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <!-- E: a matte graphite ball with one glossy orange brush stroke wrapped round it -->
+  <defs>
+    <clipPath id="b"><circle cx="128" cy="128" r="104"/></clipPath>
+    <radialGradient id="g" cx="0.35" cy="0.3" r="0.8"><stop offset="0" stop-color="#6A6E76"/><stop offset="0.6" stop-color="#34373D"/><stop offset="1" stop-color="#17181B"/></radialGradient>
+    <linearGradient id="s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFC08A"/><stop offset="0.35" stop-color="#F08A3C"/><stop offset="1" stop-color="#A8501A"/></linearGradient>
+  </defs>
+  <circle cx="128" cy="128" r="104" fill="url(#g)"/>
+  <g clip-path="url(#b)">
+    <path fill="url(#s)" d="M8 150 C60 96 196 84 250 112 L250 168 C196 142 64 150 8 206 L14 196 L6 190 L16 180 L4 172 L14 164 Z"/>
+    <g stroke="#FFD2A8" stroke-opacity="0.55" stroke-width="3" fill="none" stroke-linecap="round">
+      <path d="M40 150 C90 118 170 110 230 124"/><path d="M30 172 C90 138 170 132 236 146"/>
+    </g>
+    <path d="M36 186 C96 156 170 150 238 160" stroke="#8A4413" stroke-opacity="0.5" stroke-width="2" fill="none"/>
+  </g>
+  <ellipse cx="88" cy="70" rx="24" ry="12" fill="#fff" fill-opacity="0.35" transform="rotate(-35 88 70)"/>
+  <circle cx="128" cy="128" r="104" fill="none" stroke="#000" stroke-opacity="0.35" stroke-width="2"/>
+</svg>

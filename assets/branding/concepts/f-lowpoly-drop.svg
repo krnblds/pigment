@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <!-- F: a low-poly mesh drop, painted orange from the top, the lower facets still bare steel -->
+  <g stroke="#FFE3C8" stroke-opacity="0.35" stroke-width="1.5" stroke-linejoin="round">
+    <polygon points="128,12 88,92 128,84" fill="#FFB06C"/>
+    <polygon points="128,12 128,84 168,92" fill="#F08A3C"/>
+    <polygon points="88,92 46,150 100,140" fill="#FFA058"/>
+    <polygon points="88,92 100,140 128,84" fill="#F5934A"/>
+    <polygon points="128,84 100,140 156,140" fill="#EE8636"/>
+    <polygon points="128,84 156,140 168,92" fill="#DE772C"/>
+    <polygon points="168,92 156,140 210,150" fill="#C9661F"/>
+    <polygon points="46,150 62,208 100,140" fill="#E68033"/>
+    <polygon points="100,140 62,208 128,198" fill="#D9742A"/>
+    <polygon points="100,140 128,198 156,140" fill="#C86A24"/>
+    <polygon points="156,140 128,198 194,208" fill="#B9BDC3"/>
+    <polygon points="156,140 194,208 210,150" fill="#8B9097"/>
+    <polygon points="62,208 128,246 128,198" fill="#D3D6DA"/>
+    <polygon points="128,198 128,246 194,208" fill="#70757C"/>
+  </g>
+  <path d="M100 140 L128 198 L156 140 L210 150" fill="none" stroke="#8A4413" stroke-width="3" stroke-linejoin="round" stroke-opacity="0.7"/>
+  <polygon points="128,12 46,150 62,208 128,246 194,208 210,150" fill="none" stroke="#2A2C30" stroke-opacity="0.6" stroke-width="3" stroke-linejoin="round"/>
+</svg>
