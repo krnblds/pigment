@@ -29,6 +29,6 @@
 {"tool": "project_decal", "args": {"image": "assets/decals/bridges/run.png", "layer": "Grime runs", "position": [0.4777, 0, -0.2969], "normal": [0, 1, 0], "size": [0.06, 0.6708], "tint": [0.14759392691985895, 0.11915304915499912, 0.09314072791901262]}}
 {"tool": "project_decal", "args": {"image": "assets/decals/bridges/run.png", "layer": "Grime runs", "position": [0.3036, 0, 0.3561], "normal": [0, 1, 0], "size": [0.1039, 1.1327], "tint": [0.15370486551275242, 0.1139182695238433, 0.10723077203342135]}}
 {"tool": "project_decal", "args": {"image": "assets/decals/bridges/run.png", "layer": "Grime runs", "position": [-0.903, 0, 0.4509], "normal": [0, 1, 0], "size": [0.0541, 1.0582], "tint": [0.13668560781992817, 0.11033608026490636, 0.10907935491656601]}}
-{"tool": "render", "args": {"yaw": 0, "pitch": 89.9, "zoom": 1.0, "width": 600, "height": 600, "background": false, "path": "C:/Users/kiera/Documents/Workspaces/Vibe Projects/are-senior-graphics-engineer-who/.claude/worktrees/agent-bridges/.citycache/bridges/bridge_steel_grey.png"}}
+{"tool": "render", "args": {"yaw": 0, "pitch": 89.9, "zoom": 1.0, "width": 600, "height": 600, "background": false, "path": "C:/Users/kiera/Documents/Workspaces/Vibe Projects/are-senior-graphics-engineer-who/.citycache/bridges/bridge_steel_grey.png"}}
 {"tool": "export_textures", "args": {"dir": "scenes/town/textures/bridge_steel_grey", "name": "bridge_steel_grey", "preset": "separate"}}
 {"tool": "save_project", "args": {"path": "scenes/town/projects/bridges/bridge_steel_grey.pigment"}}

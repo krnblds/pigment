@@ -79,7 +79,7 @@ collision = "none"
 tris = 520
 policy = "cell"
 proxy = false
-world_keys = ["PROP_planter"]
+world_keys = ["PROP_planter", "PROP_planter__tagged"]
 visible_to_m = 150.0
 collider = "box"
 mount = "ground"
@@ -89,9 +89,16 @@ lod = { lod0_tris = 520, lod1_tris = 260, lod1_from_m = 20.0, visible_to_m = 74.
 
 # Where the world places it (read from scenes/world/world.json; scatter rules live in the props catalog).
 [placement]
-instances = 328
+instances = 319
 source = "tools/props/scatter.py (rules: tools/props/catalog.py)"
-districts = { corporate = 53, downtown = 116, hillside = 49, midtown = 88, old_town = 22 }
+
+[placement.districts]
+corporate = 42
+downtown = 122
+hillside = 50
+midtown = 67
+old_town = 31
+yoimachi = 7
 
 [placement.scatter]
 slots = ["walk", "frontage", "plaza"]

@@ -1,0 +1,339 @@
+{
+ "format": "garages/1",
+ "generated_by": "game/tools/pick_garages.py",
+ "garages": [
+  {
+   "id": "yoimachi_mods",
+   "name": "YOIMACHI MOD SHOP",
+   "district": "yoimachi",
+   "style": "mod",
+   "anchor": [
+    -720.0,
+    120.0
+   ],
+   "radius": 280.0,
+   "sign": "GARAGE",
+   "sub": "MODS  //  TUNING  //  NEON",
+   "accent": [
+    1.0,
+    0.16,
+    0.62
+   ],
+   "accent2": [
+    0.2,
+    0.9,
+    1.0
+   ],
+   "road": "r40",
+   "pos": [
+    -653.944,
+    4.42,
+    81.937
+   ],
+   "yaw": 0.12931,
+   "size": [
+    14.0,
+    7.5,
+    16.0
+   ],
+   "road_point": [
+    -651.52,
+    4.27,
+    100.58
+   ],
+   "road_dir": [
+    0.9917,
+    0.0,
+    -0.129
+   ],
+   "door_dir": [
+    0.129,
+    0.0,
+    0.9917
+   ],
+   "front": 10.8,
+   "replaced_buildings": 1,
+   "remove": [
+    [
+     "overhead_sign__implant_repair",
+     -646.77,
+     9.26,
+     87.96
+    ],
+    [
+     "PlinthBox",
+     -653.62,
+     3.87,
+     83.13
+    ],
+    [
+     "PROP_cardboard_boxes",
+     -648.82,
+     4.4,
+     91.33
+    ],
+    [
+     "building_b__hostess_row",
+     -653.56,
+     4.42,
+     83.61
+    ],
+    [
+     "PROP_trash_bin__graphite",
+     -655.72,
+     4.43,
+     91.95
+    ],
+    [
+     "PROP_trash_bag_pile",
+     -651.28,
+     4.41,
+     92.06
+    ],
+    [
+     "PROP_bollard__yellow",
+     -655.8,
+     4.44,
+     93.17
+    ],
+    [
+     "PROP_bollard__pearl",
+     -655.2,
+     4.43,
+     93.09
+    ],
+    [
+     "PROP_bollard__tagged",
+     -654.61,
+     4.43,
+     93.02
+    ],
+    [
+     "PROP_bollard__yellow",
+     -654.01,
+     4.43,
+     92.94
+    ]
+   ],
+   "remove_lights": []
+  },
+  {
+   "id": "hoshikawa_downtown",
+   "name": "HOSHIKAWA MOTORS",
+   "district": "downtown",
+   "style": "dealer",
+   "anchor": [
+    -120.0,
+    150.0
+   ],
+   "radius": 420.0,
+   "sign": "GARAGE",
+   "sub": "HOSHIKAWA MOTORS  //  DEALERSHIP",
+   "accent": [
+    0.25,
+    0.85,
+    1.0
+   ],
+   "accent2": [
+    0.85,
+    0.9,
+    1.0
+   ],
+   "road": "r95",
+   "pos": [
+    -130.6,
+    4.76,
+    218.69
+   ],
+   "yaw": 1.69936,
+   "size": [
+    14.0,
+    7.5,
+    16.0
+   ],
+   "road_point": [
+    -113.74,
+    4.61,
+    216.51
+   ],
+   "road_dir": [
+    -0.1282,
+    0.0,
+    -0.9917
+   ],
+   "door_dir": [
+    0.9917,
+    0.0,
+    -0.1282
+   ],
+   "front": 9.0,
+   "replaced_buildings": 1,
+   "remove": [
+    [
+     "PROP_bollard",
+     -119.59,
+     4.76,
+     218.8
+    ],
+    [
+     "PROP_bollard__tagged",
+     -119.67,
+     4.76,
+     218.2
+    ],
+    [
+     "PROP_bollard__pearl",
+     -119.75,
+     4.76,
+     217.61
+    ],
+    [
+     "overhead_sign__noodles",
+     -123.5,
+     9.81,
+     219.75
+    ],
+    [
+     "building_b__pawn_row",
+     -128.92,
+     4.72,
+     218.34
+    ],
+    [
+     "PlinthBox",
+     -129.41,
+     4.19,
+     218.4
+    ]
+   ],
+   "remove_lights": []
+  },
+  {
+   "id": "port_chop",
+   "name": "MINATO CHOP SHOP",
+   "district": "port",
+   "style": "chop",
+   "anchor": [
+    1380.0,
+    1000.0
+   ],
+   "radius": 560.0,
+   "sign": "GARAGE",
+   "sub": "UNDERGROUND  //  NO QUESTIONS",
+   "accent": [
+    1.0,
+    0.5,
+    0.08
+   ],
+   "accent2": [
+    1.0,
+    0.15,
+    0.3
+   ],
+   "road": "r195",
+   "pos": [
+    1385.332,
+    3.55,
+    965.802
+   ],
+   "yaw": 2.89724,
+   "size": [
+    14.0,
+    7.5,
+    16.0
+   ],
+   "road_point": [
+    1389.88,
+    3.4,
+    947.56
+   ],
+   "road_dir": [
+    0.9703,
+    0.0,
+    0.2419
+   ],
+   "door_dir": [
+    0.2419,
+    0.0,
+    -0.9703
+   ],
+   "front": 10.8,
+   "replaced_buildings": 0,
+   "remove": [
+    [
+     "PROP_container",
+     1392.52,
+     3.21,
+     968.41
+    ],
+    [
+     "PROP_container__blue",
+     1392.52,
+     5.81,
+     968.41
+    ],
+    [
+     "PROP_vending_machine",
+     1387.79,
+     3.55,
+     956.42
+    ],
+    [
+     "PROP_vending_machine__ramen",
+     1389.01,
+     3.55,
+     956.73
+    ],
+    [
+     "PROP_vending_machine",
+     1390.23,
+     3.55,
+     957.03
+    ],
+    [
+     "PROP_container__white",
+     1391.16,
+     3.22,
+     973.85
+    ],
+    [
+     "PROP_container__white",
+     1391.16,
+     5.82,
+     973.85
+    ],
+    [
+     "PROP_container__green",
+     1391.16,
+     8.42,
+     973.85
+    ],
+    [
+     "PROP_container__orange",
+     1378.55,
+     3.21,
+     970.7
+    ],
+    [
+     "PROP_container__blue",
+     1378.55,
+     5.81,
+     970.7
+    ],
+    [
+     "PROP_container__white",
+     1379.9,
+     3.21,
+     965.27
+    ],
+    [
+     "PROP_container__green",
+     1391.16,
+     11.02,
+     973.85
+    ]
+   ],
+   "remove_lights": []
+  }
+ ]
+}

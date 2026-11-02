@@ -84,7 +84,7 @@ collision = "none"
 tris = 2292
 policy = "cell"
 proxy = false
-world_keys = ["PROP_drone_mast"]
+world_keys = ["PROP_drone_mast", "PROP_drone_mast__clean"]
 visible_to_m = 150.0
 collider = "compound"
 mount = "ground"
@@ -97,9 +97,9 @@ lod = { lod0_tris = 2292, lod1_tris = 1031, lod1_from_m = 72.0, visible_to_m = 3
 
 # Where the world places it (read from scenes/world/world.json; scatter rules live in the props catalog).
 [placement]
-instances = 71
+instances = 69
 source = "tools/props/scatter.py (rules: tools/props/catalog.py)"
-districts = { corporate = 4, downtown = 36, hillside = 2, midtown = 26, old_town = 2, port = 1 }
+districts = { corporate = 4, downtown = 33, hillside = 1, midtown = 26, port = 4, yoimachi = 1 }
 
 [placement.scatter]
 slots = ["plaza", "rooftop", "curb"]

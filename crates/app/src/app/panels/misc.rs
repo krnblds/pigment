@@ -224,7 +224,7 @@ pub fn lighting_presets(app: &mut PigmentApp, ui: &mut egui::Ui, rs: &RenderStat
         ui.spacing_mut().item_spacing = egui::vec2(space::XS, space::XS);
         for (id, label) in pigment_core::envmath::PRESETS.iter().chain(pigment_core::envmath::SKIES.iter()) {
             let found = pigment_core::envmath::PRESETS.iter().any(|(i, _)| i == id) || pigment_core::envmath::sky_path(id).is_some();
-            let ic = if id.contains("night") || id.contains("moon") { Icon::Moon } else { Icon::Sun };
+            let ic = if id.contains("night") || id.contains("moon") || id.contains("dark") { Icon::Moon } else { Icon::Sun };
             let r = ui.add(Btn::ghost(*label).icon(ic).small().selected(app.env.source == *id).enabled(found));
             if r.clicked() {
                 app.set_lighting(rs, id);
@@ -244,6 +244,9 @@ pub fn lighting_controls(app: &mut PigmentApp, ui: &mut egui::Ui, rs: &RenderSta
         app.view.env_rotation = deg.to_radians();
     }
     ds::toggle(ui, &mut app.view.show_env, "Show the environment behind the model");
+    if pigment_core::stage::look(&app.env.source).is_some() {
+        ds::toggle(ui, &mut app.view.stage, "Lightbox floor: contact shadow and reflection");
+    }
     ds::toggle(ui, &mut app.view.bloom.enabled, "Bloom: glow around lights and neon");
     if app.view.bloom.enabled {
         ds::slider_row(ui, "Threshold", &mut app.view.bloom.threshold, 0.0..=4.0, ds::Unit::Plain(2));

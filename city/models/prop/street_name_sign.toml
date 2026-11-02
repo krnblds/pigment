@@ -84,7 +84,11 @@ collision = "none"
 tris = 422
 policy = "cell"
 proxy = false
-world_keys = ["PROP_street_name_sign"]
+world_keys = [
+  "PROP_street_name_sign",
+  "PROP_street_name_sign__meridian_ave",
+  "PROP_street_name_sign__neon_yokocho",
+]
 visible_to_m = 150.0
 collider = "cylinder"
 mount = "ground"
@@ -94,9 +98,17 @@ lod = { lod0_tris = 422, visible_to_m = 151.7 }
 
 # Where the world places it (read from scenes/world/world.json; scatter rules live in the props catalog).
 [placement]
-instances = 262
+instances = 249
 source = "tools/props/scatter.py (rules: tools/props/catalog.py)"
-districts = { corporate = 5, downtown = 79, hillside = 49, midtown = 85, old_town = 29, port = 15 }
+
+[placement.districts]
+corporate = 6
+downtown = 74
+hillside = 46
+midtown = 74
+old_town = 28
+port = 8
+yoimachi = 13
 
 [placement.scatter]
 slots = ["corner"]

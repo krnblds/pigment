@@ -644,12 +644,11 @@ func _think(c, dt: float) -> void:
 		c.blocked_by_player_t += dt
 	else:
 		c.blocked_by_player_t = 0.0
-	if c.honk_cool <= 0.0:
-		var cut_in: bool = by_player and gap < 7.0 and dv > 3.0
-		if c.blocked_by_player_t > 2.5 or cut_in:
-			c.honk_cool = rng.randf_range(5.0, 11.0)
-			if rng.randf() < 0.7:
-				_honk(c)
+	# drivers mind their own business: only a long hold-up by the player gets the odd honk
+	if c.honk_cool <= 0.0 and c.blocked_by_player_t > 8.0:
+		c.honk_cool = rng.randf_range(25.0, 45.0)
+		if rng.randf() < 0.3:
+			_honk(c)
 	if c.v < 0.3:
 		c.stall_t += dt
 	else:
@@ -854,12 +853,46 @@ func _lane_change_logic(c, l, lead: Array, v0: float) -> void:
 
 
 # ------------------------------------------------------------------ physics hand-off
+var _hero_prev_vel := Vector3.ZERO
+
+
+## The hero car must never hit a frozen (infinite-mass) traffic car: that stops it dead. Cars the
+## hero is about to touch become real rigid bodies a moment *before* contact, so the crash is
+## between two masses. If contact still happens first (very fast, or spawned in the way), the hero's
+## pre-contact speed is restored and shared as an inelastic crash.
 func _check_hero_contacts() -> void:
-	if main.car == null or main.car.get_contact_count() == 0:
+	var hero = main.car
+	if hero == null:
 		return
-	for b in main.car.get_colliding_bodies():
-		if b is TrafficCar and (b.mode == TrafficCar.KINEMATIC or b.mode == TrafficCar.PARKED or b.mode == TrafficCar.RECOVER):
-			_knock(b)
+	var hv: Vector3 = hero.linear_velocity
+	var hp: Vector3 = hero.global_position
+	var speed := hv.length()
+	# 1) predictive: wake anything inside the reach of the next ~0.25 s
+	if speed > 1.0:
+		var reach := 3.2 + speed * 0.25
+		for c in active:
+			if c.mode != TrafficCar.KINEMATIC and c.mode != TrafficCar.PARKED and c.mode != TrafficCar.RECOVER:
+				continue
+			var d: Vector3 = c.global_position - hp
+			d.y = 0.0
+			var dist := d.length()
+			if dist > reach + c.half_len:
+				continue
+			var cv: Vector3 = c.global_basis.z * c.v if c.mode == TrafficCar.KINEMATIC else Vector3.ZERO
+			var closing := (hv - cv).dot(d / maxf(dist, 0.01))
+			if closing > 0.5 or dist < c.half_len + 2.6:
+				_knock(c)
+	# 2) contact already happened with a frozen car: undo the dead stop, share momentum
+	if hero.get_contact_count() > 0:
+		for b in hero.get_colliding_bodies():
+			if b is TrafficCar and (b.mode == TrafficCar.KINEMATIC or b.mode == TrafficCar.PARKED or b.mode == TrafficCar.RECOVER):
+				_knock(b)
+				var m1: float = hero.mass
+				var m2: float = b.mass
+				var v_common: Vector3 = (_hero_prev_vel * m1 + b.linear_velocity * m2) / (m1 + m2)
+				hero.linear_velocity = v_common.lerp(_hero_prev_vel, 0.25)
+				b.linear_velocity = v_common + (_hero_prev_vel - v_common) * 0.35
+	_hero_prev_vel = hero.linear_velocity
 
 
 func _knock(c) -> void:
@@ -878,8 +911,8 @@ func _knock(c) -> void:
 	c.set_braking(true, lib)
 	if not was_parked:
 		stats.knocked += 1
-		if c.honk_cool <= 0.0:
-			c.honk_cool = 6.0
+		if c.honk_cool <= 0.0 and rng.randf() < 0.35:      # rammed: sometimes a honk, not always
+			c.honk_cool = 20.0
 			_honk(c)
 
 

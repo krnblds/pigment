@@ -100,7 +100,15 @@ collision = "none"
 tris = 304
 policy = "cell"
 proxy = false
-world_keys = ["PROP_holo_pylon"]
+world_keys = [
+  "PROP_holo_pylon",
+  "PROP_holo_pylon__dolls",
+  "PROP_holo_pylon__hacked",
+  "PROP_holo_pylon__hotel",
+  "PROP_holo_pylon__meridian",
+  "PROP_holo_pylon__sale",
+  "PROP_holo_pylon__volt",
+]
 visible_to_m = 150.0
 collider = "cylinder"
 mount = "ground"
@@ -112,17 +120,17 @@ lod = { lod0_tris = 304, lod1_tris = 152, lod1_from_m = 32.5, visible_to_m = 162
 
 # Where the world places it (read from scenes/world/world.json; scatter rules live in the props catalog).
 [placement]
-instances = 174
+instances = 166
 source = "tools/props/scatter.py (rules: tools/props/catalog.py)"
 
 [placement.districts]
-corporate = 7
-downtown = 41
-hillside = 11
-midtown = 83
-old_town = 21
-port = 9
-yoimachi = 2
+corporate = 5
+downtown = 38
+hillside = 17
+midtown = 80
+old_town = 17
+port = 6
+yoimachi = 3
 
 [placement.scatter]
 slots = ["plaza", "walk", "corner"]

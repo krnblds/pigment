@@ -26,6 +26,22 @@
  ],
  "pieces": [
   {
+   "piece": "bolt_1",
+   "group": "steel",
+   "node": null,
+   "center": [
+    -0.0679,
+    0.045,
+    -0.0679
+   ],
+   "size": [
+    0.0208,
+    0.04,
+    0.024
+   ],
+   "tris": 20
+  },
+  {
    "piece": "base_collar",
    "group": "dark_metal",
    "node": null,
@@ -58,22 +74,6 @@
    "tris": 108
   },
   {
-   "piece": "bolt_1",
-   "group": "steel",
-   "node": null,
-   "center": [
-    -0.0679,
-    0.045,
-    -0.0679
-   ],
-   "size": [
-    0.0208,
-    0.04,
-    0.024
-   ],
-   "tris": 20
-  },
-  {
    "piece": "base_plate",
    "group": "dark_metal",
    "node": null,
@@ -88,6 +88,38 @@
     0.252
    ],
    "tris": 44
+  },
+  {
+   "piece": "Ped_A_Stop",
+   "group": "lens_stop",
+   "node": "Ped_A_Stop",
+   "center": [
+    0.0,
+    2.605,
+    0.325
+   ],
+   "size": [
+    0.25,
+    0.25,
+    0.02
+   ],
+   "tris": 12
+  },
+  {
+   "piece": "bolt_3",
+   "group": "steel",
+   "node": null,
+   "center": [
+    0.0679,
+    0.045,
+    0.0679
+   ],
+   "size": [
+    0.0208,
+    0.04,
+    0.024
+   ],
+   "tris": 20
   },
   {
    "piece": "bolt_0",
@@ -122,38 +154,6 @@
    "tris": 60
   },
   {
-   "piece": "pole_cap",
-   "group": "dark_metal",
-   "node": null,
-   "center": [
-    0.0,
-    2.97,
-    -0.0
-   ],
-   "size": [
-    0.14,
-    0.04,
-    0.14
-   ],
-   "tris": 60
-  },
-  {
-   "piece": "bolt_3",
-   "group": "steel",
-   "node": null,
-   "center": [
-    0.0679,
-    0.045,
-    0.0679
-   ],
-   "size": [
-    0.0208,
-    0.04,
-    0.024
-   ],
-   "tris": 20
-  },
-  {
    "piece": "bolt_2",
    "group": "steel",
    "node": null,
@@ -170,20 +170,20 @@
    "tris": 20
   },
   {
-   "piece": "Ped_A_Stop",
-   "group": "lens_stop",
-   "node": "Ped_A_Stop",
+   "piece": "pole_cap",
+   "group": "dark_metal",
+   "node": null,
    "center": [
     0.0,
-    2.605,
-    0.325
+    2.97,
+    -0.0
    ],
    "size": [
-    0.25,
-    0.25,
-    0.02
+    0.14,
+    0.04,
+    0.14
    ],
-   "tris": 12
+   "tris": 60
   },
   {
    "piece": "Ped_A_Stop_hood",

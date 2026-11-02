@@ -92,9 +92,9 @@ lod = { lod0_tris = 1964, lod1_tris = 883, lod1_from_m = 22.0, visible_to_m = 10
 
 # Where the world places it (read from scenes/world/world.json; scatter rules live in the props catalog).
 [placement]
-instances = 24
+instances = 20
 source = "tools/props/scatter.py (rules: tools/props/catalog.py)"
-districts = { midtown = 19, old_town = 5 }
+districts = { hillside = 2, midtown = 6, old_town = 8, yoimachi = 4 }
 
 [placement.scatter]
 slots = ["frontage", "plaza", "alley"]

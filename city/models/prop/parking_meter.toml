@@ -79,7 +79,7 @@ collision = "none"
 tris = 408
 policy = "cell"
 proxy = false
-world_keys = ["PROP_parking_meter"]
+world_keys = ["PROP_parking_meter", "PROP_parking_meter__graphite"]
 visible_to_m = 150.0
 collider = "cylinder"
 mount = "ground"
@@ -89,16 +89,17 @@ lod = { lod0_tris = 408, visible_to_m = 68.0 }
 
 # Where the world places it (read from scenes/world/world.json; scatter rules live in the props catalog).
 [placement]
-instances = 1356
+instances = 1211
 source = "tools/props/scatter.py (rules: tools/props/catalog.py)"
 
 [placement.districts]
-corporate = 43
-downtown = 429
-hillside = 137
-midtown = 648
+corporate = 32
+downtown = 397
+hillside = 142
+midtown = 538
 old_town = 26
-port = 73
+port = 65
+yoimachi = 11
 
 [placement.scatter]
 slots = ["curb"]

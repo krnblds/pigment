@@ -1,10 +1,10 @@
 {
  "lod0": "street_tree.glb",
- "lod0_bytes": 355688,
+ "lod0_bytes": 355372,
  "lod0_tris": 1292,
  "texture": 512,
  "lod1": "street_tree_lod1.glb",
- "lod1_bytes": 139692,
+ "lod1_bytes": 139376,
  "lod1_tris": 452,
  "lod1_texture": 256
 }

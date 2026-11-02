@@ -104,16 +104,20 @@ def squeal(seconds=4.5):
     return normalise(loopable(x))
 
 
-def wet(seconds=4.5):
+def wet(seconds=6.0):
+    """Tyres on a wet road: a soft, steady hiss (water squeezed out of the tread), band-limited to
+    ~250 Hz - 3 kHz with a gentle roll-off, a very slow swell and no flutter, plus a faint low
+    rumble of the tyre on the asphalt. It plays continuously, scaled by speed, while it rains."""
     n = int(seconds * RATE)
-    noise = rng.standard_normal(n)
-    swish = onepole(onepole(noise, 6000), 1500, high=True)
-    swish *= 0.6 + 0.4 * np.abs(smooth_noise(n, 9.0, rng))
-    rumble = onepole(onepole(rng.standard_normal(n), 400), 60, high=True)
+    white = rng.standard_normal(n)
+    # pink-ish: two gentle low-passes and a high-pass, so nothing hissy or tonal sticks out
+    hiss = onepole(onepole(onepole(white, 3000), 1800), 250, high=True)
+    hiss /= np.max(np.abs(hiss))
+    hiss *= 0.88 + 0.12 * smooth_noise(n, 0.7, rng)
+    rumble = onepole(onepole(rng.standard_normal(n), 220), 40, high=True)
     rumble /= np.max(np.abs(rumble))
-    swish /= np.max(np.abs(swish))
-    x = swish * 0.7 + rumble * 0.45
-    return normalise(loopable(x), -4.0)
+    x = hiss * 0.8 + rumble * 0.25
+    return normalise(loopable(x, 0.8), -6.0)
 
 
 if __name__ == "__main__":

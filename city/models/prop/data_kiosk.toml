@@ -102,7 +102,16 @@ collision = "none"
 tris = 680
 policy = "cell"
 proxy = false
-world_keys = ["PROP_data_kiosk"]
+world_keys = [
+  "PROP_data_kiosk",
+  "PROP_data_kiosk__attention",
+  "PROP_data_kiosk__dreamlink",
+  "PROP_data_kiosk__flagged",
+  "PROP_data_kiosk__hacked",
+  "PROP_data_kiosk__loan",
+  "PROP_data_kiosk__match",
+  "PROP_data_kiosk__platinum",
+]
 visible_to_m = 150.0
 collider = "box"
 mount = "ground"
@@ -114,17 +123,17 @@ lod = { lod0_tris = 680, lod1_tris = 340, lod1_from_m = 21.3, visible_to_m = 106
 
 # Where the world places it (read from scenes/world/world.json; scatter rules live in the props catalog).
 [placement]
-instances = 263
+instances = 234
 source = "tools/props/scatter.py (rules: tools/props/catalog.py)"
 
 [placement.districts]
-corporate = 10
-downtown = 81
-hillside = 35
-midtown = 87
-old_town = 26
-port = 17
-yoimachi = 7
+corporate = 9
+downtown = 70
+hillside = 32
+midtown = 84
+old_town = 17
+port = 13
+yoimachi = 9
 
 [placement.scatter]
 slots = ["walk", "frontage", "plaza", "corner"]

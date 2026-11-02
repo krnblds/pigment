@@ -48,13 +48,18 @@ mutable = ["scenes/props/textures/variants.json"]
 [pigment]
 scripts = ["scenes/props/scripts/bollard.jsonl"]
 textures = "scenes/props/textures"
-resolution = 512
-variants = ["yellow", "pearl"]
-decals = []
+resolution = 1024
+variants = ["yellow", "pearl", "tagged"]
+decals = [
+  "assets/decals/props/bollard_plate.png",
+  "assets/decals/props/meridian_sticker.png",
+  "assets/decals/story/graffiti_unplug.png",
+]
 outputs = [
   "scenes/props/projects/bollard.pigment",
   "scenes/props/textures/bollard",
   "scenes/props/textures/bollard__pearl",
+  "scenes/props/textures/bollard__tagged",
   "scenes/props/textures/bollard__yellow",
 ]
 patch = []
@@ -73,10 +78,10 @@ lod1_ratio = 0.0
 [game]
 category = "other"
 collision = "none"
-tris = 468
+tris = 1104
 policy = "cell"
 proxy = false
-world_keys = ["PROP_bollard"]
+world_keys = ["PROP_bollard", "PROP_bollard__pearl", "PROP_bollard__tagged", "PROP_bollard__yellow"]
 visible_to_m = 150.0
 collider = "cylinder"
 mount = "ground"
@@ -84,20 +89,21 @@ lights = [
   { name = "Light_Ring", type = "omni", color = [0.1, 0.9, 1.0], energy = 0.4, range = 1.5 },
 ]
 alpha = ["OPAQUE"]
-lod = { lod0_tris = 468, visible_to_m = 60.0 }
+lod = { lod0_tris = 1104, lod1_tris = 552, lod1_from_m = 20.0, visible_to_m = 60.0 }
 
 # Where the world places it (read from scenes/world/world.json; scatter rules live in the props catalog).
 [placement]
-instances = 4481
+instances = 4104
 source = "tools/props/scatter.py (rules: tools/props/catalog.py)"
 
 [placement.districts]
-corporate = 263
-downtown = 1486
-hillside = 473
-midtown = 1697
-old_town = 402
-port = 160
+corporate = 232
+downtown = 1305
+hillside = 466
+midtown = 1394
+old_town = 386
+port = 170
+yoimachi = 151
 
 [placement.scatter]
 slots = ["curb", "corner"]

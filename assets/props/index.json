@@ -45,7 +45,7 @@
   "mount_height": "[min, max] metres above ground (facade props)",
   "along": "corner/crossing: metres along the curb from the apex (sign picks a side)"
  },
- "total_bytes": 31103408,
+ "total_bytes": 48096249,
  "props": {
   "traffic_light_pole": {
    "title": "Traffic signal pole (3-light head + pedestrian head)",
@@ -143,7 +143,7 @@
      "OPAQUE"
     ],
     "texture": 1024,
-    "texels_per_m": 245.5,
+    "texels_per_m": 245.8,
     "emissive": true
    },
    "variants": [
@@ -925,23 +925,26 @@
   "bollard": {
    "title": "Steel bollard with LED ring",
    "category": "street_furniture",
-   "desc": "0.95 m domed steel bollard, retro-reflective band and a cyan LED ring.",
+   "desc": "0.96 m removable steel bollard: cast collar and foot, turned grooves, key lock, ID plate, retro-reflective band, cyan LED ring in a recessed throat, domed cap with a MERIDIAN sensor eye.",
    "files": {
-    "lod0": "bollard.glb"
+    "lod0": "bollard.glb",
+    "lod1": "bollard_lod1.glb"
    },
    "lod": {
-    "lod0_tris": 468,
+    "lod0_tris": 1104,
+    "lod1_tris": 552,
+    "lod1_from_m": 20.0,
     "visible_to_m": 60.0
    },
    "size_m": [
-    0.26,
+    0.35,
     0.96,
-    0.26
+    0.35
    ],
    "footprint": {
-    "w": 0.26,
-    "d": 0.26,
-    "radius": 0.184,
+    "w": 0.35,
+    "d": 0.35,
+    "radius": 0.247,
     "center": [
      0.0,
      0.0
@@ -949,14 +952,14 @@
    },
    "bounds": {
     "min": [
-     -0.13,
+     -0.175,
      0.0,
-     -0.13
+     -0.175
     ],
     "max": [
-     0.13,
+     0.175,
      0.96,
-     0.13
+     0.175
     ]
    },
    "mount": "ground",
@@ -1011,7 +1014,7 @@
      "OPAQUE"
     ],
     "texture": 512,
-    "texels_per_m": 443.5,
+    "texels_per_m": 647.1,
     "emissive": true
    },
    "variants": [
@@ -1029,6 +1032,12 @@
      "name": "pearl",
      "albedo": "variants/bollard__pearl_albedo.jpg",
      "emission": "variants/bollard__pearl_emission.jpg",
+     "emissive_scale": 5.0
+    },
+    {
+     "name": "tagged",
+     "albedo": "variants/bollard__tagged_albedo.jpg",
+     "emission": "variants/bollard__tagged_emission.jpg",
      "emissive_scale": 5.0
     }
    ],
@@ -1589,7 +1598,7 @@
      "OPAQUE"
     ],
     "texture": 512,
-    "texels_per_m": 158.8,
+    "texels_per_m": 160.0,
     "emissive": false
    },
    "variants": [
@@ -2074,7 +2083,7 @@
      "OPAQUE"
     ],
     "texture": 512,
-    "texels_per_m": 388.4,
+    "texels_per_m": 388.2,
     "emissive": false
    },
    "variants": [
@@ -2483,7 +2492,7 @@
      "OPAQUE"
     ],
     "texture": 512,
-    "texels_per_m": 249.1,
+    "texels_per_m": 247.8,
     "emissive": true
    },
    "variants": [
@@ -2828,7 +2837,7 @@
      "OPAQUE"
     ],
     "texture": 1024,
-    "texels_per_m": 244.3,
+    "texels_per_m": 247.7,
     "emissive": true
    },
    "variants": [
@@ -2954,7 +2963,7 @@
      "BLEND"
     ],
     "texture": 1024,
-    "texels_per_m": 168.6,
+    "texels_per_m": 168.8,
     "emissive": true
    },
    "variants": [
@@ -3247,7 +3256,7 @@
      "BLEND"
     ],
     "texture": 1024,
-    "texels_per_m": 328.8,
+    "texels_per_m": 332.0,
     "emissive": true
    },
    "variants": [
@@ -3297,38 +3306,41 @@
   "trash_bag_pile": {
    "title": "Trash bag pile",
    "category": "clutter",
-   "desc": "Four tied bin bags (black and blue).",
+   "desc": "Five tied bin bags (black, blue, translucent white) slumped together, a burnable-day sticker and a MERIDIAN waste tag, a can, a cup and a flattened box.",
    "files": {
-    "lod0": "trash_bag_pile.glb"
+    "lod0": "trash_bag_pile.glb",
+    "lod1": "trash_bag_pile_lod1.glb"
    },
    "lod": {
-    "lod0_tris": 1360,
+    "lod0_tris": 3640,
+    "lod1_tris": 1456,
+    "lod1_from_m": 20.0,
     "visible_to_m": 60.0
    },
    "size_m": [
-    1.187,
-    0.774,
-    0.89
+    1.223,
+    0.75,
+    0.94
    ],
    "footprint": {
-    "w": 1.187,
-    "d": 0.89,
-    "radius": 0.742,
+    "w": 1.223,
+    "d": 0.94,
+    "radius": 0.771,
     "center": [
-     -0.024,
-     0.036
+     -0.023,
+     0.02
     ]
    },
    "bounds": {
     "min": [
-     -0.6179,
-     -0.0,
-     -0.4092
+     -0.6344,
+     -0.004,
+     -0.45
     ],
     "max": [
-     0.5693,
-     0.7743,
-     0.4807
+     0.5883,
+     0.7458,
+     0.4903
     ]
    },
    "mount": "ground",
@@ -3363,16 +3375,22 @@
    "sockets": [],
    "material": {
     "alpha": [
-     "OPAQUE"
+     "BLEND"
     ],
     "texture": 512,
-    "texels_per_m": 199.5,
+    "texels_per_m": 305.2,
     "emissive": false
    },
    "variants": [
     {
      "name": "default",
      "default": true
+    },
+    {
+     "name": "tagged",
+     "albedo": "variants/trash_bag_pile__tagged_albedo.png",
+     "emission": "variants/trash_bag_pile__tagged_emission.jpg",
+     "emissive_scale": 1.0
     }
    ],
    "scatter": {
@@ -4046,7 +4064,7 @@
      "OPAQUE"
     ],
     "texture": 512,
-    "texels_per_m": 604.3,
+    "texels_per_m": 596.7,
     "emissive": true
    },
    "variants": [
@@ -4431,7 +4449,7 @@
      "OPAQUE"
     ],
     "texture": 1024,
-    "texels_per_m": 283.1,
+    "texels_per_m": 280.2,
     "emissive": true
    },
    "variants": [
@@ -4956,6 +4974,526 @@
     "decal": true
    }
   },
+  "container": {
+   "title": "ISO 40' dry container",
+   "category": "port",
+   "desc": "12.19 x 2.44 x 2.59 m steel box: trapezoidal corrugated sides, roof and front wall, corner castings, rails, cross members, ribbed doors with four lock rods, cams, handles and hinges, CSC plate. Long axis X, doors at +X (glTF). Stacks at 2.6 m. Variants are the yard colours (rust, blue, white, green, orange, grey, teal), each with its own line's livery.",
+   "files": {
+    "lod0": "container.glb",
+    "lod1": "container_lod1.glb"
+   },
+   "lod": {
+    "lod0_tris": 3224,
+    "lod1_tris": 967,
+    "lod1_from_m": 110.4,
+    "visible_to_m": 552.0
+   },
+   "size_m": [
+    12.266,
+    2.591,
+    2.444
+   ],
+   "footprint": {
+    "w": 12.266,
+    "d": 2.444,
+    "radius": 6.254,
+    "center": [
+     0.037,
+     0.0
+    ]
+   },
+   "bounds": {
+    "min": [
+     -6.096,
+     0.0,
+     -1.222
+    ],
+    "max": [
+     6.17,
+     2.591,
+     1.222
+    ]
+   },
+   "mount": "ground",
+   "nodes": {
+    "main": "container",
+    "all": [
+     "Collider",
+     "container"
+    ],
+    "driven": []
+   },
+   "collider": {
+    "type": "box",
+    "shapes": [
+     {
+      "type": "box",
+      "center": [
+       0,
+       1.2955,
+       0
+      ],
+      "size": [
+       12.192,
+       2.591,
+       2.438
+      ]
+     }
+    ],
+    "node": "Collider"
+   },
+   "lights": [],
+   "sockets": [],
+   "material": {
+    "alpha": [
+     "OPAQUE"
+    ],
+    "texture": 1024,
+    "texels_per_m": 119.9,
+    "emissive": false
+   },
+   "variants": [
+    {
+     "name": "rust",
+     "default": true
+    },
+    {
+     "name": "blue",
+     "albedo": "variants/container__blue_albedo.jpg",
+     "emission": "variants/container__blue_emission.jpg",
+     "emissive_scale": 1.0
+    },
+    {
+     "name": "white",
+     "albedo": "variants/container__white_albedo.jpg",
+     "emission": "variants/container__white_emission.jpg",
+     "emissive_scale": 1.0
+    },
+    {
+     "name": "green",
+     "albedo": "variants/container__green_albedo.jpg",
+     "emission": "variants/container__green_emission.jpg",
+     "emissive_scale": 1.0
+    },
+    {
+     "name": "orange",
+     "albedo": "variants/container__orange_albedo.jpg",
+     "emission": "variants/container__orange_emission.jpg",
+     "emissive_scale": 1.0
+    },
+    {
+     "name": "grey",
+     "albedo": "variants/container__grey_albedo.jpg",
+     "emission": "variants/container__grey_emission.jpg",
+     "emissive_scale": 1.0
+    },
+    {
+     "name": "teal",
+     "albedo": "variants/container__teal_albedo.jpg",
+     "emission": "variants/container__teal_emission.jpg",
+     "emissive_scale": 1.0
+    }
+   ],
+   "scatter": {
+    "slots": [],
+    "density": {
+     "default": 0.0
+    },
+    "spacing": 13.0,
+    "clearance": 0.0,
+    "facing": "along",
+    "yaw_jitter": 0
+   }
+  },
+  "crane_sts": {
+   "title": "Ship-to-shore gantry crane",
+   "category": "port",
+   "desc": "Quay crane: travel bogies on two rails 18 m apart (y = -+9 m, glTF z), four tapered legs, portal and tie beams, twin box girders with walkways and handrails, a boom reaching 64 m over the water (-z in glTF = +y Blender), A-frame with fore / back stays, machinery house with banners, trolley, glazed operator cab, ropes, headblock and spreader, stairs, cable reel.",
+   "files": {
+    "lod0": "crane_sts.glb",
+    "lod1": "crane_sts_lod1.glb"
+   },
+   "lod": {
+    "lod0_tris": 4852,
+    "lod1_tris": 1698,
+    "lod1_from_m": 828.0,
+    "visible_to_m": 4140.0
+   },
+   "size_m": [
+    33.6,
+    69.3,
+    92.0
+   ],
+   "footprint": {
+    "w": 33.6,
+    "d": 92.0,
+    "radius": 48.972,
+    "center": [
+     -0.3,
+     -18.0
+    ]
+   },
+   "bounds": {
+    "min": [
+     -17.1,
+     0.0,
+     -64.0
+    ],
+    "max": [
+     16.5,
+     69.3,
+     28.0
+    ]
+   },
+   "mount": "ground",
+   "nodes": {
+    "main": "crane_sts",
+    "all": [
+     "Collider",
+     "Light_Beacon",
+     "Light_Boom",
+     "crane_sts"
+    ],
+    "driven": []
+   },
+   "collider": {
+    "type": "compound",
+    "shapes": [
+     {
+      "type": "box",
+      "center": [
+       0,
+       2.0,
+       9.0
+      ],
+      "size": [
+       31.2,
+       4.0,
+       1.8
+      ]
+     },
+     {
+      "type": "box",
+      "center": [
+       0,
+       2.0,
+       -9.0
+      ],
+      "size": [
+       31.2,
+       4.0,
+       1.8
+      ]
+     },
+     {
+      "type": "box",
+      "center": [
+       -14.0,
+       23.25,
+       9.0
+      ],
+      "size": [
+       1.6,
+       39.5,
+       1.6
+      ]
+     },
+     {
+      "type": "box",
+      "center": [
+       -14.0,
+       23.25,
+       -9.0
+      ],
+      "size": [
+       1.6,
+       39.5,
+       1.6
+      ]
+     },
+     {
+      "type": "box",
+      "center": [
+       14.0,
+       23.25,
+       9.0
+      ],
+      "size": [
+       1.6,
+       39.5,
+       1.6
+      ]
+     },
+     {
+      "type": "box",
+      "center": [
+       14.0,
+       23.25,
+       -9.0
+      ],
+      "size": [
+       1.6,
+       39.5,
+       1.6
+      ]
+     },
+     {
+      "type": "box",
+      "center": [
+       0,
+       44.5,
+       -18.0
+      ],
+      "size": [
+       6.0,
+       3.0,
+       92.0
+      ]
+     },
+     {
+      "type": "box",
+      "center": [
+       0,
+       49.0,
+       19.5
+      ],
+      "size": [
+       11.0,
+       6.0,
+       12.0
+      ]
+     }
+    ],
+    "node": "Collider"
+   },
+   "lights": [
+    {
+     "name": "Light_Beacon",
+     "pos": [
+      0,
+      69.3,
+      -4.6
+     ],
+     "type": "omni",
+     "color": [
+      1.0,
+      0.05,
+      0.02
+     ],
+     "energy": 30,
+     "range": 40,
+     "dir": null,
+     "shadow": false
+    },
+    {
+     "name": "Light_Boom",
+     "pos": [
+      0,
+      42.0,
+      -26.0
+     ],
+     "type": "spot",
+     "color": [
+      1.0,
+      0.85,
+      0.65
+     ],
+     "energy": 900,
+     "range": 55,
+     "dir": [
+      0,
+      -1,
+      0
+     ],
+     "shadow": false
+    }
+   ],
+   "sockets": [],
+   "material": {
+    "alpha": [
+     "BLEND"
+    ],
+    "texture": 2048,
+    "texels_per_m": 10.7,
+    "emissive": true
+   },
+   "variants": [
+    {
+     "name": "red",
+     "default": true
+    },
+    {
+     "name": "blue",
+     "albedo": "variants/crane_sts__blue_albedo.png",
+     "emission": "variants/crane_sts__blue_emission.jpg",
+     "emissive_scale": 8.0
+    },
+    {
+     "name": "white",
+     "albedo": "variants/crane_sts__white_albedo.png",
+     "emission": "variants/crane_sts__white_emission.jpg",
+     "emissive_scale": 8.0
+    }
+   ],
+   "scatter": {
+    "slots": [],
+    "density": {
+     "default": 0.0
+    },
+    "spacing": 40.0,
+    "clearance": 0.0,
+    "facing": "along",
+    "yaw_jitter": 0
+   }
+  },
+  "light_mast": {
+   "title": "Yard high-mast light (30 m)",
+   "category": "port",
+   "desc": "Three-section galvanised high mast on a concrete plinth: base plate, anchor bolts, gussets, hazard sleeve, access door, mast plate, cabinet and conduit; lowering ring with eight floods, cap, lightning rod and aviation light.",
+   "files": {
+    "lod0": "light_mast.glb",
+    "lod1": "light_mast_lod1.glb"
+   },
+   "lod": {
+    "lod0_tris": 2968,
+    "lod1_tris": 1038,
+    "lod1_from_m": 285.3,
+    "visible_to_m": 1426.5
+   },
+   "size_m": [
+    4.012,
+    31.7,
+    4.012
+   ],
+   "footprint": {
+    "w": 4.012,
+    "d": 4.012,
+    "radius": 2.837,
+    "center": [
+     0.0,
+     0.0
+    ]
+   },
+   "bounds": {
+    "min": [
+     -2.006,
+     0.0,
+     -2.006
+    ],
+    "max": [
+     2.006,
+     31.7,
+     2.006
+    ]
+   },
+   "mount": "ground",
+   "nodes": {
+    "main": "light_mast",
+    "all": [
+     "Collider",
+     "Light_Beacon",
+     "Light_Flood",
+     "light_mast"
+    ],
+    "driven": []
+   },
+   "collider": {
+    "type": "compound",
+    "shapes": [
+     {
+      "type": "box",
+      "center": [
+       0,
+       0.16,
+       0
+      ],
+      "size": [
+       1.9,
+       0.32,
+       1.9
+      ]
+     },
+     {
+      "type": "cylinder",
+      "center": [
+       0,
+       15.12,
+       0
+      ],
+      "radius": 0.43,
+      "height": 29.6
+     }
+    ],
+    "node": "Collider"
+   },
+   "lights": [
+    {
+     "name": "Light_Flood",
+     "pos": [
+      0,
+      29.1,
+      0
+     ],
+     "type": "spot",
+     "color": [
+      1.0,
+      0.8,
+      0.55
+     ],
+     "energy": 2600,
+     "range": 60,
+     "dir": [
+      0,
+      -1,
+      0
+     ],
+     "shadow": false
+    },
+    {
+     "name": "Light_Beacon",
+     "pos": [
+      -0.12,
+      30.5,
+      0
+     ],
+     "type": "omni",
+     "color": [
+      1.0,
+      0.05,
+      0.02
+     ],
+     "energy": 6,
+     "range": 12,
+     "dir": null,
+     "shadow": false
+    }
+   ],
+   "sockets": [],
+   "material": {
+    "alpha": [
+     "OPAQUE"
+    ],
+    "texture": 1024,
+    "texels_per_m": 68.1,
+    "emissive": true
+   },
+   "variants": [
+    {
+     "name": "default",
+     "default": true
+    }
+   ],
+   "scatter": {
+    "slots": [],
+    "density": {
+     "default": 0.0
+    },
+    "spacing": 40.0,
+    "clearance": 0.0,
+    "facing": "random",
+    "yaw_jitter": 0
+   }
+  },
   "planter": {
    "title": "Concrete planter with shrubs",
    "category": "nature",
@@ -5031,7 +5569,7 @@
      "OPAQUE"
     ],
     "texture": 512,
-    "texels_per_m": 244.1,
+    "texels_per_m": 236.6,
     "emissive": false
    },
    "variants": [

@@ -21,6 +21,10 @@ var _intake: AudioStreamPlayer
 var _squeal: AudioStreamPlayer
 var _wet_scrub: AudioStreamPlayer
 var _audio := true
+## Bungee Engine Audio (game/addons/bungee, MIT): recorded ACC/DCC/idle/limiter engine loops driven by
+## our RPM. Windows only (native library); elsewhere the generated engine loops below are used.
+var _bungee: Node = null
+var _last_gear := 1
 const ENGINE_BASE_RPM := 1500.0         ## the engine loops are made at this rpm (4 cylinders: 50 Hz firing)
 
 
@@ -169,12 +173,32 @@ static func _puff_texture() -> Texture2D:
 
 # ------------------------------------------------------------------ audio (generated)
 func _build_audio() -> void:
+	_bungee = _make_bungee()
 	_eng_on = _player(_engine_loop(true), -6.0)
 	_eng_off = _player(_engine_loop(false), -9.0)
 	_intake = _player(_noise_loop(), -30.0)
 	# recorded-quality loops from tools/audio/make_tyre_sounds.py; the old synth is the fallback
 	_squeal = _player(_loop_file("res://assets/audio/tyre_squeal.wav", _squeal_loop()), -60.0)
 	_wet_scrub = _player(_loop_file("res://assets/audio/tyre_wet.wav", _noise_loop()), -60.0)
+
+
+func _make_bungee() -> Node:
+	var path := "res://addons/bungee/bungee_engine_audio.gd"
+	# the native granular player (GDExtension, Windows) must be loaded, otherwise keep the generated engine
+	if not ClassDB.class_exists("BungeeEngineNode") or not ResourceLoader.exists(path):
+		return null
+	var scr = load(path)
+	if scr == null:
+		return null
+	var b: Node = scr.new()
+	b.name = "BungeeEngine"
+	b.set("live_input_mode", 1)              # External / custom vehicle logic
+	b.set("use_3d_audio", false)
+	b.set("reverb_enabled", false)
+	b.set("output_headroom_db", -8.0)
+	b.set("engine_running", true)
+	car.add_child(b)
+	return b
 
 
 static func _loop_file(path: String, fallback: AudioStream) -> AudioStream:
@@ -343,6 +367,26 @@ func _process(delta: float) -> void:
 
 
 func _update_audio(_delta: float, slide: float) -> void:
+	if _bungee:
+		var eng: Dictionary = car.P.engine
+		var idle := float(eng.idle_rpm)
+		var lim := float(eng.limiter_rpm)
+		_bungee.set("rpm_position", clampf((car.rpm - idle) / maxf(lim - idle, 1.0), 0.0, 1.0))
+		_bungee.set("throttle", clampf(car.throttle_out, 0.0, 1.0))
+		_bungee.set("speed_kmh", car.speed_kmh)
+		# its skid sample is a dry-tarmac squeal: off on a wet road
+		_bungee.set("wheelspin", clampf(slide, 0.0, 1.0) * (1.0 - clampf(car.wet, 0.0, 1.0)))
+		if car.gear != _last_gear and car.gear >= 1 and _last_gear >= 1:
+			_bungee.set("trigger_gear_up" if car.gear > _last_gear else "trigger_gear_down", true)
+		_last_gear = car.gear
+		for p in [_eng_on, _eng_off, _intake]:
+			p.stream_paused = true
+	else:
+		_engine_synth()
+	_tyres(slide)
+
+
+func _engine_synth() -> void:
 	var rpm: float = maxf(car.rpm, 500.0)
 	var pitch := rpm / ENGINE_BASE_RPM
 	var load: float = clampf(car.throttle_out * 0.7 + car.engine_load * 0.6, 0.0, 1.0)
@@ -353,6 +397,9 @@ func _update_audio(_delta: float, slide: float) -> void:
 	_eng_off.volume_db = linear_to_db(maxf(0.02, (1.0 - load) * (0.45 + loud * 0.4))) - 6.0
 	_intake.pitch_scale = clampf(0.6 + rpm / 7000.0, 0.5, 1.8)
 	_intake.volume_db = linear_to_db(maxf(0.001, car.throttle_out * loud * 0.5)) - 12.0
+
+
+func _tyres(slide: float) -> void:
 	# dry: rubber squeals once it really slides (eased in); wet: no squeal, water swish instead
 	var s := clampf(slide, 0.0, 1.0)
 	var dry := 1.0 - clampf(car.wet, 0.0, 1.0)
@@ -360,8 +407,11 @@ func _update_audio(_delta: float, slide: float) -> void:
 	_squeal.volume_db = linear_to_db(maxf(0.0005, sq)) - 10.0
 	_squeal.pitch_scale = 0.94 + sq * 0.12
 	_squeal.stream_paused = sq < 0.01            # silent loops don't need mixing
-	var sw := smoothstep(0.05, 0.6, s) * (1.0 - dry)
-	_wet_scrub.volume_db = linear_to_db(maxf(0.0005, sw)) - 12.0
-	_wet_scrub.pitch_scale = 0.9 + s * 0.25
+	# wet road: a steady soft hiss that rises with speed (plus a little more when sliding)
+	var wetness := 1.0 - dry
+	var sp := clampf(absf(car.speed_kmh) / 120.0, 0.0, 1.0)
+	var sw := wetness * clampf(smoothstep(0.03, 1.0, sp) * 0.8 + smoothstep(0.1, 0.8, s) * 0.3, 0.0, 1.0)
+	_wet_scrub.volume_db = linear_to_db(maxf(0.0005, sw)) - 16.0
+	_wet_scrub.pitch_scale = 0.85 + sp * 0.3
 	_wet_scrub.stream_paused = sw < 0.01
-	_intake.stream_paused = car.throttle_out < 0.02
+	_intake.stream_paused = _bungee != null or car.throttle_out < 0.02

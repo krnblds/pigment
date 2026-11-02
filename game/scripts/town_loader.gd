@@ -47,6 +47,8 @@ var lamp_lights: Array = []               ## street lamps that currently exist (
 var stats := {"multimesh": 0, "mesh_instances": 0, "shapes": 0, "lights": 0}
 var collision_focus: Node3D               ## the car (collision streams around it); camera if null
 var streaming := true
+var skip_instances := {}                  ## mesh key -> [Vector3 origin]: instances left out (garage lots, set before load_town)
+var skip_lights: Array = []               ## [Vector3]: layout lights left out (same)
 
 var _mesh_cache := {}
 var _dressed := {}             ## mesh key -> remap json of its in-place dressing
@@ -652,12 +654,19 @@ func _group_instances() -> Array:
 	for inst in layout.instances:
 		if not layout.meshes.has(inst.mesh):
 			continue
+		if skip_instances.has(inst.mesh) and _skipped(inst):
+			continue
 		var remap: Dictionary = inst.get("remap", {})
 		var gk: String = inst.mesh + "|" + JSON.stringify(remap)
 		if not groups.has(gk):
 			groups[gk] = {"mesh": inst.mesh, "remap": remap, "xf": []}
 		groups[gk].xf.append(xf_from(inst.xf))
 	return groups.values()
+
+
+func _skipped(inst: Dictionary) -> bool:
+	var o := Vector3(inst.xf[9], inst.xf[10], inst.xf[11])
+	return skip_instances[inst.mesh].any(func(q): return q.distance_to(o) < 0.05)
 
 
 func _policy(info: Dictionary, n: int) -> String:
@@ -804,7 +813,10 @@ func _build_groups(groups: Array) -> void:
 						proxies[rk].append(t * Transform3D(Basis.from_scale(size), local_c))
 				for k in by:
 					var e := {"name": "%s_%d_%d" % [g.mesh, k.x, k.y], "mesh": mesh, "buf": _mm_buffer(by[k]),
-						"n": by[k].size(), "vis": vis_end, "shadows": shadows, "region": null}
+						"n": by[k].size(), "vis": vis_end, "shadows": shadows, "region": null, "key": g.mesh}
+					if not _entries_by_key.has(g.mesh):
+						_entries_by_key[g.mesh] = []
+					_entries_by_key[g.mesh].append(e)
 					# streaming unit: the cell itself, or for detailed buildings the whole region, which
 					# shows them while its centre is within PROXY_NEAR (the proxy is their visibility parent)
 					var uk := Vector3i(k.x, k.y, 0)
@@ -1521,6 +1533,7 @@ func _make_entry(k: Vector3i, e: Dictionary) -> void:
 	var mmi := _new_mmi(e.name, e.mesh, e.buf, e.n)
 	_dress(mmi, e.vis, e.shadows)
 	_visuals.add_child(mmi)
+	e["mmi"] = mmi                # hide_instance() edits the live MultiMesh too
 	if e.region != null and _proxies.has(e.region):
 		mmi.visibility_parent = mmi.get_path_to(_proxies[e.region])
 	_cell_nodes[k].append(mmi)
@@ -1570,6 +1583,8 @@ func _index_lights() -> void:
 	if _headless:
 		return
 	for d in layout.lights:
+		if not skip_lights.is_empty() and skip_lights.any(func(q): return q.distance_to(Vector3(d.pos[0], d.pos[1], d.pos[2])) < 0.05):
+			continue
 		d["kind"] = LIGHT_KINDS.get(String(d.get("kind", "")), d.get("kind", ""))
 		var i := _lights.size()
 		var p := Vector3(d.pos[0], d.pos[1], d.pos[2])
@@ -1588,9 +1603,12 @@ func _index_lights() -> void:
 ## where the lamp's OmniLight fades out, so a street keeps its row of lamp halos to the horizon.
 func _lamp_glows() -> void:
 	var lamps := []
-	for l in _lights:
+	var lamp_ids := []
+	for li in _lights.size():
+		var l: Dictionary = _lights[li]
 		if l.d.get("kind", "") == "LampLight":
 			lamps.append(l)
+			lamp_ids.append(li)
 	if lamps.is_empty():
 		return
 	var mm := MultiMesh.new()
@@ -1608,6 +1626,9 @@ func _lamp_glows() -> void:
 	var mat := ShaderMaterial.new()
 	mat.shader = GLOW_SHADER
 	mat.set_shader_parameter("fade_in", Vector2(f[0], f[0] + f[1]))
+	_glow_mm = mm
+	for i in lamps.size():
+		_glow_index[lamp_ids[i]] = i
 	var mmi := MultiMeshInstance3D.new()
 	mmi.name = "LampGlows"
 	mmi.multimesh = mm
@@ -1682,7 +1703,7 @@ func _stream_lights(p: Vector3) -> void:
 	for x in range(k0.x, k1.x + 1):
 		for z in range(k0.y, k1.y + 1):
 			for i in _light_grid.get(Vector2i(x, z), []):
-				if _lights[i].p.distance_to(p) < _lights[i].r:
+				if _lights[i].p.distance_to(p) < _lights[i].r and not _lights[i].get("dead", false):
 					want[i] = true
 	for i in _light_nodes.keys():
 		if not want.has(i) and _lights[i].p.distance_to(p) > _lights[i].r + 20.0:
@@ -1877,3 +1898,84 @@ static func car_transform(p: Vector3, d: Vector3) -> Transform3D:
 	var z := Vector3(d.x, 0.0, d.z).normalized()
 	var x := Vector3.UP.cross(z).normalized()
 	return Transform3D(Basis(x, Vector3.UP, z), p + Vector3.UP * 0.9)
+
+
+# ------------------------------------------------------------------ destruction hooks (scripts/damage/)
+## The damage workstream's world destruction (scripts/damage/destructibles.gd) knocks props down: their
+## MultiMesh instance is hidden, their static collision shape and their lamp light go. The changes are
+## written into the streamed data, so a cell that streams out and back in keeps them (no lamp post pops
+## back up in front of the player).
+var _entries_by_key := {}      ## mesh key -> [cell entries] ("cell" / "heavy" policy)
+var _glow_mm: MultiMesh
+var _glow_index := {}          ## light index -> LampGlows instance
+
+
+## Hide the instance of mesh `key` whose origin is at `origin` (within 5 cm). True when found.
+func hide_instance(key: String, origin: Vector3) -> bool:
+	var found := false
+	for e in _entries_by_key.get(key, []):
+		var buf: PackedFloat32Array = e.buf
+		for i in int(e.n):
+			var o := i * 12
+			if absf(buf[o + 3] - origin.x) < 0.05 and absf(buf[o + 11] - origin.z) < 0.05 and absf(buf[o + 7] - origin.y) < 0.05:
+				for j in [0, 1, 2, 4, 5, 6, 8, 9, 10]:
+					buf[o + j] = 0.0
+				e.buf = buf
+				var mmi = e.get("mmi")
+				if is_instance_valid(mmi) and (mmi as MultiMeshInstance3D).multimesh.instance_count == int(e.n):
+					(mmi as MultiMeshInstance3D).multimesh.set_instance_transform(i,
+						Transform3D(Basis.from_scale(Vector3.ZERO), origin))
+				found = true
+	return found
+
+
+## Remove the box / cylinder collision shapes whose centre is within `radius` (horizontal) of `p` and
+## within 8 m vertically (a pole's cylinder). Returns how many went.
+func remove_collision_near(p: Vector3, radius := 0.6) -> int:
+	var item: Dictionary = _col_cells.get(_key(p, COL_CELL), {})
+	if item.is_empty():
+		return 0
+	var keep := []
+	var gone := []
+	for s in item.shapes:
+		var o: Vector3 = (s[2] as Transform3D).origin
+		if Vector2(o.x - p.x, o.z - p.z).length() < radius and absf(o.y - p.y) < 8.0 and s[0] != "cap":
+			gone.append(o)
+		else:
+			keep.append(s)
+	if gone.is_empty():
+		return 0
+	item.shapes = keep
+	if is_instance_valid(item.node):
+		var sb: Node = item.node.get_node_or_null("Shapes")
+		if sb:
+			for cs in sb.get_children():
+				if cs is CollisionShape3D and gone.any(func(o): return (o as Vector3).distance_to(cs.transform.origin) < 0.01):
+					cs.disabled = true
+					cs.queue_free()
+	return gone.size()
+
+
+## Switch off the streamed lights within `radius` of `p` for good (a knocked-down lamp). Returns
+## [[position, Color], ...] of the lights that went (the caller flickers its own light there).
+func kill_lights_near(p: Vector3, radius := 3.5) -> Array:
+	var out := []
+	var k0 := _key(p - Vector3(radius, 0, radius), CELL)
+	var k1 := _key(p + Vector3(radius, 0, radius), CELL)
+	for x in range(k0.x, k1.x + 1):
+		for z in range(k0.y, k1.y + 1):
+			for i in _light_grid.get(Vector2i(x, z), []):
+				var l: Dictionary = _lights[i]
+				if l.get("dead", false) or l.p.distance_to(p) > radius:
+					continue
+				l["dead"] = true
+				var c: Array = l.d.color
+				out.append([l.p, Color(c[0], c[1], c[2])])
+				if _light_nodes.has(i):
+					var ln: Light3D = _light_nodes[i]
+					lamp_lights.erase(ln)
+					ln.queue_free()
+					_light_nodes.erase(i)
+				if _glow_mm and _glow_index.has(i):
+					_glow_mm.set_instance_transform(_glow_index[i], Transform3D(Basis.from_scale(Vector3.ZERO), l.p))
+	return out

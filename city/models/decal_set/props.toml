@@ -28,10 +28,31 @@ images = [
   "bench_plaque",
   "bin_burnable",
   "bin_cans",
+  "bollard_plate",
   "box_fragile",
   "box_logistics",
   "bus_route_flag",
   "bus_timetable",
+  "container_code_blue",
+  "container_code_green",
+  "container_code_grey",
+  "container_code_orange",
+  "container_code_rust",
+  "container_code_teal",
+  "container_code_white",
+  "container_csc",
+  "container_customs",
+  "container_logo_blue",
+  "container_logo_green",
+  "container_logo_grey",
+  "container_logo_orange",
+  "container_logo_rust",
+  "container_logo_teal",
+  "container_logo_white",
+  "container_weights",
+  "crane_banner",
+  "crane_number",
+  "crane_warning",
   "dish_logo",
   "drone_pad",
   "drone_plate",
@@ -45,6 +66,8 @@ images = [
   "kiosk_hacked",
   "kiosk_score",
   "lantern_ramen",
+  "mast_cabinet",
+  "mast_plate",
   "meridian_plate",
   "meridian_sticker",
   "noren_ramen",
@@ -85,6 +108,7 @@ images = [
   "vend_side_drinks",
   "vend_side_noctis",
   "vend_side_ramen",
+  "waste_tag",
   "yakitori_menu",
   "yakitori_valance",
 ]
@@ -101,12 +125,33 @@ arrow_capsules = ["prop/neon_arrow_sign"]
 arrow_hotel = ["prop/neon_arrow_sign"]
 arrow_pachinko = ["prop/neon_arrow_sign"]
 bench_plaque = ["prop/bench"]
-bin_burnable = ["prop/trash_bin"]
+bin_burnable = ["prop/trash_bag_pile", "prop/trash_bin"]
 bin_cans = ["prop/trash_bin"]
+bollard_plate = ["prop/bollard"]
 box_fragile = ["prop/cardboard_boxes"]
 box_logistics = ["prop/cardboard_boxes", "prop/pallet"]
 bus_route_flag = ["prop/bus_stop"]
 bus_timetable = ["prop/bus_stop"]
+container_code_blue = ["prop/container"]
+container_code_green = ["prop/container"]
+container_code_grey = ["prop/container"]
+container_code_orange = ["prop/container"]
+container_code_rust = ["prop/container"]
+container_code_teal = ["prop/container"]
+container_code_white = ["prop/container"]
+container_csc = ["prop/container"]
+container_customs = ["prop/container"]
+container_logo_blue = ["prop/container"]
+container_logo_green = ["prop/container"]
+container_logo_grey = ["prop/container"]
+container_logo_orange = ["prop/container"]
+container_logo_rust = ["prop/container"]
+container_logo_teal = ["prop/container"]
+container_logo_white = ["prop/container"]
+container_weights = ["prop/container"]
+crane_banner = ["prop/crane_sts"]
+crane_number = ["prop/crane_sts"]
+crane_warning = ["prop/crane_sts"]
 dish_logo = ["prop/satellite_dish"]
 drone_pad = ["prop/drone_mast"]
 drone_plate = ["prop/drone_mast"]
@@ -120,10 +165,15 @@ kiosk_flagged = ["prop/data_kiosk"]
 kiosk_hacked = ["prop/data_kiosk"]
 kiosk_score = ["prop/data_kiosk"]
 lantern_ramen = ["prop/ramen_cart"]
+mast_cabinet = ["prop/light_mast"]
+mast_plate = ["prop/light_mast"]
 meridian_plate = ["prop/cctv_pole"]
 meridian_sticker = [
+  "prop/bollard",
   "prop/bus_stop",
+  "prop/crane_sts",
   "prop/drone_mast",
+  "prop/light_mast",
   "prop/parking_meter",
   "prop/scooter",
   "prop/steam_vent",
@@ -170,9 +220,15 @@ vend_pay = ["prop/vending_machine"]
 vend_side_drinks = ["prop/vending_machine"]
 vend_side_noctis = ["prop/vending_machine"]
 vend_side_ramen = ["prop/vending_machine"]
+waste_tag = ["prop/trash_bag_pile"]
 yakitori_menu = ["prop/skewer_stall"]
 yakitori_valance = ["prop/skewer_stall"]
 
 # Game rules (Godot): collision, streaming policy, LOD / proxy, lights.
 [game]
 category = "decal"
+images = [
+  "images/container_logo_blue.png",
+  "images/container_logo_green.png",
+  "images/container_logo_orange.png",
+]

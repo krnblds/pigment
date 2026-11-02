@@ -20,6 +20,6 @@
 {"tool": "project_decal", "args": {"image": "assets/decals/bridges/run.png", "layer": "Grime", "position": [-0.6796, 0, -0.5588], "normal": [0, 1, 0], "size": [0.1078, 0.6554], "tint": [0.12656369993422825, 0.11926990197777831, 0.09788148238656884]}}
 {"tool": "project_decal", "args": {"image": "assets/decals/bridges/run.png", "layer": "Grime", "position": [0.0929, 0, 0.9088], "normal": [0, 1, 0], "size": [0.0758, 0.1425], "tint": [0.1115302813218698, 0.1068594267266364, 0.09325450093686709]}}
 {"tool": "project_decal", "args": {"image": "assets/decals/bridges/run.png", "layer": "Grime", "position": [0.7147, 0, 0.6476], "normal": [0, 1, 0], "size": [0.0826, 0.3849], "tint": [0.11321694835286028, 0.10333121851543234, 0.0944464658783725]}}
-{"tool": "render", "args": {"yaw": 0, "pitch": 89.9, "zoom": 1.0, "width": 600, "height": 600, "background": false, "path": "C:/Users/kiera/Documents/Workspaces/Vibe Projects/are-senior-graphics-engineer-who/.claude/worktrees/agent-bridges/.citycache/bridges/bridge_hazard.png"}}
+{"tool": "render", "args": {"yaw": 0, "pitch": 89.9, "zoom": 1.0, "width": 600, "height": 600, "background": false, "path": "C:/Users/kiera/Documents/Workspaces/Vibe Projects/are-senior-graphics-engineer-who/.citycache/bridges/bridge_hazard.png"}}
 {"tool": "export_textures", "args": {"dir": "scenes/town/textures/bridge_hazard", "name": "bridge_hazard", "preset": "separate"}}
 {"tool": "save_project", "args": {"path": "scenes/town/projects/bridges/bridge_hazard.pigment"}}

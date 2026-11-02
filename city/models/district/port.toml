@@ -13,7 +13,7 @@ derived = ["district.counts", "district.settings"]
 world = "world/shinkai_bay"
 island = "minato_port"
 settings = { name = "port", island = "minato_port", style = "port" }
-counts = { cranes = 41, containers = 3131, warehouses = 68 }
+counts = { cranes = 40, containers = 3453, warehouses = 61 }
 
 # Deep-merged into tools/world/world_config.json before the world is generated.
 [config]

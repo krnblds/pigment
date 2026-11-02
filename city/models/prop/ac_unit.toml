@@ -76,7 +76,7 @@ collision = "none"
 tris = 756
 policy = "cell"
 proxy = false
-world_keys = ["PROP_ac_unit"]
+world_keys = ["PROP_ac_unit", "PROP_ac_unit__graphite", "PROP_ac_unit__white"]
 visible_to_m = 150.0
 collider = "box"
 mount = "ground"
@@ -86,9 +86,9 @@ lod = { lod0_tris = 756, visible_to_m = 60.0 }
 
 # Where the world places it (read from scenes/world/world.json; scatter rules live in the props catalog).
 [placement]
-instances = 850
+instances = 803
 source = "tools/props/scatter.py (rules: tools/props/catalog.py)"
-districts = { corporate = 119, downtown = 416, midtown = 315 }
+districts = { corporate = 84, downtown = 399, midtown = 320 }
 
 [placement.scatter]
 slots = ["rooftop", "alley"]

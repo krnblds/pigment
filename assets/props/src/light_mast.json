@@ -22,20 +22,20 @@
  "nodes": [],
  "pieces": [
   {
-   "piece": "nut_0",
+   "piece": "anchor_0",
    "group": "galv",
    "node": null,
    "center": [
     0.4435,
-    0.3925,
+    0.395,
     -0.1837
    ],
    "size": [
-    0.0779,
-    0.045,
-    0.09
+    0.044,
+    0.13,
+    0.044
    ],
-   "tris": 20
+   "tris": 28
   },
   {
    "piece": "base_plate",
@@ -54,13 +54,13 @@
    "tris": 284
   },
   {
-   "piece": "nut_1",
+   "piece": "nut_0",
    "group": "galv",
    "node": null,
    "center": [
-    0.1837,
+    0.4435,
     0.3925,
-    -0.4435
+    -0.1837
    ],
    "size": [
     0.0779,
@@ -86,13 +86,13 @@
    "tris": 108
   },
   {
-   "piece": "anchor_0",
+   "piece": "anchor_1",
    "group": "galv",
    "node": null,
    "center": [
-    0.4435,
+    0.1837,
     0.395,
-    -0.1837
+    -0.4435
    ],
    "size": [
     0.044,
@@ -100,6 +100,22 @@
     0.044
    ],
    "tris": 28
+  },
+  {
+   "piece": "nut_1",
+   "group": "galv",
+   "node": null,
+   "center": [
+    0.1837,
+    0.3925,
+    -0.4435
+   ],
+   "size": [
+    0.0779,
+    0.045,
+    0.09
+   ],
+   "tris": 20
   },
   {
    "piece": "gusset_0",
@@ -132,22 +148,6 @@
     0.1527
    ],
    "tris": 8
-  },
-  {
-   "piece": "anchor_1",
-   "group": "galv",
-   "node": null,
-   "center": [
-    0.1837,
-    0.395,
-    -0.4435
-   ],
-   "size": [
-    0.044,
-    0.13,
-    0.044
-   ],
-   "tris": 28
   },
   {
    "piece": "anchor_2",
@@ -198,22 +198,6 @@
    "tris": 8
   },
   {
-   "piece": "anchor_3",
-   "group": "galv",
-   "node": null,
-   "center": [
-    -0.4435,
-    0.395,
-    -0.1837
-   ],
-   "size": [
-    0.044,
-    0.13,
-    0.044
-   ],
-   "tris": 28
-  },
-  {
    "piece": "nut_3",
    "group": "galv",
    "node": null,
@@ -228,6 +212,22 @@
     0.09
    ],
    "tris": 20
+  },
+  {
+   "piece": "anchor_4",
+   "group": "galv",
+   "node": null,
+   "center": [
+    -0.4435,
+    0.395,
+    0.1837
+   ],
+   "size": [
+    0.044,
+    0.13,
+    0.044
+   ],
+   "tris": 28
   },
   {
    "piece": "gusset_3",
@@ -246,6 +246,22 @@
    "tris": 8
   },
   {
+   "piece": "anchor_3",
+   "group": "galv",
+   "node": null,
+   "center": [
+    -0.4435,
+    0.395,
+    -0.1837
+   ],
+   "size": [
+    0.044,
+    0.13,
+    0.044
+   ],
+   "tris": 28
+  },
+  {
    "piece": "nut_4",
    "group": "galv",
    "node": null,
@@ -260,22 +276,6 @@
     0.09
    ],
    "tris": 20
-  },
-  {
-   "piece": "anchor_5",
-   "group": "galv",
-   "node": null,
-   "center": [
-    -0.1837,
-    0.395,
-    0.4435
-   ],
-   "size": [
-    0.044,
-    0.13,
-    0.044
-   ],
-   "tris": 28
   },
   {
    "piece": "gusset_4",
@@ -294,13 +294,13 @@
    "tris": 8
   },
   {
-   "piece": "anchor_4",
+   "piece": "anchor_5",
    "group": "galv",
    "node": null,
    "center": [
-    -0.4435,
+    -0.1837,
     0.395,
-    0.1837
+    0.4435
    ],
    "size": [
     0.044,
@@ -342,22 +342,6 @@
    "tris": 8
   },
   {
-   "piece": "anchor_6",
-   "group": "galv",
-   "node": null,
-   "center": [
-    0.1837,
-    0.395,
-    0.4435
-   ],
-   "size": [
-    0.044,
-    0.13,
-    0.044
-   ],
-   "tris": 28
-  },
-  {
    "piece": "nut_6",
    "group": "galv",
    "node": null,
@@ -372,6 +356,22 @@
     0.09
    ],
    "tris": 20
+  },
+  {
+   "piece": "anchor_7",
+   "group": "galv",
+   "node": null,
+   "center": [
+    0.4435,
+    0.395,
+    0.1837
+   ],
+   "size": [
+    0.044,
+    0.13,
+    0.044
+   ],
+   "tris": 28
   },
   {
    "piece": "gusset_6",
@@ -390,6 +390,22 @@
    "tris": 8
   },
   {
+   "piece": "anchor_6",
+   "group": "galv",
+   "node": null,
+   "center": [
+    0.1837,
+    0.395,
+    0.4435
+   ],
+   "size": [
+    0.044,
+    0.13,
+    0.044
+   ],
+   "tris": 28
+  },
+  {
    "piece": "nut_7",
    "group": "galv",
    "node": null,
@@ -404,22 +420,6 @@
     0.09
    ],
    "tris": 20
-  },
-  {
-   "piece": "bumper_sleeve",
-   "group": "hazard",
-   "node": null,
-   "center": [
-    0.0,
-    0.985,
-    -0.0
-   ],
-   "size": [
-    0.86,
-    1.23,
-    0.86
-   ],
-   "tris": 62
   },
   {
    "piece": "gusset_7",
@@ -438,20 +438,20 @@
    "tris": 8
   },
   {
-   "piece": "anchor_7",
-   "group": "galv",
+   "piece": "bumper_sleeve",
+   "group": "hazard",
    "node": null,
    "center": [
-    0.4435,
-    0.395,
-    0.1837
+    0.0,
+    0.985,
+    -0.0
    ],
    "size": [
-    0.044,
-    0.13,
-    0.044
+    0.86,
+    1.23,
+    0.86
    ],
-   "tris": 28
+   "tris": 62
   },
   {
    "piece": "shaft_1",
@@ -566,22 +566,6 @@
    "tris": 44
   },
   {
-   "piece": "cabinet_label",
-   "group": "sign2",
-   "node": null,
-   "center": [
-    0.6,
-    1.04,
-    -0.467
-   ],
-   "size": [
-    0.3,
-    0.18,
-    0.008
-   ],
-   "tris": 12
-  },
-  {
    "piece": "door_lock",
    "group": "dark_metal",
    "node": null,
@@ -596,6 +580,22 @@
     0.03
    ],
    "tris": 36
+  },
+  {
+   "piece": "cabinet_label",
+   "group": "sign2",
+   "node": null,
+   "center": [
+    0.6,
+    1.04,
+    -0.467
+   ],
+   "size": [
+    0.3,
+    0.18,
+    0.008
+   ],
+   "tris": 12
   },
   {
    "piece": "door",

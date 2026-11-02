@@ -102,6 +102,8 @@ func build(m, lib, pool_index: int) -> void:
 		var last: bool = li == m.lods.size() - 1
 		for p in lod.parts:
 			var mi := _mesh(p[0], p[1], begin, end, last)
+			if p.size() > 4:
+				mi.name = p[4]           # LOD0 panel names (Door_FL, Hood, ...): scripts/damage/
 			add_child(mi)
 			entry.top.append(mi)
 			entry.meshes.append(mi)
@@ -232,7 +234,7 @@ func set_collision(on: bool) -> void:
 func _update_layers() -> void:
 	var on := near or mode == DYNAMIC
 	collision_layer = 2 if on else 0
-	collision_mask = ((1 | 2) if mode == DYNAMIC else 2) if on else 0
+	collision_mask = ((1 | 2 | 8) if mode == DYNAMIC else 2) if on else 0      # 8: debris (scripts/damage/)
 
 
 func set_braking(b: bool, lib) -> void:

@@ -76,7 +76,7 @@ collision = "none"
 tris = 1100
 policy = "cell"
 proxy = false
-world_keys = ["PROP_crate_stack"]
+world_keys = ["PROP_crate_stack", "PROP_crate_stack__red", "PROP_crate_stack__yellow"]
 visible_to_m = 150.0
 collider = "compound"
 mount = "ground"
@@ -86,9 +86,9 @@ lod = { lod0_tris = 1100, visible_to_m = 62.1 }
 
 # Where the world places it (read from scenes/world/world.json; scatter rules live in the props catalog).
 [placement]
-instances = 120
+instances = 130
 source = "tools/props/scatter.py (rules: tools/props/catalog.py)"
-districts = { downtown = 19, hillside = 12, midtown = 24, old_town = 31, port = 34 }
+districts = { downtown = 19, hillside = 11, midtown = 21, old_town = 29, port = 38, yoimachi = 12 }
 
 [placement.scatter]
 slots = ["alley", "frontage"]

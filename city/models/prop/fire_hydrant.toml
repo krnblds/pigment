@@ -76,7 +76,7 @@ collision = "none"
 tris = 1632
 policy = "cell"
 proxy = false
-world_keys = ["PROP_fire_hydrant"]
+world_keys = ["PROP_fire_hydrant", "PROP_fire_hydrant__teal", "PROP_fire_hydrant__yellow"]
 visible_to_m = 150.0
 collider = "cylinder"
 mount = "ground"
@@ -86,9 +86,17 @@ lod = { lod0_tris = 1632, visible_to_m = 60.0 }
 
 # Where the world places it (read from scenes/world/world.json; scatter rules live in the props catalog).
 [placement]
-instances = 183
+instances = 161
 source = "tools/props/scatter.py (rules: tools/props/catalog.py)"
-districts = { corporate = 9, downtown = 38, hillside = 27, midtown = 73, old_town = 22, port = 14 }
+
+[placement.districts]
+corporate = 6
+downtown = 33
+hillside = 24
+midtown = 58
+old_town = 18
+port = 15
+yoimachi = 7
 
 [placement.scatter]
 slots = ["curb"]

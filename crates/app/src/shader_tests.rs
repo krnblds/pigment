@@ -22,6 +22,7 @@ macro_rules! shader_test {
 
 shader_test!(viewport, "viewport.wgsl");
 shader_test!(post, "post.wgsl");
+shader_test!(stage, "stage.wgsl");
 shader_test!(env, "env.wgsl");
 shader_test!(mip, "mip.wgsl");
 shader_test!(texspace, "texspace.wgsl");
