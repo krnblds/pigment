@@ -299,7 +299,7 @@ func _star_texture() -> Texture2D:
 			var star := pow(absf(cos(ang * 3.0)), 8.0) * (1.0 - r)
 			var core := clampf(1.0 - r * 2.2, 0.0, 1.0)
 			var v := clampf(core + star * 0.9, 0.0, 1.0)
-			img.set_pixel(x, y, Color(1, 1, 1, v))
+			img.set_pixel(x, y, Color(v, v, v, 1.0))      # additive: the falloff lives in the colour
 	return ImageTexture.create_from_image(img)
 
 

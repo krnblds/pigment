@@ -29,6 +29,8 @@ func run(case_tests) -> void:
 		t.player._set_present(false)
 		t.waker._on_entered(main.car)
 	t.player.armour = 1.0e6
+	t.waker.park(main.car)               # scripted: keyboard focus on the window must not drive it
+	t.player.input_enabled = false
 	await _settle(3.0)
 	# 1. dispatch HUD in the cruiser (a case 200 m off, scanning)
 	var fwd: Vector3 = main.car.global_basis.z
@@ -81,14 +83,22 @@ func run(case_tests) -> void:
 	var n := 0
 	f0 = Time.get_ticks_usec()
 	fr0 = Engine.get_frames_drawn()
-	for i in 180:
+	var shot_taken := false
+	var shots0: int = t.waker.combat.stats.shots
+	for i in 300:
 		var aimp: Vector3 = s.global_position + Vector3.UP * 1.1
 		t.player.bot = {"move": Vector2.ZERO, "aim": true, "aim_at": aimp, "fire": i % 40 == 0, "yaw": t.face(aimp - t.player.global_position)}
 		await t.get_tree().process_frame
 		cost += t.waker.combat_cost_us()
 		n += 1
-		if i == 150:
+		# grab the frame right after a shot (tracer + muzzle flash in flight)
+		var now: int = t.waker.combat.stats.shots
+		if not shot_taken and i > 90 and now != shots0:
+			shot_taken = true
 			await _shot("waker_firefight.png")
+		shots0 = now
+	if not shot_taken:
+		await _shot("waker_firefight.png")
 	var fight_ms := float(Time.get_ticks_usec() - f0) / 1000.0 / maxf(1.0, Engine.get_frames_drawn() - fr0)
 	t.player.bot = {}
 	var perf := {"frame_ms_walking": calm_ms, "frame_ms_firefight": fight_ms, "waker_combat_us_per_frame": cost / n,
@@ -128,6 +138,6 @@ func _settle(s: float) -> void:
 func _shot(name_: String) -> void:
 	await RenderingServer.frame_post_draw
 	var img: Image = t.get_viewport().get_texture().get_image()
-	img.resize(1600, 900, Image.INTERPOLATE_LANCZOS)
+	img.resize(1440, 810, Image.INTERPOLATE_LANCZOS)
 	img.save_png(dir.path_join(name_))
 	print("shot ", name_)

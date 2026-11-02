@@ -30,11 +30,15 @@ var parked: Array = []                   ## cars the player left (kept parked)
 var siren: AudioStreamPlayer3D
 var prof_us := 0.0
 var _siren_car: Node
+var _scripted := false                   ## tests / shots / benches: never grab the mouse
 
 
 func setup(m: Node3D) -> void:
 	main = m
 	name = "Waker"
+	for k in m.args:
+		if String(k).ends_with("-test") or String(k).ends_with("-shots") or String(k).ends_with("-shot") or String(k).begins_with("bench") or k in ["autoshot", "foliage-demo"]:
+			_scripted = true
 	process_mode = Node.PROCESS_MODE_ALWAYS          # mouse mode follows pause; children pause normally
 	_setup_input()
 	combat = Combat.new()
@@ -201,7 +205,7 @@ static func park(c: RigidBody3D) -> void:
 		return
 	c.autopilot = true
 	c.input_throttle = 0.0
-	c.input_brake = 1.0
+	c.input_brake = 0.0                  # (held brake at a stop means "reverse" to car.gd's automatic)
 	c.input_steer = 0.0
 	c.input_handbrake = true
 
@@ -282,7 +286,7 @@ func _on_garage_opened() -> void:
 
 
 func _capture() -> void:
-	if DisplayServer.get_name() != "headless":
+	if DisplayServer.get_name() != "headless" and not _scripted:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 
@@ -374,7 +378,7 @@ func _process(_dt: float) -> void:
 	var t0 := Time.get_ticks_usec()
 	# mouse: captured on foot while playing, free in the car, in menus and the garage
 	var want_capture: bool = player.on_foot() and not get_tree().paused and not _garage_inside() and not (hud and hud.modal())
-	if DisplayServer.get_name() != "headless":
+	if DisplayServer.get_name() != "headless" and not _scripted:
 		if want_capture and Input.mouse_mode != Input.MOUSE_MODE_CAPTURED and DisplayServer.window_is_focused():
 			Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 		elif not want_capture and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:

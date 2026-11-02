@@ -239,6 +239,7 @@ func take_hit(h: Dictionary) -> void:
 
 
 func _die(h: Dictionary) -> void:
+	print("sleeper %s (%s) died: %s from %s" % [name, archetype, h.get("weapon", "?"), h.get("source")])
 	dead = true
 	_state("dead")
 	velocity = Vector3.ZERO

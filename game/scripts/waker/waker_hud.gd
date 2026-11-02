@@ -50,13 +50,15 @@ func _ready() -> void:
 	_ammo = _label("", 44, CYAN, Control.PRESET_BOTTOM_RIGHT, Vector2(-330, -150), Vector2(300, 60), HORIZONTAL_ALIGNMENT_RIGHT)
 	_wname = _label("", 18, DIM, Control.PRESET_BOTTOM_RIGHT, Vector2(-430, -88), Vector2(400, 30), HORIZONTAL_ALIGNMENT_RIGHT)
 	_prompt = _label("", 22, Color(0.95, 0.97, 1.0), Control.PRESET_CENTER, Vector2(-400, 90), Vector2(800, 40), HORIZONTAL_ALIGNMENT_CENTER)
-	_toast = _label("", 22, AMBER, Control.PRESET_CENTER_TOP, Vector2(-500, 120), Vector2(1000, 40), HORIZONTAL_ALIGNMENT_CENTER)
-	_dispatch = _label("", 18, Color(0.92, 0.95, 1.0), Control.PRESET_TOP_LEFT, Vector2(24, 62), Vector2(560, 140))
-	_radio = _label("", 16, DIM, Control.PRESET_TOP_LEFT, Vector2(24, 196), Vector2(620, 120))
+	_toast = _label("", 22, AMBER, Control.PRESET_CENTER_TOP, Vector2(-500, 262), Vector2(1000, 40), HORIZONTAL_ALIGNMENT_CENTER)
+	# top right, under the MERIDIAN bar and the stats line (the damage HUD owns the top left)
+	_dispatch = _label("", 18, Color(0.92, 0.95, 1.0), Control.PRESET_TOP_RIGHT, Vector2(-600, 92), Vector2(576, 140))
+	_radio = _label("", 16, DIM, Control.PRESET_TOP_RIGHT, Vector2(-680, 246), Vector2(656, 120), HORIZONTAL_ALIGNMENT_RIGHT)
 	_scores = _label("", 18, DIM, Control.PRESET_TOP_LEFT, Vector2(560, 52), Vector2(500, 30))
 	_choice = _label("", 22, Color(0.95, 0.97, 1.0), Control.PRESET_CENTER_BOTTOM, Vector2(-520, -330), Vector2(1040, 200), HORIZONTAL_ALIGNMENT_CENTER)
 	_vignette = _label("", 22, Color(0.85, 0.95, 1.0), Control.PRESET_CENTER, Vector2(-520, -260), Vector2(1040, 220), HORIZONTAL_ALIGNMENT_CENTER)
 	_vignette.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_radio.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_choice.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_marker = _label("", 16, CYAN, Control.PRESET_TOP_LEFT, Vector2.ZERO, Vector2(200, 40), HORIZONTAL_ALIGNMENT_CENTER)
 	_scan = _label("", 18, CYAN, Control.PRESET_CENTER_BOTTOM, Vector2(-200, -250), Vector2(400, 30), HORIZONTAL_ALIGNMENT_CENTER)

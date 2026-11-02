@@ -15,10 +15,10 @@ var sensitivity := 0.0032
 var aim_sensitivity := 0.0018
 var pad_speed := 2.6
 
-const DIST := 2.9
-const DIST_AIM := 1.25
-const SIDE := 0.55
-const SIDE_AIM := 0.62
+const DIST := 3.2
+const DIST_AIM := 1.75
+const SIDE := 0.6
+const SIDE_AIM := 0.72
 const HEIGHT := 1.62
 const FOV := 72.0
 const FOV_AIM := 48.0

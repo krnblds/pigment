@@ -106,7 +106,7 @@ func _stop(reason: String) -> void:
 	done = true
 	active = false
 	car.input_throttle = 0.0
-	car.input_brake = 1.0
+	car.input_brake = 0.0               # parked: handbrake only (a held brake at a stop selects reverse)
 	car.input_handbrake = true
 	stopped.emit(reason)
 

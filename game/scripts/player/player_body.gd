@@ -227,6 +227,9 @@ func _build_tree() -> void:
 	tree.tree_root = bt
 	tree.active = true
 	tree.set("parameters/loco/blend_position", 0.0)
+	# transitions start with no state (= rest pose) until asked
+	tree.set("parameters/life/transition_request", "alive")
+	tree.set("parameters/act_pick/transition_request", "shoot")
 
 
 # ------------------------------------------------------------------ API
