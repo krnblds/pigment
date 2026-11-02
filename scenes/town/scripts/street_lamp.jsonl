@@ -1,6 +1,0 @@
-{"tool": "new_project", "args": {"mesh": "assets/town/street_lamp.glb", "resolution": 1024, "material": "Gunmetal"}}
-{"tool": "add_layer", "args": {"name": "Grime", "material": "Grime", "mask": {"generator": "dirt", "amount": 0.5, "softness": 0.25, "effects": [{"generator": "gradient", "op": "max", "amount": 0.15}]}, "opacity": 0.7}}
-{"tool": "render", "args": {"yaw": 25, "pitch": 12, "width": 640, "height": 800, "exposure": -0.3, "path": "C:/Users/kiera/AppData/Local/Temp/pig/town_tex_street_lamp_a.png"}}
-{"tool": "render", "args": {"yaw": -50, "pitch": 18, "width": 640, "height": 800, "exposure": -0.3, "path": "C:/Users/kiera/AppData/Local/Temp/pig/town_tex_street_lamp_b.png"}}
-{"tool": "export_textures", "args": {"dir": "scenes/town/textures/street_lamp", "preset": "separate", "name": "street_lamp"}}
-{"tool": "save_project", "args": {"path": "scenes/town/projects/street_lamp.pigment"}}

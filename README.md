@@ -190,7 +190,7 @@ Pigment was pushed by using it, through MCP, to texture a whole open-world city.
 bay with islands, bridges and a mountain road, run by the Hoshikawa corporation and the MERIDIAN AI. The world,
 its assets and a drivable Godot 4.7 game are in this repo:
 
-![A town building in Pigment, and 16 more assets from the game](docs/readme/hero.png)
+![The Koen cab on the wet downtown avenue (Blender Cycles), and 16 more assets from the game](docs/readme/hero.png)
 
 - **[`game/`](game)**: the Godot project. Open `game/project.godot` and press **F5**. You drive a cab through wet
   neon streets: people hail you from the kerb, you follow the route line to their address and get paid by distance,

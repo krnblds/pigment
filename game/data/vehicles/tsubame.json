@@ -1,7 +1,0 @@
-{
-  "_doc": "Kanzaki Tsubame-4 (90s 2.0 L RWD saloon, security cruiser). Overrides on top of classes.json 'sedan' and the values derived from car.json. Feel targets: 0-100 km/h 8-9 s, 180 km/h (JDM speed limiter), 100-0 in ~40 m dry / ~55 m wet, gentle understeer, power oversteer only when provoked.",
-  "class": "sedan",
-  "engine": {"speed_limiter_kmh": 180},
-  "drive": "RWD",
-  "differential": {"type": "lsd", "preload_nm": 40.0, "lock_ratio": 0.3}
-}
