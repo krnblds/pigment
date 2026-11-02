@@ -252,9 +252,12 @@ fn gen_eval(t: vec2<i32>, kind: u32, gp: vec4<f32>, gp2: vec4<f32>, gp3: vec4<f3
     var v = 0.0;
     switch kind {
         case 1u: {
-            // edge wear: convex curvature, broken up by noise, kept out of occluded areas
+            // edge wear: convex curvature, broken up by noise, kept out of occluded areas.
+            // Away from any edge the value sinks below every threshold: the noise
+            // alone used to cross it at high amounts and wear through flat panels.
+            // On real edges (convex >= 0.2) this is the plain formula.
             let convex = clamp((curv - 0.5) * 2.0, 0.0, 1.0);
-            v = convex * gp2.z + (n - 0.5) * gp.w - occl * gp2.y;
+            v = mix(-0.5, convex * gp2.z + (n - 0.5) * gp.w, smoothstep(0.0, 0.2, convex)) - occl * gp2.y;
         }
         case 2u: {
             // dirt: occluded and concave areas
