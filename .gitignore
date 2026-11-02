@@ -40,3 +40,5 @@ scenes/trees/impostors/
 # ground masks (regenerate: python tools/world/ground_masks.py)
 scenes/world/ground_masks*
 scenes/world/ground_spots.json
+# citizens (tools/npc): downloaded CC0 packs, animation library sources, Blender build scratch
+.npccache/
