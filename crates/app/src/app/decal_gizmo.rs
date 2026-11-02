@@ -35,7 +35,9 @@ impl PigmentApp {
         let to_px = |p: egui::Pos2| Vec2::new((p.x - rect.min.x) * ppp, (p.y - rect.min.y) * ppp);
         // egui turns Ctrl+wheel into a zoom gesture
         let (shift, ctrl, zoom) = ui.input(|inp| (inp.modifiers.shift, inp.modifiers.ctrl || inp.modifiers.command, inp.zoom_delta()));
-        let hit = latest.and_then(|p| self.surface_at(to_px(p), viewport_px));
+        // a raycast only when it is needed (a click or a drag), not every frame
+        let dragging = response.dragged_by(egui::PointerButton::Primary) && !shift;
+        let hit = if click || dragging { latest.and_then(|p| self.surface_at(to_px(p), viewport_px)) } else { None };
         if click {
             self.decal_sel = hit.and_then(|(p, _, _)| self.decal_at(i, p));
         }

@@ -20,10 +20,12 @@ struct State {
     current: String,
     /// The copy being edited.
     draft: Option<ExportTemplate>,
+    /// Every template (built-in, user, project), refreshed now and then and after a save.
+    cache: Option<(std::time::Instant, Vec<(ExportTemplate, TemplateScope)>)>,
 }
 
 thread_local! {
-    static STATE: RefCell<State> = RefCell::new(State { current: "separate".into(), draft: None });
+    static STATE: RefCell<State> = RefCell::new(State { current: "separate".into(), draft: None, cache: None });
 }
 
 fn output_ui(ui: &mut egui::Ui, o: &mut TemplateOutput, k: usize) -> bool {
@@ -86,9 +88,13 @@ fn output_ui(ui: &mut egui::Ui, o: &mut TemplateOutput, k: usize) -> bool {
 
 pub fn templates_ui(app: &mut PigmentApp, ui: &mut egui::Ui, rs: &RenderState) {
     ds::section(ui, "Export template");
-    let all = app.all_templates();
     STATE.with(|st| {
         let mut st = st.borrow_mut();
+        // reading the user templates file every frame is slow: refresh every 2 s
+        if st.cache.as_ref().is_none_or(|(t, _)| t.elapsed().as_secs_f32() > 2.0) {
+            st.cache = Some((std::time::Instant::now(), app.all_templates()));
+        }
+        let all = st.cache.as_ref().map(|c| c.1.clone()).unwrap_or_default();
         ds::card(ui, |ui| {
             let label = all.iter().find(|(t, _)| t.id == st.current).map(|(t, s)| format!("{} ({})", if t.label.is_empty() { &t.id } else { &t.label }, s.id())).unwrap_or_else(|| st.current.clone());
             egui::ComboBox::from_id_salt("export template").selected_text(label).show_ui(ui, |ui| {
@@ -155,6 +161,7 @@ pub fn templates_ui(app: &mut PigmentApp, ui: &mut egui::Ui, rs: &RenderState) {
         if let (Some(scope), Some(d)) = (save, st.draft.clone()) {
             match app.save_template(d.clone(), scope) {
                 Ok(_) => {
+                    st.cache = None;
                     st.current = d.id.clone();
                     app.set_status(format!("Saved template `{}` ({})", d.id, scope.id()), false);
                 }

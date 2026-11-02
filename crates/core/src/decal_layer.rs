@@ -258,8 +258,10 @@ pub fn find_regions(mesh: &Mesh, q: &RegionQuery) -> Vec<Region> {
         e.1 += area;
         e.2.push(t);
     }
-    let mut list: Vec<(Vec3, f32, Vec<usize>)> = planes.into_values().collect();
-    list.sort_by(|a, b| b.1.total_cmp(&a.1));
+    // deterministic: by area, ties by plane key (HashMap order varies per run)
+    let mut list: Vec<((i32, i32, i32, i32), (Vec3, f32, Vec<usize>))> = planes.into_iter().collect();
+    list.sort_by(|a, b| b.1 .1.total_cmp(&a.1 .1).then(a.0.cmp(&b.0)));
+    let list: Vec<(Vec3, f32, Vec<usize>)> = list.into_iter().map(|x| x.1).collect();
     let mut out = Vec::new();
     for (nsum, _, tris) in list.into_iter().take(q.planes) {
         let n = nsum.normalize();
@@ -324,7 +326,11 @@ pub fn find_regions(mesh: &Mesh, q: &RegionQuery) -> Vec<Region> {
         let c2 = lo + Vec2::new(x as f32 + rw as f32 * 0.5, y as f32 + rh as f32 * 0.5) * cell;
         out.push(Region { center: right * c2.x + up * c2.y + n * d, normal: n, right, up, size });
     }
-    out.sort_by(|a, b| b.area().total_cmp(&a.area()));
+    // ties (symmetric walls): a fixed order by position
+    out.sort_by(|a, b| {
+        let key = |r: &Region| (r.area() * 1e3).round();
+        key(b).total_cmp(&key(a)).then(a.center.x.total_cmp(&b.center.x)).then(a.center.z.total_cmp(&b.center.z)).then(a.center.y.total_cmp(&b.center.y))
+    });
     out
 }
 
@@ -416,7 +422,11 @@ pub fn unfold(mesh: &Mesh, p: &Placement, reach: f32) -> Vec<[f32; 3]> {
         for k in 0..3 {
             let (a, b, c) = (v[k], v[(k + 1) % 3], v[(k + 2) % 3]);
             let (Some(ca), Some(cb)) = (coord[a], coord[b]) else { continue };
-            if ca.length().min(cb.length()) > reach {
+            // distance from the decal centre to the shared edge (long sliver
+            // triangles, e.g. a pole, have every vertex far away)
+            let e = cb - ca;
+            let t = (-ca).dot(e) / e.length_squared().max(1e-12);
+            if (ca + e * t.clamp(0.0, 1.0)).length() > reach {
                 continue;
             }
             for &n in edge_tris.get(&(a.min(b), a.max(b))).into_iter().flatten() {
@@ -524,6 +534,33 @@ mod tests {
         // closest edge of the 2.5 x 3 region from x = 0.8 is the left one (x = 0.25 + 0)
         assert!((e.x - 0.25).abs() < 0.12, "{e:?}");
         assert!(region_at(&[r], Vec3::new(1.0, 1.0, 0.0)).is_some());
+    }
+
+    #[test]
+    fn wrap_unfolds_round_a_cylinder() {
+        // a capped-free cylinder, radius 0.1, 24 sides, 2 rings
+        let (r, n) = (0.1f32, 24usize);
+        let mut m = Mesh { name: "cyl".into(), has_uvs: true, ..Default::default() };
+        for k in 0..=n {
+            let a = k as f32 / n as f32 * std::f32::consts::TAU;
+            for y in [0.0f32, 1.0] {
+                let (s, c) = a.sin_cos();
+                m.vertices.push(crate::Vertex { position: [r * s, y, r * c], normal: [s, 0.0, c], uv: [k as f32 / n as f32, 1.0 - y], tangent: [0.0; 4] });
+            }
+        }
+        for k in 0..n as u32 {
+            let b = k * 2;
+            m.indices.extend_from_slice(&[b, b + 2, b + 3, b, b + 3, b + 1]);
+        }
+        let p = Placement::new(Vec3::new(0.0, 0.5, r), Vec3::Z, Vec2::new(0.3, 0.3), 0.0, 0.05);
+        let uv = unfold(&m, &p, 1.0);
+        // walking round the front, the unfolded x grows by the arc length
+        for k in 0..=6usize {
+            let i = k * 2;
+            let arc = (k as f32 / n as f32) * std::f32::consts::TAU * r;
+            assert_eq!(uv[i][2], 1.0, "vertex {k} reached");
+            assert!((uv[i][0] - arc).abs() < 0.01, "vertex {k}: {:?} vs arc {arc}", uv[i]);
+        }
     }
 
     #[test]
