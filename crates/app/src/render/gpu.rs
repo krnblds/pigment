@@ -370,7 +370,7 @@ pub fn readback(device: &wgpu::Device, queue: &wgpu::Queue, t: &Tex) -> Vec<u8> 
 /// Sampled textures the layer compositor binds per shader stage (shared mesh
 /// data + accumulation + one layer's channels and mask). wgpu's default limit
 /// is 16; every desktop GPU allows far more.
-pub const SAMPLED_TEXTURES_NEEDED: u32 = 21;
+pub const SAMPLED_TEXTURES_NEEDED: u32 = 22;
 
 /// Limits Pigment asks for: wgpu's defaults, plus room for 8K viewports and
 /// the compositor's texture count (capped to what the adapter supports).

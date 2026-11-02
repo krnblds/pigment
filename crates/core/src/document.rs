@@ -320,6 +320,9 @@ pub enum LayerKind {
         #[serde(default)]
         foliage: crate::foliage_set::FoliageSet,
     },
+    /// A stand-alone filter (adjustment) layer: runs `Layer::filters` on the
+    /// stack below it, gated by its own mask and opacity (see `filters`).
+    Filter {},
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -368,10 +371,13 @@ pub enum GeneratorKind {
     Blades,
     /// Wind ripples with natural irregularity (bifurcations, fading crests).
     Ripples,
+    /// A channel of an anchor (`Generator::input`) used directly as the mask:
+    /// painted height, an anchor layer's mask or colour luminance.
+    Anchor,
 }
 
 impl GeneratorKind {
-    pub const ALL: [GeneratorKind; 19] = [
+    pub const ALL: [GeneratorKind; 20] = [
         GeneratorKind::EdgeWear,
         GeneratorKind::Dirt,
         GeneratorKind::Grunge,
@@ -391,6 +397,7 @@ impl GeneratorKind {
         GeneratorKind::Rock,
         GeneratorKind::Blades,
         GeneratorKind::Ripples,
+        GeneratorKind::Anchor,
     ];
     pub fn label(self) -> &'static str {
         match self {
@@ -413,6 +420,7 @@ impl GeneratorKind {
             GeneratorKind::Rock => "Rock",
             GeneratorKind::Blades => "Grass blades",
             GeneratorKind::Ripples => "Ripples",
+            GeneratorKind::Anchor => "Anchor",
         }
     }
     pub fn id(self) -> &'static str {
@@ -436,6 +444,7 @@ impl GeneratorKind {
             GeneratorKind::Rock => "rock",
             GeneratorKind::Blades => "blades",
             GeneratorKind::Ripples => "ripples",
+            GeneratorKind::Anchor => "anchor",
         }
     }
     pub fn from_id(s: &str) -> Option<GeneratorKind> {
@@ -509,6 +518,9 @@ pub struct Generator {
     /// `gen_ground.wgsl`); unused by the other generators.
     #[serde(default, skip_serializing_if = "all_zero")]
     pub extra: [f32; 4],
+    /// Read an anchor's channel instead of only the mesh bakes (see `filters`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub input: Option<crate::filters::GenInput>,
 }
 
 fn all_zero(v: &[f32; 4]) -> bool {
@@ -559,6 +571,8 @@ impl Generator {
             GeneratorKind::Blades => (0.85, 0.02, 90.0, 0.6, 0.55),
             // scale = ripples per metre; ao_influence slot = asymmetry
             GeneratorKind::Ripples => (1.0, 0.02, 8.0, 0.5, 0.6),
+            // amount = threshold coverage of the anchor channel
+            GeneratorKind::Anchor => (0.5, 0.1, 4.0, 0.0, 0.0),
         };
         // curvature_weight doubles as a shape parameter on the new generators
         let curvature_weight = match kind {
@@ -585,7 +599,7 @@ impl Generator {
             GeneratorKind::Ripples => [0.0, 0.5, 0.0, 0.0],
             _ => [0.0; 4],
         };
-        Self { kind, amount, softness, noise_scale, noise_amount, seed: 1, ao_influence, curvature_weight, variant: 0, extra }
+        Self { kind, amount, softness, noise_scale, noise_amount, seed: 1, ao_influence, curvature_weight, variant: 0, extra, input: None }
     }
     pub fn gpu_id(&self) -> u32 {
         match self.kind {
@@ -608,6 +622,7 @@ impl Generator {
             GeneratorKind::Rock => 17,
             GeneratorKind::Blades => 18,
             GeneratorKind::Ripples => 19,
+            GeneratorKind::Anchor => 20,
         }
     }
     pub fn with(mut self, amount: f32, noise_scale: f32) -> Self {
@@ -680,11 +695,29 @@ pub struct Mask {
     /// Further generators combined after `generator` (at most MAX_MASK_EFFECTS).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub effects: Vec<MaskEffect>,
+    /// Filters run on the evaluated mask, in order (blur, grow, warp...).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub filters: Vec<crate::filters::Filter>,
+    /// Only where the project's ID map has this colour (see `Document::id_map`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub id_color: Option<IdPick>,
+}
+
+/// An ID-map colour pick for a mask: sRGB 0..1 and a tolerance (distance in RGB).
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct IdPick {
+    pub color: [f32; 3],
+    #[serde(default = "default_id_tolerance")]
+    pub tolerance: f32,
+}
+
+fn default_id_tolerance() -> f32 {
+    0.1
 }
 
 impl Mask {
     pub fn new(res: ResId) -> Self {
-        Mask { res, generator: None, invert: false, enabled: true, parts: Vec::new(), effects: Vec::new() }
+        Mask { res, generator: None, invert: false, enabled: true, parts: Vec::new(), effects: Vec::new(), filters: Vec::new(), id_color: None }
     }
     pub fn with_generator(res: ResId, g: Generator) -> Self {
         Mask { generator: Some(g), ..Mask::new(res) }
@@ -733,6 +766,18 @@ pub struct Layer {
     /// stacked rock, boulders, ruts; the composited height is HDR).
     #[serde(default = "crate::ground::unit_gain", skip_serializing_if = "crate::ground::is_unit_gain")]
     pub height_gain: f32,
+    /// Filters run on the stack right after this layer, inside its mask; on
+    /// a filter layer, the filters it applies to the stack below.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub filters: Vec<crate::filters::Filter>,
+    /// Anchor point name: layers above can read the stack as composited
+    /// right after this layer (height, mask, colour) in their generators.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub anchor: Option<String>,
+    /// Paint layers only: a decal layer whose pixels are generated from
+    /// these editable decal objects (see `decal_layer`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub decals: Option<crate::decal_layer::DecalSet>,
 }
 
 /// What draws a generated paint layer.
@@ -782,6 +827,10 @@ pub struct BakeSettings {
     /// darken AO, so big interiors don't go black (Substance: max occluder distance).
     #[serde(default = "ao_distance")]
     pub ao_distance: f32,
+    /// High-to-low bake (see `hibake`): its AO / curvature replace the mesh
+    /// bakes, its normal map is a fill layer, its ID map masks layers.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub high: Option<crate::hibake::HighBake>,
 }
 
 fn ao_distance() -> f32 {
@@ -790,7 +839,7 @@ fn ao_distance() -> f32 {
 
 impl Default for BakeSettings {
     fn default() -> Self {
-        Self { ao_samples: 128, curvature_radius: 0.05, curvature_strength: 1.0, ao_distance: ao_distance() }
+        Self { ao_samples: 128, curvature_radius: 0.05, curvature_strength: 1.0, ao_distance: ao_distance(), high: None }
     }
 }
 
@@ -813,6 +862,24 @@ pub struct Document {
     /// Flat seamless tile / trim sheet / decal atlas project (see `tile`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tile: Option<crate::tile::TileSpec>,
+    /// Colour ID map (PNG, relative to the project folder) for ID masks.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub id_map: Option<String>,
+    /// The texture set this document paints (see `texsets`); None = the
+    /// whole mesh, tile 1001 (single-set projects).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub texture_set: Option<crate::texsets::SetSpec>,
+    /// Main manifest only: the project's other texture sets, as folders
+    /// (relative to the project) holding their own manifest and pixels.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub extra_sets: Vec<String>,
+    /// UDIM tiles moved by `new_project.udim_tiles`, re-applied to the mesh on
+    /// load: (tile, triangle indices of the original mesh, margin).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub udim_moves: Vec<crate::texsets::UdimMove>,
+    /// Export templates saved with the project (see `templates`).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub export_templates: Vec<crate::templates::ExportTemplate>,
 }
 
 fn default_preset() -> String {
@@ -831,6 +898,11 @@ impl Default for Document {
             next_id: 1,
             variants: Default::default(),
             tile: None,
+            id_map: None,
+            texture_set: None,
+            extra_sets: Vec::new(),
+            udim_moves: Vec::new(),
+            export_templates: Vec::new(),
         }
     }
 }
@@ -945,7 +1017,7 @@ impl Document {
         g.softness = 0.04;
         g.noise_scale = 22.0;
         g.noise_amount = 0.9;
-        wear.mask = Some(Mask { res, generator: Some(g), invert: false, enabled: true, parts: Vec::new(), effects: Vec::new() });
+        wear.mask = Some(Mask { res, generator: Some(g), invert: false, enabled: true, parts: Vec::new(), effects: Vec::new(), filters: Vec::new(), id_color: None });
 
         let mut dirt = self.new_fill_layer("Dirt");
         dirt.kind = LayerKind::Fill { values: material_preset("Grime") };
@@ -959,7 +1031,7 @@ impl Document {
         g.softness = 0.2;
         g.noise_scale = 5.0;
         g.noise_amount = 0.7;
-        dirt.mask = Some(Mask { res, generator: Some(g), invert: false, enabled: true, parts: Vec::new(), effects: Vec::new() });
+        dirt.mask = Some(Mask { res, generator: Some(g), invert: false, enabled: true, parts: Vec::new(), effects: Vec::new(), filters: Vec::new(), id_color: None });
         vec![base, wear, dirt]
     }
 
@@ -977,7 +1049,7 @@ impl Document {
         l.kind = LayerKind::Fill { values };
         if let Some(g) = generator {
             let res = self.mint();
-            l.mask = Some(Mask { res, generator: Some(g), invert: false, enabled: true, parts: Vec::new(), effects: Vec::new() });
+            l.mask = Some(Mask { res, generator: Some(g), invert: false, enabled: true, parts: Vec::new(), effects: Vec::new(), filters: Vec::new(), id_color: None });
         }
         l
     }
@@ -1098,6 +1170,9 @@ impl Document {
             jitter: None,
             height_profile: false,
             height_gain: 1.0,
+            filters: Vec::new(),
+            anchor: None,
+            decals: None,
         }
     }
 
@@ -1120,6 +1195,9 @@ impl Document {
             jitter: None,
             height_profile: false,
             height_gain: 1.0,
+            filters: Vec::new(),
+            anchor: None,
+            decals: None,
         }
     }
 
@@ -1148,6 +1226,9 @@ impl Document {
             jitter: None,
             height_profile: false,
             height_gain: 1.0,
+            filters: Vec::new(),
+            anchor: None,
+            decals: None,
         }
     }
 
@@ -1375,7 +1456,7 @@ mod tests {
     #[test]
     fn json_round_trip() {
         let mut d = Document::new_default();
-        d.layers[1].mask = Some(Mask { res: 99, generator: Some(Generator::new(GeneratorKind::EdgeWear)), invert: false, enabled: true, parts: Vec::new(), effects: Vec::new() });
+        d.layers[1].mask = Some(Mask { res: 99, generator: Some(Generator::new(GeneratorKind::EdgeWear)), invert: false, enabled: true, parts: Vec::new(), effects: Vec::new(), filters: Vec::new(), id_color: None });
         let s = serde_json::to_string_pretty(&d).unwrap();
         let back: Document = serde_json::from_str(&s).unwrap();
         assert_eq!(d, back);

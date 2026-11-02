@@ -17,16 +17,7 @@
 @group(3) @binding(3) var base_emissive: texture_2d<f32>;
 
 fn folder_mask(t: vec2<i32>) -> f32 {
-    var mask = 1.0;
-    if (lp.flags.y == 1u) {
-        mask = textureLoad(l_mask, t, 0).r;
-        if (lp.flags.z != 0u) { mask *= generator(t); }
-        if (lp.misc.x == 1u) {
-            mask *= part_selected(src_texel(t));
-        }
-        if (lp.flags.w == 1u) { mask = 1.0 - mask; }
-    }
-    return mask;
+    return eval_mask(t);  // composite.wgsl (also honours a precomputed, filtered mask)
 }
 
 @fragment

@@ -137,6 +137,17 @@ pub fn read_material(device: &wgpu::Device, queue: &wgpu::Queue, ts: &TexSet) ->
 
 /// Move all layer and mask pixels into `dst` (a fresh TexSet at a new
 /// resolution), resampling bilinearly.
+/// Float planes for EXR export: raw HDR height, linear HDR emission (RGB)
+/// and the UV-island coverage (from the part-id map).
+pub fn read_hdr_planes(device: &wgpu::Device, queue: &wgpu::Queue, ts: &TexSet) -> pigment_core::templates::HdrPlanes {
+    let mut maps = gpu::readback_many(device, queue, &[&ts.material[3], &ts.emissive, &ts.parts]).into_iter();
+    let (h, e, p) = (maps.next().unwrap(), maps.next().unwrap(), maps.next().unwrap());
+    let height: Vec<f32> = f16_bytes_to_f32(&h).collect();
+    let emissive: Vec<f32> = f16_bytes_to_f32(&e).enumerate().filter(|(i, _)| i % 4 != 3).map(|(_, v)| if v.is_finite() { v.max(0.0) } else { 0.0 }).collect();
+    let coverage: Vec<u8> = p.chunks_exact(2).map(|c| (u16::from_le_bytes([c[0], c[1]]) != 0) as u8).collect();
+    pigment_core::templates::HdrPlanes { height, emissive, coverage }
+}
+
 pub fn resample_into(device: &wgpu::Device, queue: &wgpu::Queue, src: &TexSet, dst: &mut TexSet) {
     let mut enc = device.create_command_encoder(&Default::default());
     for (res, l) in &src.layers {

@@ -98,6 +98,23 @@ impl Harness {
         self.step();
     }
 
+    /// Queue a raw input event for the next frame.
+    pub fn push_event(&mut self, e: egui::Event) {
+        self.events.push(e);
+    }
+
+    /// Click with modifier keys held (Shift-click, Alt-click...).
+    pub fn click_with(&mut self, p: egui::Pos2, modifiers: egui::Modifiers) {
+        self.events.push(egui::Event::ModifiersChanged(modifiers));
+        self.hover(p);
+        self.events.push(egui::Event::PointerButton { pos: p, button: egui::PointerButton::Primary, pressed: true, modifiers });
+        self.step();
+        self.events.push(egui::Event::PointerButton { pos: p, button: egui::PointerButton::Primary, pressed: false, modifiers });
+        self.step();
+        self.events.push(egui::Event::ModifiersChanged(Default::default()));
+        self.step();
+    }
+
     /// Press / release the primary button without moving (for long drags).
     pub fn events_push_press(&mut self, p: egui::Pos2) {
         self.button(p, egui::PointerButton::Primary, true);

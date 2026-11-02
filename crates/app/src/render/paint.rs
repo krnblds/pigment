@@ -34,8 +34,34 @@ impl Target {
 #[derive(Clone, Copy, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct StampGpu {
     pub center_radius: [f32; 4], // x, y, radius (px), opacity
-    pub params: [f32; 4],        // hardness
+    /// hardness, angle (radians), tip (0 = round falloff, k = tip layer k - 1), flow
+    pub params: [f32; 4],
 }
+
+/// Brush engine extras for the stamp pass (`stamp.wgsl` Fx).
+#[repr(C)]
+#[derive(Clone, Copy, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct FxGpu {
+    /// Symmetry transforms (identity first); a texel at p is painted when sym[k] * p is under the brush.
+    pub sym: [[[f32; 4]; 4]; 16],
+    /// symmetry count, flow mode (1 = dabs add up), stencil on, stencil opacity
+    pub info: [f32; 4],
+    /// stencil centre x, y (px), cos, sin
+    pub stencil: [f32; 4],
+    /// stencil half size x, y (px), invert
+    pub stencil2: [f32; 4],
+}
+
+impl Default for FxGpu {
+    fn default() -> Self {
+        let mut sym = [[[0.0; 4]; 4]; 16];
+        sym[0] = glam::Mat4::IDENTITY.to_cols_array_2d();
+        FxGpu { sym, info: [1.0, 0.0, 0.0, 1.0], stencil: [0.0, 0.0, 1.0, 0.0], stencil2: [1.0, 1.0, 0.0, 0.0] }
+    }
+}
+
+/// Size of a brush tip layer (square).
+pub const TIP_SIZE: u32 = 256;
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug, bytemuck::Pod, bytemuck::Zeroable)]
@@ -61,6 +87,10 @@ pub struct BrushGpu {
     pub coat: [f32; 4],
     /// clearcoat on, coat roughness on, flake on
     pub coat_on: [f32; 4],
+    /// x = stroke opacity cap when dabs add up (flow); 0 = none
+    pub stroke: [f32; 4],
+    /// x = 0 paint, 1 clone, 2 smudge; y, z = source offset in texels; w = smudge taps
+    pub tool: [f32; 4],
 }
 
 /// Pixels of the dirty tiles of one target, packed into atlases.
@@ -102,6 +132,14 @@ pub struct BoxDecalGpu {
 pub struct Painter {
     res: u32,
     stamp_pipe: wgpu::RenderPipeline,
+    /// Flow strokes: dabs add up (capped at the stroke opacity in the apply pass).
+    stamp_add_pipe: wgpu::RenderPipeline,
+    fx_buf: wgpu::Buffer,
+    additive: bool,
+    tips: wgpu::Texture,
+    tips_view: wgpu::TextureView,
+    tip_sampler: wgpu::Sampler,
+    stencil: Tex,
     stamp_bgl: wgpu::BindGroupLayout,
     apply_pipe: wgpu::RenderPipeline,
     apply_mask_pipe: wgpu::RenderPipeline,
@@ -122,6 +160,8 @@ pub struct Painter {
     before_mask: Tex,
     active: Option<Target>,
     box_pipe: wgpu::RenderPipeline,
+    /// Wrap (conform) decals: per-vertex unfolded coordinates in a second buffer.
+    wrap_pipe: wgpu::RenderPipeline,
     box_bgl: wgpu::BindGroupLayout,
     box_buf: wgpu::Buffer,
 }
@@ -131,7 +171,17 @@ impl Painter {
         let common = include_str!("../shaders/common.wgsl");
         let sm = gpu::shader(device, "stamp.wgsl", &[common, include_str!("../shaders/stamp.wgsl")].concat());
         let am = gpu::shader(device, "apply.wgsl", &[common, include_str!("../shaders/apply.wgsl")].concat());
-        let stamp_bgl = gpu::bgl(device, "stamp", &[gpu::uniform_entry(0, false), gpu::dtex(1), gpu::storage_entry(2)]);
+        let tip_array = wgpu::BindGroupLayoutEntry {
+            binding: 3,
+            visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
+            ty: wgpu::BindingType::Texture { sample_type: wgpu::TextureSampleType::Float { filterable: true }, view_dimension: wgpu::TextureViewDimension::D2Array, multisampled: false },
+            count: None,
+        };
+        let stamp_bgl = gpu::bgl(
+            device,
+            "stamp",
+            &[gpu::uniform_entry(0, false), gpu::dtex(1), gpu::storage_entry(2), tip_array, gpu::sampler_entry(4, wgpu::SamplerBindingType::Filtering), gpu::uniform_entry(5, false), gpu::ftex(6)],
+        );
         let apply_bgl = gpu::bgl(
             device,
             "apply",
@@ -154,6 +204,21 @@ impl Painter {
                 layout: &stamp_layout,
                 buffers: &mesh_layout,
                 targets: &[gpu::target(wgpu::TextureFormat::R16Float, Some(gpu::MAX_BLEND))],
+                depth: None,
+                samples: 1,
+                cull: None,
+            },
+        );
+        let stamp_add_pipe = gpu::pipeline(
+            device,
+            gpu::PipeDesc {
+                label: "stamp flow",
+                module: &sm,
+                vs: "vs_stamp",
+                fs: Some("fs_stamp"),
+                layout: &stamp_layout,
+                buffers: &mesh_layout,
+                targets: &[gpu::target(wgpu::TextureFormat::R16Float, Some(gpu::ADD_BLEND))],
                 depth: None,
                 samples: 1,
                 cull: None,
@@ -199,6 +264,22 @@ impl Painter {
                 cull: None,
             },
         );
+        let wrap_attrs = wgpu::vertex_attr_array![4 => Float32x3];
+        let wrap_pipe = gpu::pipeline(
+            device,
+            gpu::PipeDesc {
+                label: "wrap decal",
+                module: &bm,
+                vs: "vs_wrap",
+                fs: Some("fs_box"),
+                layout: &gpu::layout(device, "wrap decal", &[&box_bgl]),
+                buffers: &[mesh_layout[0].clone(), Some(wgpu::VertexBufferLayout { array_stride: 12, step_mode: wgpu::VertexStepMode::Vertex, attributes: &wrap_attrs })],
+                targets: &[gpu::target(wgpu::TextureFormat::R16Float, Some(gpu::MAX_BLEND)), gpu::target(wgpu::TextureFormat::Rgba16Float, None)],
+                depth: None,
+                samples: 1,
+                cull: None,
+            },
+        );
         let box_buf = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("box decal"),
             size: std::mem::size_of::<BoxDecalGpu>() as u64,
@@ -229,9 +310,23 @@ impl Painter {
         });
         let (stroke_mask, before, before_mask) = Self::scratch(device, res);
         let decal_color = Tex::target(device, "decal colour", res, wgpu::TextureFormat::Rgba16Float);
-        Self {
+        let fx_buf = {
+            use wgpu::util::DeviceExt;
+            device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some("brush fx"), contents: bytemuck::bytes_of(&FxGpu::default()), usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST })
+        };
+        let (tips, tips_view) = tip_array_tex(device, 1);
+        let tip_sampler = gpu::linear_sampler(device, 1);
+        let stencil = Tex::new(device, "stencil", 1, 1, wgpu::TextureFormat::Rgba8UnormSrgb, wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST, 1);
+        let s = Self {
             res,
             stamp_pipe,
+            stamp_add_pipe,
+            fx_buf,
+            additive: false,
+            tips,
+            tips_view,
+            tip_sampler,
+            stencil,
             stamp_bgl,
             apply_pipe,
             apply_mask_pipe,
@@ -250,9 +345,62 @@ impl Painter {
             before_mask,
             active: None,
             box_pipe,
+            wrap_pipe,
             box_bgl,
             box_buf,
+        };
+        // the tip array starts empty (round dabs use the analytic falloff)
+        s
+    }
+
+    /// Load the brush tip library (each TIP_SIZE x TIP_SIZE, 8-bit grey) into
+    /// the tip array; tip k is stamped with `params.z = k + 1`.
+    pub fn set_tips(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, tips: &[Vec<u8>]) {
+        let n = tips.len().max(1) as u32;
+        let (t, v) = tip_array_tex(device, n);
+        for (k, data) in tips.iter().enumerate() {
+            if data.len() != (TIP_SIZE * TIP_SIZE) as usize {
+                continue;
+            }
+            queue.write_texture(
+                wgpu::TexelCopyTextureInfo { texture: &t, mip_level: 0, origin: wgpu::Origin3d { x: 0, y: 0, z: k as u32 }, aspect: wgpu::TextureAspect::All },
+                data,
+                wgpu::TexelCopyBufferLayout { offset: 0, bytes_per_row: Some(TIP_SIZE), rows_per_image: Some(TIP_SIZE) },
+                wgpu::Extent3d { width: TIP_SIZE, height: TIP_SIZE, depth_or_array_layers: 1 },
+            );
         }
+        self.tips = t;
+        self.tips_view = v;
+    }
+
+    /// Screen-space stencil image (RGBA8, sRGB), or none (a white 1 x 1).
+    pub fn set_stencil_image(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, rgba: &[u8], w: u32, h: u32) {
+        let t = Tex::new(device, "stencil", w, h, wgpu::TextureFormat::Rgba8UnormSrgb, wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST, 1);
+        gpu::upload(queue, &t, rgba);
+        self.stencil = t;
+    }
+
+    /// Symmetry, flow mode and stencil placement for the next stamps.
+    pub fn set_fx(&mut self, queue: &wgpu::Queue, fx: &FxGpu) {
+        self.additive = fx.info[1] > 0.5;
+        queue.write_buffer(&self.fx_buf, 0, bytemuck::bytes_of(fx));
+    }
+
+    fn stamp_bind_group(&self, device: &wgpu::Device, depth: &wgpu::TextureView) -> wgpu::BindGroup {
+        gpu::bind_group(
+            device,
+            "stamp",
+            &self.stamp_bgl,
+            &[
+                self.view_buf.as_entire_binding(),
+                wgpu::BindingResource::TextureView(depth),
+                self.stamp_buf.as_entire_binding(),
+                wgpu::BindingResource::TextureView(&self.tips_view),
+                wgpu::BindingResource::Sampler(&self.tip_sampler),
+                self.fx_buf.as_entire_binding(),
+                wgpu::BindingResource::TextureView(&self.stencil.view),
+            ],
+        )
     }
 
     fn scratch(device: &wgpu::Device, res: u32) -> (Tex, [Tex; 11], Tex) {
@@ -311,12 +459,7 @@ impl Painter {
         let Some(target) = self.active else { return };
         let Some(live) = Self::target_textures(ts, target) else { return };
         queue.write_buffer(&self.brush_buf, 0, bytemuck::bytes_of(brush));
-        let stamp_bg = gpu::bind_group(
-            device,
-            "stamp",
-            &self.stamp_bgl,
-            &[self.view_buf.as_entire_binding(), wgpu::BindingResource::TextureView(depth), self.stamp_buf.as_entire_binding()],
-        );
+        let stamp_bg = self.stamp_bind_group(device, depth);
         for chunk in stamps.chunks(MAX_STAMPS) {
             let mut v = view;
             v.viewport[3] = chunk.len() as f32;
@@ -325,7 +468,7 @@ impl Painter {
             let mut enc = device.create_command_encoder(&Default::default());
             {
                 let mut pass = gpu::pass(&mut enc, "stamp", &[&self.stroke_mask.view], None);
-                pass.set_pipeline(&self.stamp_pipe);
+                pass.set_pipeline(if self.additive { &self.stamp_add_pipe } else { &self.stamp_pipe });
                 pass.set_bind_group(0, &stamp_bg, &[]);
                 pass.set_vertex_buffer(0, mesh.vertices.slice(..));
                 pass.set_index_buffer(mesh.indices.slice(..), wgpu::IndexFormat::Uint32);
@@ -358,12 +501,7 @@ impl Painter {
         queue.write_buffer(&self.brush_buf, 0, bytemuck::bytes_of(brush));
         queue.write_buffer(&self.view_buf, 0, bytemuck::bytes_of(&view));
         queue.write_buffer(&self.decal_buf, 0, bytemuck::bytes_of(&decal));
-        let stamp_bg = gpu::bind_group(
-            device,
-            "stamp",
-            &self.stamp_bgl,
-            &[self.view_buf.as_entire_binding(), wgpu::BindingResource::TextureView(depth), self.stamp_buf.as_entire_binding()],
-        );
+        let stamp_bg = self.stamp_bind_group(device, depth);
         let decal_bg = gpu::bind_group(
             device,
             "decal",
@@ -387,7 +525,7 @@ impl Painter {
     /// Project an image as a world-space box decal (no camera), then
     /// re-apply inside `rect` (texels). `brush.enabled3[1]` must be 1.
     #[allow(clippy::too_many_arguments)]
-    pub fn box_decal(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, ts: &TexSet, mesh: &MeshGpu, image: &Tex, decal: &BoxDecalGpu, brush: &BrushGpu, rect: [u32; 4]) {
+    pub fn box_decal(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, ts: &TexSet, mesh: &MeshGpu, image: &Tex, decal: &BoxDecalGpu, brush: &BrushGpu, rect: [u32; 4], wrap: Option<&wgpu::Buffer>) {
         let Some(target) = self.active else { return };
         let Some(live) = Self::target_textures(ts, target) else { return };
         queue.write_buffer(&self.brush_buf, 0, bytemuck::bytes_of(brush));
@@ -401,9 +539,12 @@ impl Painter {
         let mut enc = device.create_command_encoder(&Default::default());
         {
             let mut pass = gpu::pass(&mut enc, "box decal", &[&self.stroke_mask.view, &self.decal_color.view], None);
-            pass.set_pipeline(&self.box_pipe);
+            pass.set_pipeline(if wrap.is_some() { &self.wrap_pipe } else { &self.box_pipe });
             pass.set_bind_group(0, &bg, &[]);
             pass.set_vertex_buffer(0, mesh.vertices.slice(..));
+            if let Some(w) = wrap {
+                pass.set_vertex_buffer(1, w.slice(..));
+            }
             pass.set_index_buffer(mesh.indices.slice(..), wgpu::IndexFormat::Uint32);
             pass.draw_indexed(0..mesh.index_count, 0, 0..1);
         }
@@ -474,6 +615,21 @@ impl Painter {
         snap.atlas = tmp;
         true
     }
+}
+
+fn tip_array_tex(device: &wgpu::Device, layers: u32) -> (wgpu::Texture, wgpu::TextureView) {
+    let t = device.create_texture(&wgpu::TextureDescriptor {
+        label: Some("brush tips"),
+        size: wgpu::Extent3d { width: TIP_SIZE, height: TIP_SIZE, depth_or_array_layers: layers },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: wgpu::TextureFormat::R8Unorm,
+        usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+        view_formats: &[],
+    });
+    let v = t.create_view(&wgpu::TextureViewDescriptor { dimension: Some(wgpu::TextureViewDimension::D2Array), ..Default::default() });
+    (t, v)
 }
 
 fn tv(t: &Tex) -> wgpu::BindingResource<'_> {

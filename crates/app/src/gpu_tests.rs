@@ -94,6 +94,8 @@ impl Scene {
             extra: [1.0, 0.0, 0.0, 0.0],
             coat: [0.0, 0.03, 0.0, 0.0],
             coat_on: [0.0; 4],
+            stroke: [0.0; 4],
+            tool: [0.0; 4],
         };
         let mut frames = vec![sampler.begin(from)];
         for i in 1..=8 {
@@ -340,7 +342,7 @@ fn edge_wear_generator_masks_a_fill_layer() {
     s.ts.new_mask(d, q, mres, true);
     let mut g = Generator::new(GeneratorKind::EdgeWear);
     g.noise_amount = 0.0;
-    wear.mask = Some(Mask { res: mres, generator: Some(g), invert: false, enabled: true, parts: Vec::new(), effects: Vec::new() });
+    wear.mask = Some(Mask { res: mres, generator: Some(g), invert: false, enabled: true, parts: Vec::new(), effects: Vec::new(), filters: Vec::new(), id_color: None });
     doc.layers.push(wear);
     s.ts.ensure_resources(d, q, &doc);
     s.ts.composite(d, q, &doc, None);
@@ -408,7 +410,7 @@ fn perf_targets() {
         let mut l = if i % 2 == 0 { doc.new_paint_layer(&format!("p{i}")) } else { doc.new_fill_layer(&format!("f{i}")) };
         if i % 4 == 1 {
             let m = doc.mint();
-            l.mask = Some(Mask { res: m, generator: Some(Generator::new(GeneratorKind::EdgeWear)), invert: false, enabled: true, parts: Vec::new(), effects: Vec::new() });
+            l.mask = Some(Mask { res: m, generator: Some(Generator::new(GeneratorKind::EdgeWear)), invert: false, enabled: true, parts: Vec::new(), effects: Vec::new(), filters: Vec::new(), id_color: None });
         }
         doc.layers.push(l);
     }
@@ -433,7 +435,7 @@ fn perf_targets() {
     let target = doc.layers.iter().rev().find_map(|l| l.paint_res()).unwrap();
     let mut painter = Painter::new(d, res);
     painter.begin(d, q, &ts, Target::Layer(target));
-    let brush = BrushGpu { color: [1.0, 0.0, 0.0, 1.0], rmh: [0.5; 4], normal: [0.0, 0.0, 1.0, 0.0], enabled: [1.0; 4], enabled2: [0.0, 0.0, 1.0, 0.0], emissive: [0.0; 4], enabled3: [0.0; 4], extra: [1.0, 0.0, 0.0, 0.0], coat: [0.0, 0.03, 0.0, 0.0], coat_on: [0.0; 4] };
+    let brush = BrushGpu { color: [1.0, 0.0, 0.0, 1.0], rmh: [0.5; 4], normal: [0.0, 0.0, 1.0, 0.0], enabled: [1.0; 4], enabled2: [0.0, 0.0, 1.0, 0.0], emissive: [0.0; 4], enabled3: [0.0; 4], extra: [1.0, 0.0, 0.0, 0.0], coat: [0.0, 0.03, 0.0, 0.0], coat_on: [0.0; 4], stroke: [0.0; 4], tool: [0.0; 4] };
     let mut x = 600.0;
     let depth = viewport.paint_depth().unwrap();
     let paint_ms = time("paint frame: 8 stamps + apply + composite", 30, &mut || {
@@ -646,3 +648,6 @@ fn folders_composite_as_sub_stacks() {
 
 #[path = "gpu_tests_weather.rs"]
 mod weather;
+
+#[path = "gpu_tests_filters.rs"]
+mod filters;

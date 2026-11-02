@@ -11,5 +11,7 @@ serde.workspace = true
 serde_json.workspace = true
 anyhow.workspace = true
 tobj = "4"
-gltf = { version = "1.4", default-features = false, features = ["import", "utils"] }
-image = { version = "0.25", default-features = false, features = ["png", "hdr", "exr", "jpeg"] }
+gltf = { version = "1.4", default-features = false, features = ["import", "utils", "names"] }
+image = { version = "0.25", default-features = false, features = ["png", "hdr", "exr", "jpeg", "tga"] }
+exr = "1.74"
+half = "2"

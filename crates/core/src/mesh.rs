@@ -40,11 +40,37 @@ pub struct Mesh {
     pub indices: Vec<u32>,
     /// True if the source had texture coordinates (painting needs them).
     pub has_uvs: bool,
+    /// Material index per triangle (glTF primitive material / OBJ usemtl);
+    /// empty = one material. Read with [`Mesh::material_of`].
+    pub tri_material: Vec<u32>,
+    /// Material names, by index (may be shorter than the ids used).
+    pub material_names: Vec<String>,
+    /// Linear vertex colours (glTF COLOR_0); empty = none.
+    pub colors: Vec<[f32; 3]>,
+    /// Part id per triangle, when this mesh is a piece of a bigger one (a
+    /// texture set): part ids then stay those of the whole mesh. Empty =
+    /// computed from connectivity.
+    pub tri_part: Vec<u32>,
 }
 
 impl Mesh {
     pub fn triangle_count(&self) -> usize {
         self.indices.len() / 3
+    }
+
+    /// Material index of triangle `t` (0 when the mesh has none).
+    pub fn material_of(&self, t: usize) -> u32 {
+        self.tri_material.get(t).copied().unwrap_or(0)
+    }
+
+    /// Number of materials (at least 1).
+    pub fn material_count(&self) -> usize {
+        (self.tri_material.iter().copied().max().map(|m| m as usize + 1).unwrap_or(1)).max(self.material_names.len()).max(1)
+    }
+
+    /// Display name of material `m`.
+    pub fn material_name(&self, m: u32) -> String {
+        self.material_names.get(m as usize).filter(|n| !n.is_empty()).cloned().unwrap_or_else(|| format!("material_{m}"))
     }
 
     /// Load by file extension: `.obj`, `.gltf`, `.glb`.
@@ -239,6 +265,9 @@ impl Mesh {
     /// or more triangles on an edge, or only a corner) stay separate parts.
     pub fn parts(&self) -> Parts {
         let n = self.indices.len() / 3;
+        if !self.tri_part.is_empty() && self.tri_part.len() == n {
+            return self.parts_from(self.tri_part.clone());
+        }
         let mut parent: Vec<u32> = (0..n as u32).collect();
         fn find(p: &mut [u32], mut x: u32) -> u32 {
             while p[x as usize] != x {
@@ -284,7 +313,12 @@ impl Mesh {
             let next = id_of_root.len() as u32;
             tri_part.push(*id_of_root.entry(r).or_insert(next));
         }
-        let count = id_of_root.len();
+        self.parts_from(tri_part)
+    }
+
+    /// Parts info from a part id per triangle.
+    fn parts_from(&self, tri_part: Vec<u32>) -> Parts {
+        let count = tri_part.iter().copied().max().map(|m| m as usize + 1).unwrap_or(0);
         let mut info = vec![PartInfo { triangles: 0, min: [f32::MAX; 3], max: [f32::MIN; 3] }; count];
         let mut vertex_part = vec![0u32; self.vertices.len()];
         for (t, tri) in self.indices.chunks_exact(3).enumerate() {
@@ -361,7 +395,7 @@ impl Mesh {
                 indices.extend_from_slice(&[a, a + 1, b, b, a + 1, b + 1]);
             }
         }
-        let mut m = Mesh { name: "Torus".into(), vertices, indices, has_uvs: true };
+        let mut m = Mesh { name: "Torus".into(), vertices, indices, has_uvs: true, ..Default::default() };
         m.compute_tangents();
         m
     }
@@ -384,7 +418,7 @@ impl Mesh {
                 indices.extend_from_slice(&[base, base + 2, base + 1, base, base + 3, base + 2]);
             }
         }
-        let mut m = Mesh { name: format!("Tiles{n}x{n}"), vertices, indices, has_uvs: true };
+        let mut m = Mesh { name: format!("Tiles{n}x{n}"), vertices, indices, has_uvs: true, ..Default::default() };
         m.compute_tangents();
         m
     }
@@ -405,9 +439,30 @@ o {}", self.name)?;
         for v in &self.vertices {
             writeln!(s, "vn {} {} {}", v.normal[0], v.normal[1], v.normal[2])?;
         }
-        for t in self.indices.chunks_exact(3) {
-            let [a, b, c] = [t[0] + 1, t[1] + 1, t[2] + 1];
-            writeln!(s, "f {a}/{a}/{a} {b}/{b}/{b} {c}/{c}/{c}")?;
+        if self.tri_material.is_empty() {
+            for t in self.indices.chunks_exact(3) {
+                let [a, b, c] = [t[0] + 1, t[1] + 1, t[2] + 1];
+                writeln!(s, "f {a}/{a}/{a} {b}/{b}/{b} {c}/{c}/{c}")?;
+            }
+        } else {
+            // materials: faces grouped by `usemtl`, names in a .mtl next to the file
+            let mtl = path.with_extension("mtl");
+            let mut m = String::new();
+            for k in 0..self.material_count() as u32 {
+                let c = crate::hibake::id_color(k);
+                writeln!(m, "newmtl {}\nKd {} {} {}", self.material_name(k), c[0], c[1], c[2])?;
+            }
+            std::fs::write(&mtl, m)?;
+            writeln!(s, "mtllib {}", mtl.file_name().and_then(|n| n.to_str()).unwrap_or("mesh.mtl"))?;
+            for k in 0..self.material_count() as u32 {
+                writeln!(s, "usemtl {}", self.material_name(k))?;
+                for (ti, t) in self.indices.chunks_exact(3).enumerate() {
+                    if self.material_of(ti) == k {
+                        let [a, b, c] = [t[0] + 1, t[1] + 1, t[2] + 1];
+                        writeln!(s, "f {a}/{a}/{a} {b}/{b}/{b} {c}/{c}/{c}")?;
+                    }
+                }
+            }
         }
         std::fs::write(path, s)?;
         Ok(())
@@ -424,8 +479,11 @@ o {}", self.name)?;
 
 fn load_obj(path: &Path) -> Result<Mesh> {
     let opts = tobj::LoadOptions { single_index: true, triangulate: true, ignore_points: true, ignore_lines: true };
-    let (models, _materials) = tobj::load_obj(path, &opts)?;
+    let (models, materials) = tobj::load_obj(path, &opts)?;
     let mut mesh = Mesh { has_uvs: true, ..Default::default() };
+    if let Ok(mats) = &materials {
+        mesh.material_names = mats.iter().map(|m| m.name.clone()).collect();
+    }
     let mut had_normals = true;
     for m in &models {
         let src = &m.mesh;
@@ -442,6 +500,8 @@ fn load_obj(path: &Path) -> Result<Mesh> {
             mesh.vertices.push(Vertex { position: p, normal: n, uv, tangent: [0.0; 4] });
         }
         mesh.indices.extend(src.indices.iter().map(|i| i + base));
+        let mat = src.material_id.unwrap_or(0) as u32;
+        mesh.tri_material.extend(std::iter::repeat_n(mat, src.indices.len() / 3));
     }
     if mesh.vertices.is_empty() {
         mesh.has_uvs = false;
@@ -452,6 +512,9 @@ fn load_obj(path: &Path) -> Result<Mesh> {
 fn load_gltf(path: &Path) -> Result<Mesh> {
     let (doc, buffers, _images) = gltf::import(path)?;
     let mut mesh = Mesh { has_uvs: true, ..Default::default() };
+    mesh.material_names = doc.materials().enumerate().map(|(k, m)| m.name().map(String::from).unwrap_or_else(|| format!("material_{k}"))).collect();
+    let mut colors: Vec<[f32; 3]> = Vec::new();
+    let mut any_color = false;
     let mut had_normals = true;
     let scene = doc.default_scene().or_else(|| doc.scenes().next());
     let mut stack: Vec<(gltf::Node, Mat4)> = match scene {
@@ -471,6 +534,12 @@ fn load_gltf(path: &Path) -> Result<Mesh> {
                 let positions: Vec<[f32; 3]> = positions.collect();
                 let normals: Option<Vec<[f32; 3]>> = reader.read_normals().map(|n| n.collect());
                 let uvs: Option<Vec<[f32; 2]>> = reader.read_tex_coords(0).map(|t| t.into_f32().collect());
+                let cols: Option<Vec<[f32; 3]>> = reader.read_colors(0).map(|c| c.into_rgb_f32().collect());
+                any_color |= cols.is_some();
+                match &cols {
+                    Some(c) if c.len() == positions.len() => colors.extend_from_slice(c),
+                    _ => colors.extend(std::iter::repeat_n([1.0, 1.0, 1.0], positions.len())),
+                }
                 had_normals &= normals.is_some();
                 mesh.has_uvs &= uvs.is_some();
                 let base = mesh.vertices.len() as u32;
@@ -488,6 +557,8 @@ fn load_gltf(path: &Path) -> Result<Mesh> {
                     Some(idx) => mesh.indices.extend(idx.into_u32().map(|i| i + base)),
                     None => mesh.indices.extend(base..base + positions.len() as u32),
                 }
+                let mat = prim.material().index().map(|i| i as u32).unwrap_or(mesh.material_names.len() as u32);
+                mesh.tri_material.extend(std::iter::repeat_n(mat, (mesh.indices.len() - first_index) / 3));
                 // A negative-determinant transform flips winding.
                 if world.determinant() < 0.0 {
                     for tri in mesh.indices[first_index..].chunks_exact_mut(3) {
@@ -502,6 +573,12 @@ fn load_gltf(path: &Path) -> Result<Mesh> {
     }
     if mesh.vertices.is_empty() {
         mesh.has_uvs = false;
+    }
+    if any_color {
+        mesh.colors = colors;
+    }
+    if mesh.tri_material.iter().all(|m| *m == 0) && mesh.material_names.len() <= 1 {
+        mesh.tri_material.clear();
     }
     Ok(mesh.finish(had_normals))
 }

@@ -40,6 +40,11 @@ fn parts_arg(a: &Value, k: &str) -> Option<Vec<u32>> {
     a.get(k).and_then(Value::as_array).map(|v| v.iter().filter_map(|p| p.as_u64().map(|x| x as u32)).collect())
 }
 
+/// Width / height of an image file.
+pub(super) fn image_aspect(image: &Path) -> Res<f32> {
+    aspect(image)
+}
+
 fn aspect(image: &Path) -> Res<f32> {
     let (w, h) = image::image_dimensions(image).map_err(|e| format!("couldn't read {}: {e}", image.display()))?;
     Ok(w as f32 / h.max(1) as f32)
@@ -60,7 +65,7 @@ fn decal_size(a: &Value, image: &Path) -> Res<glam::Vec2> {
 
 impl Session {
     /// Weathering and opacity from the arguments.
-    fn decal_look(a: &Value) -> Res<DecalLook> {
+    pub(super) fn decal_look(a: &Value) -> Res<DecalLook> {
         let d = DecalLook::default();
         let grunge = match s(a, "wear_style") {
             None | Some("noise") => false,
@@ -83,7 +88,7 @@ impl Session {
     /// Target layer: `layer`, else the `Decals <overlap_order>` paint layer
     /// (created and slotted among the other `Decals N` layers so higher
     /// orders sit on top), else the top paint layer.
-    fn decal_layer(&mut self, a: &Value) -> Res<usize> {
+    pub(super) fn decal_layer(&mut self, a: &Value) -> Res<usize> {
         if let Some(r) = a.get("layer") {
             return self.find_layer(r);
         }
@@ -104,24 +109,27 @@ impl Session {
                 Some(i) => i,
                 None => ranked.iter().filter(|(_, k)| *k < order).map(|(i, _)| i + 1).max().unwrap_or(self.app.doc.layers.len()),
             };
-            let l = self.app.doc.new_paint_layer(&name);
+            // a decal layer: its decals stay editable objects
+            let mut l = self.app.doc.new_paint_layer(&name);
+            l.decals = Some(Default::default());
             self.app.doc.layers.insert(at, l);
             self.settle();
             return Ok(at);
         }
-        Ok(match self.app.doc.layers.iter().rposition(|l| l.is_paint()) {
-            Some(i) => i,
-            None => {
-                let l = self.app.doc.new_paint_layer("Decals");
-                self.app.doc.layers.push(l);
-                self.app.doc.layers.len() - 1
-            }
-        })
+        // the topmost decal layer, else a new one on top
+        if let Some(i) = self.app.doc.layers.iter().rposition(|l| l.decals.is_some()) {
+            return Ok(i);
+        }
+        let mut l = self.app.doc.new_paint_layer("Decals");
+        l.decals = Some(Default::default());
+        self.app.doc.layers.push(l);
+        self.settle();
+        Ok(self.app.doc.layers.len() - 1)
     }
 
     /// Select the decal layer and set the brush values (tint, material,
     /// emission, height, channels) the decal paints with.
-    fn decal_brush(&mut self, a: &Value, i: usize) -> Res<()> {
+    pub(super) fn decal_brush(&mut self, a: &Value, i: usize) -> Res<()> {
         let id = self.app.doc.layers[i].id;
         self.app.select(Some(id), a.get("mask").and_then(Value::as_bool).unwrap_or(false));
         // no commit here: decal records go into the same undo step as the pixels
@@ -206,7 +214,7 @@ impl Session {
 
     /// Add how many texels the smallest decal gets across, and a warning
     /// when the mesh's UVs give it too few to read.
-    fn texel_report(&self, pls: &[Placement], out: &mut Value) {
+    pub(super) fn texel_report(&self, pls: &[Placement], out: &mut Value) {
         let res = self.app.ts.res as f32;
         let min = pls.iter().filter_map(|p| p.uv_size(&self.app.mesh)).map(|s| s.min_element() * res).fold(f32::MAX, f32::min);
         if min == f32::MAX {
@@ -263,6 +271,14 @@ impl Session {
         let placement = Placement::new(center, normal, size, f(a, "rotation").unwrap_or(0.0), depth);
         let look = Self::decal_look(a)?;
         let i = self.decal_layer(a)?;
+        if self.is_decal_layer(i) && !replay {
+            // a decal layer keeps it as an editable object
+            let ids = self.add_decal_objects(a, i, &[BoxDecal { image: image.clone(), placement, look, projection: Default::default() }])?;
+            let mut out = json!({ "decal": image, "on": self.app.doc.layers[i].name, "ids": ids, "name": s(a, "name").map(String::from).unwrap_or_else(|| image.file_stem().map(|s| s.to_string_lossy().to_string()).unwrap_or_default()),
+                                  "center": center.to_array(), "normal": placement.normal.to_array(), "size": size.to_array() });
+            self.texel_report(&[placement], &mut out);
+            return Ok(out);
+        }
         let name = image.file_stem().map(|s| s.to_string_lossy().to_string()).unwrap_or_default();
         let recorded = if replay { 0 } else { self.record_decals(i, a, vec![(name.clone(), a.clone())])? };
         if !replay && !a.get("enabled").and_then(Value::as_bool).unwrap_or(true) {
@@ -270,7 +286,7 @@ impl Session {
             self.settle();
             return Ok(json!({ "decal": image, "on": self.app.doc.layers[i].name, "painted": false }));
         }
-        let painted = self.decal_brush(a, i).and_then(|_| self.app.project_box_decals(&self.rs, &[BoxDecal { image: image.clone(), placement, look }], format!("Decal {name}"), !replay));
+        let painted = self.decal_brush(a, i).and_then(|_| self.app.project_box_decals(&self.rs, &[BoxDecal { image: image.clone(), placement, look, projection: Default::default() }], format!("Decal {name}"), !replay));
         let n = match painted {
             Ok(n) => n,
             Err(e) => {
@@ -386,10 +402,19 @@ impl Session {
                     look.fade = (look.fade + rng.range(-jitter, jitter)).clamp(0.0, 1.0);
                 }
                 look.seed = base.seed + rng.range(0.0, 100.0);
-                BoxDecal { image: images[d.image].clone(), placement: d.placement, look }
+                BoxDecal { image: images[d.image].clone(), placement: d.placement, look, projection: Default::default() }
             })
             .collect();
         let i = self.decal_layer(a)?;
+        if self.is_decal_layer(i) {
+            // decal layers keep every scattered decal as an editable object
+            let ids = self.add_decal_objects(a, i, &decals)?;
+            let list: Vec<Value> = decals.iter().map(|d| json!({ "image": d.image, "center": d.placement.center.to_array(), "normal": d.placement.normal.to_array(), "size": d.placement.size.to_array(), "wear": d.look.tear, "fade": d.look.fade })).collect();
+            let mut out = json!({ "placed": ids.len(), "ids": ids, "requested": p.count, "on": self.app.doc.layers[i].name, "decals": list });
+            let pls: Vec<Placement> = decals.iter().map(|d| d.placement).collect();
+            self.texel_report(&pls, &mut out);
+            return Ok(out);
+        }
         // each placed decal is recorded as a replayable anchored project_decal
         let records: Vec<(String, Value)> = decals.iter().map(|d| (d.image.file_stem().map(|s| s.to_string_lossy().to_string()).unwrap_or_default(), Self::scatter_record(a, d))).collect();
         let recorded = self.record_decals(i, a, records)?;
@@ -509,15 +534,16 @@ mod tests {
         let after = glow(&mut s);
         assert!(after > before + 300, "posters glow ({before} -> {after})");
         let li = s.app.doc.layers.iter().position(|l| l.name == "Decals 0").unwrap();
-        assert_eq!(s.app.doc.layers[li].variant.decals.len(), 5, "scattered decals are recorded for variants");
-        // one undo removes the whole scatter and its records (the next one would remove the layer)
+        // `Decals n` layers are decal layers now: the scatter is 5 editable objects
+        assert_eq!(s.app.doc.layers[li].decals.as_ref().map(|d| d.objects.len()).unwrap_or(0), 5, "scattered decals are decal objects");
+        // one undo removes the whole scatter (the next one would remove the layer)
         s.undo(false).unwrap();
-        assert!(s.app.doc.layers[li].variant.decals.is_empty(), "the records go with the pixels");
+        assert_eq!(s.app.doc.layers[li].decals.as_ref().map(|d| d.objects.len()).unwrap_or(0), 0, "one undo step");
         let undone = glow(&mut s);
         assert!(undone.abs_diff(before) < 40, "one undo, all five gone ({before} vs {undone})");
         s.undo(true).unwrap();
         assert!(glow(&mut s).abs_diff(after) < 40, "redo brings them back");
-        assert_eq!(s.app.doc.layers[li].variant.decals.len(), 5);
+        assert_eq!(s.app.doc.layers[li].decals.as_ref().map(|d| d.objects.len()).unwrap_or(0), 5);
     }
 
     #[test]
@@ -569,9 +595,11 @@ mod tests {
         s.project_decal(&json!({ "image": graffiti, "position": [4.2, 1.6, 3.0], "normal": [1, 0, 0], "size": 1.5, "rotation": 7, "overlap_order": 0, "emissive_strength": 3.0, "name": "lying" }))
             .unwrap();
         let li = s.app.doc.layers.iter().position(|l| l.name == "Decals 0").unwrap();
-        let recs = &s.app.doc.layers[li].variant.decals;
-        assert_eq!(recs.len(), 5, "4 scattered + 1 anchored recorded");
-        assert_eq!(recs.iter().filter(|d| d.group == "posters").count(), 4);
+        // decal objects (the layer is a decal layer): variants toggle and swap them,
+        // and the layer is regenerated from them
+        let objs = &s.app.doc.layers[li].decals.as_ref().unwrap().objects;
+        assert_eq!(objs.len(), 5, "4 scattered + 1 anchored objects");
+        assert_eq!(objs.iter().filter(|d| d.group == "posters").count(), 4);
         let out = std::env::temp_dir().join(format!("pigment-decal-variants-{}", std::process::id()));
         std::fs::remove_dir_all(&out).ok();
         let ex = s.export_variants(&json!({ "dir": out, "name": "A", "variants": [
@@ -581,7 +609,6 @@ mod tests {
         ] }))
         .unwrap();
         assert_eq!(ex["variants"][0]["decals_replayed"], 0, "{ex}");
-        assert_eq!(ex["variants"][2]["decals_replayed"], 5, "the swap replays the whole layer: {ex}");
         let lit = |v: &str| image::open(out.join(format!("A__{v}/A_Emissive.png"))).unwrap().to_luma8().pixels().filter(|p| p.0[0] > 30).count();
         let (authored, no_posters, replayed) = (lit("authored"), lit("no_posters"), lit("replayed"));
         assert!(authored > 0 && no_posters < authored * 9 / 10, "posters off: {no_posters} of {authored}");

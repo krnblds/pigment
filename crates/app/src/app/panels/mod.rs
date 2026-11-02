@@ -8,11 +8,17 @@ use super::dock::PanelId;
 use super::*;
 use std::collections::BTreeMap;
 
+pub mod brush;
+pub mod decal_objects;
 pub mod decals;
+pub mod filters;
+pub mod hibake;
 pub mod foliage;
 pub mod layers;
 pub mod library;
 pub mod misc;
+pub mod templates;
+pub mod texsets;
 
 /// A dockable panel.
 pub trait Panel {

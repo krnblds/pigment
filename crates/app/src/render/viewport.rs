@@ -458,6 +458,22 @@ impl Viewport {
         self.texture_id
     }
 
+    /// `render` for several texture sets at once (the first is the active one).
+    #[allow(clippy::too_many_arguments)]
+    pub fn render_sets(&mut self, rs: &egui_wgpu::RenderState, size: [u32; 2], camera: &OrbitCamera, settings: &ViewSettings, sets: &[(Option<&MeshGpu>, &TexSet)], env: &Environment) -> Option<egui::TextureId> {
+        let size = [size[0].clamp(1, 8192), size[1].clamp(1, 8192)];
+        if self.ensure_targets(&rs.device, size) || self.texture_id.is_none() {
+            let view = &self.targets.as_ref()?.display;
+            let mut renderer = rs.renderer.write();
+            match self.texture_id {
+                Some(id) => renderer.update_egui_texture_from_wgpu_texture(&rs.device, view, wgpu::FilterMode::Linear, id),
+                None => self.texture_id = Some(renderer.register_native_texture(&rs.device, view, wgpu::FilterMode::Linear)),
+            }
+        }
+        self.draw_sets(&rs.device, &rs.queue, camera, settings, sets, env);
+        self.texture_id
+    }
+
     /// Render a frame into the current targets (call `ensure_targets` first).
     #[allow(clippy::too_many_arguments)]
     pub fn draw(
@@ -470,6 +486,16 @@ impl Viewport {
         env: &Environment,
         ts: &TexSet,
     ) {
+        self.draw_sets(device, queue, camera, settings, &[(mesh, ts)], env);
+    }
+
+    /// Render several texture sets (each its own mesh part and material
+    /// textures) into one frame; the first set lights the background pass.
+    #[allow(clippy::too_many_arguments)]
+    pub fn draw_sets(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, camera: &OrbitCamera, settings: &ViewSettings, sets: &[(Option<&MeshGpu>, &TexSet)], env: &Environment) {
+        let Some(&(_, ts)) = sets.first() else { return };
+        // the lightbox stage (floor shadow, reflection) follows the active set's mesh
+        let mesh = sets.first().and_then(|s| s.0);
         let Some(size) = self.targets.as_ref().map(|t| t.size) else { return };
 
         let aspect = size[0] as f32 / size[1] as f32;
@@ -528,22 +554,28 @@ impl Viewport {
                 wgpu::BindingResource::Sampler(&env.sampler),
             ],
         );
-        let mat_bg = gpu::bind_group(
-            device,
-            "viewport material",
-            &self.mat_bgl,
-            &[
-                wgpu::BindingResource::TextureView(&ts.material[0].view),
-                wgpu::BindingResource::TextureView(&ts.material[1].view),
-                wgpu::BindingResource::TextureView(&ts.material[2].view),
-                wgpu::BindingResource::TextureView(&ts.material[3].view),
-                wgpu::BindingResource::TextureView(&ts.bakes.view),
-                wgpu::BindingResource::TextureView(&ts.wnormal.view),
-                wgpu::BindingResource::TextureView(&ts.emissive.view),
-                wgpu::BindingResource::Sampler(&self.sampler),
-                wgpu::BindingResource::TextureView(&ts.coat.view),
-            ],
-        );
+        let mat_bgs: Vec<wgpu::BindGroup> = sets
+            .iter()
+            .map(|(_, ts)| {
+                gpu::bind_group(
+                    device,
+                    "viewport material",
+                    &self.mat_bgl,
+                    &[
+                        wgpu::BindingResource::TextureView(&ts.material[0].view),
+                        wgpu::BindingResource::TextureView(&ts.material[1].view),
+                        wgpu::BindingResource::TextureView(&ts.material[2].view),
+                        wgpu::BindingResource::TextureView(&ts.material[3].view),
+                        wgpu::BindingResource::TextureView(&ts.bakes.view),
+                        wgpu::BindingResource::TextureView(&ts.wnormal.view),
+                        wgpu::BindingResource::TextureView(&ts.emissive.view),
+                        wgpu::BindingResource::Sampler(&self.sampler),
+                        wgpu::BindingResource::TextureView(&ts.coat.view),
+                    ],
+                )
+            })
+            .collect();
+        let mat_bg = &mat_bgs[0];
         let Some(t) = self.targets.as_ref() else { return };
         let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("viewport") });
         let floor_bg = match (&stage, mesh) {
@@ -591,7 +623,7 @@ impl Viewport {
                     pass.set_pipeline(&self.mirror_pipe);
                     pass.set_bind_group(0, &self.stage.mirror_bg, &[]);
                     pass.set_bind_group(1, &env_bg, &[]);
-                    pass.set_bind_group(2, &mat_bg, &[]);
+                    pass.set_bind_group(2, mat_bg, &[]);
                     pass.set_vertex_buffer(0, m.vertices.slice(..));
                     pass.set_index_buffer(m.indices.slice(..), wgpu::IndexFormat::Uint32);
                     pass.draw_indexed(0..m.index_count, 0, 0..1);
@@ -620,30 +652,36 @@ impl Viewport {
             });
             pass.set_bind_group(0, &self.g_bg, &[]);
             pass.set_bind_group(1, &env_bg, &[]);
-            pass.set_bind_group(2, &mat_bg, &[]);
+            pass.set_bind_group(2, mat_bg, &[]);
             pass.set_pipeline(&self.bg_pipe);
             pass.draw(0..3, 0..1);
             if let Some(fb) = &floor_bg {
                 self.stage.draw_floor(&mut pass, fb);
-                pass.set_bind_group(2, &mat_bg, &[]);
+                pass.set_bind_group(2, mat_bg, &[]);
             }
-            if let Some(m) = mesh {
-                pass.set_pipeline(&self.mesh_pipe);
-                pass.set_vertex_buffer(0, m.vertices.slice(..));
-                pass.set_index_buffer(m.indices.slice(..), wgpu::IndexFormat::Uint32);
-                pass.draw_indexed(0..m.index_count, 0, 0..1);
+            for ((mesh, _), bg) in sets.iter().zip(&mat_bgs) {
+                if let Some(m) = mesh {
+                    pass.set_bind_group(2, bg, &[]);
+                    pass.set_pipeline(&self.mesh_pipe);
+                    pass.set_vertex_buffer(0, m.vertices.slice(..));
+                    pass.set_index_buffer(m.indices.slice(..), wgpu::IndexFormat::Uint32);
+                    pass.draw_indexed(0..m.index_count, 0, 0..1);
+                }
             }
             // foliage cards (alpha-tested, depth-written)
             if self.foliage.card_count() > 0 {
+                pass.set_bind_group(2, mat_bg, &[]);
                 self.foliage.draw(&mut pass);
-                pass.set_bind_group(2, &mat_bg, &[]);
             }
-            if let Some(m) = mesh {
-                // then glass and cut-outs over it (depth-tested, not written)
-                pass.set_pipeline(&self.glass_pipe);
-                pass.set_vertex_buffer(0, m.vertices.slice(..));
-                pass.set_index_buffer(m.indices.slice(..), wgpu::IndexFormat::Uint32);
-                pass.draw_indexed(0..m.index_count, 0, 0..1);
+            for ((mesh, _), bg) in sets.iter().zip(&mat_bgs) {
+                if let Some(m) = mesh {
+                    // then glass and cut-outs over it (depth-tested, not written)
+                    pass.set_bind_group(2, bg, &[]);
+                    pass.set_pipeline(&self.glass_pipe);
+                    pass.set_vertex_buffer(0, m.vertices.slice(..));
+                    pass.set_index_buffer(m.indices.slice(..), wgpu::IndexFormat::Uint32);
+                    pass.draw_indexed(0..m.index_count, 0, 0..1);
+                }
             }
         }
         {
@@ -659,7 +697,7 @@ impl Viewport {
                 occlusion_query_set: None,
                 multiview_mask: None,
             });
-            if let Some(m) = mesh {
+            for m in sets.iter().filter_map(|s| s.0) {
                 pass.set_pipeline(&self.depth_pipe);
                 pass.set_bind_group(0, &self.g_bg, &[]);
                 pass.set_vertex_buffer(0, m.vertices.slice(..));

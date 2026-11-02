@@ -215,6 +215,11 @@ impl Compression {
     }
 }
 
+/// PNG encoder settings for a compression level.
+pub fn png_settings(c: Compression) -> (image::codecs::png::CompressionType, image::codecs::png::FilterType) {
+    c.image_settings()
+}
+
 #[derive(Clone, Copy, Debug, Default)]
 pub struct ExportOptions {
     pub compression: Compression,

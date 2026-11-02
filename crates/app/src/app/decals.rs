@@ -38,6 +38,8 @@ pub struct BoxDecal {
     pub image: PathBuf,
     pub placement: Placement,
     pub look: DecalLook,
+    /// Box (planar), triplanar or wrap (conform) projection.
+    pub projection: pigment_core::decal_layer::DecalProjection,
 }
 
 impl BoxDecal {
@@ -50,7 +52,7 @@ impl BoxDecal {
             right: v(p.right, p.size.x * 0.5),
             up: v(p.up, p.size.y * 0.5),
             normal: v(p.normal, l.opacity),
-            params: [l.luminance_alpha as u32 as f32, l.min_facing, 0.0, 0.0],
+            params: [l.luminance_alpha as u32 as f32, l.min_facing, self.projection.gpu_id() as f32, 0.0],
             wear: [l.tear.clamp(0.0, 1.0), l.fade.clamp(0.0, 1.0), l.wear_scale.max(0.01), l.seed],
             wear2: [l.grunge as u32 as f32, l.paper_rim.max(0.0), 0.0, 0.0],
         }
@@ -81,17 +83,34 @@ impl PigmentApp {
         brush.enabled3[1] = 1.0;
         let mut snaps = Vec::new();
         let mut landed = 0;
+        use pigment_core::decal_layer::DecalProjection;
         for d in decals {
             let mut tiles = TileSet::default();
-            if d.placement.mark_tiles(self.wrap_mesh.as_ref().unwrap_or(&self.mesh), &mut tiles) == 0 {
+            // wrap / triplanar reach past the box footprint: mark a bigger box
+            let footprint = match d.projection {
+                DecalProjection::Box => d.placement,
+                _ => {
+                    let mut p = d.placement;
+                    p.size *= 3.0;
+                    p.depth = p.depth.max(p.size.max_element() * 0.5);
+                    p
+                }
+            };
+            if footprint.mark_tiles(self.wrap_mesh.as_ref().unwrap_or(&self.mesh), &mut tiles) == 0 {
                 continue;
             }
             let Some(texels) = tiles.texel_bounds(self.ts.res) else { continue };
+            let wrap = (d.projection == DecalProjection::Wrap).then(|| {
+                use eframe::egui_wgpu::wgpu::util::DeviceExt;
+                let reach = d.placement.size.max_element() * 1.5;
+                let coords = pigment_core::decal_layer::unfold(&self.mesh, &d.placement, reach);
+                rs.device.create_buffer_init(&eframe::egui_wgpu::wgpu::util::BufferInitDescriptor { label: Some("wrap coords"), contents: bytemuck::cast_slice(&coords), usage: eframe::egui_wgpu::wgpu::BufferUsages::VERTEX })
+            });
             if !self.painter.begin(&rs.device, &rs.queue, &self.ts, target) {
                 return Err("nothing to paint on".into());
             }
             let (mg, tex) = (self.mesh_gpu.as_ref().unwrap(), &self.decals[&d.image]);
-            self.painter.box_decal(&rs.device, &rs.queue, &self.ts, mg, tex, &d.gpu(), &brush, texels);
+            self.painter.box_decal(&rs.device, &rs.queue, &self.ts, mg, tex, &d.gpu(), &brush, texels, wrap.as_ref());
             if let Some(snap) = self.painter.end(&rs.device, &rs.queue, &tiles) {
                 snaps.push(snap);
             }
