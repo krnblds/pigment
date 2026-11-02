@@ -1,0 +1,7 @@
+{
+	"id": "emp", "name": "HUSH EMP CHARGE", "slot": 6, "kind": "thrown", "lethal": false,
+	"damage": 0, "stun": 1.0, "radius": 7.5, "fuse": 1.4, "throw_speed": 15.0, "rate": 1.0,
+	"mag": 1, "reserve": 3, "reload": 0.6, "hold": "throw", "stall_cars": 5.0,
+	"sounds": {"fire": "emp_throw", "arm": "emp_arm", "blast": "emp_blast"},
+	"note": "Stuns every sleeper in the radius and stalls cars (the courier's getaway) for a few seconds."
+}
