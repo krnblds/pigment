@@ -969,7 +969,9 @@ impl Widget for DragField<'_> {
                 let (a, b) = (z.min(t), z.max(t));
                 let fill = Rect::from_min_max(pos2(rect.left() + rect.width() * a, rect.top()), pos2(rect.left() + rect.width() * b, rect.bottom()));
                 ui.painter().rect_filled(fill, CornerRadius::ZERO, c);
-                ui.painter().vline(rect.left() + rect.width() * z, rect.y_range().shrink(space::XS), Stroke::new(1.0, p.border_strong));
+                let zx = rect.left() + rect.width() * z;
+                ui.painter().vline(zx, rect.top()..=rect.top() + space::XS, Stroke::new(1.0, p.text_muted));
+                ui.painter().vline(zx, rect.bottom() - space::XS..=rect.bottom(), Stroke::new(1.0, p.text_muted));
             } else if t > 0.0 {
                 let fill = Rect::from_min_max(rect.min, pos2(rect.left() + rect.width() * t, rect.bottom()));
                 ui.painter().rect_filled(fill, CornerRadius { nw: radius::MD, sw: radius::MD, ne: if t > 0.99 { radius::MD } else { 0 }, se: if t > 0.99 { radius::MD } else { 0 } }, c);
