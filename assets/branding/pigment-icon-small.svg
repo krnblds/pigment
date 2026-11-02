@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <!-- Pigment small icon (16-32 px): the same drop with the detail reduced
+       to three readable shapes: paint body, one metal chip, one highlight.
+       Coordinates sit on the pixel grid at 16 and 32 px. -->
+  <defs>
+    <path id="drop" d="M16 1.5 C19 6 27 12.5 27 20 A11 11 0 0 1 5 20 C5 12.5 13 6 16 1.5 Z"/>
+    <clipPath id="clip"><use href="#drop"/></clipPath>
+    <linearGradient id="paint" x1="0.2" y1="0.1" x2="0.8" y2="1">
+      <stop offset="0" stop-color="#FFA058"/>
+      <stop offset="0.55" stop-color="#F08A3C"/>
+      <stop offset="1" stop-color="#C9661F"/>
+    </linearGradient>
+  </defs>
+  <g clip-path="url(#clip)">
+    <use href="#drop" fill="url(#paint)"/>
+    <!-- worn edge, bare metal -->
+    <path fill="#D9D4CD" d="M28 15 L28 33 L10 33 C16 30 19 29 21 26 C23 23 24 20 28 15 Z"/>
+  </g>
+  <!-- clearcoat highlight -->
+  <path fill="#FFFFFF" fill-opacity="0.9" d="M10.5 15 C11.5 12 13 9.5 14.5 7.5 C14 11 13.5 14 13 17 C12.5 19 10 18.5 10.5 15 Z"/>
+  <use href="#drop" fill="none" stroke="#7A3810" stroke-width="1.25"/>
+</svg>

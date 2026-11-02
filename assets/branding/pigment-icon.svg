@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- Pigment master icon: a bead of paint read as a PBR material.
+       Accent paint body (#F08A3C), worn through to bare metal along the
+       lower-right rim, flecked with metallic flake, under a glossy clearcoat.
+       Small sizes (16-32 px) use pigment-icon-small.svg instead. -->
+  <defs>
+    <path id="drop" d="M128 14 C150 50 214 104 214 160 A86 86 0 0 1 42 160 C42 104 106 50 128 14 Z"/>
+    <clipPath id="clip"><use href="#drop"/></clipPath>
+    <!-- paint body: lit from the top left -->
+    <radialGradient id="paint" cx="0.36" cy="0.42" r="0.78">
+      <stop offset="0" stop-color="#FFB372"/>
+      <stop offset="0.32" stop-color="#FFA058"/>
+      <stop offset="0.62" stop-color="#F08A3C"/>
+      <stop offset="0.86" stop-color="#D6742A"/>
+      <stop offset="1" stop-color="#A9541A"/>
+    </radialGradient>
+    <!-- bare metal showing through the worn edge -->
+    <linearGradient id="metal" x1="0.2" y1="0" x2="0.9" y2="1">
+      <stop offset="0" stop-color="#F4F1EC"/>
+      <stop offset="0.35" stop-color="#B9B4AD"/>
+      <stop offset="0.6" stop-color="#EDE8E1"/>
+      <stop offset="1" stop-color="#6E6862"/>
+    </linearGradient>
+    <!-- clearcoat: a soft window reflection -->
+    <linearGradient id="coat" x1="0" y1="0" x2="0.6" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.95"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <radialGradient id="rim" cx="0.5" cy="0.62" r="0.55">
+      <stop offset="0.78" stop-color="#5A2A0A" stop-opacity="0"/>
+      <stop offset="1" stop-color="#5A2A0A" stop-opacity="0.45"/>
+    </radialGradient>
+  </defs>
+
+  <!-- soft contact shadow so it sits on light taskbars -->
+  <ellipse cx="128" cy="240" rx="62" ry="8" fill="#000000" fill-opacity="0.18"/>
+
+  <g clip-path="url(#clip)">
+    <use href="#drop" fill="url(#paint)"/>
+
+    <!-- edge wear: paint chipped back to metal along the lower right -->
+    <path fill="url(#metal)" d="M226 120 L226 262 L60 262
+      C88 246 112 244 132 234 C146 226 150 232 164 220 C176 210 172 202 184 192
+      C196 182 192 170 200 158 C206 148 204 138 212 128 Z"/>
+    <!-- the paint's chipped lip, a darker line where it lifts off the metal -->
+    <path fill="none" stroke="#8A4413" stroke-width="3" stroke-linejoin="round" d="M60 262
+      C88 246 112 244 132 234 C146 226 150 232 164 220 C176 210 172 202 184 192
+      C196 182 192 170 200 158 C206 148 204 138 212 128 L226 120"/>
+
+    <!-- metallic flake caught in the paint -->
+    <g fill="#FFE2C2">
+      <circle cx="88" cy="176" r="2.2" opacity="0.9"/>
+      <circle cx="104" cy="196" r="1.6" opacity="0.8"/>
+      <circle cx="122" cy="168" r="2.4" opacity="0.85"/>
+      <circle cx="140" cy="190" r="1.8" opacity="0.7"/>
+      <circle cx="74" cy="150" r="1.5" opacity="0.7"/>
+      <circle cx="152" cy="150" r="2" opacity="0.75"/>
+      <circle cx="166" cy="174" r="1.4" opacity="0.6"/>
+      <circle cx="96" cy="128" r="1.4" opacity="0.6"/>
+      <circle cx="132" cy="122" r="1.7" opacity="0.65"/>
+      <circle cx="116" cy="214" r="1.5" opacity="0.6"/>
+      <circle cx="170" cy="140" r="1.3" opacity="0.55"/>
+      <circle cx="62" cy="186" r="1.6" opacity="0.6"/>
+    </g>
+
+    <!-- body shading towards the rim -->
+    <use href="#drop" fill="url(#rim)"/>
+  </g>
+
+  <!-- clearcoat highlight and a sharp specular glint -->
+  <path fill="url(#coat)" d="M84 118 C96 90 112 66 124 50 C118 76 110 102 108 128 C106 150 94 164 84 158 C74 152 76 136 84 118 Z"/>
+  <ellipse cx="92" cy="174" rx="7" ry="9" fill="#FFFFFF" fill-opacity="0.85" transform="rotate(-20 92 174)"/>
+
+  <!-- silhouette edge: keeps the shape on light and dark backgrounds -->
+  <use href="#drop" fill="none" stroke="#7A3810" stroke-width="4" stroke-opacity="0.9"/>
+</svg>
