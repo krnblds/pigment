@@ -25,6 +25,8 @@ Pigment's triplanar `tile_size`):
     walls        subway_tiles 0.9 m, plaster 2 m
     surfaces     wood_grain 1 m, leather 0.3 m, linen 0.1 m, denim 0.1 m, carbon_fibre 0.05 m,
                  hammered_metal 0.5 m
+    nature       bark_fissured 0.6 m (triplanar, image up = world up),
+                 end_grain 0.7 m (one stump cut, not a repeat: planar UV; make it at 2048)
 
     python tools/make_tiles.py [--size 512] [set ...]   (committed at 512; 1024+ for close-ups)  ->  assets/tiles/<set>/*.png
 """
@@ -980,6 +982,249 @@ def hammered_metal(n, rng):
     rough = 0.28 + ridge * -0.08 + noise(n, rng, 30, n // 2, 0.3) * 0.02
     h = 0.6 + dimple * 0.4 + ridge * 0.03
     return base, rough, h, 0.003
+
+
+@tile_set(0.6)
+def bark_fissured(n, rng):
+    """Fissured bark (oak, old pine): deep fissures running up the image (v)
+    between rounded corky plates, the plates broken by cross-checks, their
+    tops weathered grey, a few lichen patches. Triplanar on trunks and roots
+    (image up = world up)."""
+    # fissures follow the zero lines of a field ~5x longer vertically than across
+    f = aniso_noise(n, rng, 2, 30, 1.6, 5.0).T + 0.3 * aniso_noise(n, rng, 6, 60, 1.0, 3.0).T
+    fiss = 1 - smooth(np.abs(f), 0.05, 0.45)
+    # here and there a horizontal check splits a plate into blocks
+    cross = (1 - smooth(np.abs(aniso_noise(n, rng, 4, 40, 1.2, 4.0)), 0.0, 0.08)) * smooth(noise(n, rng, 2, 12, 1.0), 0.0, 0.8)
+    plate = smooth(np.abs(f), 0.1, 1.2) ** 0.8 * (1 - 0.7 * cross)  # rounded plate tops
+    fibre = aniso_noise(n, rng, 20, n // 2, 0.6, 5.0).T
+    h = 0.1 + 0.75 * plate + fibre * 0.025 + noise(n, rng, 6, 40, 1.0) * 0.03
+    tone = 1 + noise(n, rng, 2, 16, 1.2) * 0.12
+    base = mix(srgb(0.09, 0.055, 0.035), srgb(0.27, 0.2, 0.15), smooth(h, 0.15, 0.7)) * tone[..., None]
+    weather = smooth(plate, 0.55, 1.0) * smooth(noise(n, rng, 2, 10, 1.2), -0.8, 1.0)
+    base = mix(base, srgb(0.45, 0.43, 0.39), weather * 0.5)
+    lichen = smooth(noise(n, rng, 10, 60, 1.0), 2.0, 2.6) * smooth(plate, 0.5, 0.9)
+    base = mix(base, srgb(0.56, 0.6, 0.46), lichen * 0.75)
+    rough = 0.8 + fiss * 0.12 - lichen * 0.05
+    return base, rough, h, 0.015
+
+
+@tile_set(0.7)
+def end_grain(n, rng):
+    """A sawn stump / log end 0.7 m across, pith near the centre: growth rings
+    (wide when young, then narrowing, good and bad years, wobbling), dark
+    heartwood inside pale sapwood, radial drying checks from the rim, saw
+    marks and grey weathering. Not a repeating tile: map it once over the cut
+    (planar UV, tiling 1); generate it at 2048 so the rings don't alias."""
+    y, x = coords(n)
+    S = 0.35
+    px, py = (x - 0.5) * 2 * S, (y - 0.5) * 2 * S                 # metres from the image centre
+    dx, dy = px - 0.018, py + 0.012                                # the pith sits a little off centre
+    r, a = np.hypot(dx, dy), np.arctan2(dy, dx)
+    wob = sum(rng.normal(0, 0.012 / k) * np.cos(k * a + rng.uniform(0, 2 * np.pi)) for k in range(2, 7))
+    rr = r * (1 + wob) + noise(n, rng, 3, 20, 1.2) * 0.0015
+    years = 90
+    w = (0.0055 * np.exp(-np.arange(years) / 40) + 0.0018) * np.exp(rng.normal(0, 0.3, years))
+    edges = np.concatenate([[0.0], np.cumsum(w / w.sum() * S)])
+    t = np.interp(rr, edges, np.arange(years + 1)) % 1.0
+    late = smooth(t, 0.62, 0.9) * (1 - smooth(t, 0.96, 1.0))      # dark latewood closes each year
+    heart = 1 - smooth(rr, S * 0.55, S * 0.75)
+    light = mix(srgb(0.80, 0.64, 0.44), srgb(0.62, 0.42, 0.26), heart)
+    dark = mix(srgb(0.58, 0.42, 0.27), srgb(0.40, 0.25, 0.14), heart)
+    base = mix(light, dark, late * 0.85)
+    # drying checks: wedges from the rim inwards, slightly curved
+    checks = np.zeros((n, n))
+    for _ in range(7):
+        th, length, width = rng.uniform(-np.pi, np.pi), rng.uniform(0.35, 0.9) * S, rng.uniform(0.0015, 0.004)
+        bend = rng.normal(0, 0.15)
+        dist = np.abs(np.angle(np.exp(1j * (a - th - bend * r / S)))) * r
+        wide = width * smooth(r, S - length, S)
+        checks = np.maximum(checks, (1 - smooth(dist, wide * 0.3, wide + 1e-6)) * (wide > 1e-5))
+    pith = 1 - smooth(r, 0.002, 0.006)
+    saw = 0.5 + 0.5 * np.sin((px * np.cos(0.4) + py * np.sin(0.4) + 0.02 * np.sin(py * 40)) * 2 * np.pi / 0.006)
+    grey = smooth(noise(n, rng, 3, 24, 1.4), 0.3, 1.5) * 0.25 + smooth(r, S * 0.75, S) * 0.25
+    base = mix(base, srgb(0.55, 0.53, 0.5), grey)
+    base = mix(base, srgb(0.08, 0.05, 0.03), checks)
+    base = mix(base, srgb(0.25, 0.15, 0.08), pith)
+    h = 0.6 - late * 0.03 + saw * 0.01 - checks * 0.5 - pith * 0.1 + noise(n, rng, 20, 200, 0.8) * 0.01
+    rough = 0.75 + late * 0.05 + checks * 0.2 + grey * 0.1
+    return base, rough, h, 0.006
+
+
+def lap(h):
+    """Periodic 5-point Laplacian (per pixel^2): < 0 on bumps, > 0 in hollows."""
+    return np.roll(h, 1, 0) + np.roll(h, -1, 0) + np.roll(h, 1, 1) + np.roll(h, -1, 1) - 4 * h
+
+
+def gblur(x, sigma):
+    """Periodic Gaussian blur (sigma in px) through the FFT."""
+    n = x.shape[0]
+    f = np.fft.fftfreq(n)
+    fy, fx = np.meshgrid(f, f, indexing="ij")
+    g = np.exp(-2 * (np.pi * sigma) ** 2 * (fx * fx + fy * fy))
+    if x.ndim == 3:
+        return np.stack([np.real(np.fft.ifft2(np.fft.fft2(x[..., c]) * g)) for c in range(x.shape[2])], -1)
+    return np.real(np.fft.ifft2(np.fft.fft2(x) * g))
+
+
+# granite minerals: share, weathering rate (relative), sRGB colour, roughness
+GRANITE = [
+    ("quartz", 0.30, 0.12, (0.60, 0.60, 0.58), 0.42),
+    ("k-feldspar", 0.35, 1.00, (0.74, 0.58, 0.50), 0.70),
+    ("plagioclase", 0.23, 0.85, (0.83, 0.81, 0.75), 0.74),
+    ("biotite", 0.12, 2.40, (0.07, 0.07, 0.07), 0.50),
+]
+
+
+def granite(n, size_m=0.4, years=1.0):
+    """Weathered granite by simulation, not by look.
+
+    The rock is a mosaic of crystals: big rounded k-feldspar phenocrysts
+    (~14 mm) in a groundmass of small grains (~4.5 mm), boundaries warped. Each
+    crystal's mineral sets how fast it weathers (quartz barely, feldspars
+    ~8x faster, biotite mica fastest); grain boundaries are weaker still
+    (granular disintegration). The surface then erodes step by step:
+
+        dh/dt = -rate(mineral) * exposure(curvature) + D * lap(h)
+
+    exposure > 1 on convex spots (more surface open to water and frost),
+    < 1 in hollows; the diffusion term rounds every edge. Quartz ends up
+    standing proud, mica leaves pits, feldspar sits between. Returns the
+    height (0..1), the mineral index per pixel, the crystal boundary mask and
+    the per-crystal random value, all seamless.
+    """
+    rng = np.random.default_rng(1234)                              # the same rock for every set built on it
+    # groundmass: small grains of every mineral (~4.5 mm)
+    gs = int(round(size_m / 0.0045))
+    f1s, f2s, ids_s = grid_voronoi(n, gs, rng, 1.0)
+    share = np.array([0.38, 0.17, 0.30, 0.15])                     # quartz, k-feldspar, plagioclase, biotite
+    small_min = rng.choice(len(GRANITE), size=gs * gs, p=share / share.sum())
+    small_var = rng.random(gs * gs)
+    # phenocrysts: big rounded k-feldspar crystals (~14 mm) set in it
+    gb = int(round(size_m / 0.014))
+    f1b, _, ids_b = grid_voronoi(n, gb, rng, 0.9)
+    has_ph = rng.random(gb * gb) < 0.35
+    rad = 0.25 + 0.15 * rng.random(gb * gb)                        # crystal radius in cell units
+    rb = f1b * gb
+    in_ph = has_ph[ids_b] & (rb < rad[ids_b])
+    mineral = np.where(in_ph, 1, small_min[ids_s])
+    var = np.where(in_ph, rng.random(gb * gb)[ids_b], small_var[ids_s])
+    edge = np.where(in_ph, 0.0, 1 - smooth((f2s - f1s) * gs, 0.0, 0.14))
+    edge = np.maximum(edge, has_ph[ids_b] * (1 - smooth(np.abs(rb - rad[ids_b]), 0.0, 0.03)))
+    # crystals don't grow as polygons: warp the whole mosaic a little
+    wy, wx = (noise(n, rng, 8, 40, 1.0) * 2.5 * n / 1024 for _ in range(2))
+    mineral, var, edge = warp(mineral, wy, wx), warp(var, wy, wx), warp(edge, wy, wx)
+    rate = np.array([m[2] for m in GRANITE])[mineral] * (0.8 + 0.4 * var)
+    rate = rate * (1 + 1.6 * edge)                                  # grain boundaries weather first
+    rate = rate * np.exp(0.35 * noise(n, rng, 1, 6, 1.4))          # slower / faster patches of rock
+    h = noise(n, rng, 20, n // 4, 0.5) * 0.01
+    steps = int(180 * years)
+    for _ in range(steps):
+        L = lap(h)
+        exposure = np.clip(1 - 0.8 * np.tanh(L / (L.std() + 1e-9)), 0.25, 1.8)
+        h = h - 0.01 * rate * exposure + 0.035 * L
+    lo, hi = np.percentile(h, [1.0, 99.5])                          # a few deep pits must not flatten the rest
+    h = np.clip((h - lo) / (hi - lo + 1e-9), 0, 1)
+    return h, mineral, edge, var
+
+
+def granite_maps(n, h, mineral, edge, var):
+    """Colour, roughness from the simulated surface: mineral colours, a grey
+    weathering patina on what stands out, iron stains bled from the mica,
+    grime settled in the pits."""
+    cols = np.array([srgb(*m[3]) for m in GRANITE])
+    base = cols[mineral] * (0.88 + 0.24 * var)[..., None]
+    cavity = np.clip(gblur(h, 3) - h, 0, None)
+    cavity = cavity / (cavity.max() + 1e-9)
+    patina = 0.35 + 0.35 * smooth(h, 0.4, 0.9)
+    base = mix(base, srgb(0.56, 0.55, 0.51), patina)
+    mica = (mineral == 3).astype(float)
+    halo = np.clip(gblur(mica, 2.5) - mica, 0, 1)                   # iron leached out round each flake
+    base = mix(base, srgb(0.55, 0.36, 0.2), np.clip(halo * 1.2, 0, 0.3))
+    base = mix(base, srgb(0.13, 0.11, 0.09), smooth(cavity, 0.05, 0.6) * 0.6 + edge * 0.12)
+    rough = np.array([m[4] for m in GRANITE])[mineral]
+    rough = mix(rough, 0.86, patina) + cavity * 0.15
+    return base, np.clip(rough, 0, 1)
+
+
+@tile_set(0.4)
+def granite_weathered(n, rng):
+    """Granite weathered by simulation (see `granite`): quartz grains proud,
+    feldspar softened, mica pits, crystal boundaries etched, a grey patina on
+    the exposed grains, iron stains, grime in the hollows. Triplanar on
+    boulders, tile_size 0.4."""
+    h, mineral, edge, var = granite(n)
+    base, rough = granite_maps(n, h, mineral, edge, var)
+    return base, rough, h, 0.002
+
+
+def lichen_colonies(n, size_m=0.4, years=48.0, spores=34, seed=77):
+    """Crustose lichen grown on the tile: a Johnson-Mehl tessellation.
+
+    Spores land at random times t0 and each colony grows radially at its own
+    rate g (crustose lichens: ~0.5-1.5 mm a year, the basis of
+    lichenometry). A point is reached by colony i at a_i = t0_i + d_i / g_i
+    (d on the torus, its margin made lobed by noise); the first colony to
+    arrive owns it, so neighbours stop where they meet. Covered where
+    a < years. Old centres die back (age > ~35 y), leaving rings; the young
+    margin is the dark prothallus; the living thallus cracks into areoles.
+    Returns coverage 0..1, colony id, age at each point, prothallus rim and
+    areole cracks.
+    """
+    rng = np.random.default_rng(seed)
+    y, x = coords(n)
+    t0 = rng.uniform(0, years, spores)
+    gr = np.clip(rng.normal(1.0, 0.25, spores), 0.4, 1.6) / 1000 / size_m   # tile units a year
+    pos = rng.random((spores, 2))
+    lobes = noise(n, rng, 6, 40, 1.0)
+    best = np.full((n, n), np.inf)
+    who = np.zeros((n, n), dtype=int)
+    for i in range(spores):
+        dx = np.abs(x - pos[i, 1])
+        dx = np.minimum(dx, 1 - dx)
+        dy = np.abs(y - pos[i, 0])
+        dy = np.minimum(dy, 1 - dy)
+        d = np.sqrt(dx * dx + dy * dy)
+        a = t0[i] + d / gr[i] * (1 + 0.12 * lobes)
+        closer = a < best
+        best = np.where(closer, a, best)
+        who = np.where(closer, i, who)
+    age = years - best                                              # years since the colony reached this point
+    # old centres crumble: the thallus breaks up into scattered fragments, not a fade
+    crumbs = smooth(noise(n, rng, 40, 200, 0.6), 0.2, 0.9)
+    alive = smooth(age, 0.0, 1.5) * (1 - smooth(age, 34.0, 37.0) * (1 - 0.7 * crumbs))
+    rim = smooth(age, 0.0, 0.6) * (1 - smooth(age, 1.0, 2.5))      # the dark advancing margin
+    f1, f2, _ = grid_voronoi(n, int(size_m / 0.0016), rng)         # ~1.6 mm areoles
+    areole = 1 - smooth((f2 - f1) * size_m / 0.0016, 0.0, 0.18)
+    return np.clip(alive, 0, 1), who, age, rim, areole
+
+
+# crustose lichens on granite: colour (sRGB), share
+LICHENS = [((0.64, 0.68, 0.36), 0.3),   # map lichen (Rhizocarpon): yellow-green, black prothallus
+           ((0.76, 0.76, 0.71), 0.4),   # grey-white crust (Lecanora)
+           ((0.56, 0.61, 0.52), 0.22),  # grey-green
+           ((0.74, 0.49, 0.22), 0.08)]  # orange (Xanthoria), where birds perch
+
+
+@tile_set(0.4)
+def granite_lichen(n, rng):
+    """The same weathered granite as `granite_weathered`, grown over by
+    crustose lichen colonies (see `lichen_colonies`): rosettes that stop
+    where they meet, dead centres, black margins, areole cracks. Use it on
+    the parts of a boulder lichen likes (tops, the sheltered side) over
+    granite_weathered, same triplanar tile_size 0.4, so the rock lines up."""
+    h, mineral, edge, var = granite(n)
+    base, rough = granite_maps(n, h, mineral, edge, var)
+    cover, who, age, rim, areole = lichen_colonies(n)
+    shares = np.array([s for _, s in LICHENS])
+    kind = np.random.default_rng(5).choice(len(LICHENS), size=who.max() + 1, p=shares / shares.sum())[who]
+    lc = np.array([srgb(*c) for c, _ in LICHENS])[kind]
+    lc = lc * (0.85 + 0.25 * smooth(age, 2, 30))[..., None] * (1 - 0.35 * areole)[..., None]
+    base = mix(base, lc, cover)
+    base = mix(base, srgb(0.05, 0.05, 0.05), rim * 0.9)
+    thallus = cover * (0.6 + 0.4 * (1 - areole))
+    h2 = np.clip(h * 0.8 + thallus * 0.25, 0, 1)                    # the crust sits on the rock
+    rough = mix(rough, 0.92, cover)
+    return base, rough, h2, 0.002
 
 
 def main():
