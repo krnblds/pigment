@@ -1192,9 +1192,15 @@ mod tests {
     fn every_repo_script_matches_the_tool_schemas() {
         let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
         let mut checked = 0;
-        for dir in ["scenes/town/scripts", "scenes/cyberpunk", "scenes/world/scripts/ground"] {
-            for e in std::fs::read_dir(root.join(dir)).unwrap() {
-                let p = e.unwrap().path();
+        let mut directories = vec![root.join("scenes")];
+        while let Some(dir) = directories.pop() {
+            for e in std::fs::read_dir(&dir).unwrap_or_else(|e| panic!("{}: {e}", dir.display())) {
+                let entry = e.unwrap();
+                let p = entry.path();
+                if entry.file_type().unwrap().is_dir() {
+                    directories.push(p);
+                    continue;
+                }
                 if p.extension().is_some_and(|x| x == "jsonl") {
                     for (n, line) in std::fs::read_to_string(&p).unwrap().lines().enumerate() {
                         if line.trim().is_empty() || line.trim_start().starts_with("//") {
