@@ -374,10 +374,14 @@ pub enum GeneratorKind {
     /// A channel of an anchor (`Generator::input`) used directly as the mask:
     /// painted height, an anchor layer's mask or colour luminance.
     Anchor,
+    /// Wood floors: boards, herringbone, chevron or basketweave, with the
+    /// wood of every plank (growth rings around its own log, pores, knots).
+    /// Layers of one material share the layout (`Document::sync_planks`).
+    Planks,
 }
 
 impl GeneratorKind {
-    pub const ALL: [GeneratorKind; 20] = [
+    pub const ALL: [GeneratorKind; 21] = [
         GeneratorKind::EdgeWear,
         GeneratorKind::Dirt,
         GeneratorKind::Grunge,
@@ -398,6 +402,7 @@ impl GeneratorKind {
         GeneratorKind::Blades,
         GeneratorKind::Ripples,
         GeneratorKind::Anchor,
+        GeneratorKind::Planks,
     ];
     pub fn label(self) -> &'static str {
         match self {
@@ -420,6 +425,7 @@ impl GeneratorKind {
             GeneratorKind::Rock => "Rock",
             GeneratorKind::Blades => "Grass blades",
             GeneratorKind::Ripples => "Ripples",
+            GeneratorKind::Planks => "Planks",
             GeneratorKind::Anchor => "Anchor",
         }
     }
@@ -444,6 +450,7 @@ impl GeneratorKind {
             GeneratorKind::Rock => "rock",
             GeneratorKind::Blades => "blades",
             GeneratorKind::Ripples => "ripples",
+            GeneratorKind::Planks => "planks",
             GeneratorKind::Anchor => "anchor",
         }
     }
@@ -468,6 +475,7 @@ impl GeneratorKind {
             GeneratorKind::Rock => &crate::ground::ROCK_VARIANTS,
             GeneratorKind::Blades => &crate::ground::BLADE_VARIANTS,
             GeneratorKind::Ripples => &crate::ground::RIPPLE_VARIANTS,
+            GeneratorKind::Planks => &crate::ground::PLANK_LAYOUTS,
             _ => &[],
         }
     }
@@ -479,7 +487,7 @@ impl GeneratorKind {
     }
     /// The ground generators (natural materials; `gen_ground.wgsl`).
     pub fn is_ground(self) -> bool {
-        matches!(self, GeneratorKind::Cells | GeneratorKind::Scatter | GeneratorKind::Rock | GeneratorKind::Blades | GeneratorKind::Ripples)
+        matches!(self, GeneratorKind::Cells | GeneratorKind::Scatter | GeneratorKind::Rock | GeneratorKind::Blades | GeneratorKind::Ripples | GeneratorKind::Planks)
     }
     /// Tile pattern variant names (`Generator::variant` for `Tiles`).
     pub const TILE_VARIANTS: [&'static str; 3] = ["bricks", "square", "hex"];
@@ -571,6 +579,8 @@ impl Generator {
             GeneratorKind::Blades => (0.85, 0.02, 90.0, 0.6, 0.55),
             // scale = ripples per metre; ao_influence slot = asymmetry
             GeneratorKind::Ripples => (1.0, 0.02, 8.0, 0.5, 0.6),
+            // amount = strength; scale = planks per metre across; breakup = grain waviness; ao_influence slot = joint width (m)
+            GeneratorKind::Planks => (1.0, 0.01, 7.0, 0.5, 0.0012),
             // amount = threshold coverage of the anchor channel
             GeneratorKind::Anchor => (0.5, 0.1, 4.0, 0.0, 0.0),
         };
@@ -584,6 +594,7 @@ impl Generator {
             GeneratorKind::Rock => 0.6,        // crack strength
             GeneratorKind::Blades => 0.06,     // blade length, metres
             GeneratorKind::Ripples => 0.4,     // defects (bifurcations, fading crests)
+            GeneratorKind::Planks => 12.0,     // plank length / width
             _ => 1.0,
         };
         let extra = match kind {
@@ -597,6 +608,8 @@ impl Generator {
             GeneratorKind::Blades => [0.0035, 0.6, 0.0, 0.0],
             // crest direction (degrees), crest sharpness
             GeneratorKind::Ripples => [0.0, 0.5, 0.0, 0.0],
+            // growth rings per cm, flat-sawn figure 0..1, knots 0..1, output (PLANK_OUTPUTS)
+            GeneratorKind::Planks => [3.0, 0.7, 0.15, 0.0],
             _ => [0.0; 4],
         };
         Self { kind, amount, softness, noise_scale, noise_amount, seed: 1, ao_influence, curvature_weight, variant: 0, extra, input: None }
@@ -623,6 +636,7 @@ impl Generator {
             GeneratorKind::Blades => 18,
             GeneratorKind::Ripples => 19,
             GeneratorKind::Anchor => 20,
+            GeneratorKind::Planks => 21,
         }
     }
     pub fn with(mut self, amount: f32, noise_scale: f32) -> Self {
@@ -912,10 +926,35 @@ pub const SMART_PAINTS: [&str; 7] = ["Olive drab", "Teal paint", "Orange paint",
 /// Plastics offered as "Scuffed <plastic>" smart materials.
 pub const SMART_PLASTICS: [&str; 4] = ["Neon pink plastic", "Cyan plastic", "White plastic", "Black rubber"];
 
+/// Settings of a `Document::wood_floor` smart material.
+#[derive(Clone, Copy, Debug)]
+pub struct WoodFloor {
+    /// Index into `ground::PLANK_LAYOUTS`.
+    pub layout: u32,
+    /// Planks per metre across (1 / plank width).
+    pub per_m: f32,
+    /// Plank length / width.
+    pub ratio: f32,
+    /// Earlywood and latewood colours, sRGB.
+    pub early: [f32; 3],
+    pub late: [f32; 3],
+    pub coat_roughness: f32,
+    /// 0 quarter-sawn .. 1 flat-sawn.
+    pub flat: f32,
+    pub rings_cm: f32,
+    pub knots: f32,
+}
+
+impl WoodFloor {
+    /// Lacquered white oak boards.
+    pub const OAK: WoodFloor =
+        WoodFloor { layout: 0, per_m: 7.0, ratio: 12.0, early: [0.68, 0.47, 0.27], late: [0.42, 0.25, 0.11], coat_roughness: 0.12, flat: 0.75, rings_cm: 3.0, knots: 0.25 };
+}
+
 /// Smart materials built on the tile sets in assets/tiles, by library group.
 pub const SMART_WALLS: [&str; 8] =
     ["Damask wallpaper", "Striped wallpaper", "Floral wallpaper", "Art deco wallpaper", "Trellis wallpaper", "Peeling wallpaper", "Painted plaster", "Subway tiles"];
-pub const SMART_FLOORS: [&str; 13] = [
+pub const SMART_FLOORS: [&str; 15] = [
     "Plush carpet",
     "Berber carpet",
     "Office carpet tiles",
@@ -924,6 +963,8 @@ pub const SMART_FLOORS: [&str; 13] = [
     "Oak floorboards",
     "Dark walnut floor",
     "Herringbone parquet",
+    "Chevron parquet",
+    "Basketweave parquet",
     "Checker marble floor",
     "Hex tile floor",
     "Terrazzo floor",
@@ -1204,6 +1245,56 @@ impl Document {
         vec![tile, grime]
     }
 
+    /// A wood floor from the planks generator, bottom to top: joints, the
+    /// plank faces (profile height, per-plank tone), latewood, pores, a
+    /// lacquer coat worn hazy in the walking lanes, scuffs and a little grime.
+    /// The planks layers share one layout (`sync_planks`).
+    pub fn wood_floor(&mut self, w: WoodFloor) -> Vec<Layer> {
+        use crate::ground::InstanceJitter;
+        let planks = |out: f32| {
+            let mut g = Generator::new(GeneratorKind::Planks);
+            g.variant = w.layout;
+            g.noise_scale = w.per_m;
+            g.curvature_weight = w.ratio;
+            g.noise_amount = 0.6;
+            g.seed = 4;
+            g.extra = [w.rings_cm, w.flat, w.knots, out];
+            g
+        };
+        let only = |l: &mut Layer, keep: &[Channel]| {
+            for c in Channel::ALL {
+                l.channels.get_mut(c).enabled = keep.contains(&c);
+            }
+        };
+        let fill = |d: &mut Document, name: &str, g: Option<Generator>, v: MaterialValues, keep: &[Channel]| {
+            let mut l = d.fill_with(name, "Oak", g);
+            l.kind = LayerKind::Fill { values: v };
+            only(&mut l, keep);
+            l
+        };
+        let m = |c: [f32; 3], r: f32, h: f32| MaterialValues { base_color: c, roughness: r, height: h, ..Default::default() };
+        use Channel::*;
+        let joints = fill(self, "Joints", Some(planks(1.0)), m([0.09, 0.06, 0.035], 0.9, -0.25), &[BaseColor, Roughness, Height]);
+        let mut wood = fill(self, "Wood", Some(planks(0.0)), m(w.early, 0.45, 0.4), &[BaseColor, Roughness, Metallic, Height]);
+        wood.height_profile = true;
+        wood.jitter = Some(InstanceJitter { value: 0.2, hue: 0.005, saturation: 0.12, roughness: 0.08 });
+        let mut late = fill(self, "Latewood", Some(planks(2.0)), m(w.late, 0.5, 0.0), &[BaseColor, Roughness]);
+        late.jitter = Some(InstanceJitter { value: 0.12, hue: 0.004, ..Default::default() });
+        late.opacity = 0.9;
+        let mut pores = fill(self, "Pores", Some(planks(3.0)), m(w.late.map(|c| c * 0.7), 0.75, -0.25), &[BaseColor, Roughness, Height]);
+        pores.opacity = 0.7;
+        let lacquer = fill(self, "Lacquer", None, MaterialValues { coat: 1.0, coat_roughness: w.coat_roughness, ..Default::default() }, &[Coat, CoatRoughness]);
+        let mut hazy = fill(self, "Worn lacquer", Some(Generator::new(GeneratorKind::Grunge).with(0.45, 1.5)), MaterialValues { coat_roughness: 0.3, ..Default::default() }, &[CoatRoughness]);
+        hazy.opacity = 0.5;
+        let mut scuffs = fill(self, "Scuffs", Some(Generator::new(GeneratorKind::Scratches).with(0.12, 5.0)), MaterialValues { roughness: 0.6, coat_roughness: 0.35, ..Default::default() }, &[Roughness, CoatRoughness]);
+        scuffs.opacity = 0.35;
+        let mut dirt = Generator::new(GeneratorKind::Dirt);
+        dirt.amount = 0.3;
+        let mut grime = fill(self, "Grime", Some(dirt), material_preset("Grime"), &[BaseColor, Roughness]);
+        grime.opacity = 0.4;
+        vec![joints, wood, late, pores, lacquer, hazy, scuffs, grime]
+    }
+
     /// Multi-layer smart materials, bottom to top. `None` for an unknown name.
     pub fn smart_material(&mut self, name: &str) -> Option<Vec<Layer>> {
         use GeneratorKind::*;
@@ -1346,20 +1437,22 @@ impl Document {
                 let grime = self.fill_with("Grime", "Grime", Some(dirt));
                 vec![carpet, traffic, stains, grime]
             }
-            "Oak floorboards" | "Dark walnut floor" | "Herringbone parquet" => {
-                let wood = match name {
-                    "Oak floorboards" => self.tiled_fill(name, "wood_planks", 1.0, "Oak", [1.0; 3]),
-                    "Dark walnut floor" => self.tiled_fill(name, "wood_planks", 1.0, "Varnished wood", [0.5, 0.38, 0.3]),
-                    _ => self.tiled_fill(name, "parquet_herringbone", 1.0, "Oak", [1.0; 3]),
-                };
-                let mut scratches = self.fill_with("Scuffs", "Grime", Some(g(Scratches).with(0.15, 4.0)));
-                only(&mut scratches, &[Channel::BaseColor, Channel::Roughness]);
-                scratches.opacity = 0.3;
-                let mut dirt = g(Dirt);
-                dirt.amount = 0.4;
-                let grime = self.fill_with("Grime", "Grime", Some(dirt));
-                vec![wood, scratches, grime]
-            }
+            // native wood floors: every layer reads one planks layout
+            "Oak floorboards" => self.wood_floor(WoodFloor { layout: 0, per_m: 7.0, ratio: 12.0, ..WoodFloor::OAK }),
+            "Dark walnut floor" => self.wood_floor(WoodFloor {
+                layout: 0,
+                per_m: 6.5,
+                ratio: 10.0,
+                early: [0.36, 0.22, 0.13],
+                late: [0.2, 0.11, 0.06],
+                coat_roughness: 0.06,
+                flat: 0.6,
+                rings_cm: 2.2,
+                knots: 0.1,
+            }),
+            "Herringbone parquet" => self.wood_floor(WoodFloor { layout: 1, per_m: 14.0, ratio: 4.0, knots: 0.15, ..WoodFloor::OAK }),
+            "Chevron parquet" => self.wood_floor(WoodFloor { layout: 2, per_m: 11.0, ratio: 6.0, early: [0.55, 0.38, 0.22], late: [0.33, 0.2, 0.09], coat_roughness: 0.15, ..WoodFloor::OAK }),
+            "Basketweave parquet" => self.wood_floor(WoodFloor { layout: 3, per_m: 16.0, ratio: 4.0, early: [0.74, 0.55, 0.34], knots: 0.1, ..WoodFloor::OAK }),
             "Checker marble floor" | "Hex tile floor" | "Terrazzo floor" => {
                 let (set, size) = match name {
                     "Checker marble floor" => ("floor_checker", 1.2),
@@ -1489,6 +1582,30 @@ impl Document {
                 vec![base, scratches, grime]
             }
         })
+    }
+
+    /// The layers of one wood material each read a different output of the
+    /// same plank layout (surface, joints, latewood, pores), so the layout
+    /// is shared: copy layer `src`'s planks layout and wood settings (all
+    /// but its output and amount) to every other planks mask in the same
+    /// folder. Returns how many layers changed.
+    pub fn sync_planks(&mut self, src: u64) -> usize {
+        let Some(from) = self.layers.iter().find(|l| l.id == src) else { return 0 };
+        let parent = from.parent;
+        let Some(g) = from.mask.as_ref().and_then(|m| m.generator.clone()).filter(|g| g.kind == GeneratorKind::Planks) else { return 0 };
+        let mut changed = 0;
+        for l in self.layers.iter_mut().filter(|l| l.id != src && l.parent == parent) {
+            let Some(o) = l.mask.as_mut().and_then(|m| m.generator.as_mut()).filter(|o| o.kind == GeneratorKind::Planks) else { continue };
+            let mut next = g.clone();
+            next.amount = o.amount;
+            next.extra[3] = o.extra[3];
+            next.input = o.input.clone();
+            if *o != next {
+                *o = next;
+                changed += 1;
+            }
+        }
+        changed
     }
 
     pub fn mint(&mut self) -> u64 {

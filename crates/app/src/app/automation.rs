@@ -756,6 +756,10 @@ impl Session {
                 }
             }
         }
+        // a wood floor's layers share one plank layout
+        if a.get("mask").is_some() {
+            self.app.doc.sync_planks(id);
+        }
         self.settle();
         Ok(json!({ "layers": self.layers() }))
     }
@@ -2016,8 +2020,14 @@ fn apply_ground_fields(g: &mut Generator, m: &Value) {
         GeneratorKind::Rock => &[("warp", 1), ("strata", 2), ("cracks", 3), ("bands", 4), ("streaks", 5), ("crack_scale", 6)],
         GeneratorKind::Blades => &[("density", 0), ("clumping", 1), ("lean", 2), ("length", 3), ("width", 4), ("swirl", 5), ("level", 6)],
         GeneratorKind::Ripples => &[("irregularity", 1), ("asymmetry", 2), ("defects", 3), ("angle", 4), ("sharpness", 5)],
+        GeneratorKind::Planks => &[("waviness", 1), ("joint_width", 2), ("length", 3), ("length_ratio", 3), ("rings_per_cm", 4), ("flat_sawn", 5), ("knots", 6)],
         _ => &[],
     };
+    if g.kind == GeneratorKind::Planks {
+        if let Some(o) = s(m, "output").and_then(|o| pigment_core::ground::PLANK_OUTPUTS.iter().position(|n| n.eq_ignore_ascii_case(o))) {
+            g.extra[3] = o as f32;
+        }
+    }
     for (k, slot) in named {
         if let Some(x) = f(m, k) {
             match slot {

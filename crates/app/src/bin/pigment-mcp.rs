@@ -657,7 +657,7 @@ fn foliage_place_props() -> Value {
 /// Named parameters of the ground generators (docs/agents/ground/NOTES.md).
 fn ground_gen_fields(g: &mut Value) {
     let n = |d: &str| json!({ "type": "number", "description": d });
-    g["variant"] = json!({ "type": ["string", "integer"], "description": "tiles: bricks | square | hex; cells: dome | f2 | edges | value | plates; scatter: pebble | flake | leaf | twig | shell | clover | chip; rock: height | cracks | ledges | streaks; blades: height | tips | clumps; ripples: height | crests (or the index)" });
+    g["variant"] = json!({ "type": ["string", "integer"], "description": "tiles: bricks | square | hex; cells: dome | f2 | edges | value | plates; scatter: pebble | flake | leaf | twig | shell | clover | chip; rock: height | cracks | ledges | streaks; blades: height | tips | clumps; ripples: height | crests (or the index); planks: the layout, boards | herringbone | chevron | basketweave" });
     let fields = [
         ("warp", "cells / rock: domain warp (= breakup)"),
         ("randomness", "cells: point jitter 0 (grid) .. 1 (= ao_influence)"),
@@ -681,7 +681,7 @@ fn ground_gen_fields(g: &mut Value) {
         ("crack_scale", "rock: crack cells per metre (extra[2])"),
         ("clumping", "blades: clump contrast 0..1 (= breakup)"),
         ("lean", "blades: 0 upright .. 1 lying flat (= ao_influence)"),
-        ("length", "blades: blade length in metres (= curvature_weight)"),
+        ("length", "blades: blade length in metres; planks: plank length / width (= curvature_weight)"),
         ("width", "blades: blade half width at the root in metres (extra[0])"),
         ("swirl", "blades: how much neighbouring blades lean the same way (extra[1])"),
         ("level", "blades tips / clumps: the output value where the mask starts, 0..1 (extra[2]; amount stays the blade density)"),
@@ -689,10 +689,17 @@ fn ground_gen_fields(g: &mut Value) {
         ("defects", "ripples: forking, ending, fading crests 0..1 (= curvature_weight)"),
         ("angle", "ripples: crest direction in degrees from x (extra[0])"),
         ("sharpness", "ripples: crest sharpness 0..1 (extra[1])"),
+        ("waviness", "planks: how much the grain wanders 0..1.5 (= breakup)"),
+        ("joint_width", "planks: gap between planks in metres, e.g. 0.001 (= ao_influence)"),
+        ("length_ratio", "planks: plank length / width; herringbone and basketweave round it to whole slats (= curvature_weight)"),
+        ("rings_per_cm", "planks: growth rings per cm of radius, oak ~2-4 (extra[0])"),
+        ("flat_sawn", "planks: 0 quarter-sawn straight stripes .. 1 flat-sawn arches (extra[1])"),
+        ("knots", "planks: how many boards have knots 0..1 (extra[2])"),
     ];
     for (k, d) in fields {
         g[k] = n(d);
     }
+    g["output"] = json!({ "type": "string", "enum": pigment_core::ground::PLANK_OUTPUTS, "description": "planks: what the mask shows, surface | joints | latewood | pores (extra[3]); the layers of one wood floor share everything else (layout, size, grain)" });
     g["extra"] = json!({ "type": "array", "items": { "type": "number" }, "maxItems": 4, "description": "ground generators: the raw shape parameters (see the named args)" });
 }
 
