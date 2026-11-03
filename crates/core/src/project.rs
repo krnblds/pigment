@@ -92,20 +92,67 @@ fn any_coverage_rg8(v: &[u8]) -> bool {
     v.chunks_exact(2).any(|p| p[1] != 0)
 }
 
+fn pixel_count(size: u32) -> Result<usize> {
+    if size == 0 {
+        bail!("pixel dimensions must be nonzero");
+    }
+    (size as usize).checked_mul(size as usize).context("pixel dimensions overflow")
+}
+
+fn validate_channel(name: &str, actual: usize, pixels: usize, components: usize) -> Result<()> {
+    let expected = pixels.checked_mul(components).context("channel dimensions overflow")?;
+    if actual != expected {
+        bail!("{name}: expected {expected} samples, got {actual}");
+    }
+    Ok(())
+}
+
+/// Encode completely before replacing an existing pixel file.
+fn save_png(path: &Path, bytes: &[u8], size: u32, color: C) -> Result<()> {
+    let tmp = path.with_extension("png.tmp");
+    let result: Result<()> = (|| {
+        image::save_buffer_with_format(&tmp, bytes, size, size, color, image::ImageFormat::Png)?;
+        std::fs::rename(&tmp, path)?;
+        Ok(())
+    })();
+    if result.is_err() {
+        let _ = std::fs::remove_file(&tmp);
+    }
+    result.with_context(|| format!("writing {}", path.display()))
+}
+
 pub fn write_layer(dir: &Path, res: ResId, px: &LayerPixels) -> Result<()> {
+    // Validate every channel before writing or deleting any saved pixels.
+    let n = pixel_count(px.size)?;
+    for (name, actual, components) in [
+        ("base_color", px.color.len(), 4),
+        ("roughness", px.roughness.len(), 2),
+        ("metallic", px.metallic.len(), 2),
+        ("height", px.height.len(), 2),
+        ("normal", px.normal.len(), 4),
+        ("emissive", px.emissive.len(), 4),
+        ("opacity", px.opacity.len(), 2),
+        ("transmission", px.transmission.len(), 2),
+        ("coat", px.coat.len(), 2),
+        ("coat_roughness", px.coat_roughness.len(), 2),
+        ("flake", px.flake.len(), 2),
+    ] {
+        validate_channel(name, actual, n, components)?;
+    }
+
     let d = layer_dir(dir, res);
     std::fs::create_dir_all(&d)?;
     let s = px.size;
     let put = |name: &str, used: bool, bytes: &[u8], color: C| -> Result<()> {
         let path = d.join(name);
         if used {
-            image::save_buffer(&path, bytes, s, s, color).with_context(|| format!("writing {}", path.display()))?;
+            save_png(&path, bytes, s, color)?;
         } else if path.exists() {
             std::fs::remove_file(&path)?;
         }
         Ok(())
     };
-    // the eight channel PNGs encode in parallel (4K layers save several times faster)
+    // the channel PNGs encode in parallel (4K layers save several times faster)
     std::thread::scope(|sc| {
         let jobs = [
             sc.spawn(|| put("base_color.png", px.color.chunks_exact(4).any(|p| p[3] != 0), &px.color, C::Rgba8)),
@@ -178,9 +225,10 @@ pub fn read_layer(dir: &Path, res: ResId, size: u32) -> Result<LayerPixels> {
 }
 
 pub fn write_mask(dir: &Path, res: ResId, size: u32, px: &[u8]) -> Result<()> {
+    validate_channel("mask", px.len(), pixel_count(size)?, 1)?;
     let path = mask_path(dir, res);
     std::fs::create_dir_all(path.parent().unwrap())?;
-    image::save_buffer(&path, px, size, size, C::L8).with_context(|| format!("writing {}", path.display()))
+    save_png(&path, px, size, C::L8)
 }
 
 pub fn read_mask(dir: &Path, res: ResId, size: u32) -> Result<Option<Vec<u8>>> {
@@ -311,6 +359,38 @@ mod tests {
         // resampled when the project resolution changed
         assert_eq!(read_layer(&dir, 7, 8).unwrap().size, 8);
         std::fs::remove_dir_all(dir).ok();
+    }
+
+    #[test]
+    fn invalid_layer_preserves_all_saved_channels() {
+        let dir = tmp("invalid-layer");
+        let mut original = LayerPixels::empty(2);
+        original.color.fill(255);
+        original.flake.fill(128);
+        write_layer(&dir, 1, &original).unwrap();
+        let mut invalid = LayerPixels::empty(2);
+        // An empty color channel would delete saved paint if validation were late.
+        invalid.flake.pop();
+        assert!(write_layer(&dir, 1, &invalid).unwrap_err().to_string().contains("flake"));
+        assert_eq!(read_layer(&dir, 1, 2).unwrap(), original);
+        assert!(write_layer(&dir, 1, &LayerPixels::empty(0)).is_err());
+        assert_eq!(read_layer(&dir, 1, 2).unwrap(), original);
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn invalid_mask_preserves_saved_pixels_and_valid_save_replaces_them() {
+        let dir = tmp("invalid-mask");
+        write_mask(&dir, 1, 2, &[1, 2, 3, 4]).unwrap();
+        for pixels in [&[9, 9, 9][..], &[9, 9, 9, 9, 9][..]] {
+            assert!(write_mask(&dir, 1, 2, pixels).is_err());
+            assert_eq!(read_mask(&dir, 1, 2).unwrap().unwrap(), [1, 2, 3, 4]);
+        }
+        assert!(write_mask(&dir, 1, 0, &[]).is_err());
+        write_mask(&dir, 1, 2, &[4, 3, 2, 1]).unwrap();
+        assert_eq!(read_mask(&dir, 1, 2).unwrap().unwrap(), [4, 3, 2, 1]);
+        assert!(!mask_path(&dir, 1).with_extension("png.tmp").exists());
+        std::fs::remove_dir_all(dir).unwrap();
     }
 
     #[test]
