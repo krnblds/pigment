@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "parameters": {
+    "mesh": "assets/ammo_box.glb",
+    "resolution": 512,
+    "roughness": 0.6,
+    "project": "out/material.pigment",
+    "export": "out/textures"
+  },
+  "seed": 42,
+  "calls": [
+    {"tool": "new_project", "args": {"mesh": {"$param": "mesh"}, "resolution": {"$param": "resolution"}}},
+    {"tool": "add_layer", "args": {"name": "Recipe finish", "values": {"base_color": [0.24, 0.3, 0.36], "roughness": {"$param": "roughness"}, "metallic": 0.2}}},
+    {"tool": "save_project", "args": {"path": {"$param": "project"}}},
+    {"tool": "export_textures", "args": {"dir": {"$param": "export"}, "name": "Material", "preset": "separate"}},
+    {"tool": "verify_export", "args": {"dir": {"$param": "export"}, "target": "blender"}}
+  ]
+}
