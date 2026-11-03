@@ -1,0 +1,8 @@
+{"tool": "new_project", "args": {"mesh": "assets/lantern.glb", "texture_sets": [{"name": "Metal", "materials": ["Metal"], "resolution": 1024}, {"name": "Glass", "materials": ["Glass"], "resolution": 512}, {"name": "Wax", "materials": ["Wax"], "resolution": 512}, {"name": "Flame", "materials": ["Flame"], "resolution": 512}]}}
+{"tool": "add_smart_material", "args": {"texture_set": "Metal", "name": "Copper patina"}}
+{"tool": "update_layer", "args": {"texture_set": "Glass", "layer": "Base", "material": "Clear glass"}}
+{"tool": "add_layer", "args": {"texture_set": "Glass", "kind": "fill", "name": "Soot", "material": "Soot", "mask": {"generator": "gradient", "amount": 0.35, "invert": true}, "opacity": 0.5}}
+{"tool": "update_layer", "args": {"texture_set": "Wax", "layer": "Base", "material": "Bone"}}
+{"tool": "update_layer", "args": {"texture_set": "Flame", "layer": "Base", "material": "Warm bulb"}}
+{"tool": "send_to_blender", "args": {"dir": "scenes/materials/textures/lantern", "name": "lantern", "project": "scenes/materials/projects/lantern.pigment"}}
+{"tool": "render", "args": {"path": "scenes/materials/renders/lantern.png", "lighting": "studio", "width": 640, "height": 640}}

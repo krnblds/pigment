@@ -1,0 +1,9 @@
+{"tool": "new_project", "args": {"mesh": "assets/room_corner.glb", "udim": true, "resolution": 2048}}
+{"tool": "add_smart_material", "args": {"texture_set": "tile_1001", "name": "Herringbone parquet"}}
+{"tool": "add_layer", "args": {"texture_set": "tile_1001", "kind": "fill", "name": "Satin lacquer", "values": {"roughness": 0.6, "coat_roughness": 0.35}, "channels": {"base_color": false, "metallic": false, "roughness": true, "coat_roughness": true}}}
+{"tool": "add_smart_material", "args": {"texture_set": "tile_1002", "name": "Damask wallpaper"}}
+{"tool": "update_layer", "args": {"texture_set": "tile_1003", "layer": "Base", "material": "White paint"}}
+{"tool": "add_layer", "args": {"texture_set": "tile_1003", "kind": "fill", "name": "Scuffs", "material": "Grime", "mask": {"generator": "edge_wear", "amount": 0.35}, "opacity": 0.4}}
+{"tool": "add_layer", "args": {"texture_set": "tile_1003", "kind": "fill", "name": "Dust", "material": "Grime", "mask": {"generator": "dirt", "amount": 0.35}, "opacity": 0.4}}
+{"tool": "send_to_blender", "args": {"dir": "scenes/materials/textures/room_corner", "name": "room_corner", "project": "scenes/materials/projects/room_corner.pigment"}}
+{"tool": "render", "args": {"path": "scenes/materials/renders/room_corner.png", "lighting": "studio", "width": 640, "height": 640}}

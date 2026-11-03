@@ -1,0 +1,8 @@
+{"tool": "new_project", "args": {"mesh": "assets/vase.glb", "texture_sets": [{"name": "Ceramic", "materials": ["Ceramic"], "resolution": 2048}, {"name": "Gold", "materials": ["Gold"], "resolution": 1024}]}}
+{"tool": "update_layer", "args": {"texture_set": "Ceramic", "layer": "Base", "material": "Porcelain"}}
+{"tool": "add_layer", "args": {"texture_set": "Ceramic", "kind": "fill", "name": "Glaze crackle", "material": "Bone", "mask": {"generator": "cells", "variant": "edges", "scale": 40, "edge_width": 0.0006}, "opacity": 0.35}}
+{"tool": "add_layer", "args": {"texture_set": "Ceramic", "kind": "fill", "name": "Dust", "material": "Grime", "mask": {"generator": "dirt", "amount": 0.45}, "opacity": 0.6}}
+{"tool": "update_layer", "args": {"texture_set": "Gold", "layer": "Base", "material": "Gold"}}
+{"tool": "add_layer", "args": {"texture_set": "Gold", "kind": "fill", "name": "Worn gilt", "material": "Porcelain", "mask": {"generator": "edge_wear", "amount": 0.12}, "opacity": 0.6}}
+{"tool": "send_to_blender", "args": {"dir": "scenes/materials/textures/vase", "name": "vase", "project": "scenes/materials/projects/vase.pigment"}}
+{"tool": "render", "args": {"path": "scenes/materials/renders/vase.png", "lighting": "studio", "width": 640, "height": 640}}

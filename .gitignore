@@ -42,3 +42,9 @@ scenes/world/ground_masks*
 scenes/world/ground_spots.json
 # citizens (tools/npc): downloaded CC0 packs, animation library sources, Blender build scratch
 .npccache/
+
+# material test models (assets/blender/kit.py models): regenerate with
+#   for f in scenes/materials/*.jsonl; do target/release/pigment-mcp --script $f; done
+scenes/materials/textures/
+scenes/materials/renders/
+scenes/materials/projects/
