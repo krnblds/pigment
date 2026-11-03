@@ -168,7 +168,7 @@ impl Session {
         self.app.select(self.app.doc.layers.last().map(|l| l.id), false);
         self.settle();
         let sets = self.configure_sets(a)?;
-        let mut out = json!({ "mesh": self.app.mesh.name, "triangles": self.app.mesh.triangle_count(), "layers": self.layers() });
+        let mut out = json!({ "mesh": self.app.mesh.name, "triangles": self.app.full_mesh().triangle_count(), "layers": self.layers() });
         if let Some(v) = sets {
             out["texture_sets"] = v["texture_sets"].clone();
             out["udim_moves"] = v["udim_moves"].clone();
@@ -838,8 +838,8 @@ impl Session {
 
     // ------------------------------------------------------------------ camera, painting, output
 
-    fn set_camera(&mut self, a: &Value) {
-        let (c, r) = self.app.mesh.bounding_sphere();
+    pub(crate) fn set_camera(&mut self, a: &Value) {
+        let (c, r) = self.app.full_mesh().bounding_sphere();
         let cam = &mut self.app.camera;
         cam.frame(c, r);
         cam.yaw = f(a, "yaw").map(|d| d.to_radians()).unwrap_or(35f32.to_radians());
@@ -1399,7 +1399,7 @@ impl Session {
         if self.app.has_sets() {
             // one file per texture set and UDIM tile: <name>_<set>_<map>.<udim>.png
             let name = self.app.export_name.clone();
-            let files = self.app.export_sets(&self.rs, &dir, &name)?;
+            let files = self.app.export_sets(&self.rs, &dir, &name, preset)?;
             return Ok(json!({ "files": files, "texture_sets": self.app.set_names(), "compression": compression.id() }));
         }
         self.app.export(&self.rs);

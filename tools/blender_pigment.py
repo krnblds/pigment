@@ -111,7 +111,9 @@ def apply_pigment_material(obj, folder, name, emission_strength=None, use_height
     from material.json (8.0 when there is no sidecar); a number overrides it.
     `interiors="building_a"` (a kit asset) adds interior-mapped rooms behind its glass panes
     (tools/interiors/blender_interiors.py; needs the interior atlas and window maps).
-    Returns the material.
+    A multi-set export (several texture sets) gets a material per set on the
+    faces each set paints (pigment_core.link_sets).
+    Returns the material (with texture sets: the first set's).
     """
     core = pigment_core
     if obj is None or obj.type != "MESH":
@@ -128,10 +130,14 @@ def apply_pigment_material(obj, folder, name, emission_strength=None, use_height
     elif not spec.get("sidecar") and not spec.get("variant_json"):
         opts["emission_override"] = 8.0  # legacy default for exports without material.json / variant.json
     uv = obj.data.uv_layers[0].name if len(obj.data.uv_layers) else ""
-    mat_name = f"Pigment_{name}"
-    mat = bpy.data.materials.get(mat_name) or bpy.data.materials.new(mat_name)
-    core.build_material(spec, mat, opts, uv)
-    core.assign(obj, mat)
+    if spec["texture_sets"]:
+        # several texture sets: a material per set, on the faces each one paints
+        mat = core.link_sets(obj, spec, opts)[0]
+    else:
+        mat_name = f"Pigment_{name}"
+        mat = bpy.data.materials.get(mat_name) or bpy.data.materials.new(mat_name)
+        core.build_material(spec, mat, opts, uv)
+        core.assign(obj, mat)
     obj["pigment_source"] = spec["folder"]
     obj["pigment_folder"] = spec["folder"]
     if interiors:

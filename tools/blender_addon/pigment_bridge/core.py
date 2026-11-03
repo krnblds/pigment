@@ -19,8 +19,10 @@ without the add-on: materials carry `pigment_folder`, `pigment_name`,
 objects carry `pigment_source` / `pigment_folder` / `pigment_seed`.
 """
 import json
+import math
 import os
 import random
+import re
 import shutil
 import subprocess
 import time
@@ -109,6 +111,9 @@ def _scan_suffixes(folder):
         if not f.lower().endswith(".png"):
             continue
         stem = f[:-4]
+        # texture set / UDIM exports: <name>_<set>_<map>.<udim>.png
+        if len(stem) > 5 and stem[-5] == "." and stem[-4:].isdigit():
+            stem = stem[:-5]
         best = None
         for suf in SUFFIXES:
             if stem.endswith("_" + suf) and (best is None or len(suf) > len(best)):
@@ -285,7 +290,12 @@ def discover(folder, name=None):
 
     Returns a dict: name, folder, maps [{path, sources, colorspace, suffix}],
     emissive_scale, has_emission, normal_convention, resolution, project, mesh,
-    sidecar (path or None).
+    sidecar (path or None), texture_sets, materials, udim.
+
+    A project with several texture sets exports one entry per set plus a main
+    entry without maps whose `texture_sets` names them; use `link_sets` for it.
+    A set entry's `materials` (glTF material names, [] = all) and `udim` tile
+    (None = all) say which faces it paints.
     """
     folder = _abs(folder)
     sc = read_sidecar(folder)
@@ -295,7 +305,9 @@ def discover(folder, name=None):
     entry = (sc or {}).get("materials", {}).get(name) if sc else None
     spec = {"name": name, "folder": folder, "maps": [], "emissive_scale": 1.0, "has_emission": True,
             "normal_convention": "opengl", "resolution": None, "project": None, "mesh": None,
-            "sidecar": os.path.join(folder, SIDECAR) if entry else None}
+            "sidecar": os.path.join(folder, SIDECAR) if entry else None,
+            "texture_sets": list((entry or {}).get("texture_sets") or []),
+            "materials": list((entry or {}).get("materials") or []), "udim": (entry or {}).get("udim")}
     if entry:
         spec["emissive_scale"] = float(entry.get("emissive_scale", 1.0) or 1.0)
         spec["has_emission"] = bool(entry.get("has_emission", True))
@@ -332,7 +344,7 @@ def discover(folder, name=None):
             spec["normal_convention"] = "directx"
     if not spec["has_emission"]:
         spec["maps"] = [m for m in spec["maps"] if not set(m["sources"]) <= set(EMI)]
-    if not spec["maps"]:
+    if not spec["maps"] and not spec["texture_sets"]:
         raise FileNotFoundError(f"texture set '{name}' in {folder} has no map files")
     return spec
 
@@ -923,6 +935,54 @@ def assign(obj, mat):
         me.update()
 
 
+def _udim_tile(me, poly, uv):
+    """UDIM tile of a face (its UV centre; Blender's v is up, as UDIM's)."""
+    if uv is None or not poly.loop_total:
+        return 1001
+    u = sum(uv[i].uv.x for i in poly.loop_indices) / poly.loop_total
+    v = sum(uv[i].uv.y for i in poly.loop_indices) / poly.loop_total
+    return 1001 + min(max(int(math.floor(u)), 0), 9) + 10 * max(int(math.floor(v)), 0)
+
+
+def link_sets(obj, spec, options=None):
+    """Give every face of obj the material of the texture set that paints it.
+
+    `spec` is a multi-set export (discover() of an entry with `texture_sets`).
+    A face belongs to the first set whose `materials` hold its slot's source
+    material name (glTF material, `.001` suffixes ignored; [] = any) and whose
+    `udim` is its UV tile (None = any). Slots that already carry one of the
+    set materials keep their set, so linking again is stable. The mesh ends up
+    with one slot per set. Returns the materials in set order.
+    """
+    me = obj.data
+    sets = [discover(spec["folder"], n) for n in spec["texture_sets"]]
+    names = [s["name"] for s in sets]
+    uv_name = me.uv_layers[0].name if len(me.uv_layers) else ""
+    mats = [material_for(s, options, uv_name) for s in sets]
+    slots = []
+    for m in me.materials:
+        if m is not None and m.get("pigment_name") in names:
+            slots.append((None, names.index(m["pigment_name"])))
+        else:
+            slots.append((re.sub(r"\.\d{3}$", "", m.name) if m is not None else "", None))
+    uv = me.uv_layers[0].data if len(me.uv_layers) else None
+    index = []
+    for p in me.polygons:
+        src, fixed = slots[p.material_index] if p.material_index < len(slots) else ("", None)
+        if fixed is None:
+            tile = _udim_tile(me, p, uv)
+            fixed = next((k for k, s in enumerate(sets)
+                          if (not s["materials"] or src in s["materials"]) and (s["udim"] is None or s["udim"] == tile)), 0)
+        index.append(fixed)
+    me.materials.clear()
+    for m in mats:
+        me.materials.append(m)
+    if len(me.polygons):
+        me.polygons.foreach_set("material_index", index)
+        me.update()
+    return mats
+
+
 def add_displacement_subdivision(obj, levels=2):
     """Adaptive subdivision (Cycles) so true displacement has geometry to move."""
     mod = obj.modifiers.get("Pigment Displacement") or obj.modifiers.new("Pigment Displacement", "SUBSURF")
@@ -948,9 +1008,12 @@ def link_objects(objects, source, name=None, options=None, variants=False, seed=
             continue
         f = pick_variant(obj.name, folder, seed) if variants else folder
         spec = discover(f, name)
-        uv = obj.data.uv_layers[0].name if len(obj.data.uv_layers) else ""
-        mat = material_for(spec, options, uv)
-        assign(obj, mat)
+        if spec["texture_sets"]:
+            mat = link_sets(obj, spec, options)[0]
+        else:
+            uv = obj.data.uv_layers[0].name if len(obj.data.uv_layers) else ""
+            mat = material_for(spec, options, uv)
+            assign(obj, mat)
         obj["pigment_source"] = _abs(source)
         obj["pigment_folder"] = spec["folder"]
         obj["pigment_variants"] = bool(variants)
@@ -986,9 +1049,12 @@ def import_mesh(spec, collection=None):
     else:
         bpy.ops.import_scene.gltf(filepath=path)
     new = [o for o in bpy.data.objects if o not in before and o.type == "MESH"]
-    mat = material_for(spec)
+    mat = None if spec["texture_sets"] else material_for(spec)
     for o in new:
-        assign(o, mat)
+        if mat is None:
+            link_sets(o, spec)  # one glTF material per source material: a set each
+        else:
+            assign(o, mat)
         o["pigment_source"] = spec["folder"]
         o["pigment_folder"] = spec["folder"]
         if collection is not None and o.name not in collection.objects:

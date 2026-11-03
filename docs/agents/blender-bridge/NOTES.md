@@ -65,6 +65,28 @@ DirectX normals use `normal_y_flipped`, and Unity's alpha holds `smoothness`. Th
 the add-on wire packed maps without guessing. Paths inside the folder are stored
 relative to it.
 
+### Texture sets
+
+A project with several texture sets (by material or by UDIM tile) exports every set in
+the requested preset as `<name>_<set>_<map>.<udim>.png`. The sidecar gets one entry per
+set and a main entry that lists them:
+
+```json
+"lantern":       { "texture_sets": ["lantern_Metal", "lantern_Glass", ...], "mesh": "lantern.glb" },
+"lantern_Glass": { "texture_set": "Glass", "materials": ["Glass"], "udim": null,
+                   "maps": [ { "file": "lantern_Glass_BaseColor.1001.png", ... } ], ... },
+"room_corner_tile_1002": { "materials": [], "udim": 1002, ... }
+```
+
+A set's `materials` are glTF material names (`[]` means any) and `udim` is its tile
+(`null` means any). `<name>.glb` is the **whole** mesh (not the active set's part) with
+one glTF material per source material. `core.link_sets` (used by Import Pigment Mesh,
+Link and `apply_pigment_material` whenever an entry has `texture_sets`) gives each face
+the material of the first set that covers it: its slot's material name (ignoring
+Blender's `.001`) and the UDIM tile of its UV centre. A slot that already holds one of
+the set materials keeps its set, so re-linking is stable. The in-app Export / Send to
+Blender buttons take the same path when the project has sets.
+
 ## Install the add-on
 
 1. Zip the folder: `tools/blender_addon/pigment_bridge/` becomes `pigment_bridge.zip`,
@@ -149,6 +171,15 @@ folders into `scenes/town/textures/blender/` (git-ignored), from the saved town 
   - `app::bridge::tests::send_to_blender_writes_maps_sidecar_and_mesh` (GPU): the maps,
     the sidecar (emission, project path, mesh) and the painted mesh, plus `export_mesh`
     obj and the no-extension case.
+  - `app::bridge::tests::send_to_blender_with_texture_sets` (GPU): every set in the
+    requested preset, set entries whose files exist and which name their materials, the
+    whole mesh with its materials, and render framing that ignores which set is active.
+  - `bridge::tests::glb_keeps_materials`: a multi-material glb loads back with the same
+    material on every triangle.
+- `tools/test_blender_texture_sets.py` runs headless after the `scenes/materials` lantern
+  and room_corner recipes. It checks that faces per set equal the source's faces per
+  material, that sets map to UDIM tiles, that the glass has opacity and transmission maps,
+  and that linking the source `.glb` and re-linking are both stable.
 - `tools/test_blender_bridge.py` runs headless:
   `blender -b --factory-startup --python tools/test_blender_bridge.py [-- --quick]`.
   It needs `pigment-mcp` built and the variants script run first. It covers:

@@ -395,7 +395,7 @@ fn tools_base() -> Value {
                   "folder": { "type": "string", "description": "folder pattern (default \"{name}__{variant}\")" },
                   "preview": { "type": "object", "description": "render args (yaw, pitch, zoom, width, height, view, lighting, hdri, exposure, env_rotation, bloom, background, dir): also save a preview PNG per variant to <dir>/<name>__<variant>.png. Previews start from the default look (studio, bloom on, exposure 0), not from the last render; the session look is restored afterwards." },
                   "dry_run": { "type": "boolean", "description": "validate + store, report what each variant shows, export nothing" } }), &[]),
-        t("send_to_blender", "Export everything Blender needs into `dir`: the texture maps (preset, default 'separate'), a material.json sidecar (channels and files, emissive_scale, normal convention, resolution, project path) and the painted mesh with tangents (<name>.glb). The Pigment Bridge add-on (tools/blender_addon/pigment_bridge) links objects to this folder and live-reloads it. For random per-object variants in Blender, export each variant to a folder named <asset>__<variant>. Foliage layers are included (<name>_foliage.glb + instances + atlas maps, sidecar entry kind \"foliage\").",
+        t("send_to_blender", "Export everything Blender needs into `dir`: the texture maps (preset, default 'separate'), a material.json sidecar (channels and files, emissive_scale, normal convention, resolution, project path) and the painted mesh with tangents (<name>.glb). The Pigment Bridge add-on (tools/blender_addon/pigment_bridge) links objects to this folder and live-reloads it. For random per-object variants in Blender, export each variant to a folder named <asset>__<variant>. Foliage layers are included (<name>_foliage.glb + instances + atlas maps, sidecar entry kind \"foliage\"). With several texture sets: every set in the preset as <name>_<set>_<map>.<udim>.png, one sidecar entry per set (its glTF materials and UDIM tile) listed under <name>.texture_sets, and the whole mesh with one glTF material per source material; the add-on gives each face its set's material.",
           json!({ "dir": { "type": "string" }, "name": { "type": "string", "description": "base file name (default: mesh name)" },
                   "preset": { "type": "string", "description": "export preset (default separate)" },
                   "mesh": { "type": "boolean", "description": "also export the mesh (default true)" },
@@ -1199,7 +1199,7 @@ mod tests {
     fn every_repo_script_matches_the_tool_schemas() {
         let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
         let mut checked = 0;
-        for dir in ["scenes/town/scripts", "scenes/cyberpunk", "scenes/world/scripts/ground"] {
+        for dir in ["scenes/cyberpunk", "scenes/materials"] {
             for e in std::fs::read_dir(root.join(dir)).unwrap() {
                 let p = e.unwrap().path();
                 if p.extension().is_some_and(|x| x == "jsonl") {

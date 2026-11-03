@@ -211,7 +211,9 @@ pub fn export_mesh(mesh: &Mesh, path: &Path) -> Result<()> {
     }
 }
 
-/// glTF 2.0 binary, Y-up, metres: one mesh, one primitive, no material.
+/// glTF 2.0 binary, Y-up, metres: one mesh; one primitive per material (named
+/// as in the source, so a consumer can match texture sets to its material
+/// slots), or a single primitive without a material when the mesh has none.
 /// UVs are written as-is (Pigment already uses glTF's top-left origin) and the
 /// tangents are Pigment's own (w = bitangent sign, glTF convention), so a
 /// consumer that reads TANGENT gets the exact frame the normal map was baked in.
@@ -248,28 +250,52 @@ pub fn write_glb(mesh: &Mesh, path: &Path) -> Result<()> {
     push(&mut bin, bytemuck::cast_slice(&nrm), ARRAY);
     push(&mut bin, bytemuck::cast_slice(&uv), ARRAY);
     push(&mut bin, bytemuck::cast_slice(&tan), ARRAY);
-    push(&mut bin, bytemuck::cast_slice(&mesh.indices), ELEMENT);
     const F32: u32 = 5126;
     const U32: u32 = 5125;
+    let mut accessors = vec![
+        json!({ "bufferView": 0, "componentType": F32, "count": n, "type": "VEC3", "min": lo, "max": hi }),
+        json!({ "bufferView": 1, "componentType": F32, "count": n, "type": "VEC3" }),
+        json!({ "bufferView": 2, "componentType": F32, "count": n, "type": "VEC2" }),
+        json!({ "bufferView": 3, "componentType": F32, "count": n, "type": "VEC4" }),
+    ];
+    // one index buffer per material, all sharing the vertex attributes
+    let with_materials = !mesh.tri_material.is_empty() || mesh.material_names.len() > 1;
+    let groups: Vec<(Option<usize>, Vec<u32>)> = if with_materials {
+        (0..mesh.material_count())
+            .map(|k| {
+                let idx = mesh.indices.chunks_exact(3).enumerate().filter(|(t, _)| mesh.material_of(*t) as usize == k).flat_map(|(_, tri)| tri.iter().copied()).collect();
+                (Some(k), idx)
+            })
+            .filter(|(_, idx): &(Option<usize>, Vec<u32>)| !idx.is_empty())
+            .collect()
+    } else {
+        vec![(None, mesh.indices.clone())]
+    };
+    let mut primitives = Vec::new();
+    for (i, (mat, idx)) in groups.iter().enumerate() {
+        push(&mut bin, bytemuck::cast_slice(idx), ELEMENT);
+        // views 0..4 are the vertex attributes, then one per index buffer
+        accessors.push(json!({ "bufferView": 4 + i, "componentType": U32, "count": idx.len(), "type": "SCALAR" }));
+        let mut p = json!({ "attributes": { "POSITION": 0, "NORMAL": 1, "TEXCOORD_0": 2, "TANGENT": 3 }, "indices": accessors.len() - 1, "mode": 4 });
+        if let Some(k) = mat {
+            p["material"] = json!(k);
+        }
+        primitives.push(p);
+    }
     let name = if mesh.name.is_empty() { "mesh" } else { mesh.name.as_str() };
-    let gltf = json!({
+    let mut gltf = json!({
         "asset": { "version": "2.0", "generator": format!("Pigment {}", env!("CARGO_PKG_VERSION")) },
         "scene": 0,
         "scenes": [{ "nodes": [0] }],
         "nodes": [{ "name": name, "mesh": 0 }],
-        "meshes": [{ "name": name, "primitives": [{
-            "attributes": { "POSITION": 0, "NORMAL": 1, "TEXCOORD_0": 2, "TANGENT": 3 },
-            "indices": 4, "mode": 4 }] }],
+        "meshes": [{ "name": name, "primitives": primitives }],
         "buffers": [{ "byteLength": bin.len() }],
         "bufferViews": views,
-        "accessors": [
-            { "bufferView": 0, "componentType": F32, "count": n, "type": "VEC3", "min": lo, "max": hi },
-            { "bufferView": 1, "componentType": F32, "count": n, "type": "VEC3" },
-            { "bufferView": 2, "componentType": F32, "count": n, "type": "VEC2" },
-            { "bufferView": 3, "componentType": F32, "count": n, "type": "VEC4" },
-            { "bufferView": 4, "componentType": U32, "count": mesh.indices.len(), "type": "SCALAR" },
-        ],
+        "accessors": accessors,
     });
+    if with_materials {
+        gltf["materials"] = json!((0..mesh.material_count() as u32).map(|k| json!({ "name": mesh.material_name(k) })).collect::<Vec<_>>());
+    }
     let mut js = serde_json::to_vec(&gltf)?;
     while js.len() % 4 != 0 {
         js.push(b' ');
@@ -423,6 +449,32 @@ mod tests {
         export_mesh(&m, &dir.join("crate.obj")).unwrap();
         assert_eq!(Mesh::load(&dir.join("crate.obj")).unwrap().triangle_count(), m.triangle_count());
         assert!(export_mesh(&m, &dir.join("crate.fbx")).is_err());
+        std::fs::remove_dir_all(dir).ok();
+    }
+
+    /// A mesh with materials comes back with the same material per triangle
+    /// and the same names (one primitive each).
+    #[test]
+    fn glb_keeps_materials() {
+        let dir = tmp("glb-mats");
+        let mut m = Mesh::demo_crate(2);
+        let n = m.triangle_count();
+        m.tri_material = (0..n as u32).map(|t| u32::from(t % 3 == 0) + u32::from(t % 5 == 0)).collect();
+        m.material_names = vec!["wood".into(), "iron".into(), "brass".into()];
+        let p = dir.join("crate.glb");
+        export_mesh(&m, &p).unwrap();
+        let back = Mesh::load(&p).unwrap();
+        assert_eq!(back.material_names, m.material_names);
+        assert_eq!(back.triangle_count(), n);
+        // triangles are grouped by material: compare the multiset of (material, corners)
+        let key = |mesh: &Mesh| {
+            let mut v: Vec<(u32, [[i64; 3]; 3])> = (0..mesh.triangle_count())
+                .map(|t| (mesh.material_of(t), [0, 1, 2].map(|k| mesh.vertices[mesh.indices[t * 3 + k] as usize].position.map(|x| (x * 1e5).round() as i64))))
+                .collect();
+            v.sort();
+            v
+        };
+        assert_eq!(key(&back), key(&m));
         std::fs::remove_dir_all(dir).ok();
     }
 }

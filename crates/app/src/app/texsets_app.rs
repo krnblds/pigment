@@ -9,6 +9,7 @@
 
 use super::*;
 use pigment_core::texsets::{self, SetSpec};
+use serde_json::json;
 
 /// One parked texture set.
 pub(crate) struct SetSlot {
@@ -107,6 +108,12 @@ impl PigmentApp {
     /// Several texture sets?
     pub fn has_sets(&self) -> bool {
         self.multi.is_some()
+    }
+
+    /// The whole mesh: with texture sets `self.mesh` is only the active set's
+    /// triangles, so framing and mesh export use this instead.
+    pub fn full_mesh(&self) -> &Mesh {
+        self.multi.as_ref().map(|m| &m.full).unwrap_or(&self.mesh)
     }
 
     /// Make texture set `name` the active one.
@@ -315,12 +322,22 @@ impl PigmentApp {
     }
 
     /// Export every set: `<name>_<set>_<map>.<udim>.png`. Returns the files.
-    pub(crate) fn export_sets(&mut self, rs: &RenderState, dir: &Path, name: &str) -> Result<Vec<PathBuf>, String> {
+    /// Export every set with `preset` as `<name>_<set>_<map>.<udim>.png`.
+    ///
+    /// The sidecar gets one entry per set (`<name>_<set>`: its maps under their
+    /// final file names, the glTF materials it paints and its UDIM tile) and the
+    /// entry `<name>` lists them in `texture_sets`, so a consumer can give each
+    /// face of the whole mesh the material of the set that covers it.
+    pub(crate) fn export_sets(&mut self, rs: &RenderState, dir: &Path, name: &str, preset: &str) -> Result<Vec<PathBuf>, String> {
         let home = self.active_set_name();
         let mut files = Vec::new();
+        let mut entries = Vec::new();
         for set in self.set_names() {
             self.activate_set(rs, &set)?;
-            let tile = self.doc.texture_set.as_ref().map(|s| s.tile()).unwrap_or(1001);
+            // the requested preset for every set, not only the active one
+            self.doc.export_preset = preset.to_string();
+            let spec = self.doc.texture_set.clone().unwrap_or_else(|| SetSpec::all(&set));
+            let tile = spec.tile();
             let prefix = format!("{name}_{}", texsets::sanitize(&set));
             self.export_name = prefix.clone();
             self.export_dir = Some(dir.to_path_buf());
@@ -330,15 +347,30 @@ impl PigmentApp {
                 return Err(e.clone());
             }
             let preset = export::preset(&self.doc.export_preset).ok_or("unknown export preset")?;
+            let mut renamed = std::collections::HashMap::new();
             for o in &preset.outputs {
-                let from = dir.join(format!("{prefix}_{}.png", o.suffix));
-                if from.exists() {
-                    let to = dir.join(texsets::export_file(name, &texsets::sanitize(&set), o.suffix, tile));
-                    std::fs::rename(&from, &to).map_err(|e| format!("renaming {}: {e}", from.display()))?;
-                    files.push(to);
+                let from = format!("{prefix}_{}.png", o.suffix);
+                if dir.join(&from).exists() {
+                    let to = texsets::export_file(name, &texsets::sanitize(&set), o.suffix, tile);
+                    std::fs::rename(dir.join(&from), dir.join(&to)).map_err(|e| format!("renaming {from}: {e}"))?;
+                    files.push(dir.join(&to));
+                    renamed.insert(from, to);
                 }
             }
+            // the sidecar entry export() wrote names the files before the rename
+            let mut maps = pigment_core::bridge::read_sidecar(dir)["materials"][&prefix]["maps"].clone();
+            for m in maps.as_array_mut().into_iter().flatten() {
+                if let Some(to) = m["file"].as_str().and_then(|f| renamed.get(f)) {
+                    m["file"] = json!(to);
+                }
+            }
+            let full = self.full_mesh();
+            let materials: Vec<String> = spec.materials.iter().map(|&k| full.material_name(k)).collect();
+            pigment_core::bridge::update_sidecar(dir, &prefix, &json!({ "maps": maps, "texture_set": set, "materials": materials, "udim": spec.udim }))
+                .map_err(|e| format!("{e:#}"))?;
+            entries.push(prefix);
         }
+        pigment_core::bridge::update_sidecar(dir, name, &json!({ "texture_sets": entries })).map_err(|e| format!("{e:#}"))?;
         self.activate_set(rs, &home)?;
         self.export_name = name.to_string();
         Ok(files)
