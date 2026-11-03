@@ -176,22 +176,36 @@ pub fn catalogue() -> Vec<(&'static str, Vec<LibItem>)> {
         smart("Scuffed white plastic"),
         smart("Grimy chrome"),
         smart("Hazard stripes"),
+        smart("Herringbone parquet"),
+        smart("Damask wallpaper"),
+        smart("Plush carpet"),
+        smart("Pebbled leather"),
         preset("Metallic flake paint"),
         preset("Tinted glass"),
         preset("Neon cyan"),
     ];
-    let mut groups: Vec<(&'static str, Vec<LibItem>)> = vec![("Featured", featured), ("Smart materials", smart_material_names().iter().map(|n| smart(n)).collect())];
+    let mut groups: Vec<(&'static str, Vec<LibItem>)> = vec![("Featured", featured)];
+    groups.extend(pigment_core::document::smart_material_groups().into_iter().map(|(g, names)| (g, names.iter().map(|n| smart(n)).collect())));
     let cat = |n: &str| -> &'static str {
         let l = n.to_ascii_lowercase();
-        if l.contains("glass") || l == "cut-out" {
+        let any = |ms: &[&str]| ms.iter().any(|m| l.contains(m));
+        if any(&["glass", "acrylic", "ice", "water"]) || l == "cut-out" {
             "Glass & cut-outs"
-        } else if l.contains("neon") || l.contains("led") || l.contains("screen") {
+        } else if any(&["neon", "led", "screen", "bulb", "lava", "hologram"]) {
             "Glow"
-        } else if l.contains("car paint") || l.contains("candy") || l.contains("flake") {
+        } else if any(&["car paint", "candy", "flake", "pearl", "wrap"]) {
             "Car paint"
-        } else if ["steel", "iron", "aluminium", "gold", "copper", "gunmetal", "chrome", "rust", "verdigris"].iter().any(|m| l.contains(m)) {
+        } else if any(&["steel", "iron", "aluminium", "gold", "copper", "gunmetal", "chrome", "rust", "verdigris", "silver", "brass", "bronze", "nickel", "titanium", "anodized", "mirror"]) {
             "Metals"
-        } else if ["asphalt", "concrete", "grime", "seam", "chip"].iter().any(|m| l.contains(m)) {
+        } else if any(&["oak", "walnut", "pine", "mahogany", "ebony", "cork", "wood"]) {
+            "Wood"
+        } else if any(&["marble", "granite", "slate", "sandstone", "terracotta", "brick", "clay", "porcelain"]) {
+            "Stone & ceramic"
+        } else if any(&["leather", "suede", "cotton", "wool", "velvet", "denim", "canvas", "felt"]) {
+            "Fabric & leather"
+        } else if any(&["sand", "mud", "snow", "moss", "bark", "bone", "soot"]) {
+            "Nature"
+        } else if any(&["asphalt", "concrete", "grime", "seam", "chip"]) {
             "Ground & grime"
         } else {
             "Paint & plastic"
@@ -205,7 +219,7 @@ pub fn catalogue() -> Vec<(&'static str, Vec<LibItem>)> {
             None => flat.push((c, vec![preset(n)])),
         }
     }
-    let order = ["Metals", "Paint & plastic", "Car paint", "Glass & cut-outs", "Glow", "Ground & grime"];
+    let order = ["Metals", "Paint & plastic", "Car paint", "Wood", "Stone & ceramic", "Fabric & leather", "Glass & cut-outs", "Glow", "Nature", "Ground & grime"];
     flat.sort_by_key(|(k, _)| order.iter().position(|o| o == k).unwrap_or(99));
     groups.extend(flat);
     groups

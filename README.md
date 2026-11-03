@@ -174,7 +174,7 @@ Real examples: [`scenes/town/scripts/`](scenes/town/scripts) and [`scenes/cyberp
 | **Filters (16)** | levels, HSL, blur, warp, slope blur, grow/shrink, noise overlay and more, seam-aware, on masks, layer results or as filter layers |
 | **Brushes** | pen pressure curves, 11 tips, spacing, flow, jitter, angle follow, lazy mouse, line and path tools, stencils, X/Y/Z and radial symmetry, clone and smudge |
 | **Generators (14)** | edge wear, dirt, grunge, streaks, stripes, spots, scratches, panel lines, ground gradient, leaks/drips, puddles, moss, tiles/bricks/hex, window grid |
-| **Fills** | flat materials (45+ presets), smart materials (save and apply `.pigsmart`), tiling image fills in UV or triplanar world space |
+| **Fills** | flat materials (110+ presets), 50+ smart materials (worn metals, wallpapers, carpets, wood floors, marble, leather, fabric...; save and apply your own as `.pigsmart`), 30 seamless tile sets, tiling image fills in UV or triplanar world space |
 | **Decals** | editable decal objects with box, triplanar and wrap projection, a viewport gizmo, auto placement on the largest clear wall, grids and snapping, scatter with spacing/height/fit rules, tear and fade wear |
 | **Variants** | many looks from one project (seeded lit windows, decal swaps), exported in one call |
 | **Projects** | model texturing, seamless tiles, trim sheets, decal atlases |
