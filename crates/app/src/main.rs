@@ -1,12 +1,41 @@
 //! Pigment — paint PBR textures directly onto 3D meshes.
 //!
 //! `pigment [model or project]` opens it; `pigment --design-gallery` shows
-//! every design-system component in every state.
+//! every design-system component in every state. Agent commands
+//! (`pigment tools`, `run`, `inspect`, ...) are handled by `cli::dispatch`.
 #![cfg_attr(all(windows, not(debug_assertions)), windows_subsystem = "windows")] // no console window for the release .exe
 
 use pigment_engine::app;
 
+/// The release .exe is a GUI-subsystem program, so run from a terminal it has no
+/// stdout. Borrow the parent's console then, unless stdout is already a pipe or
+/// file (agents capturing the JSON get it either way).
+#[cfg(windows)]
+fn attach_parent_console() {
+    #[link(name = "kernel32")]
+    extern "system" {
+        fn GetStdHandle(which: u32) -> isize;
+        fn AttachConsole(process: u32) -> i32;
+    }
+    const STD_OUTPUT_HANDLE: u32 = -11i32 as u32;
+    const ATTACH_PARENT_PROCESS: u32 = u32::MAX;
+    // SAFETY: plain Win32 calls with constant arguments
+    unsafe {
+        let out = GetStdHandle(STD_OUTPUT_HANDLE);
+        if out == 0 || out == -1 {
+            AttachConsole(ATTACH_PARENT_PROCESS);
+        }
+    }
+}
+
 fn main() -> eframe::Result {
+    #[cfg(windows)]
+    if std::env::args_os().len() > 1 {
+        attach_parent_console();
+    }
+    if let Some(code) = pigment_engine::cli::dispatch(std::env::args().skip(1).collect()) {
+        std::process::exit(code);
+    }
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("warn,wgpu_hal=error,pigment=info")).init();
     let args: Vec<std::ffi::OsString> = std::env::args_os().skip(1).collect();
     let gallery = args.iter().any(|a| a == "--design-gallery");

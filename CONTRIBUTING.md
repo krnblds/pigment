@@ -25,10 +25,10 @@ cargo run --release -p pigment
 ```bash
 cargo test --release -- --test-threads=2          # everything (needs a GPU)
 cargo test --release -p pigment-core              # GPU-free core only (what CI runs)
-cargo test --release -p pigment --bin pigment-mcp # MCP scripts vs. tool schemas
+cargo test --release -p pigment --lib -- mcp:: cli::   # MCP scripts vs. tool schemas, agent CLI
 ```
 
-GPU and UI tests skip themselves when there is no GPU, so CI only covers the core crate
+GPU and UI tests skip themselves when there is no GPU; CI covers the core crate, MCP schemas, and CPU-only CLI tests
 and the MCP schemas. If your change touches rendering, painting or the UI, run the full
 suite locally and say so in the pull request.
 
