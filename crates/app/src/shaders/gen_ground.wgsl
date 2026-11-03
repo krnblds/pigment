@@ -541,8 +541,267 @@ fn gn_ripples(t: vec2<i32>, gp: vec4<f32>, gp2: vec4<f32>, gp3: vec4<f32>) -> f3
     return wx_threshold(o, gp);
 }
 
+// ---------------------------------------------------------------- planks
+// 21 planks: wood floors. The layout (variant) cuts the surface into planks;
+// each plank is then a board sawn from its own log.
+//
+// Slots: gp.x = strength, gp.z = planks per metre across (1 / width),
+// gp.w = grain waviness, gp2.y = joint width (m), gp2.z = length / width
+// (herringbone, basketweave: whole slats), gp2.w = layout; gp3 = growth rings
+// per cm, flat-sawn figure 0..1, knots 0..1, output (0 surface, 1 joints,
+// 2 latewood, 3 pores). g_prof = the plank's profile (eased edges, a little
+// cupping, uneven plank heights), g_inst = a random per plank.
+
+struct GnPlank {
+    uv: vec2<f32>,   // along / across the plank from its corner, metres
+    size: vec2<f32>, // length, width, metres
+    id: vec2<f32>,   // per-plank key (wrapped in tile mode)
+};
+
+fn gn_plank(uv: vec2<f32>, size: vec2<f32>, id: vec2<f32>) -> GnPlank {
+    var o: GnPlank;
+    o.uv = uv;
+    o.size = size;
+    o.id = id;
+    return o;
+}
+
+// Boards in rows along x, random lengths, joints staggered row to row.
+fn gn_boards(p: vec2<f32>, w: f32, ratio: f32, tp: vec2<f32>, salt: f32) -> GnPlank {
+    var len = w * max(ratio, 1.0);
+    var rows = 0.0;
+    var cols = 0.0;
+    if (tp.y > 0.0) { rows = max(round(tp.y / w), 1.0); }
+    if (tp.x > 0.0) { cols = max(round(tp.x / len), 1.0); len = tp.x / cols; }
+    let wy = select(w, tp.y / max(rows, 1.0), rows > 0.0);
+    let row = floor(p.y / wy);
+    let rk = gn_wrap(vec2<f32>(row, 0.0), vec2<f32>(rows, 0.0)).x;
+    let x = p.x - gn_h(vec2<f32>(rk, 3.0), salt) * len;
+    // board ends sit at i * len, each pushed up to +-35% of a length
+    let i0 = floor(x / len);
+    var a = 0.0;
+    var b = 0.0;
+    var idx = i0;
+    for (var k = -1; k <= 1; k++) {
+        let i = i0 + f32(k);
+        let ia = gn_wrap(vec2<f32>(i, 0.0), vec2<f32>(cols, 0.0)).x;
+        let ib = gn_wrap(vec2<f32>(i + 1.0, 0.0), vec2<f32>(cols, 0.0)).x;
+        let s0 = i * len + (gn_h(vec2<f32>(ia, rk), salt + 1.0) - 0.5) * 0.7 * len;
+        let s1 = (i + 1.0) * len + (gn_h(vec2<f32>(ib, rk), salt + 1.0) - 0.5) * 0.7 * len;
+        if (x >= s0 && x < s1) { a = s0; b = s1; idx = ia; }
+    }
+    return gn_plank(vec2<f32>(x - a, p.y - row * wy), vec2<f32>(b - a, wy), vec2<f32>(idx, rk));
+}
+
+// Herringbone in slat units (width 1, length n): slat H(k, j) covers
+// [k + jn, k + jn + n) x [k - jn, k - jn + 1), slat V(k, j) covers
+// [k + jn, k + jn + 1) x [k - jn + 1, k - jn + 1 + n). The pattern repeats
+// every 2n slats, so in tile mode the width snaps to a multiple of that.
+fn gn_herringbone(p: vec2<f32>, w0: f32, ratio: f32, tp: vec2<f32>, salt: f32) -> GnPlank {
+    let n = max(round(ratio), 2.0);
+    var w = w0;
+    var per = 0.0;
+    if (tp.x > 0.0) {
+        per = max(round(tp.x / (w0 * 2.0 * n)), 1.0) * 2.0 * n;
+        w = tp.x / per;
+    }
+    let q = p / w;
+    let j0 = floor((q.x - q.y) / (2.0 * n));
+    var o = gn_plank(vec2<f32>(0.0), vec2<f32>(n * w, w), vec2<f32>(0.0));
+    for (var dj = -1; dj <= 1; dj++) {
+        let j = j0 + f32(dj);
+        let kh = floor(q.y + j * n);
+        let sh = q.x - kh - j * n;
+        if (sh >= 0.0 && sh < n) {
+            o = gn_plank(vec2<f32>(sh, q.y + j * n - kh) * w, vec2<f32>(n * w, w), gn_hb_key(kh, j, 0.0, n, per));
+        }
+        let kv = floor(q.x - j * n);
+        let tv = q.y - kv + j * n - 1.0;
+        if (tv >= 0.0 && tv < n) {
+            o = gn_plank(vec2<f32>(tv, q.x - j * n - kv) * w, vec2<f32>(n * w, w), gn_hb_key(kv, j, 1.0, n, per));
+        }
+    }
+    return o;
+}
+// The same slat seen one tile over gets the same key: the lattice repeats by
+// (k, j) + (per / 2, per / 2n) and (per, 0).
+fn gn_hb_key(k: f32, j: f32, side: f32, n: f32, per: f32) -> vec2<f32> {
+    if (per <= 0.0) { return vec2<f32>(k, j * 2.0 + side); }
+    let half = per / (2.0 * n);
+    let m = floor(j / half);
+    let jj = j - m * half;
+    let kk = k - m * per * 0.5;
+    return vec2<f32>(kk - per * floor(kk / per), jj * 2.0 + side);
+}
+
+// Chevron: columns of slats cut at 45 degrees, alternate columns mirrored,
+// meeting in a point.
+fn gn_chevron(p: vec2<f32>, w: f32, ratio: f32, tp: vec2<f32>, salt: f32) -> GnPlank {
+    let len = w * max(ratio, 1.0);
+    var cw = len * 0.70710678;
+    var cols = 0.0;
+    if (tp.x > 0.0) { cols = max(round(tp.x / (2.0 * cw)), 1.0) * 2.0; cw = tp.x / cols; }
+    let col = floor(p.x / cw);
+    let xl = p.x - col * cw;
+    let even = (col - 2.0 * floor(col * 0.5)) < 0.5;
+    let xs = select(cw - xl, xl, even);
+    let d = (p.y - xs) * 0.70710678;
+    var wy = w;
+    var rows = 0.0;
+    if (tp.y > 0.0) { rows = max(round(tp.y * 0.70710678 / w), 1.0); wy = tp.y * 0.70710678 / rows; }
+    let row = floor(d / wy);
+    let key = gn_wrap(vec2<f32>(col, row), vec2<f32>(cols, rows));
+    return gn_plank(vec2<f32>(xl / 0.70710678, d - row * wy), vec2<f32>(cw / 0.70710678, wy), key);
+}
+
+// Basketweave: square blocks of n slats, alternate blocks turned 90 degrees.
+fn gn_basket(p: vec2<f32>, w0: f32, ratio: f32, tp: vec2<f32>, salt: f32) -> GnPlank {
+    let n = max(round(ratio), 2.0);
+    var blk = n * w0;
+    var per = 0.0;
+    if (tp.x > 0.0) { per = max(round(tp.x / (2.0 * blk)), 1.0) * 2.0; blk = tp.x / per; }
+    let w = blk / n;
+    let b = floor(p / blk);
+    let l = p - b * blk;
+    let turned = (b.x + b.y - 2.0 * floor((b.x + b.y) * 0.5)) > 0.5;
+    let key = gn_wrap(b, vec2<f32>(per));
+    if (turned) {
+        let s = floor(l.x / w);
+        return gn_plank(vec2<f32>(l.y, l.x - s * w), vec2<f32>(blk, w), vec2<f32>(key.x * 16.0 + s, key.y));
+    }
+    let s = floor(l.y / w);
+    return gn_plank(vec2<f32>(l.x, l.y - s * w), vec2<f32>(blk, w), vec2<f32>(key.x * 16.0 + s + 8.0, key.y));
+}
+
+// Metres covered by one texel here (for filtering detail finer than a texel).
+fn gn_footprint(t: vec2<i32>) -> f32 {
+    let p0 = textureLoad(position, t, 0).xyz;
+    let size = vec2<i32>(textureDimensions(position));
+    var best = 1e9;
+    // a neighbour off the image or off the mesh says nothing; across a UV seam
+    // it is somewhere else entirely, so keep the nearest valid one
+    for (var k = 0; k < 4; k++) {
+        let o = array<vec2<i32>, 4>(vec2<i32>(1, 0), vec2<i32>(-1, 0), vec2<i32>(0, 1), vec2<i32>(0, -1))[k];
+        let q = t + o;
+        if (any(q < vec2<i32>(0)) || any(q >= size)) { continue; }
+        let n = textureLoad(position, q, 0);
+        if (n.w < 0.5) { continue; }
+        let d = length(n.xyz - p0);
+        if (d > 1e-7) { best = min(best, d); }
+    }
+    return clamp(select(0.001, best, best < 1e8), 1e-5, 0.02);
+}
+
+// Fade a pattern of `freq` cycles per metre to `avg` once a texel can no longer
+// hold it (two texels per cycle).
+fn gn_filter(v: f32, avg: f32, freq: f32, fw: f32) -> f32 {
+    return mix(v, avg, smoothstep(0.25, 0.5, freq * fw));
+}
+
+struct GnWood {
+    late: f32,   // latewood density 0..1 (and knot cores)
+    pores: f32,  // open earlywood vessels 0..1
+};
+
+// The wood of one plank. Growth rings are cylinders around the pith of the
+// log the board was sawn from: a board cut close to the pith with its axis
+// tilted against the face (flat-sawn) shows nested arches ("cathedrals"),
+// one cut far from it (quarter-sawn) shows straight stripes. Rings wander
+// with low-frequency noise; knots are branches whose rings push the trunk's
+// rings aside. `fw` is the texel footprint in metres.
+fn gn_wood(pl: GnPlank, rings_cm: f32, flat: f32, knots: f32, wave: f32, fw: f32, salt: f32) -> GnWood {
+    let r = vec4<f32>(gn_h(pl.id, salt + 11.0), gn_h(pl.id, salt + 12.0), gn_h(pl.id, salt + 13.0), gn_h(pl.id, salt + 14.0));
+    let u = pl.uv.x;
+    let v = pl.uv.y - pl.size.y * 0.5;
+    let off = r.xy * 37.0;
+    let f = clamp(flat, 0.0, 1.0);
+    // where the pith runs, relative to the face: across (v0) and below (depth)
+    let v0 = (r.x - 0.5) * pl.size.y * mix(6.0, 1.2, f);
+    let depth = mix(0.3, 0.02 + 0.04 * r.y, f);
+    let tilt = (r.z - 0.5) * 0.05 * f;
+    // slow wandering of the grain: stretched along the board
+    let wa = (gn_noise(vec2<f32>(u * 2.5, v * 30.0) + off, vec2<f32>(0.0), salt + 15.0) - 0.5) * 0.006;
+    let wb = (gn_noise(vec2<f32>(u * 9.0, v * 90.0) + off.yx, vec2<f32>(0.0), salt + 16.0) - 0.5) * 0.0015;
+    let a = v - v0 + (wa + wb) * wave;
+    let b = depth + tilt * u + wa * 0.5 * wave;
+    var rad = sqrt(a * a + b * b);
+    // knots: at most one per 0.7 m of board, its rings bending the trunk's around it
+    var core = 0.0;
+    let seg = floor(u / 0.7);
+    let hk = gn_h(pl.id + vec2<f32>(seg * 3.1, 0.0), salt + 17.0);
+    if (hk < knots * 0.6) {
+        let kp = vec2<f32>((seg + 0.15 + 0.7 * gn_h(pl.id + vec2<f32>(seg, 1.0), salt + 18.0)) * 0.7, (gn_h(pl.id + vec2<f32>(seg, 2.0), salt + 19.0) - 0.5) * pl.size.y * 0.7);
+        let kr = 0.004 + 0.009 * gn_h(pl.id + vec2<f32>(seg, 3.0), salt + 20.0);
+        let d = length((vec2<f32>(u, v) - kp) * vec2<f32>(0.6, 1.0));
+        rad += 2.5 * kr * exp(-d * d / (kr * kr * 9.0));
+        core = 1.0 - smoothstep(kr * 0.8, kr * 1.15, d);
+        core = max(core, (1.0 - smoothstep(kr * 1.1, kr * 1.4, d)) * 0.6);   // the dark ring round it
+    }
+    let freq = rings_cm * 100.0 * (0.8 + 0.4 * r.w);   // rings per metre of radius
+    // good and bad growing years: ring spacing and latewood share wander
+    let rf = rad * freq;
+    let year = gn_noise(vec2<f32>(rf * 0.3, r.w * 53.0), vec2<f32>(0.0), salt + 22.0);
+    let ph = fract(rf + (year - 0.5) * 1.4);
+    let lw = 0.42 + 0.22 * gn_noise(vec2<f32>(rf * 0.7, r.z * 31.0), vec2<f32>(0.0), salt + 23.0);
+    // earlywood is pale and porous; it darkens gradually into the dense
+    // latewood, then the next year's earlywood starts at a sharp boundary
+    var late = smoothstep(lw, 0.93, ph) * (1.0 - smoothstep(0.965, 1.0, ph));
+    // how fast the rings sweep across the face decides how fine they look
+    let slope = freq * (abs(a) / max(rad, 1e-5) + 0.15);
+    late = gn_filter(late, 0.3, slope, fw);
+    // pores: thin streaks along the grain, packed into the earlywood band
+    let pn = gn_noise(vec2<f32>(u * 45.0, pl.uv.y * 1100.0) + off * 3.0, vec2<f32>(0.0), salt + 21.0);
+    var pores = smoothstep(0.6, 0.78, pn) * (1.0 - smoothstep(0.12, 0.4, ph));
+    pores = gn_filter(pores, 0.08, 1100.0, fw);
+    // long colour streaks along the board (heartwood tone, mineral streaks)
+    let streak = gn_noise(vec2<f32>(u * 1.1, v * 16.0) + off * 0.5, vec2<f32>(0.0), salt + 24.0);
+    late = clamp(late + (streak - 0.5) * 0.35, 0.0, 1.0);
+    var o: GnWood;
+    o.late = max(late, core);
+    o.pores = pores * (1.0 - core);
+    return o;
+}
+
+fn gn_planks(t: vec2<i32>, gp: vec4<f32>, gp2: vec4<f32>, gp3: vec4<f32>) -> f32 {
+    let fr = gn_frame(t);
+    let salt = gp2.x * 1.37 + fr.face * 17.0;
+    let w = 1.0 / max(gp.z, 0.5);
+    // shifted by part of a plank (periods unchanged) so joints don't line up
+    // with the mesh's or the tile's edges
+    let p = fr.p + vec2<f32>(0.31, 0.47) * w;
+    var pl: GnPlank;
+    switch u32(gp2.w + 0.5) {
+        case 1u: { pl = gn_herringbone(p, w, gp2.z, fr.tp, salt); }
+        case 2u: { pl = gn_chevron(p, w, gp2.z, fr.tp, salt); }
+        case 3u: { pl = gn_basket(p, w, gp2.z, fr.tp, salt); }
+        default: { pl = gn_boards(p, w, gp2.z, fr.tp, salt); }
+    }
+    let fw = gn_footprint(t);
+    let rnd = gn_h(pl.id, salt + 7.0);
+    g_inst = rnd;
+    // distance to the plank's edge, and the joint half-width either side
+    let de = min(min(pl.uv.x, pl.size.x - pl.uv.x), min(pl.uv.y, pl.size.y - pl.uv.y));
+    let jh = max(gp2.y, 0.0) * 0.5;
+    let aa = max(fw * 0.7, 5e-5);
+    let face = smoothstep(jh - aa, jh + aa, de);
+    // profile: a 1.5 mm eased edge, slight cupping across the width, and each
+    // plank sitting a touch higher or lower than its neighbours
+    let ease = smoothstep(jh, jh + 0.0015, de);
+    let x = pl.uv.y / max(pl.size.y, 1e-5) * 2.0 - 1.0;
+    g_prof = clamp(ease * (0.9 - 0.06 * x * x + 0.08 * (gn_h(pl.id, salt + 8.0) - 0.5)), 0.0, 1.0);
+    var o = 0.0;
+    switch u32(gp3.w + 0.5) {
+        case 1u: { o = 1.0 - face; }
+        case 2u: { o = gn_wood(pl, gp3.x, gp3.y, gp3.z, gp.w, fw, salt).late * face * gp.x; }
+        case 3u: { o = gn_wood(pl, gp3.x, gp3.y, gp3.z, gp.w, fw, salt).pores * face * gp.x; }
+        default: { o = face; }
+    }
+    return o;
+}
+
 fn gen_ground(t: vec2<i32>, kind: u32, gp: vec4<f32>, gp2: vec4<f32>, gp3: vec4<f32>) -> f32 {
     switch kind {
+        case 21u: { return gn_planks(t, gp, gp2, gp3); }
         case 15u: { return gn_cells(t, gp, gp2, gp3); }
         case 16u: { return gn_scatter(t, gp, gp2, gp3); }
         case 17u: { return gn_rock(t, gp, gp2, gp3); }

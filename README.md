@@ -90,6 +90,14 @@ The full beginner guide with screenshots is **[docs/GETTING_STARTED.md](docs/GET
 |---|---|---|
 | ![simple](docs/agents/ui/simple_mode.png) | ![advanced](docs/agents/ui/advanced_mode.png) | ![decals](docs/agents/ui/decal_tool.png) |
 
+## Agent CLI
+
+`pigment tools`, `inspect`, `doctor`, `validate`, `run`, `feedback`, `recover`, and
+`verify-export` provide JSON output and process exit codes for shell-based agents.
+Scripts accept stdin; versioned recipes support typed parameters and fixed seeds.
+See [agent workflows](docs/agent-cli.md) for commands, recovery, visual feedback,
+and optional Blender import verification.
+
 ## Use it from an AI agent (MCP)
 
 `pigment-mcp` speaks the [Model Context Protocol](https://modelcontextprotocol.io) over stdio. Build it once:

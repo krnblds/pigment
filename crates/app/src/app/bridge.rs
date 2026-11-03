@@ -19,7 +19,8 @@ fn arg_str<'a>(a: &'a Value, k: &str) -> Option<&'a str> {
 
 impl Session {
     /// Write the loaded mesh (as painted: world transforms applied, Pigment's
-    /// UVs, normals and tangents) to `.glb` or `.obj`.
+    /// UVs, normals and tangents) to `.glb` or `.obj`: the whole mesh, one
+    /// glTF material per source material, even with several texture sets.
     pub fn export_mesh(&mut self, a: &Value) -> Res<Value> {
         let mut path = PathBuf::from(arg_str(a, "path").ok_or("missing string argument `path`")?);
         if let Some(fmt) = arg_str(a, "format") {
@@ -30,7 +31,7 @@ impl Session {
         } else if path.extension().is_none() {
             path.set_extension("glb");
         }
-        let mesh = &self.app.mesh;
+        let mesh = self.app.full_mesh();
         if mesh.indices.is_empty() {
             return Err("no mesh loaded: call new_project or open_project first".into());
         }
@@ -116,6 +117,52 @@ mod tests {
         assert!(out.join("m.obj").exists() && o["tangents"] == false);
         s.export_mesh(&json!({ "path": out.join("n") })).unwrap();
         assert!(out.join("n.glb").exists());
+        std::fs::remove_dir_all(out).ok();
+    }
+
+    /// With texture sets: every set in the requested preset, sidecar entries
+    /// that point at the files on disk and say which materials / tile they
+    /// paint, the whole mesh with its materials, and render framing on the
+    /// whole mesh whichever set is active.
+    #[test]
+    fn send_to_blender_with_texture_sets() {
+        let _gpu = crate::app::automation::gpu_lock();
+        let Ok(mut s) = Session::new() else { return };
+        let out = std::env::temp_dir().join(format!("pigment-s2b-sets-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&out);
+        std::fs::create_dir_all(&out).unwrap();
+        let mut mesh = pigment_core::hibake::rounded_box(glam::Vec3::new(0.5, 0.35, 0.4), 0.06, 16, None, Some(&|p: glam::Vec3| if p.y > 0.33 { 1 } else { 0 }));
+        mesh.material_names = vec!["body".into(), "lid".into()];
+        let src = out.join("box.obj");
+        mesh.write_obj(&src).unwrap();
+        s.new_project(&json!({ "mesh": src, "resolution": 512, "material": "Teal paint", "texture_sets": [{ "name": "body", "materials": ["body"] }, { "name": "lid", "materials": ["lid"] }] })).unwrap();
+        let whole = s.app.full_mesh().triangle_count();
+        assert!(s.app.mesh.triangle_count() < whole, "the active set is part of the mesh");
+        let r = s.send_to_blender(&json!({ "dir": out.join("tex"), "name": "box" })).unwrap();
+        let doc = pigment_core::bridge::read_sidecar(&out.join("tex"));
+        let mats = &doc["materials"];
+        assert_eq!(mats["box"]["texture_sets"], json!(["box_body", "box_lid"]), "{doc}");
+        assert_eq!(mats["box"]["mesh"], "box.glb");
+        for (entry, material) in [("box_body", "body"), ("box_lid", "lid")] {
+            let e = &mats[entry];
+            assert_eq!(e["preset"], "separate", "{entry} uses the requested preset");
+            assert_eq!(e["materials"], json!([material]));
+            for m in e["maps"].as_array().unwrap() {
+                let f = m["file"].as_str().unwrap();
+                assert!(f.ends_with(".1001.png") && out.join("tex").join(f).exists(), "{entry}: {f}");
+            }
+        }
+        assert!(r["files"].as_array().unwrap().len() >= 2 * 7, "{r}");
+        // the whole mesh, one glTF material per source material
+        let back = pigment_core::Mesh::load(&out.join("tex/box.glb")).unwrap();
+        assert_eq!(back.triangle_count(), whole);
+        assert_eq!(back.material_names, vec!["body".to_string(), "lid".to_string()]);
+        // framing: the same camera whichever set is active
+        s.set_camera(&json!({}));
+        let a = (s.app.camera.target, s.app.camera.distance);
+        s.activate_texture_set("lid").unwrap();
+        s.set_camera(&json!({}));
+        assert!((s.app.camera.target - a.0).length() < 1e-5 && (s.app.camera.distance - a.1).abs() < 1e-5);
         std::fs::remove_dir_all(out).ok();
     }
 }

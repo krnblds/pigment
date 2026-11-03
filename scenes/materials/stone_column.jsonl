@@ -1,0 +1,7 @@
+{"tool": "new_project", "args": {"mesh": "assets/stone_column.glb", "resolution": 2048, "material": "Marble white"}}
+{"tool": "add_layer", "args": {"kind": "fill", "name": "Veins", "material": "Granite", "mask": {"generator": "rock", "variant": "cracks", "scale": 2.5}, "opacity": 0.35}}
+{"tool": "add_layer", "args": {"kind": "fill", "name": "Grime", "material": "Grime", "mask": {"generator": "dirt", "amount": 0.35}, "opacity": 0.55}}
+{"tool": "add_layer", "args": {"kind": "fill", "name": "Rain streaks", "material": "Grime", "mask": {"generator": "streaks", "amount": 0.3}, "opacity": 0.45}}
+{"tool": "add_layer", "args": {"kind": "fill", "name": "Moss", "material": "Moss green", "mask": {"generator": "moss", "amount": 0.3}}}
+{"tool": "send_to_blender", "args": {"dir": "scenes/materials/textures/stone_column", "name": "stone_column", "project": "scenes/materials/projects/stone_column.pigment"}}
+{"tool": "render", "args": {"path": "scenes/materials/renders/stone_column.png", "lighting": "studio", "width": 640, "height": 640}}

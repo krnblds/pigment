@@ -229,3 +229,55 @@ fn ground_mcp_args() {
     assert!((l["jitter"]["hue"].as_f64().unwrap() - 0.03).abs() < 1e-6);
     let _ = std::fs::remove_dir_all(dir);
 }
+
+/// A wood floor: plank faces, latewood, pores and dark joints, all reading one planks layout.
+fn planks_stack(s: &mut Session, layout: &str, joint: f32) {
+    let g = json!({ "generator": "planks", "variant": layout, "scale": 7.0, "length_ratio": 4, "joint_width": joint, "knots": 0.4, "seed": 3 });
+    let with = |out: &str| {
+        let mut m = g.clone();
+        m["output"] = json!(out);
+        m
+    };
+    for l in [
+        json!({ "name": "Oak", "values": { "base_color": [0.9, 0.9, 0.9], "height": 0.4 }, "height_profile": true, "jitter": { "value": 0.2 }, "mask": with("surface") }),
+        json!({ "name": "Latewood", "values": { "base_color": [0.6, 0.6, 0.6] }, "channels": { "height": false }, "mask": with("latewood") }),
+        json!({ "name": "Pores", "values": { "base_color": [0.5, 0.5, 0.5], "height": -0.2 }, "opacity": 0.5, "mask": with("pores") }),
+        json!({ "name": "Joints", "values": { "base_color": [0.0, 0.0, 0.0], "height": -0.5 }, "mask": with("joints") }),
+    ] {
+        s.add_layer(&l).unwrap();
+    }
+}
+
+#[test]
+fn planks_tile_seamlessly_in_every_layout() {
+    let _gpu = super::automation::gpu_lock();
+    let Ok(mut s) = Session::new() else { return };
+    for layout in pigment_core::ground::PLANK_LAYOUTS {
+        tile(&mut s, 2.0, [0.0, 0.0], 512);
+        planks_stack(&mut s, layout, 0.004);
+        let a = material(&mut s);
+        let n = a.size as usize;
+        for (name, img) in [("colour", &a.color), ("normal", &a.normal)] {
+            let [sx, ix, sy, iy] = seams(img, n, 3);
+            assert!(sx < ix * 1.6 + 0.6 && sy < iy * 1.6 + 0.6, "{layout} {name}: seam x {sx:.2} vs interior {ix:.2}, seam y {sy:.2} vs {iy:.2}");
+        }
+        // the joints are a thin network, not blotches: about joint / width of the floor
+        let dark = a.color.chunks(4).filter(|p| p[0] < 128).count() as f64 / (n * n) as f64;
+        assert!((0.01..0.12).contains(&dark), "{layout}: joints cover {:.1} % of the floor", dark * 100.0);
+    }
+}
+
+#[test]
+fn planks_layers_share_their_layout() {
+    let _gpu = super::automation::gpu_lock();
+    let Ok(mut s) = Session::new() else { return };
+    tile(&mut s, 2.0, [0.0, 0.0], 512);
+    planks_stack(&mut s, "boards", 0.002);
+    s.update_layer(&json!({ "layer": "Oak", "mask": { "generator": "planks", "variant": "herringbone", "scale": 12.0, "rings_per_cm": 5.0 } })).unwrap();
+    let gens: Vec<_> = s.app.doc.layers.iter().filter_map(|l| l.mask.as_ref()?.generator.clone().map(|g| (l.name.clone(), g))).collect();
+    for (name, g) in &gens {
+        assert_eq!((g.variant, g.noise_scale, g.extra[0]), (1, 12.0, 5.0), "{name} follows the edited layout");
+    }
+    let outputs: Vec<f32> = gens.iter().map(|(_, g)| g.extra[3]).collect();
+    assert_eq!(outputs, vec![0.0, 2.0, 3.0, 1.0], "each layer keeps its own output");
+}

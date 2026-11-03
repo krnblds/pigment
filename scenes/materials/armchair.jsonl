@@ -1,0 +1,8 @@
+{"tool": "new_project", "args": {"mesh": "assets/armchair.glb", "texture_sets": [{"name": "Leather", "materials": ["Leather"], "resolution": 2048}, {"name": "Wood", "materials": ["Wood"], "resolution": 1024}, {"name": "Brass", "materials": ["Brass"], "resolution": 1024}]}}
+{"tool": "add_smart_material", "args": {"texture_set": "Leather", "name": "Pebbled leather"}}
+{"tool": "add_smart_material", "args": {"texture_set": "Wood", "name": "Varnished walnut"}}
+{"tool": "add_layer", "args": {"texture_set": "Wood", "kind": "fill", "name": "Satin varnish", "values": {"roughness": 0.6, "coat_roughness": 0.32}, "channels": {"base_color": false, "metallic": false, "roughness": true, "coat_roughness": true}}}
+{"tool": "update_layer", "args": {"texture_set": "Brass", "layer": "Base", "material": "Brass"}}
+{"tool": "add_layer", "args": {"texture_set": "Brass", "kind": "fill", "name": "Tarnish", "material": "Bronze", "mask": {"generator": "dirt", "amount": 0.5}, "opacity": 0.7}}
+{"tool": "send_to_blender", "args": {"dir": "scenes/materials/textures/armchair", "name": "armchair", "project": "scenes/materials/projects/armchair.pigment"}}
+{"tool": "render", "args": {"path": "scenes/materials/renders/armchair.png", "lighting": "studio", "width": 640, "height": 640}}

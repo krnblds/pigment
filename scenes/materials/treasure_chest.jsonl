@@ -1,0 +1,6 @@
+{"tool": "new_project", "args": {"mesh": "assets/treasure_chest.glb", "texture_sets": [{"name": "Wood", "materials": ["Wood"], "resolution": 2048}, {"name": "Iron", "materials": ["Iron"], "resolution": 1024}]}}
+{"tool": "add_smart_material", "args": {"texture_set": "Wood", "name": "Oak wood"}}
+{"tool": "add_layer", "args": {"texture_set": "Wood", "kind": "fill", "name": "Weathered (matte)", "mask": {"generator": "grunge", "amount": 0.85, "scale": 6}, "values": {"roughness": 0.82}, "channels": {"base_color": false, "metallic": false, "height": false, "roughness": true}}}
+{"tool": "add_smart_material", "args": {"texture_set": "Iron", "name": "Rusty steel"}}
+{"tool": "send_to_blender", "args": {"dir": "scenes/materials/textures/treasure_chest", "name": "treasure_chest", "project": "scenes/materials/projects/treasure_chest.pigment"}}
+{"tool": "render", "args": {"path": "scenes/materials/renders/treasure_chest.png", "lighting": "studio", "width": 640, "height": 640}}

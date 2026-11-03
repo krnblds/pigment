@@ -235,6 +235,7 @@ mod tests {
         let files: Vec<String> = e["files"].as_array().unwrap().iter().map(|f| f.as_str().unwrap().replace('\\', "/")).collect();
         assert!(files.iter().any(|f| f.ends_with("box_lid_BaseColor.1001.png")), "{files:?}");
         assert!(files.iter().any(|f| f.ends_with("box_body_BaseColor.1001.png")));
+        pigment_core::diagnostics::verify_export(&out, Some("separate")).unwrap();
 
         // UDIM: move the top to tile 1002 at a higher density
         let r = s.new_project(&json!({ "mesh": path, "resolution": 512, "udim_tiles": [{ "tile": 1002, "above_y": 0.2 }] })).unwrap();

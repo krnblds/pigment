@@ -168,7 +168,7 @@ impl Session {
         self.app.select(self.app.doc.layers.last().map(|l| l.id), false);
         self.settle();
         let sets = self.configure_sets(a)?;
-        let mut out = json!({ "mesh": self.app.mesh.name, "triangles": self.app.mesh.triangle_count(), "layers": self.layers() });
+        let mut out = json!({ "mesh": self.app.mesh.name, "triangles": self.app.full_mesh().triangle_count(), "layers": self.layers() });
         if let Some(v) = sets {
             out["texture_sets"] = v["texture_sets"].clone();
             out["udim_moves"] = v["udim_moves"].clone();
@@ -756,6 +756,10 @@ impl Session {
                 }
             }
         }
+        // a wood floor's layers share one plank layout
+        if a.get("mask").is_some() {
+            self.app.doc.sync_planks(id);
+        }
         self.settle();
         Ok(json!({ "layers": self.layers() }))
     }
@@ -834,8 +838,8 @@ impl Session {
 
     // ------------------------------------------------------------------ camera, painting, output
 
-    fn set_camera(&mut self, a: &Value) {
-        let (c, r) = self.app.mesh.bounding_sphere();
+    pub(crate) fn set_camera(&mut self, a: &Value) {
+        let (c, r) = self.app.full_mesh().bounding_sphere();
         let cam = &mut self.app.camera;
         cam.frame(c, r);
         cam.yaw = f(a, "yaw").map(|d| d.to_radians()).unwrap_or(35f32.to_radians());
@@ -1395,7 +1399,7 @@ impl Session {
         if self.app.has_sets() {
             // one file per texture set and UDIM tile: <name>_<set>_<map>.<udim>.png
             let name = self.app.export_name.clone();
-            let files = self.app.export_sets(&self.rs, &dir, &name)?;
+            let files = self.app.export_sets(&self.rs, &dir, &name, preset)?;
             return Ok(json!({ "files": files, "texture_sets": self.app.set_names(), "compression": compression.id() }));
         }
         self.app.export(&self.rs);
@@ -2016,8 +2020,14 @@ fn apply_ground_fields(g: &mut Generator, m: &Value) {
         GeneratorKind::Rock => &[("warp", 1), ("strata", 2), ("cracks", 3), ("bands", 4), ("streaks", 5), ("crack_scale", 6)],
         GeneratorKind::Blades => &[("density", 0), ("clumping", 1), ("lean", 2), ("length", 3), ("width", 4), ("swirl", 5), ("level", 6)],
         GeneratorKind::Ripples => &[("irregularity", 1), ("asymmetry", 2), ("defects", 3), ("angle", 4), ("sharpness", 5)],
+        GeneratorKind::Planks => &[("waviness", 1), ("joint_width", 2), ("length", 3), ("length_ratio", 3), ("rings_per_cm", 4), ("flat_sawn", 5), ("knots", 6)],
         _ => &[],
     };
+    if g.kind == GeneratorKind::Planks {
+        if let Some(o) = s(m, "output").and_then(|o| pigment_core::ground::PLANK_OUTPUTS.iter().position(|n| n.eq_ignore_ascii_case(o))) {
+            g.extra[3] = o as f32;
+        }
+    }
     for (k, slot) in named {
         if let Some(x) = f(m, k) {
             match slot {
@@ -2488,6 +2498,11 @@ mod tests {
 
     #[test]
     fn game_sky_lighting() {
+        // the baked skies are optional assets, not in the repository
+        if pigment_core::envmath::SKIES.iter().any(|(id, _)| pigment_core::envmath::sky_path(id).is_none()) {
+            eprintln!("game_sky_lighting: skipped, no baked skies in assets/sky or PIGMENT_SKY_DIR");
+            return;
+        }
         let _gpu = gpu_lock();
         let Ok(mut s) = Session::new() else { return };
         let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");

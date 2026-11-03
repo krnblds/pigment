@@ -69,11 +69,15 @@ impl PigmentApp {
             self.ui.toasts.push(ToastKind::Info, "An export is already running", "");
             return;
         }
+        let name = self.export_name.trim().to_string();
+        let name = if name.is_empty() { "Asset".to_string() } else { name };
+        if self.has_sets() {
+            self.export_sets_job(rs, t, dir, name);
+            return;
+        }
         self.ensure_composited(rs);
         let m = io::read_material(&rs.device, &rs.queue, &self.ts);
         self.last_emissive_scale = m.emissive_scale;
-        let name = self.export_name.trim().to_string();
-        let name = if name.is_empty() { "Asset".to_string() } else { name };
         let sidecar = pigment_core::bridge::SidecarExtra { project: self.project_dir.clone(), source_mesh: self.mesh_source.clone(), mesh: None };
         let opts = export::ExportOptions { compression: self.export_compression, ..Default::default() };
         let mesh = t.with_mesh.then(|| self.mesh.clone());
@@ -103,6 +107,32 @@ impl PigmentApp {
             });
         });
         let toast = self.ui.toasts.push(ToastKind::Progress, format!("Exporting for {}", t.label), format!("{0}x{0} maps to {1}", self.ts.res, dir.display()));
+        self.ui.jobs.push(Job { toast, kind: JobKind::Thread { rx, what: "export", then: Some(dir) } });
+    }
+
+    /// `export_async` for a project with texture sets: every set's maps (each
+    /// set is read back on the main thread as it becomes active), the whole
+    /// mesh and the sidecar. Reports through the same job / toast as the
+    /// single-set export.
+    fn export_sets_job(&mut self, rs: &RenderState, t: ExportTarget, dir: PathBuf, name: String) {
+        let t0 = Instant::now();
+        let r = self.export_sets(rs, &dir, &name, t.preset).and_then(|files| {
+            if t.with_mesh {
+                let file = format!("{name}.glb");
+                pigment_core::bridge::export_mesh(self.full_mesh(), &dir.join(&file))
+                    .and_then(|_| pigment_core::bridge::update_sidecar(&dir, &name, &serde_json::json!({ "mesh": file })))
+                    .map_err(|e| format!("{e:#}"))?;
+            }
+            Ok(files.len())
+        });
+        self.export_name = name;
+        let label = t.label;
+        let (tx, rx) = mpsc::channel();
+        let _ = tx.send(match r {
+            Ok(n) => Ok((format!("Exported for {label}"), format!("{n} maps from {} texture sets{} in {:.1} s to {}", self.set_names().len(), if t.with_mesh { " + mesh" } else { "" }, t0.elapsed().as_secs_f32(), dir.display()))),
+            Err(e) => Err(friendly_error("Export failed", &e)),
+        });
+        let toast = self.ui.toasts.push(ToastKind::Progress, format!("Exporting for {label}"), dir.display().to_string());
         self.ui.jobs.push(Job { toast, kind: JobKind::Thread { rx, what: "export", then: Some(dir) } });
     }
 

@@ -125,10 +125,15 @@ pub const SCATTER_VARIANTS: [&str; 7] = ["pebble", "flake", "leaf", "twig", "she
 pub const ROCK_VARIANTS: [&str; 4] = ["height", "cracks", "ledges", "streaks"];
 pub const BLADE_VARIANTS: [&str; 3] = ["height", "tips", "clumps"];
 pub const RIPPLE_VARIANTS: [&str; 2] = ["height", "crests"];
+/// Planks: the layout is the variant; the output is `extra[3]`.
+pub const PLANK_LAYOUTS: [&str; 4] = ["boards", "herringbone", "chevron", "basketweave"];
+/// What a planks mask shows: the plank faces, the joints between them, the
+/// dark latewood of the growth rings (with knots), or the open pores.
+pub const PLANK_OUTPUTS: [&str; 4] = ["surface", "joints", "latewood", "pores"];
 
 /// Aliases accepted as `generator` that also pick a variant:
 /// (alias, generator id, variant).
-pub const GROUND_ALIASES: [(&str, &str, &str); 24] = [
+pub const GROUND_ALIASES: [(&str, &str, &str); 29] = [
     ("voronoi", "cells", "dome"),
     ("cellular", "cells", "dome"),
     ("worley", "cells", "dome"),
@@ -153,6 +158,11 @@ pub const GROUND_ALIASES: [(&str, &str, &str); 24] = [
     ("turf", "blades", "height"),
     ("sand_ripples", "ripples", "height"),
     ("waves", "ripples", "height"),
+    ("floorboards", "planks", "boards"),
+    ("wood_floor", "planks", "boards"),
+    ("parquet", "planks", "herringbone"),
+    ("herringbone", "planks", "herringbone"),
+    ("chevron", "planks", "chevron"),
 ];
 
 #[cfg(test)]

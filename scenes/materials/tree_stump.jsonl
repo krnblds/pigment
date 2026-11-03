@@ -1,0 +1,9 @@
+{"tool": "new_project", "args": {"mesh": "assets/tree_stump.glb", "texture_sets": [{"name": "Bark", "materials": ["Bark"], "resolution": 2048}, {"name": "EndGrain", "materials": ["EndGrain"], "resolution": 2048}]}}
+{"tool": "add_layer", "args": {"texture_set": "Bark", "kind": "fill", "name": "Bark", "image": {"tile_set": "assets/tiles/bark_fissured", "projection": "triplanar", "tile_size": 0.6, "blend_sharpness": 6, "roughness_range": [0.8, 1.0]}}}
+{"tool": "add_layer", "args": {"texture_set": "Bark", "kind": "fill", "name": "Soil splash", "material": "Mud", "mask": {"generator": "gradient", "amount": 0.35}, "opacity": 0.7, "channels": {"height": false}}}
+{"tool": "add_layer", "args": {"texture_set": "Bark", "kind": "fill", "name": "Moss", "material": "Moss green", "mask": {"generator": "moss", "amount": 0.4}}}
+{"tool": "add_layer", "args": {"texture_set": "EndGrain", "kind": "fill", "name": "End grain", "image": {"tile_set": "assets/tiles/end_grain", "projection": "uv", "tiling": 1, "roughness_range": [0.82, 1.0]}}}
+{"tool": "add_layer", "args": {"texture_set": "EndGrain", "kind": "fill", "name": "Rot", "material": "Mud", "mask": {"generator": "spots", "amount": 0.1, "scale": 14}, "opacity": 0.35, "channels": {"height": false}}}
+{"tool": "add_layer", "args": {"texture_set": "EndGrain", "kind": "fill", "name": "Damp centre", "material": "Mud", "mask": {"generator": "puddles", "amount": 0.3}, "opacity": 0.15, "channels": {"height": false}}}
+{"tool": "send_to_blender", "args": {"dir": "scenes/materials/textures/tree_stump", "name": "tree_stump", "project": "scenes/materials/projects/tree_stump.pigment"}}
+{"tool": "render", "args": {"path": "scenes/materials/renders/tree_stump.png", "lighting": "studio", "width": 640, "height": 640}}

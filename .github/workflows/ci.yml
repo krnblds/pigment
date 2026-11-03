@@ -35,5 +35,7 @@ jobs:
       # crate is tested here (the app's GPU / UI tests skip themselves without one).
       - name: Test (core)
         run: cargo test --release -p pigment-core
-      - name: Validate the MCP scripts against the tool schemas
-        run: cargo test --release -p pigment --bin pigment-mcp
+      - name: Validate the MCP scripts against the tool schemas, agent CLI
+        run: |
+          cargo test --release -p pigment --lib -- mcp:: cli::
+          cargo test --release -p pigment --test agent_cli
