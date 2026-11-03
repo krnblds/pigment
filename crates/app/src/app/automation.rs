@@ -2488,6 +2488,11 @@ mod tests {
 
     #[test]
     fn game_sky_lighting() {
+        // the baked skies are optional assets, not in the repository
+        if pigment_core::envmath::SKIES.iter().any(|(id, _)| pigment_core::envmath::sky_path(id).is_none()) {
+            eprintln!("game_sky_lighting: skipped, no baked skies in assets/sky or PIGMENT_SKY_DIR");
+            return;
+        }
         let _gpu = gpu_lock();
         let Ok(mut s) = Session::new() else { return };
         let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");

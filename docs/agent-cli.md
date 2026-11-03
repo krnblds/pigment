@@ -126,8 +126,9 @@ cargo test --workspace -- --test-threads=2
 PIGMENT_TEST_BLENDER=/path/to/blender cargo test -p pigment --test agent_cli real_blender_import -- --ignored
 ```
 
-Sky-name checks run by default. The game-sky integration test is opt-in because
-its HDR pack is not shipped in this checkout:
+Sky-name checks run by default. The HDR pack is not in the repository, so the
+sky loading test is opt-in and the sky render test (`game_sky_lighting`) skips
+itself without it:
 
 ```sh
 PIGMENT_SKY_DIR=/path/to/skies cargo test -p pigment-core game_skies_resolve_and_load -- --ignored
