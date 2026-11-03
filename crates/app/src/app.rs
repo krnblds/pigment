@@ -483,7 +483,7 @@ impl PigmentApp {
     }
 
     fn open_project(&mut self, rs: &RenderState, path: &Path) {
-        let dir = if path.is_dir() { path.to_path_buf() } else { path.parent().map(Path::to_path_buf).unwrap_or_default() };
+        let dir = if path.is_dir() || path.extension().is_some_and(|e| e == "pigment") { path.to_path_buf() } else { path.parent().map(Path::to_path_buf).unwrap_or_default() };
         self.multi = None;
         self.baker.occluder = None;
         // texture sets: the main manifest lists the others' folders
@@ -565,56 +565,53 @@ impl PigmentApp {
         }
     }
 
+    /// Write a set into a staged generation without changing in-memory saved state.
+    fn write_set(&self, rs: &RenderState, dir: &Path, extra_sets: Vec<String>) -> anyhow::Result<Document> {
+        std::fs::create_dir_all(dir)?;
+        let mut doc = self.doc.clone();
+        doc.extra_sets = extra_sets;
+        doc.mesh = match &self.mesh_source {
+            Some(src) if src.exists() => project::copy_mesh(dir, src)?,
+            _ => {
+                std::fs::create_dir_all(dir.join("mesh"))?;
+                self.mesh.write_obj(&dir.join("mesh/mesh.obj"))?;
+                "mesh/mesh.obj".to_string()
+            }
+        };
+        for layer in &doc.layers {
+            if let Some(res) = layer.paint_res() {
+                let px = io::read_layer(&rs.device, &rs.queue, &self.ts, res)
+                    .ok_or_else(|| anyhow::anyhow!("missing paint resource {res}"))?;
+                project::write_layer(dir, res, &px)?;
+            }
+            if let Some(mask) = &layer.mask {
+                if let Some(px) = io::read_mask(&rs.device, &rs.queue, &self.ts, mask.res) {
+                    project::write_mask(dir, mask.res, self.ts.res, &px)?;
+                }
+            }
+        }
+        project::prune(dir, &doc)?;
+        project::save_manifest(dir, &doc)?;
+        project::write_gitignore(dir)?;
+        Ok(doc)
+    }
+
     fn save_to(&mut self, rs: &RenderState, dir: PathBuf) {
-        let fresh = self.project_dir.as_deref() != Some(dir.as_path());
-        let t0 = Instant::now();
-        let result = (|| -> anyhow::Result<usize> {
-            std::fs::create_dir_all(&dir)?;
-            // the mesh lives inside the project
-            let inside = self.mesh_source.as_ref().is_some_and(|m| m.starts_with(&dir));
-            if fresh || !inside || self.doc.mesh.is_empty() {
-                self.doc.mesh = match &self.mesh_source {
-                    Some(src) if src.exists() => project::copy_mesh(&dir, src)?,
-                    _ => {
-                        std::fs::create_dir_all(dir.join("mesh"))?;
-                        self.mesh.write_obj(&dir.join("mesh/mesh.obj"))?;
-                        "mesh/mesh.obj".to_string()
-                    }
-                };
-                self.committed.mesh = self.doc.mesh.clone();
-                self.mesh_source = Some(dir.join(&self.doc.mesh));
-            }
-            let (d, q) = (&rs.device, &rs.queue);
-            let mut written = 0;
-            for l in &self.doc.layers {
-                if let Some(r) = l.paint_res() {
-                    if fresh || self.ts.unsaved.contains(&r) || !project::layer_dir(&dir, r).exists() {
-                        if let Some(px) = io::read_layer(d, q, &self.ts, r) {
-                            project::write_layer(&dir, r, &px)?;
-                            written += 1;
-                        }
-                    }
-                }
-                if let Some(m) = &l.mask {
-                    if fresh || self.ts.unsaved.contains(&m.res) || !project::mask_path(&dir, m.res).exists() {
-                        if let Some(px) = io::read_mask(d, q, &self.ts, m.res) {
-                            project::write_mask(&dir, m.res, self.ts.res, &px)?;
-                            written += 1;
-                        }
-                    }
-                }
-            }
-            project::prune(&dir, &self.doc)?;
-            project::save_manifest(&dir, &self.doc)?;
-            project::write_gitignore(&dir)?;
-            Ok(written)
+        let result = (|| -> anyhow::Result<Document> {
+            let tx = pigment_core::transaction::Transaction::begin(&dir)?;
+            let doc = self.write_set(rs, tx.path(), Vec::new())?;
+            tx.commit()?;
+            Ok(doc)
         })();
         match result {
-            Ok(n) => {
+            Ok(doc) => {
+                self.committed.mesh = doc.mesh.clone();
+                self.mesh_source = Some(dir.join(&doc.mesh));
+                self.doc = doc;
                 self.ts.unsaved.clear();
                 self.project_dir = Some(dir.clone());
                 self.modified = false;
-                self.set_status(format!("Saved {} ({n} image files updated, {:.0} ms)", dir.display(), t0.elapsed().as_secs_f64() * 1000.0), false);
+                self.set_status(format!("Saved {}", dir.display()), false);
             }
             Err(e) => self.set_status(format!("Save failed: {e:#}"), true),
         }

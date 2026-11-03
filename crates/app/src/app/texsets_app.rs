@@ -259,24 +259,36 @@ impl PigmentApp {
     pub(crate) fn save_sets(&mut self, rs: &RenderState, dir: PathBuf) {
         let names = self.set_names();
         let home = self.active_set_name();
-        let mut failed = None;
-        for (k, name) in names.iter().enumerate() {
-            if let Err(e) = self.activate_set(rs, name) {
-                failed = Some(e);
-                break;
+        let result = (|| -> anyhow::Result<Vec<Document>> {
+            let tx = pigment_core::transaction::Transaction::begin(&dir)?;
+            let mut docs = Vec::new();
+            for (k, name) in names.iter().enumerate() {
+                self.activate_set(rs, name).map_err(anyhow::Error::msg)?;
+                let sub = if k == 0 { tx.path().to_path_buf() } else { tx.path().join("sets").join(texsets::sanitize(name)) };
+                let extra = if k == 0 { names[1..].iter().map(|n| format!("sets/{}", texsets::sanitize(n))).collect() } else { Vec::new() };
+                docs.push(self.write_set(rs, &sub, extra)?);
             }
-            let sub = if k == 0 { dir.clone() } else { dir.join("sets").join(name) };
-            self.doc.extra_sets = if k == 0 { names[1..].iter().map(|n| format!("sets/{n}")).collect() } else { Vec::new() };
-            self.save_to(rs, sub);
-            if self.status.as_ref().is_some_and(|s| s.1) {
-                return;
+            tx.commit()?;
+            Ok(docs)
+        })();
+        match result {
+            Ok(docs) => {
+                for (name, doc) in names.iter().zip(docs) {
+                    let _ = self.activate_set(rs, name);
+                    self.committed.mesh = doc.mesh.clone();
+                    self.doc = doc;
+                    self.ts.unsaved.clear();
+                }
+                let _ = self.activate_set(rs, &home);
+                self.mesh_source = Some(dir.join(&self.doc.mesh));
+                self.project_dir = Some(dir.clone());
+                self.modified = false;
+                self.set_status(format!("Saved {} ({} texture sets)", dir.display(), names.len()), false);
             }
-        }
-        let _ = self.activate_set(rs, &home);
-        self.project_dir = Some(dir.clone());
-        match failed {
-            Some(e) => self.set_status(e, true),
-            None => self.set_status(format!("Saved {} ({} texture sets)", dir.display(), names.len()), false),
+            Err(e) => {
+                let _ = self.activate_set(rs, &home);
+                self.set_status(format!("Save failed: {e:#}"), true);
+            }
         }
     }
 
@@ -317,30 +329,46 @@ impl PigmentApp {
     /// Export every set: `<name>_<set>_<map>.<udim>.png`. Returns the files.
     pub(crate) fn export_sets(&mut self, rs: &RenderState, dir: &Path, name: &str) -> Result<Vec<PathBuf>, String> {
         let home = self.active_set_name();
-        let mut files = Vec::new();
-        for set in self.set_names() {
-            self.activate_set(rs, &set)?;
-            let tile = self.doc.texture_set.as_ref().map(|s| s.tile()).unwrap_or(1001);
-            let prefix = format!("{name}_{}", texsets::sanitize(&set));
-            self.export_name = prefix.clone();
-            self.export_dir = Some(dir.to_path_buf());
-            self.status = None;
-            self.export(rs);
-            if let Some((e, true)) = &self.status {
-                return Err(e.clone());
-            }
-            let preset = export::preset(&self.doc.export_preset).ok_or("unknown export preset")?;
-            for o in &preset.outputs {
-                let from = dir.join(format!("{prefix}_{}.png", o.suffix));
-                if from.exists() {
-                    let to = dir.join(texsets::export_file(name, &texsets::sanitize(&set), o.suffix, tile));
-                    std::fs::rename(&from, &to).map_err(|e| format!("renaming {}: {e}", from.display()))?;
-                    files.push(to);
+        let preset_id = self.doc.export_preset.clone();
+        let result = (|| {
+            let mut files = Vec::new();
+            for set in self.set_names() {
+                self.activate_set(rs, &set)?;
+                self.doc.export_preset = preset_id.clone();
+                let tile = self.doc.texture_set.as_ref().map(|s| s.tile()).unwrap_or(1001);
+                let prefix = format!("{name}_{}", texsets::sanitize(&set));
+                self.export_name = prefix.clone();
+                self.export_dir = Some(dir.to_path_buf());
+                self.status = None;
+                self.export(rs);
+                if let Some((e, true)) = &self.status {
+                    return Err(e.clone());
                 }
+                let preset = export::preset(&self.doc.export_preset).ok_or("unknown export preset")?;
+                let sidecar = pigment_core::bridge::read_sidecar(dir);
+                let mut maps = sidecar["materials"][&prefix]["maps"].as_array().cloned().unwrap_or_default();
+                for o in &preset.outputs {
+                    let from = dir.join(format!("{prefix}_{}.png", o.suffix));
+                    if from.exists() {
+                        let to = dir.join(texsets::export_file(name, &texsets::sanitize(&set), o.suffix, tile));
+                        std::fs::rename(&from, &to).map_err(|e| format!("renaming {}: {e}", from.display()))?;
+                        for map in &mut maps {
+                            if map["file"] == format!("{prefix}_{}.png", o.suffix) {
+                                map["file"] = serde_json::json!(to.file_name().unwrap().to_string_lossy());
+                            }
+                        }
+                        files.push(to);
+                    }
+                }
+                pigment_core::bridge::update_sidecar(dir, &prefix, &serde_json::json!({"maps":maps}))
+                    .map_err(|e| format!("updating texture-set sidecar: {e:#}"))?;
             }
-        }
-        self.activate_set(rs, &home)?;
+            Ok(files)
+        })();
+        let restored = self.activate_set(rs, &home);
         self.export_name = name.to_string();
+        let files = result?;
+        restored?;
         Ok(files)
     }
 }
