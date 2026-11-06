@@ -166,7 +166,7 @@ impl Panel for LayersPanel {
                 name: &l.name,
                 subtitle: &sub,
                 visible: l.visible,
-                locked: app.ui.locked.contains(&lid),
+                locked: app.doc.layers[i].locked,
                 selected,
                 shown: app.doc.effectively_visible(lid),
                 folder: match l.kind {
@@ -221,7 +221,7 @@ impl Panel for LayersPanel {
                 toggles.push((lid, 2));
             }
             if let Some(c) = r.context {
-                let (visible, locked) = (app.doc.layers[i].visible, app.ui.locked.contains(&lid));
+                let (visible, locked) = (app.doc.layers[i].visible, app.doc.layers[i].locked);
                 c.context_menu(|ui| {
                     ui.set_min_width(200.0);
                     app.select(Some(lid), app.paint_mask && selected);
@@ -299,8 +299,8 @@ impl Panel for LayersPanel {
                     }
                 }
                 1 => {
-                    if !app.ui.locked.remove(&id) {
-                        app.ui.locked.insert(id);
+                    if let Some(l) = app.doc.layers.iter_mut().find(|l| l.id == id) {
+                        l.locked = !l.locked;
                     }
                 }
                 2 => {

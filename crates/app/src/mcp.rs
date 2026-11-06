@@ -360,6 +360,7 @@ fn tools_base() -> Value {
             p["points"] = json!({ "type": "array", "items": { "type": "array", "items": { "type": "number" } }, "description": "stroke in viewport coords 0..1, y down" });
             p["world_points"] = json!({ "type": "array", "items": { "type": "array", "items": { "type": "number" } }, "description": "stroke as world points [[x, y, z], ...] (snapped to the surface)" });
             p["cells"] = json!({ "type": ["array", "string"], "items": { "type": ["string", "object"] }, "description": "cell names to paint (picked at random)" });
+            p["mount"] = json!({ "type": "string", "enum": ["upright", "flat", "wall", "hanging"], "description": "override the cells' mount" });
             p["radius"] = json!({ "type": "number", "description": "brush radius in metres (default 0.3)" });
             p["density"] = json!({ "type": "number", "description": "cards per m2 (default 40)" });
             p["erase"] = json!({ "type": "boolean" });

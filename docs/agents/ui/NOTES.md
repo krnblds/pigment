@@ -12,6 +12,7 @@ the app's own frame function offscreen (`app/harness.rs`), never from an OS wind
 | Export | ![](before/export_dialog.png) | ![](export_dialog.png) |
 | Welcome | (none: opened on the demo crate) | ![](welcome.png) |
 | Material library | (43 flat swatches in a list) | ![](material_library.png) |
+| Variants | (MCP only) | ![](variants.png) |
 
 Also: `command_palette.png`, `shortcuts.png`, `advanced_mode_light.png`, `layout_painting.png`,
 `layout_compact.png`, and the design gallery in `docs/design/gallery*.png`.
@@ -109,6 +110,32 @@ when a project is opened), remembered window size, layouts, theme and UI scale
 (Ctrl + / -), Settings dialog. Viewport: zoom towards the cursor, F frames the selected
 layer's parts, axis gizmo, per-tool hint chip, simplified view chips in Simple mode.
 
+## Round 2: filling the gaps
+
+- **Variants in the UI.** The Variants panel defines, edits, previews (one undo step) and
+  deletes variant definitions, and **Export N variants** writes them all with previews.
+  It used to be MCP-only. See `docs/agents/variants/NOTES.md`.
+- **Pictures of your work.** Two viewport buttons (under *Lighting*), View > Save image
+  (Ctrl+Shift+R) and the palette save a 2× image of the model without the UI, or an
+  8-view turntable sheet, into `<export folder>/<asset>/renders`. Same code as the MCP
+  `render` / `render_turntable` tools.
+- **`Session::lend`** (`automation.rs`) moves the UI's app into an automation session for
+  one call and back (also on panic), so UI features reuse MCP tools instead of copying
+  them. The UI wrappers live in `app/session_tools.rs` and put the camera and view back.
+- **Saved with the project:** layer lock (`Layer.locked`) and the weathering level
+  (`Document.weathering`, plus each weathering layer's "as authored" amount in
+  `Layer.wear_base`). All three are skipped when at their defaults, so older projects
+  load unchanged and untouched projects save byte-for-byte as before.
+- **Foliage brush mount** override (Cell's own / Upright / Flat / Wall / Hanging); MCP
+  `paint_foliage` now honours `mount` too (it parsed it but dropped it).
+- **History labels**: "Weathering 62%", "Lock Paint", "Hide Glass", "Variant seed 11",
+  "Edit variants" instead of "Edit <first changed layer>".
+- **Welcome screen**: a *How it works* strip on first run; the sample previews are
+  rendered at 960×720 on the dark lightbox and shown at up to 640 px (they were shrunk to
+  128 px and blurred); Export / Send to Blender are hidden until there's something to export.
+- **Screenshots** re-staged on the vending machine and the finished town building,
+  on *Lightbox (dark)* (glossy floor, reflection, contact shadow), with real history steps.
+
 ## Tests
 
 `cargo test --release -- --test-threads=2`: all green (80 app lib tests incl. GPU, 107 core,
@@ -123,6 +150,10 @@ MCP / schema tests). New:
   step; scatter is one step; Esc returns to the brush.
 - `ui_tests::simple_advanced_toggle`: clicks the mode toggle, Ctrl+Tab round trip keeps a
   customised layout, P picks parts.
+- `ui_tests::lock_and_weathering_survive_save_and_open`,
+  `variants_panel_defines_and_exports` (two variants from the panel, folders + previews +
+  sidecars, project unchanged, preview + undo, duplicate names refused) and
+  `save_render_and_turntable` (Ctrl+Shift+R writes a 2× PNG, camera put back).
 - `ui_tests::fill_part_tool_targets_one_part`, `command_palette_runs_commands`,
   `history_panel_jumps`, `autosave_and_recover`, `library_thumbnails_render_and_cache`,
   `hidpi_renders_at_scale`, `every_panel_renders_in_isolation` (every `PanelId` registered
@@ -156,11 +187,11 @@ Directory listings used by panels are cached for 3 s.
   `tools/car`); the committed `car.glb` / `hayate.glb` exports have no UVs or embed textures
   Pigment can't read, so the welcome screen shows the jerry can instead.
 - Floating panels are egui windows inside the main window (not OS windows).
-- Layer lock is per session (not saved in the project).
-- "Export all variants" is still MCP-only (`export_variants`); the Variants panel previews
-  seeds and edits groups.
-- The weathering slider remembers each layer's "as authored" amount per session; after
-  reopening a project the current amounts become the new 50%.
+- *Export N variants* and *Save image* run on the UI thread (they reuse the MCP code,
+  which renders and reads back synchronously), so the window waits while they run:
+  a moment for an image, a few seconds per variant on a 4K building.
+- The car sample's preview (`assets/samples/car.png`) wasn't re-rendered with the others
+  on the dark lightbox: its paintable body (`tools/car`) wasn't generated in that checkout.
 
 ## Merge notes
 

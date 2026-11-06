@@ -80,15 +80,16 @@ Models need UVs. In Blender: select the model, press **U**, choose *Smart UV Pro
    one piece only.
 3. **Make it yours.** Drag **How worn?**, paint (**B**), stick decals (**D**: stamp, box, fit-to-part or scatter
    with tear/fade wear), and switch the lighting (Studio, Neon night, Lightbox, the night-rain sky...).
+   **Ctrl+Shift+R** saves a picture of it.
 4. **Export.** Press **Ctrl+E** and choose Blender, Unreal, Unity, Godot or glTF, or press *Send to Blender*.
 
 Switch **Simple / Advanced** with **Ctrl+Tab**. **Ctrl+K** opens the command palette and **?** shows every shortcut.
 Every panel is a dockable widget, so drag tabs to build your own layout.
 The full beginner guide with screenshots is **[docs/GETTING_STARTED.md](docs/GETTING_STARTED.md)**.
 
-| Simple mode | Advanced mode | Decal tool |
+| Simple mode | Advanced mode | Variants |
 |---|---|---|
-| ![simple](docs/agents/ui/simple_mode.png) | ![advanced](docs/agents/ui/advanced_mode.png) | ![decals](docs/agents/ui/decal_tool.png) |
+| ![simple](docs/agents/ui/simple_mode.png) | ![advanced](docs/agents/ui/advanced_mode.png) | ![variants](docs/agents/ui/variants.png) |
 
 ## Agent CLI
 
@@ -184,12 +185,12 @@ Real examples: [`scenes/town/scripts/`](scenes/town/scripts) and [`scenes/cyberp
 | **Generators (14)** | edge wear, dirt, grunge, streaks, stripes, spots, scratches, panel lines, ground gradient, leaks/drips, puddles, moss, tiles/bricks/hex, window grid |
 | **Fills** | flat materials (110+ presets), 50+ smart materials (worn metals, wallpapers, carpets, wood floors, marble, leather, fabric...; save and apply your own as `.pigsmart`), 30 seamless tile sets, tiling image fills in UV or triplanar world space |
 | **Decals** | editable decal objects with box, triplanar and wrap projection, a viewport gizmo, auto placement on the largest clear wall, grids and snapping, scatter with spacing/height/fit rules, tear and fade wear |
-| **Variants** | many looks from one project (seeded lit windows, decal swaps), exported in one call |
+| **Variants** | many looks from one project (seeded lit windows, decal swaps): define, preview and export them all from the Variants panel or in one MCP call |
 | **Projects** | model texturing, seamless tiles, trim sheets, decal atlases |
 | **Bakes** | ambient occlusion, curvature, drip, rain exposure, plus high-to-low: tangent and object normals, position, thickness, height, colour ID and material ID (automatic or manual cage) |
 | **Texture sets** | one set per material or UDIM tile, each with its own stack and resolution; strokes paint across sets |
 | **Viewport** | PBR with HDR bloom, ACES tone mapping, studio/night/overcast presets, four night-city skies, HDRI loading |
-| **UI** | welcome screen, Simple/Advanced modes, dockable panels with saved layouts, design system (dark/light), command palette, history, autosave and recovery |
+| **UI** | welcome screen, Simple/Advanced modes, dockable panels with saved layouts, design system (dark/light), command palette, history, autosave and recovery, one-click images and turntable sheets of your model |
 | **Export** | templates with file patterns and per-channel packing: Unreal, Unity (incl. HDRP mask map), Godot ORM, glTF/Blender, Arnold, or your own; PNG 8/16, TGA, EXR f16/f32; UDIM naming; a `material.json` sidecar |
 
 ## The showcase: a night taxi game

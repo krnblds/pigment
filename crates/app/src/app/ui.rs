@@ -103,9 +103,6 @@ pub struct UiState {
     pub fill_tool: bool,
     pub decal: DecalSettings,
     pub lib_current: Option<LibItem>,
-    pub wear: f32,
-    pub wear_bases: std::collections::HashMap<LayerId, f32>,
-    pub locked: HashSet<LayerId>,
     pub new_project: NewProjectDialog,
     pub settings: bool,
     pub save_layout: Option<String>,
@@ -141,9 +138,6 @@ impl UiState {
             fill_tool: false,
             decal: Default::default(),
             lib_current: None,
-            wear: 0.5,
-            wear_bases: Default::default(),
-            locked: Default::default(),
             new_project: NewProjectDialog { size_m: [2.0, 2.0], strips: 4, cells: 6, resolution: 2048, ..Default::default() },
             settings: false,
             save_layout: None,
@@ -349,9 +343,6 @@ impl PigmentApp {
             return;
         }
         self.ui.welcome = false;
-        self.ui.wear_bases.clear();
-        self.ui.wear = 0.5;
-        self.ui.locked.clear();
         if let Some(x) = path {
             self.ui.prefs.add_recent(&x);
             self.prefs_changed();
@@ -531,7 +522,7 @@ impl PigmentApp {
     fn paint_target_chip(&mut self, ui: &mut egui::Ui, _rs: &RenderState) {
         let p = ds::pal(ui);
         let layer = self.selected.and_then(|id| self.doc.layer(id)).map(|l| (l.name.clone(), l.is_paint(), l.mask.is_some(), l.id));
-        let locked = layer.as_ref().is_some_and(|l| self.ui.locked.contains(&l.3));
+        let locked = self.selected.and_then(|id| self.doc.layer(id)).is_some_and(|l| l.locked);
         match (layer, self.paint_target()) {
             (Some((name, ..)), _) if locked => {
                 Icon::Lock.show(ui, icon::SM, p.warn);
@@ -599,6 +590,15 @@ impl PigmentApp {
                     self.view.mode = if self.view.mode == ViewMode::Material { ViewMode::BaseColor } else { ViewMode::Material };
                 }
                 ui.separator();
+                if ui.add(egui::Button::new("Save image of the model (2×)").shortcut_text("Ctrl+Shift+R")).on_hover_text("A PNG of the viewport without the UI, next to your exports").clicked() {
+                    self.run_render(rs, false);
+                    ui.close();
+                }
+                if ui.button("Save turntable sheet (8 views)").on_hover_text("Eight views around the model on one PNG").clicked() {
+                    self.run_render(rs, true);
+                    ui.close();
+                }
+                ui.separator();
                 for m in ViewMode::ALL {
                     ui.radio_value(&mut self.view.mode, m, m.label());
                 }
@@ -645,13 +645,16 @@ impl PigmentApp {
                 ds::badge(ui, "unsaved", p.warn).on_hover_text("Ctrl+S saves. Pigment also keeps a recovery copy every few minutes.");
             }
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                let exp = ui.add(Btn::primary("Export").icon(Icon::Export).shortcut("Ctrl+E"));
-                self.anchors.insert("export_button", exp.rect);
-                if exp.clicked() {
-                    self.show_export = true;
-                }
-                if ui.add(Btn::secondary("Send to Blender").icon(Icon::Send)).rich_tip("Send to Blender", "Exports the maps, the mesh and a material.json the Pigment Bridge add-on links into a Blender material.").clicked() {
-                    self.send_to_blender(rs);
+                // on the welcome screen there's nothing of the user's to export yet
+                if !self.ui.welcome {
+                    let exp = ui.add(Btn::primary("Export").icon(Icon::Export).shortcut("Ctrl+E"));
+                    self.anchors.insert("export_button", exp.rect);
+                    if exp.clicked() {
+                        self.show_export = true;
+                    }
+                    if ui.add(Btn::secondary("Send to Blender").icon(Icon::Send)).rich_tip("Send to Blender", "Exports the maps, the mesh and a material.json the Pigment Bridge add-on links into a Blender material.").clicked() {
+                        self.send_to_blender(rs);
+                    }
                 }
                 ui.add_space(space::XS);
                 if ui.add(IconBtn::new(Icon::Help, "Keyboard shortcuts").shortcut("?")).clicked() {
@@ -857,9 +860,12 @@ impl PigmentApp {
     fn shortcuts(&mut self, ui: &mut egui::Ui, rs: &RenderState) {
         use egui::{Key, KeyboardShortcut as K, Modifiers as M};
         let c = |i: &mut egui::InputState, m: M, k: Key| i.consume_shortcut(&K::new(m, k));
-        let settings = ui.input_mut(|i| c(i, M::COMMAND, Key::Comma));
+        let (settings, render) = ui.input_mut(|i| (c(i, M::COMMAND, Key::Comma), c(i, M::COMMAND | M::SHIFT, Key::R)));
         if settings {
             self.ui.settings = true;
+        }
+        if render {
+            self.run_render(rs, false);
         }
         let (redo2, redo, undo, save_as, save, open_model, open, export, export2, palette, newp, tab) = ui.input_mut(|i| {
             (
@@ -1000,6 +1006,9 @@ impl PigmentApp {
             cmd("save_as", "Save as…", "File", Some("Ctrl+Shift+S"), Icon::Save),
             cmd("export", "Export textures…", "File", Some("Ctrl+E"), Icon::Export),
             cmd("blender", "Send to Blender", "File", None, Icon::Send),
+            cmd("variants_export", "Export all variants", "File", None, Icon::Export),
+            cmd("render", "Save image of the model", "View", Some("Ctrl+Shift+R"), Icon::Image),
+            cmd("turntable", "Save turntable sheet", "View", None, Icon::Orbit),
             cmd("welcome", "Welcome screen", "File", None, Icon::Sparkle),
             cmd("torus", "New project: test torus", "File", None, Icon::Cube),
             cmd("undo", "Undo", "Edit", Some("Ctrl+Z"), Icon::Undo),
@@ -1050,6 +1059,16 @@ impl PigmentApp {
             "save_as" => self.save(rs, true),
             "export" => self.show_export = true,
             "blender" => self.send_to_blender(rs),
+            "variants_export" => {
+                if self.doc.variants.defs.is_empty() {
+                    self.ui.prefs.layout_mut().open(PanelId::Variants);
+                    self.ui.toasts.push(ToastKind::Info, "No variants yet", "Add them in the Variants panel, then export.");
+                } else {
+                    self.run_export_variants(rs);
+                }
+            }
+            "render" => self.run_render(rs, false),
+            "turntable" => self.run_render(rs, true),
             "welcome" => self.ui.welcome = true,
             "torus" => self.request(rs, Pending::NewTorus),
             "undo" => self.undo(rs, false),
@@ -1153,7 +1172,7 @@ impl PigmentApp {
 
     fn cheatsheet(&mut self, ctx: &egui::Context) {
         let groups: [(&str, &[(&str, &str)]); 6] = [
-            ("Viewport", &[("Right-drag / Alt+left-drag", "Orbit"), ("Middle-drag", "Pan"), ("Wheel", "Zoom (towards the cursor)"), ("F", "Frame model or selected parts"), ("M", "Material / base colour view")]),
+            ("Viewport", &[("Right-drag / Alt+left-drag", "Orbit"), ("Middle-drag", "Pan"), ("Wheel", "Zoom (towards the cursor)"), ("F", "Frame model or selected parts"), ("M", "Material / base colour view"), ("Ctrl+Shift+R", "Save an image of the model")]),
             ("Tools", &[("B", "Paint"), ("E", "Eraser"), ("G", "Fill a part"), ("D", "Decal"), ("P", "Pick parts (Advanced)"), ("[  ]", "Brush size"), ("X", "Swap mask black / white"), ("Esc", "Back to the brush")]),
             ("Project", &[("Ctrl+N", "New project"), ("Ctrl+O", "Open project"), ("Ctrl+Shift+O", "Open model"), ("Ctrl+S", "Save"), ("Ctrl+E", "Export"), ("Ctrl+Z / Ctrl+Y", "Undo / redo")]),
             ("Interface", &[("Ctrl+K", "Command palette"), ("Ctrl+Tab", "Simple / Advanced"), ("Ctrl+,", "Settings"), ("?", "This sheet"), ("Ctrl + / Ctrl -", "Interface size")]),
@@ -1221,7 +1240,7 @@ impl PigmentApp {
         let d = Vec2::new(delta.x, delta.y);
         let tool = self.tool();
         let click = pressed && response.hovered() && !alt;
-        let locked = self.selected.is_some_and(|id| self.ui.locked.contains(&id));
+        let locked = self.selected.and_then(|id| self.doc.layer(id)).is_some_and(|l| l.locked);
 
         match tool {
             Tool::Pick if click => {
@@ -1436,6 +1455,21 @@ impl PigmentApp {
                 });
             });
         });
+        // snapshot buttons under the lighting chip
+        let snap = Rect::from_min_size(pos2(rect.right() - 206.0, light.bottom() + space::XS), vec2(200.0, size::CONTROL_H));
+        let (mut still, mut spin) = (false, false);
+        ui.scope_builder(egui::UiBuilder::new().max_rect(snap).layout(egui::Layout::right_to_left(egui::Align::Min)), |ui| {
+            glass.show(ui, |ui| {
+                ui.spacing_mut().item_spacing.x = space::XXS;
+                spin = ui.add(IconBtn::new(Icon::Orbit, "Save a turntable sheet: 8 views around the model")).clicked();
+                let r = ui.add(IconBtn::new(Icon::Image, "Save an image of the model (2× the viewport, no UI)").shortcut("Ctrl+Shift+R"));
+                self.anchors.insert("snapshot", r.rect);
+                still = r.clicked();
+            });
+        });
+        if still || spin {
+            self.run_render(rs, spin);
+        }
         // axis gizmo, bottom right
         let g = pos2(rect.right() - 34.0, rect.bottom() - 34.0);
         let painter = ui.painter().with_clip_rect(rect);

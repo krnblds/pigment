@@ -219,6 +219,9 @@ impl Panel for FoliageBrushPanel {
         if ds::segmented(ui, &mut f, &[("any", None, "Any surface"), ("up", None, "Up-facing"), ("walls", None, "Walls"), ("down", None, "Undersides")]) {
             b.facing = f.to_string();
         }
+        use pigment_core::foliage::Mount;
+        ds::prop_label(ui, "Mount", Some("How cards sit on the surface. Cell's own = what each card was made for"));
+        ds::segmented(ui, &mut b.mount, &[(None, None, "Cell's own"), (Some(Mount::Upright), None, "Upright"), (Some(Mount::Flat), None, "Flat"), (Some(Mount::Wall), None, "Wall"), (Some(Mount::Hanging), None, "Hanging")]);
         ds::toggle(ui, &mut b.erase, "Erase (or hold Shift)");
         ds::section(ui, "Layer");
         let sel = app.selected.and_then(|id| app.doc.index_of(id)).filter(|i| app.doc.layers[*i].is_foliage());

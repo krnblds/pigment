@@ -274,7 +274,7 @@ PIGMENT_FOLIAGE_PROJECT=<abs>/target/foliage/projects/building_a_foliage.pigment
 - **Ivy** grows along the mesh of the allowed parts only. It doesn't jump gaps (balcony to wall) and doesn't hang free; a strand stops at an edge it can't wrap. Leaves can overlap where strands cross.
 - **Scale.** Cards are stored in the project JSON: about 45k cards for the building demo makes `project.json` several MB. The viewport stays interactive with 45k cards (about 90k quads), but there is no LOD. The Godot loader builds one MultiMesh per cell, with no chunking or visibility ranges yet (`town_loader.gd` would chunk them on its 64 m grid).
 - **Built-in atlas.** It is generated on first use and is not configurable from the UI. To use other cells, point a layer's `atlas` at an exported foliage atlas (MCP `atlas`).
-- **Mounts.** The brush uses each cell's mount. `scatter_foliage.mount` overrides it, but the UI brush has no mount override.
+- **Mounts.** The brush uses each cell's mount unless *Mount* in the Foliage brush panel (or `mount` on `paint_foliage` / `scatter_foliage`) overrides it.
 - **Proof scenes.** The Cycles and Godot scenes are small: one building and three street segments. The town pipeline (`tools/town_textures.py`, `tools/blender_town.py`, `game/scripts/town_loader.gd`) doesn't place foliage yet. The hooks to add are `export_foliage` in the town scripts, `import_pigment_foliage` per kit piece in `blender_town.py`, and `FoliageLoader.build` per instance in `town_loader.gd`.
 
 ## The trees branch (`trees-workstream`): switching to these generators

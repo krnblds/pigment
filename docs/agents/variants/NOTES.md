@@ -44,8 +44,14 @@ and `export_variants` writes N texture sets from it without re-running the scrip
     GPU memory is freed. Variant ids are never reused.
   - `variants` are stored in the project, so `save_project` keeps them and a later call can omit them.
   - `dry_run` validates the definitions and reports what each variant shows.
-- UI (layer tab): variant-group field, the list of recorded decals, and a **Seed** box that
-  previews any variant seed live. Exporting variants is MCP-only.
+- UI (Variants panel): the selected layer's group field and recorded decals, a **Seed**
+  box that previews any seed live, and the stored definitions as cards: rename, change the
+  seed, switch each group on / off / as authored, preview a variant in the viewport (one
+  undo step), delete, **Add**. **Export N variants** runs the same `export_variants` code
+  (the app is lent to a `Session`) into `<export folder>/<asset>/variants`, with the
+  export target's preset and a preview render per variant in the current lighting.
+  Problems (a bad or duplicate name, a selector that matches nothing) show under the
+  cards and disable the button. Also *Export all variants* in the command palette.
 
 **Decal fixes (`tools/make_story_decals.py`):**
 - Plate text is now sized to fill the plate.

@@ -425,6 +425,11 @@ impl Viewport {
 
     /// The resolved colour image of the last frame.
     #[allow(dead_code)]
+    /// The size of the last frame drawn, in pixels (0 before the first).
+    pub fn size(&self) -> [u32; 2] {
+        self.targets.as_ref().map_or([0, 0], |t| t.size)
+    }
+
     pub fn color(&self) -> Option<&Tex> {
         self.targets.as_ref().map(|t| &t.resolve)
     }
