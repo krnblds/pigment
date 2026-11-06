@@ -46,6 +46,7 @@ pub mod design;
 pub mod dock;
 pub mod harness;
 mod jobs;
+mod session_tools;
 mod panels;
 pub mod prefs;
 mod welcome;

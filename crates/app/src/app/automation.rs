@@ -120,6 +120,20 @@ impl Session {
         Ok(Session { rs, app, size: [1280, 960] })
     }
 
+    /// Run session tools on the UI's app: `app` is moved into a session for
+    /// the call and moved back afterwards, so the UI reuses the MCP tools
+    /// (variant export, turntables) instead of duplicating them.
+    pub fn lend<R>(app: &mut PigmentApp, rs: &RenderState, f: impl FnOnce(&mut Session) -> R) -> R {
+        // SAFETY: the app is read out of `*app` and always written back before
+        // returning, also when `f` panics (the panic is caught, the app put
+        // back, then the panic resumed), so it is never dropped twice or left
+        // moved out. `Session` has no `Drop`, so moving `s.app` out is fine.
+        let mut s = Session { rs: rs.clone(), app: unsafe { std::ptr::read(app) }, size: [1280, 960] };
+        let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| f(&mut s)));
+        unsafe { std::ptr::write(app, s.app) };
+        r.unwrap_or_else(|e| std::panic::resume_unwind(e))
+    }
+
     fn status(&self) -> Res<String> {
         match &self.app.status {
             Some((m, true)) => Err(m.clone()),

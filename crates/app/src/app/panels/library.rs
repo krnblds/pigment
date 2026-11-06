@@ -132,7 +132,7 @@ impl Thumbs {
 /// Small image previews (tile sets, decals), loaded lazily and cached.
 #[derive(Default)]
 pub struct ImageThumbs {
-    map: HashMap<PathBuf, Option<egui::TextureHandle>>,
+    map: HashMap<(PathBuf, u32), Option<egui::TextureHandle>>,
     loads_this_frame: usize,
 }
 
@@ -141,8 +141,15 @@ impl ImageThumbs {
         self.loads_this_frame = 0;
     }
 
+    /// A small (128 px) thumbnail of an image file.
     pub fn get(&mut self, ctx: &egui::Context, path: &Path) -> Option<egui::TextureId> {
-        if let Some(h) = self.map.get(path) {
+        self.get_sized(ctx, path, 128)
+    }
+
+    /// The image shrunk to fit `max` px (big previews such as the welcome samples).
+    pub fn get_sized(&mut self, ctx: &egui::Context, path: &Path, max: u32) -> Option<egui::TextureId> {
+        let key = (path.to_path_buf(), max);
+        if let Some(h) = self.map.get(&key) {
             return h.as_ref().map(|h| h.id());
         }
         if self.loads_this_frame >= 4 {
@@ -150,12 +157,12 @@ impl ImageThumbs {
         }
         self.loads_this_frame += 1;
         let h = image::open(path).ok().map(|img| {
-            let img = img.thumbnail(128, 128).to_rgba8();
+            let img = img.thumbnail(max, max).to_rgba8();
             let ci = egui::ColorImage::from_rgba_unmultiplied([img.width() as usize, img.height() as usize], img.as_raw());
-            ctx.load_texture(path.to_string_lossy(), ci, egui::TextureOptions::LINEAR)
+            ctx.load_texture(format!("{}@{max}", path.to_string_lossy()), ci, egui::TextureOptions::LINEAR)
         });
         let id = h.as_ref().map(|h| h.id());
-        self.map.insert(path.to_path_buf(), h);
+        self.map.insert(key, h);
         id
     }
 }
@@ -330,30 +337,23 @@ impl PigmentApp {
         self.ui.thumbs.as_mut().unwrap()
     }
 
-    /// Weathering layers: (index, base amount at "as authored").
-    fn weather_layers(&mut self) -> Vec<(usize, f32)> {
-        let w = self.ui.wear;
-        let mut out = vec![];
-        for (i, l) in self.doc.layers.iter().enumerate() {
-            let Some(g) = l.mask.as_ref().and_then(|m| m.generator.as_ref()) else { continue };
-            if !WEATHER.contains(&g.kind) {
-                continue;
-            }
-            let base = *self.ui.wear_bases.entry(l.id).or_insert_with(|| if wear_factor(w) > 0.05 { g.amount / wear_factor(w) } else { g.amount });
-            out.push((i, base));
-        }
-        out
+    /// The weathering slider, 0..1 (0.5 = as authored); saved in the project.
+    pub(in crate::app) fn wear(&self) -> f32 {
+        self.doc.weathering.unwrap_or(0.5)
     }
 
     /// Set the weathering level 0..1 (0.5 = as the material was authored).
+    /// Each weathering layer keeps its authored amount in `wear_base` (layers
+    /// without one, e.g. from older projects, take it from the current level).
     pub(in crate::app) fn set_wear(&mut self, w: f32) {
-        let layers = self.weather_layers();
-        self.ui.wear = w.clamp(0.0, 1.0);
-        let k = wear_factor(self.ui.wear);
-        for (i, base) in layers {
-            if let Some(g) = self.doc.layers[i].mask.as_mut().and_then(|m| m.generator.as_mut()) {
-                g.amount = (base * k).clamp(0.0, 1.0);
-            }
+        let k0 = wear_factor(self.wear());
+        let w = w.clamp(0.0, 1.0);
+        self.doc.weathering = ((w - 0.5).abs() > 1e-4).then_some(w);
+        let k = wear_factor(w);
+        for l in &mut self.doc.layers {
+            let Some(g) = l.mask.as_mut().and_then(|m| m.generator.as_mut()).filter(|g| WEATHER.contains(&g.kind)) else { continue };
+            let base = *l.wear_base.get_or_insert(if k0 > 0.05 { g.amount / k0 } else { g.amount });
+            g.amount = (base * k).clamp(0.0, 1.0);
         }
     }
 
@@ -409,10 +409,10 @@ impl PigmentApp {
             self.doc.layers.push(paint);
         }
         // new weathering follows the current slider
-        let k = wear_factor(self.ui.wear);
+        let k = wear_factor(self.wear());
         for l in self.doc.layers.iter_mut().filter(|l| ids.contains(&l.id)) {
             if let Some(g) = l.mask.as_mut().and_then(|m| m.generator.as_mut()).filter(|g| WEATHER.contains(&g.kind)) {
-                self.ui.wear_bases.insert(l.id, g.amount);
+                l.wear_base = Some(g.amount);
                 g.amount = (g.amount * k).clamp(0.0, 1.0);
             }
         }
@@ -617,7 +617,7 @@ impl Panel for LookPanel {
                 app.ui.prefs.layout_mut().open(PanelId::Library);
             }
         } else {
-            let mut w = app.ui.wear;
+            let mut w = app.wear();
             let r = ds::slider_row_ex(ui, "Weathering", &mut w, 0.0..=1.0, ds::Unit::Percent, false, Some("Scales every edge wear, scratch, rust and dirt layer at once. 50% is how the material was made."));
             app.anchors.insert("wear_slider", r.rect);
             if r.changed() {
@@ -625,7 +625,7 @@ impl Panel for LookPanel {
             }
             ui.horizontal(|ui| {
                 for (label, v) in [("Brand new", 0.08), ("Used", 0.35), ("Worn", 0.6), ("Battered", 0.92)] {
-                    if ui.add(Btn::ghost(label).small().selected((app.ui.wear - v).abs() < 0.02)).clicked() {
+                    if ui.add(Btn::ghost(label).small().selected((app.wear() - v).abs() < 0.02)).clicked() {
                         app.set_wear(v);
                     }
                 }

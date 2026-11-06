@@ -1,7 +1,8 @@
 //! Viewport, Brush, Parts, Variants, Lighting, History, Export and
 //! Texture set panels.
 
-use super::super::design::{self as ds, font, size, space, Btn, Icon, IconBtn, RichTip, ToastKind};
+use super::super::design::{self as ds, font, icon, size, space, Btn, Icon, IconBtn, RichTip, ToastKind};
+use pigment_core::variants::VariantDef;
 use super::super::jobs;
 use super::*;
 
@@ -155,9 +156,9 @@ impl Panel for VariantsPanel {
         PanelId::Variants
     }
 
-    fn ui(&mut self, app: &mut PigmentApp, ui: &mut egui::Ui, _rs: &RenderState) {
+    fn ui(&mut self, app: &mut PigmentApp, ui: &mut egui::Ui, rs: &RenderState) {
         let p = ds::pal(ui);
-        ds::hint(ui, "Variants are versions of the same texture set: lit / unlit windows, other posters, different dirt. Tag layers with a group, preview a seed, export them all with the MCP tool export_variants.");
+        ds::hint(ui, "Variants are versions of the same texture set: lit / unlit windows, other posters, different dirt. Tag layers with a group, add variants that switch groups on or off, then export them all at once.");
         ds::section(ui, "Preview");
         let mut seed = app.doc.variants.seed as f32;
         if ds::slider_row_ex(ui, "Seed", &mut seed, 0.0..=999.0, ds::Unit::Plain(0), false, Some("Random part subsets and generator noise follow it. 0 = the authored look")).changed() {
@@ -198,19 +199,124 @@ impl Panel for VariantsPanel {
             ds::hint(ui, "None yet: type a group name on a layer above.");
         }
         ui.horizontal_wrapped(|ui| {
-            for g in groups {
-                ds::badge(ui, &g, p.accent);
+            for g in &groups {
+                ds::badge(ui, g, p.accent);
             }
         });
-        ds::section(ui, "Defined variants");
-        if app.doc.variants.defs.is_empty() {
-            ds::hint(ui, "None stored. Scripts define them with export_variants { variants: [...] }.");
+        let add = ds::section_with(ui, "Variants", |ui| ui.add(Btn::ghost("Add").icon(Icon::Plus).small()).on_hover_text("A new variant: a seed plus groups switched on or off").clicked());
+        if add {
+            let defs = &mut app.doc.variants.defs;
+            let n = (defs.len() + 1..).map(|i| format!("variant_{i}")).find(|n| !defs.iter().any(|d| d.name.eq_ignore_ascii_case(n))).unwrap_or_default();
+            let seed = (defs.len() as u32 * 7919 + 101) % 1000 + 1;
+            defs.push(VariantDef { name: n, seed, ..Default::default() });
         }
-        for v in &app.doc.variants.defs {
-            ds::card(ui, |ui| {
-                ui.label(ds::strong(&v.name, font::BODY));
-                ui.label(ds::text(format!("seed {} · enable {:?} · disable {:?}", v.seed, v.enable, v.disable), font::SMALL).color(p.text_muted));
+        if app.doc.variants.defs.is_empty() {
+            ds::hint(ui, "None yet. Add one, give it a seed and pick which groups it shows.");
+        }
+        let (mut preview, mut delete) = (None, None);
+        for (i, v) in app.doc.variants.defs.iter_mut().enumerate() {
+            ui.push_id(("variant", i), |ui| {
+                ds::card(ui, |ui| {
+                    ui.horizontal(|ui| {
+                        let mut name = v.name.clone();
+                        if ui.add(egui::TextEdit::singleline(&mut name).desired_width(120.0).font(egui::FontId::proportional(font::BODY))).changed() {
+                            v.name = super::super::session_tools::variant_name(&name);
+                        }
+                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                            if ui.add(IconBtn::new(Icon::Trash, "Delete this variant")).clicked() {
+                                delete = Some(i);
+                            }
+                            if ui.add(IconBtn::new(Icon::Eye, "Preview: show this variant's seed and groups in the viewport (Ctrl+Z goes back)")).clicked() {
+                                preview = Some(v.clone());
+                            }
+                        });
+                    });
+                    ui.horizontal(|ui| {
+                        let mut seed = v.seed as f32;
+                        ds::prop_label(ui, "Seed", Some("Random part subsets (lit windows) and generator noise"));
+                        if ui.add(ds::DragField::new(&mut seed, 0.0..=999.0).decimals(0).width(64.0)).changed() {
+                            v.seed = seed.round() as u32;
+                        }
+                        if ui.add(IconBtn::new(Icon::Dice, "Another seed")).clicked() {
+                            v.seed = (v.seed * 7919 + 101) % 1000 + 1;
+                        }
+                    });
+                    if !groups.is_empty() {
+                        ui.horizontal_wrapped(|ui| {
+                            ui.spacing_mut().item_spacing = egui::vec2(space::XS, space::XS);
+                            for g in &groups {
+                                let on = v.enable.iter().any(|x| x.eq_ignore_ascii_case(g));
+                                let off = v.disable.iter().any(|x| x.eq_ignore_ascii_case(g));
+                                let (label, icon, tip) = match (on, off) {
+                                    (true, _) => (format!("{g}: on"), Icon::Eye, "Shown in this variant. Click: hidden"),
+                                    (_, true) => (format!("{g}: off"), Icon::EyeOff, "Hidden in this variant. Click: as authored"),
+                                    _ => (g.clone(), Icon::Layers, "As authored. Click: shown"),
+                                };
+                                if ui.add(Btn::ghost(label).icon(icon).small().selected(on || off)).on_hover_text(tip).clicked() {
+                                    v.enable.retain(|x| !x.eq_ignore_ascii_case(g));
+                                    v.disable.retain(|x| !x.eq_ignore_ascii_case(g));
+                                    match (on, off) {
+                                        (false, false) => v.enable.push(g.clone()),
+                                        (true, _) => v.disable.push(g.clone()),
+                                        _ => {}
+                                    }
+                                }
+                            }
+                        });
+                    }
+                    let extra: Vec<&String> = v.enable.iter().chain(&v.disable).filter(|x| !groups.iter().any(|g| g.eq_ignore_ascii_case(x))).collect();
+                    if !extra.is_empty() || !v.swaps.is_empty() {
+                        // selectors from scripts (layer / decal names) can be long: a count, listed on hover
+                        let mut t = Vec::new();
+                        if !extra.is_empty() {
+                            t.push(format!("{} more layer / decal switch{}", extra.len(), if extra.len() == 1 { "" } else { "es" }));
+                        }
+                        if !v.swaps.is_empty() {
+                            t.push(format!("{} decal swap{}", v.swaps.len(), if v.swaps.len() == 1 { "" } else { "s" }));
+                        }
+                        let list = extra.iter().map(|x| x.as_str()).chain(v.swaps.keys().map(String::as_str)).collect::<Vec<_>>().join("\n");
+                        ui.label(ds::text(t.join(" · "), font::SMALL).color(p.text_muted)).on_hover_text(list);
+                    }
+                });
             });
+        }
+        if let Some(i) = delete {
+            app.doc.variants.defs.remove(i);
+        }
+        if let Some(v) = preview {
+            match app.preview_variant(&v) {
+                Ok(()) => app.set_status(format!("Previewing {} (Ctrl+Z to go back)", v.name), false),
+                Err(e) => app.notify_error("Can't preview that variant", &e),
+            }
+        }
+        if !app.doc.variants.defs.is_empty() {
+            let check = app.check_variants();
+            if let Err(e) = &check {
+                ui.horizontal_wrapped(|ui| {
+                    Icon::Warning.show(ui, icon::SM, p.warn);
+                    ui.label(ds::text(e, font::SMALL).color(p.warn));
+                });
+            }
+            ui.add_space(space::SM);
+            let n = app.doc.variants.defs.len();
+            let target = jobs::target(app.ui.export_target);
+            let r = ui.add(Btn::primary(format!("Export {n} variant{}", if n == 1 { "" } else { "s" })).icon(Icon::Export).enabled(check.is_ok()).fill());
+            app.anchors.insert("export_variants", r.rect);
+            if r.rich_tip("Export all variants", &format!("One folder per variant with {} maps, variant.json and a preview render, in {}", target.label, app.output_dir("variants").display())).clicked() {
+                app.run_export_variants(rs);
+            }
+        }
+    }
+}
+
+impl PigmentApp {
+    pub(in crate::app) fn run_export_variants(&mut self, rs: &RenderState) {
+        match self.export_all_variants(rs) {
+            Ok((dir, n)) => {
+                self.ui.toasts.push(ToastKind::Success, format!("Exported {n} variant{}", if n == 1 { "" } else { "s" }), dir.display().to_string());
+                self.ui.last_export = Some(dir);
+            }
+            Err(e) => self.notify_error("Variant export failed", &e),
         }
     }
 }

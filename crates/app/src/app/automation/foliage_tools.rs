@@ -496,13 +496,15 @@ impl Session {
             _ => cell_list(a, &["grass"])?,
         };
         let radius = f(a, "radius").unwrap_or(0.3).max(0.01);
+        let place = Self::place_opts(a, (0.8, 1.2))?;
         let b = FoliageBrush {
             cells: names.into_iter().map(|c| c.0).collect(),
             radius,
             density: f(a, "density").unwrap_or(40.0).max(0.01),
-            scale: Self::place_opts(a, (0.8, 1.2))?.scale,
+            scale: place.scale,
             align: f(a, "align").unwrap_or(0.6),
             facing: s(a, "facing").unwrap_or("any").into(),
+            mount: place.mount,
             erase,
             seed: a.get("seed").and_then(Value::as_u64).unwrap_or(1),
         };

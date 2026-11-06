@@ -109,13 +109,15 @@ pub struct FoliageBrush {
     /// Upright cards: 0 = along the normal, 1 = straight up.
     pub align: f32,
     pub facing: String,
+    /// Mount override for every card painted (None = each cell's own).
+    pub mount: Option<pigment_core::foliage::Mount>,
     pub erase: bool,
     pub seed: u64,
 }
 
 impl Default for FoliageBrush {
     fn default() -> Self {
-        FoliageBrush { cells: vec!["grass".into()], radius: 0.4, density: 40.0, scale: (0.8, 1.2), align: 0.6, facing: "any".into(), erase: false, seed: 1 }
+        FoliageBrush { cells: vec!["grass".into()], radius: 0.4, density: 40.0, scale: (0.8, 1.2), align: 0.6, facing: "any".into(), mount: None, erase: false, seed: 1 }
     }
 }
 
@@ -456,7 +458,7 @@ impl PigmentApp {
                 seed: b.seed.wrapping_mul(1_000_003).wrapping_add(k as u64 * 7919 + self.doc.layers[i].foliage().map(|f| f.instances.len()).unwrap_or(0) as u64),
                 filter: filter.clone(),
                 min_spacing: spacing,
-                place: PlaceOpts { scale: b.scale, align: b.align, ..Default::default() },
+                place: PlaceOpts { scale: b.scale, align: b.align, mount: b.mount, ..Default::default() },
             };
             let existing = self.doc.layers[i].foliage().map(|f| f.instances.clone()).unwrap_or_default();
             let new = fs::paint_dab(&self.mesh, &self.parts, *p, b.radius, &o, &existing, extra);

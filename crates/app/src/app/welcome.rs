@@ -66,6 +66,32 @@ pub fn available_samples() -> Vec<usize> {
     (0..SAMPLES.len()).filter(|k| SAMPLES[*k].mesh.is_none() || sample_mesh(&SAMPLES[*k]).is_some()).take(4).collect()
 }
 
+/// First run: the three steps from a model to engine-ready textures.
+fn how_it_works(ui: &mut egui::Ui) {
+    let p = ds::pal(ui);
+    ui.label(ds::caption(ui, "How it works"));
+    ui.add_space(space::SM);
+    let steps = [
+        (Icon::Cube, "1  Pick a model", "A sample on the right, or your own OBJ / glTF with UVs."),
+        (Icon::Sparkle, "2  Pick a material", "Smart materials wear at the edges and gather dirt in the cracks by themselves. Drag How worn? to taste."),
+        (Icon::Export, "3  Export", "Blender, Unreal, Unity, Godot or glTF in one click, plus every variant you set up."),
+    ];
+    for (ic, title, body) in steps {
+        ds::card(ui, |ui| {
+            ui.horizontal(|ui| {
+                let (r, _) = ui.allocate_exact_size(egui::vec2(icon::XL + space::MD, icon::XL + space::MD), egui::Sense::hover());
+                ui.painter().rect_filled(r, egui::CornerRadius::same(ds::radius::LG), p.accent_subtle);
+                ic.paint(ui.painter(), egui::Rect::from_center_size(r.center(), egui::vec2(icon::LG, icon::LG)), p.accent);
+                ui.vertical(|ui| {
+                    ui.label(ds::strong(title, font::TITLE));
+                    ui.label(ds::text(body, font::SMALL).color(p.text_secondary));
+                });
+            });
+        });
+        ui.add_space(space::XS);
+    }
+}
+
 impl PigmentApp {
     /// Open a sample model with its material applied, ready to paint.
     pub(super) fn open_sample(&mut self, rs: &RenderState, s: &Sample) {
@@ -192,6 +218,8 @@ impl PigmentApp {
                     let recent = self.ui.prefs.recent.clone();
                     if recent.is_empty() {
                         ds::hint(ui, "Projects and models you open show up here.");
+                        ui.add_space(space::XL);
+                        how_it_works(ui);
                     }
                     for r in recent.iter().take(6) {
                         let is_project = r.is_dir();
@@ -218,7 +246,7 @@ impl PigmentApp {
                         for (n, k) in available_samples().into_iter().enumerate() {
                             let s = &SAMPLES[k];
                             let preview = asset_file(&format!("samples/{}.png", s.id));
-                            let tex = preview.and_then(|pth| thumbs.get(ui.ctx(), &pth));
+                            let tex = preview.and_then(|pth| thumbs.get_sized(ui.ctx(), &pth, 640));
                             let r = ds::asset_tile_ex(ui, tw, (tw * 0.75).round(), tex, |pa, r| Icon::Cube.paint(pa, egui::Rect::from_center_size(r.center(), egui::vec2(r.height(), r.height()) * 0.5), p.text_muted), s.title, s.blurb, false);
                             self.anchors.insert(["sample_crate", "sample_vending", "sample_building", "sample_car", "sample_jerry_can"][k], r.rect);
                             if r.clicked() {

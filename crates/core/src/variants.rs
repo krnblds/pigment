@@ -70,7 +70,7 @@ pub struct DecalRecord {
 }
 
 /// One texture set to export.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct VariantDef {
     pub name: String,
     #[serde(default)]

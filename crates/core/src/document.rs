@@ -792,6 +792,13 @@ pub struct Layer {
     /// these editable decal objects (see `decal_layer`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub decals: Option<crate::decal_layer::DecalSet>,
+    /// Locked layers can't be painted on from the UI.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub locked: bool,
+    /// Weathering generators: the mask amount "as authored", which the
+    /// weathering slider scales (50% = this amount).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub wear_base: Option<f32>,
 }
 
 /// What draws a generated paint layer.
@@ -894,6 +901,9 @@ pub struct Document {
     /// Export templates saved with the project (see `templates`).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub export_templates: Vec<crate::templates::ExportTemplate>,
+    /// The weathering slider (0..1, 0.5 = as authored). `None` = 0.5.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub weathering: Option<f32>,
 }
 
 fn default_preset() -> String {
@@ -917,6 +927,7 @@ impl Default for Document {
             extra_sets: Vec::new(),
             udim_moves: Vec::new(),
             export_templates: Vec::new(),
+            weathering: None,
         }
     }
 }
@@ -1640,6 +1651,8 @@ impl Document {
             filters: Vec::new(),
             anchor: None,
             decals: None,
+            locked: false,
+            wear_base: None,
         }
     }
 
@@ -1665,6 +1678,8 @@ impl Document {
             filters: Vec::new(),
             anchor: None,
             decals: None,
+            locked: false,
+            wear_base: None,
         }
     }
 
@@ -1696,6 +1711,8 @@ impl Document {
             filters: Vec::new(),
             anchor: None,
             decals: None,
+            locked: false,
+            wear_base: None,
         }
     }
 
@@ -1739,8 +1756,18 @@ impl Document {
         if ids_b != ids_a {
             return "Reorder layers".into();
         }
+        // the weathering slider rescales many layers at once
+        if before.weathering != after.weathering {
+            return format!("Weathering {:.0}%", after.weathering.unwrap_or(0.5) * 100.0);
+        }
         for (b, a) in before.layers.iter().zip(&after.layers) {
             if b != a {
+                if b.locked != a.locked && (Layer { locked: a.locked, ..b.clone() }) == *a {
+                    return format!("{} {}", if a.locked { "Lock" } else { "Unlock" }, a.name);
+                }
+                if b.visible != a.visible && (Layer { visible: a.visible, ..b.clone() }) == *a {
+                    return format!("{} {}", if a.visible { "Show" } else { "Hide" }, a.name);
+                }
                 if b.mask.is_none() && a.mask.is_some() {
                     return format!("Add mask to {}", a.name);
                 }
@@ -1758,6 +1785,12 @@ impl Document {
         }
         if before.bake != after.bake {
             return "Bake settings".into();
+        }
+        if before.variants.defs != after.variants.defs {
+            return "Edit variants".into();
+        }
+        if before.variants.seed != after.variants.seed {
+            return format!("Variant seed {}", after.variants.seed);
         }
         "Edit".into()
     }

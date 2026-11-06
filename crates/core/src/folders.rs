@@ -86,6 +86,8 @@ impl Document {
             filters: Vec::new(),
             anchor: None,
             decals: None,
+            locked: false,
+            wear_base: None,
         }
     }
 

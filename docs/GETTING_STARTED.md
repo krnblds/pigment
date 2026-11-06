@@ -68,12 +68,26 @@ channels, parts, variants and baking.
 ![advanced mode](agents/ui/advanced_mode.png)
 
 - **Layers**: drag the grip (⠿) to reorder; drop on the middle of a folder to put a layer
-  inside. Right-click a layer for more. The eye hides it, the lock protects it.
+  inside. Right-click a layer for more. The eye hides it, the lock protects it from paint
+  (saved with the project, like the *How worn?* level).
 - **Mask & generators**: where a layer shows. Pick a generator from the previews (edge
   wear, dirt, leaks, moss, tiles, window grid...) and tune it.
 - **Properties**: the material (with glass, glow and car-paint clearcoat / flake
   sections) and **image fills** from `assets/tiles` (brick, concrete...).
 - **Save to library** turns a folder into a smart material you can reuse.
+- **Variants**: tag layers with a group (lit windows, posters, extra dirt), then add
+  variants in the Variants panel. Each one has a seed and switches groups on or off; the
+  eye previews it, and **Export N variants** writes one folder per variant with its maps
+  and a preview render.
+
+![variants](agents/ui/variants.png)
+
+## Show it off
+
+The two buttons under *Lighting* in the viewport save a picture of the model without the
+UI: an image at twice the viewport size (also **Ctrl+Shift+R** or View > Save image) and a
+turntable sheet of eight views around it. They go to `Pigment Exports/<name>/renders`.
+*Lightbox (dark)* gives a glossy studio floor with a reflection and a contact shadow.
 - **New project** (Ctrl+N) also makes seamless tiles, trim sheets and decal atlases.
 
 ## Arrange the window
@@ -90,7 +104,7 @@ theme and the interface size (Ctrl + / Ctrl -).
 
 ## Find anything
 
-- **Ctrl+K** opens the command palette: type "rust", "export", "night" or "folder".
+- **Ctrl+K** opens the command palette: type "rust", "export", "night", "variants" or "folder".
 - **?** shows every keyboard shortcut.
 - **The status bar** (bottom left) always shows what the mouse buttons and keys do with
   the current tool, or with the control under the pointer.

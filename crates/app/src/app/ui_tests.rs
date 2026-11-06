@@ -293,6 +293,107 @@ fn autosave_and_recover() {
     assert!(h.app.modified);
 }
 
+/// Layer lock and the weathering level are saved in the project.
+#[test]
+fn lock_and_weathering_survive_save_and_open() {
+    let Some(mut h) = harness() else { return };
+    let rs = h.rs.clone();
+    settle(&mut h);
+    h.app.apply_library(&rs, &LibItem::Smart("Rusty steel".into()), None);
+    h.app.set_wear(0.8);
+    let worn = gen_amounts(&h);
+    let id = h.app.doc.layers.iter().find(|l| l.is_paint()).unwrap().id;
+    h.app.doc.layer_mut(id).unwrap().locked = true;
+    h.app.commit_doc_changes();
+    let dir = std::env::temp_dir().join(format!("pigment-ui-lock-{}.pigment", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    h.app.save_to(&rs, dir.clone());
+    h.app.run_pending(&rs, Pending::NewTorus);
+    h.app.request(&rs, Pending::OpenProject(dir.clone()));
+    settle(&mut h);
+    assert!((h.app.wear() - 0.8).abs() < 1e-4, "weathering {}", h.app.wear());
+    assert_eq!(gen_amounts(&h), worn);
+    assert!(h.app.doc.layers.iter().any(|l| l.is_paint() && l.locked), "lock saved");
+    // "as authored" survives too: 50% gives back the material's own amounts
+    h.app.set_wear(0.5);
+    let authored = gen_amounts(&h);
+    assert!(authored.iter().zip(&worn).all(|(a, w)| a <= w) && authored != worn, "{authored:?} vs {worn:?}");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// Variants defined in the panel export from the UI, one folder each, and
+/// leave the project as it was.
+#[test]
+fn variants_panel_defines_and_exports() {
+    let Some(mut h) = harness() else { return };
+    let rs = h.rs.clone();
+    settle(&mut h);
+    h.app.apply_library(&rs, &LibItem::Smart("Rusty steel".into()), None);
+    let i = h.app.doc.layers.iter().position(|l| l.mask.as_ref().is_some_and(|m| m.generator.is_some())).unwrap();
+    h.app.doc.layers[i].variant.group = "grime".into();
+    h.app.set_mode(super::prefs::Mode::Advanced);
+    h.app.ui.prefs.layout_mut().open(PanelId::Variants);
+    settle(&mut h);
+    // two variants, the second hides the group
+    for _ in 0..2 {
+        h.app.doc.variants.defs.push(pigment_core::variants::VariantDef { name: format!("v{}", h.app.doc.variants.defs.len()), ..Default::default() });
+    }
+    h.app.doc.variants.defs[1].disable.push("grime".into());
+    h.app.doc.variants.defs[1].seed = 7;
+    h.run(4);
+    assert!(h.app.check_variants().is_ok());
+    let out = std::env::temp_dir().join(format!("pigment-ui-variants-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&out);
+    h.app.ui.prefs.export_dir = Some(out.clone());
+    h.app.export_name = "Crate".into();
+    let doc = h.app.doc.clone();
+    // the panel draws the button (it may be scrolled out of a short dock); run its action
+    anchor(&h, "export_variants");
+    h.app.run_export_variants(&rs);
+    settle(&mut h);
+    for v in ["v0", "v1"] {
+        let d = out.join("Crate/variants").join(format!("Crate__{v}"));
+        assert!(d.join("variant.json").is_file(), "{d:?}: {:?}", h.app.status);
+        assert!(d.join("preview.png").is_file());
+    }
+    let side: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(out.join("Crate/variants/Crate__v1/variant.json")).unwrap()).unwrap();
+    assert!(side["hidden_layers"].as_array().unwrap().iter().any(|n| n == h.app.doc.layers[i].name.as_str()), "{side}");
+    assert_eq!(h.app.doc.layers, doc.layers, "the project is unchanged");
+    // preview: one undo step that shows the variant, Ctrl+Z goes back
+    let v = h.app.doc.variants.defs[1].clone();
+    h.app.preview_variant(&v).unwrap();
+    assert!(!h.app.doc.layers[i].visible && h.app.doc.variants.seed == 7);
+    h.app.undo(&rs, false);
+    assert!(h.app.doc.layers[i].visible);
+    // a bad name is reported, not exported
+    h.app.doc.variants.defs[0].name = "v1".into();
+    assert!(h.app.check_variants().unwrap_err().contains("duplicate"));
+    let _ = std::fs::remove_dir_all(&out);
+}
+
+/// View > Save image renders the viewport at 2x without moving the camera.
+#[test]
+fn save_render_and_turntable() {
+    let Some(mut h) = harness() else { return };
+    let rs = h.rs.clone();
+    settle(&mut h);
+    let out = std::env::temp_dir().join(format!("pigment-ui-render-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&out);
+    h.app.ui.prefs.export_dir = Some(out.clone());
+    h.app.export_name = "Crate".into();
+    h.app.camera.yaw = 1.1;
+    let (cam, size) = (h.app.camera.clone(), h.app.viewport.size());
+    h.key(egui::Key::R, egui::Modifiers::COMMAND | egui::Modifiers::SHIFT);
+    h.run(2);
+    let png = out.join("Crate/renders/Crate_001.png");
+    let img = image::open(&png).unwrap_or_else(|e| panic!("{png:?}: {e} {:?}", h.app.status));
+    assert_eq!([img.width(), img.height()], [size[0] * 2, size[1] * 2]);
+    assert_eq!(h.app.camera, cam, "camera put back");
+    h.app.run_render(&rs, true);
+    assert!(out.join("Crate/renders/Crate_turntable_001.png").is_file());
+    let _ = std::fs::remove_dir_all(&out);
+}
+
 /// Thumbnails render asynchronously (a few per frame) and are cached on disk.
 #[test]
 fn library_thumbnails_render_and_cache() {
@@ -312,57 +413,93 @@ fn docs() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../docs")
 }
 
+/// A three-quarter view of the whole model, `zoom` > 1 closer.
+fn hero_camera(h: &mut Harness, yaw_deg: f32, pitch_deg: f32, zoom: f32) {
+    let (c, r) = h.app.full_mesh().bounding_sphere();
+    h.app.camera.frame(c, r);
+    h.app.camera.yaw = yaw_deg.to_radians();
+    h.app.camera.pitch = pitch_deg.to_radians();
+    h.app.camera.distance /= zoom;
+}
+
 /// Screenshots for docs/agents/ui and docs/design. Ignored: run by hand.
+/// Staged on the samples a new user sees: the vending machine for Simple
+/// mode and decals, the finished town building for the layer stack, both on
+/// the dark lightbox (glossy floor, reflection, contact shadow).
 #[test]
 #[ignore]
 fn ui_screenshots() {
     let Some(mut h) = harness() else { return };
+    let rs = h.rs.clone();
     let out = docs().join("agents/ui");
     let shot = |h: &mut Harness, name: &str| {
         h.run(30);
         h.save_png(&out.join(format!("{name}.png")));
     };
-    // welcome
+    // welcome (first run: no recent files, so the "how it works" steps show)
     h.app.ui.welcome = true;
     settle(&mut h);
     shot(&mut h, "welcome");
-    // simple mode on a sample with a smart material
-    h.click(anchor(&h, "sample_crate").center());
+    // simple mode on the vending machine with a smart material
+    h.click(anchor(&h, "sample_vending").center());
     settle(&mut h);
     thumbs_done(&mut h);
-    h.app.apply_library(&h.rs.clone(), &LibItem::Smart("Rusty steel".into()), None);
-    h.app.set_wear(0.6);
+    h.app.apply_library(&rs, &LibItem::Smart("Worn red paint metal".into()), None);
+    h.app.set_wear(0.7);
+    h.app.set_lighting(&rs, "lightbox_dark");
+    hero_camera(&mut h, 32.0, 14.0, 1.05);
     settle(&mut h);
     thumbs_done(&mut h);
+    h.hover(anchor(&h, "viewport").center() + egui::vec2(40.0, -60.0));
     shot(&mut h, "simple_mode");
     // material library close-up: compact layout with the library in a wide column
     h.app.ui.prefs.layout_simple = DockLayout { root: super::dock::Node::Split { vertical: false, ratio: 0.45, a: Box::new(super::dock::Node::Leaf { tabs: vec![PanelId::Viewport], active: 0 }), b: Box::new(super::dock::Node::Leaf { tabs: vec![PanelId::Library, PanelId::Look], active: 0 }) }, floating: vec![] };
     thumbs_done(&mut h);
     shot(&mut h, "material_library");
     h.app.ui.prefs.layout_simple = DockLayout::beginner();
-    // decal tool
+    // decal tool: a torn poster stamped on the side, the ghost of the next one under the cursor
     let img = super::panels::decals::asset_dir("decals").unwrap().join("story/poster_missing.png");
     let img = if img.exists() { img } else { super::panels::decals::asset_dir("decals").unwrap().join("hazard_triangle.png") };
     h.app.ui.decal.image = Some(img);
-    h.app.ui.decal.size = 0.45;
+    h.app.ui.decal.size = 0.32;
     h.app.ui.decal.wear = 0.35;
     h.app.set_tool(Tool::Decal);
     settle(&mut h);
     let v = anchor(&h, "viewport");
-    h.click(v.center() + egui::vec2(-60.0, 30.0));
-    h.hover(v.center() + egui::vec2(90.0, -40.0));
+    h.click(v.center() + egui::vec2(-50.0, 10.0));
+    h.hover(v.center() + egui::vec2(70.0, -30.0));
     shot(&mut h, "decal_tool");
     h.app.set_tool(Tool::Paint);
-    // advanced mode
+    // advanced mode on the finished town building: folders, generators, glowing windows
+    let building = super::welcome::SAMPLES.iter().position(|s| s.id == "building").unwrap();
+    let has_building = super::welcome::sample_project(&super::welcome::SAMPLES[building]).is_some();
+    if has_building {
+        h.app.open_sample(&rs, &super::welcome::SAMPLES[building]);
+        settle(&mut h);
+        h.app.set_lighting(&rs, "lightbox_dark");
+        h.app.view.bloom.enabled = true;
+        hero_camera(&mut h, 38.0, 8.0, 0.95);
+        // a few real steps for the History panel
+        h.app.set_wear(0.62);
+        h.app.commit_doc_changes();
+        h.app.doc.variants.seed = 11;
+        h.app.commit_doc_changes();
+    }
     h.app.set_mode(Mode::Advanced);
-    let i = h.app.doc.layers.iter().position(|l| l.mask.as_ref().is_some_and(|m| m.generator.is_some())).unwrap();
+    let i = h.app.doc.layers.iter().rposition(|l| l.mask.as_ref().is_some_and(|m| m.generator.is_some())).unwrap();
     let id = h.app.doc.layers[i].id;
     h.app.select(Some(id), true);
+    settle(&mut h);
     thumbs_done(&mut h);
     shot(&mut h, "advanced_mode");
+    // variants: the building's stored looks, ready to export, in a tall column
+    let advanced = h.app.ui.prefs.layout().clone();
+    *h.app.ui.prefs.layout_mut() = DockLayout { root: super::dock::Node::Split { vertical: false, ratio: 0.66, a: Box::new(super::dock::Node::Leaf { tabs: vec![PanelId::Viewport], active: 0 }), b: Box::new(super::dock::Node::Leaf { tabs: vec![PanelId::Variants, PanelId::Layers], active: 0 }) }, floating: vec![] };
+    h.app.select(Some(id), false);
+    shot(&mut h, "variants");
+    *h.app.ui.prefs.layout_mut() = advanced;
     // a second layout (Painting) for the docking docs
     *h.app.ui.prefs.layout_mut() = DockLayout::painting();
-    h.app.select(Some(id), false);
     shot(&mut h, "layout_painting");
     *h.app.ui.prefs.layout_mut() = DockLayout::compact();
     shot(&mut h, "layout_compact");
@@ -373,15 +510,16 @@ fn ui_screenshots() {
     h.app.show_export = false;
     // command palette and shortcut sheet
     h.key(egui::Key::K, egui::Modifiers::COMMAND);
-    h.type_text("rus");
+    h.type_text("vari");
     shot(&mut h, "command_palette");
     h.key(egui::Key::Escape, egui::Modifiers::NONE);
     h.app.ui.cheatsheet = true;
     shot(&mut h, "shortcuts");
     h.app.ui.cheatsheet = false;
-    // light theme
+    // light theme on the bright lightbox
     h.app.ui.prefs.theme = super::design::ThemeKind::Light;
     super::design::apply(&h.ctx, super::design::ThemeKind::Light);
+    h.app.set_lighting(&rs, "lightbox");
     shot(&mut h, "advanced_mode_light");
 }
 
@@ -434,12 +572,16 @@ fn sample_previews() {
         h.app.camera.frame(c, r);
         h.app.camera.yaw = 0.7;
         h.app.camera.pitch = 0.3;
-        h.app.camera.distance *= 0.82;
-        h.app.view.show_env = false;
-        h.app.viewport.ensure_targets(&rs.device, [480, 360]);
+        h.app.camera.distance *= 0.95;
+        // on the dark lightbox: a glossy floor with the model's reflection and contact shadow
+        h.app.set_lighting(&rs, "lightbox_dark");
+        h.app.view.show_env = true;
+        h.app.view.stage = true;
+        let [w, ht] = [960, 720];
+        h.app.viewport.ensure_targets(&rs.device, [w, ht]);
         h.app.viewport.draw(&rs.device, &rs.queue, &h.app.camera, &h.app.view, h.app.mesh_gpu.as_ref(), &h.app.env, &h.app.ts);
         let px = crate::render::gpu::readback(&rs.device, &rs.queue, h.app.viewport.color().unwrap());
-        image::save_buffer(out.join(format!("{}.png", s.id)), &px, 480, 360, image::ExtendedColorType::Rgba8).unwrap();
+        image::save_buffer(out.join(format!("{}.png", s.id)), &px, w, ht, image::ExtendedColorType::Rgba8).unwrap();
     }
 }
 
